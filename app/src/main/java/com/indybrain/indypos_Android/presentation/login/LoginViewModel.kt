@@ -51,6 +51,17 @@ class LoginViewModel @Inject constructor(
             
             is LoginIntent.ClearError -> {
                 _uiState.update { it.copy(errorMessage = null) }
+                _state.value = LoginState.Idle
+            }
+
+            is LoginIntent.AcknowledgeSuccess -> {
+                _uiState.update {
+                    it.copy(
+                        isLoginSuccess = false,
+                        successMessage = null
+                    )
+                }
+                _state.value = LoginState.Idle
             }
         }
     }
@@ -85,6 +96,7 @@ class LoginViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             isLoginSuccess = true,
+                            successMessage = "เข้าสู่ระบบสำเร็จ",
                             user = user,
                             errorMessage = null
                         )
@@ -97,6 +109,7 @@ class LoginViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             isLoginSuccess = false,
+                            successMessage = null,
                             errorMessage = errorMessage
                         )
                     }

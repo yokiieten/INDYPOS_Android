@@ -12,4 +12,9 @@
     <string name="no_account">ยังไม่มีบัญชี?</string>
     <string name="create_account">สร้างบัญชี</string>
     <string name="app_logo_text">ANDY POS</string>
+    <string name="dialog_error_title">เกิดข้อผิดพลาด</string>
+    <string name="dialog_error_message_generic">ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง</string>
+    <string name="dialog_success_title">เข้าสู่ระบบสำเร็จ</string>
+    <string name="dialog_success_message">ยินดีต้อนรับกลับ!</string>
+    <string name="dialog_button_ok">ตกลง</string>
 </resources>

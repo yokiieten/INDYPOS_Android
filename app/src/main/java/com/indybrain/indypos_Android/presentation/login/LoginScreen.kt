@@ -42,16 +42,6 @@ fun LoginScreen(
     // Collect UI state
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
-    // Collect MVI state
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    
-    // Handle success state
-    LaunchedEffect(state) {
-        if (state is LoginState.Success) {
-            onLoginSuccess()
-        }
-    }
-    
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = BaseBackground
@@ -110,21 +100,6 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .padding(bottom = 24.dp)
             )
-            
-            // Error message
-            uiState.errorMessage?.let { errorMessage ->
-                Text(
-                    text = errorMessage,
-                    color = RedFailure,
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Small
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                )
-            }
             
             // Login Button and Forgot Password Link Row
             Row(
@@ -193,6 +168,91 @@ fun LoginScreen(
                 modifier = Modifier.padding(bottom = 40.dp)
             )
         }
+    }
+
+    // Error dialog
+    uiState.errorMessage?.let { errorMessage ->
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.handleIntent(LoginIntent.ClearError)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.handleIntent(LoginIntent.ClearError)
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.dialog_button_ok),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        )
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.dialog_error_title),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = errorMessage.ifBlank {
+                        stringResource(R.string.dialog_error_message_generic)
+                    },
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    )
+                )
+            }
+        )
+    }
+
+    // Success dialog
+    if (uiState.isLoginSuccess) {
+        AlertDialog(
+            onDismissRequest = { },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.handleIntent(LoginIntent.AcknowledgeSuccess)
+                        onLoginSuccess()
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.dialog_button_ok),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        )
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.dialog_success_title),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = uiState.successMessage ?: stringResource(R.string.dialog_success_message),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    )
+                )
+            }
+        )
     }
 }
 

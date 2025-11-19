@@ -29,5 +29,10 @@ sealed class LoginIntent {
      * Clear error message
      */
     data object ClearError : LoginIntent()
+
+    /**
+     * Acknowledge success dialog
+     */
+    data object AcknowledgeSuccess : LoginIntent()
 }
 

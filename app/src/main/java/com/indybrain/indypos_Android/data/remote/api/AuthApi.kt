@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.data.remote.api
 
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
+import com.google.gson.annotations.SerializedName
 import retrofit2.http.Body
 import retrofit2.http.POST
 
@@ -20,6 +21,17 @@ interface AuthApi {
  */
 data class LoginRequestDto(
     val email: String,
-    val password: String
+    val password: String,
+    @SerializedName("device_uuid")
+    val deviceUuid: String,
+    @SerializedName("device_name")
+    val deviceName: String,
+    @SerializedName("device_type")
+    val deviceType: String,
+    val platform: String,
+    val model: String,
+    val version: String,
+    @SerializedName("app_version")
+    val appVersion: String
 )
 

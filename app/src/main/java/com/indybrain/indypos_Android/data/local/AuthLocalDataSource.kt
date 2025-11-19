@@ -17,6 +17,8 @@ class AuthLocalDataSource @Inject constructor(
     companion object {
         private const val KEY_USER = "key_user"
         private const val KEY_TOKEN = "key_token"
+        private const val KEY_REFRESH_TOKEN = "key_refresh_token"
+        private const val KEY_EXPIRES_IN = "key_expires_in"
         private const val KEY_IS_LOGGED_IN = "key_is_logged_in"
     }
     
@@ -28,6 +30,8 @@ class AuthLocalDataSource @Inject constructor(
         sharedPreferences.edit()
             .putString(KEY_USER, userJson)
             .putString(KEY_TOKEN, user.token)
+            .putString(KEY_REFRESH_TOKEN, user.refreshToken)
+            .putLong(KEY_EXPIRES_IN, user.expiresIn ?: 0L)
             .putBoolean(KEY_IS_LOGGED_IN, true)
             .apply()
     }
@@ -50,6 +54,14 @@ class AuthLocalDataSource @Inject constructor(
     fun getToken(): String? {
         return sharedPreferences.getString(KEY_TOKEN, null)
     }
+
+    fun getRefreshToken(): String? {
+        return sharedPreferences.getString(KEY_REFRESH_TOKEN, null)
+    }
+
+    fun getExpiresIn(): Long {
+        return sharedPreferences.getLong(KEY_EXPIRES_IN, 0L)
+    }
     
     /**
      * Check if user is logged in
@@ -65,6 +77,8 @@ class AuthLocalDataSource @Inject constructor(
         sharedPreferences.edit()
             .remove(KEY_USER)
             .remove(KEY_TOKEN)
+            .remove(KEY_REFRESH_TOKEN)
+            .remove(KEY_EXPIRES_IN)
             .putBoolean(KEY_IS_LOGGED_IN, false)
             .apply()
     }

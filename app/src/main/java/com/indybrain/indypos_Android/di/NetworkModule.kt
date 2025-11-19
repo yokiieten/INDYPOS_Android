@@ -46,7 +46,7 @@ object NetworkModule {
         gson: Gson
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://api.example.com/") // TODO: Replace with actual base URL
+            .baseUrl("https://indy-pos.com/api/v1/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
