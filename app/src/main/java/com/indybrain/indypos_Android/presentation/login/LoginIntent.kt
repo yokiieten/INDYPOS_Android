@@ -16,6 +16,11 @@ sealed class LoginIntent {
     data class UpdatePassword(val password: String) : LoginIntent()
     
     /**
+     * Toggle password visibility
+     */
+    data object TogglePasswordVisibility : LoginIntent()
+    
+    /**
      * Perform login action
      */
     data object Login : LoginIntent()

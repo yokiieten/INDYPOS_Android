@@ -41,6 +41,10 @@ class LoginViewModel @Inject constructor(
                 _uiState.update { it.copy(password = intent.password, errorMessage = null) }
             }
             
+            is LoginIntent.TogglePasswordVisibility -> {
+                _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
+            }
+            
             is LoginIntent.Login -> {
                 performLogin()
             }

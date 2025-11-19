@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">INDYPOS_Android</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">เข้าสู่ระบบ</string>
+    <string name="email_label">อีเมล</string>
+    <string name="email_placeholder">กรอกอีเมลของคุณ</string>
+    <string name="password_label">รหัสผ่าน</string>
+    <string name="password_placeholder">กรอกรหัสผ่านของคุณ</string>
+    <string name="login_button">เข้าสู่ระบบ</string>
+    <string name="forgot_password">ลืมรหัสผ่าน?</string>
+    <string name="no_account">ยังไม่มีบัญชี?</string>
+    <string name="create_account">สร้างบัญชี</string>
+    <string name="app_logo_text">ANDY POS</string>
 </resources>
