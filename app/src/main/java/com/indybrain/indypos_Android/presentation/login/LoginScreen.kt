@@ -1,15 +1,19 @@
 package com.indybrain.indypos_Android.presentation.login
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -41,6 +45,10 @@ fun LoginScreen(
 ) {
     // Collect UI state
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val horizontalPadding = if (isLandscape) 48.dp else 24.dp
+    val scrollState = rememberScrollState()
     
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -50,17 +58,18 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp)
-                .fillMaxWidth(),
+                .padding(horizontal = horizontalPadding)
+                .padding(vertical = if (isLandscape) 24.dp else 0.dp)
+                .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = if (isLandscape) Arrangement.Center else Arrangement.Top
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 16.dp else 40.dp))
             
             // App Logo
             LogoSection()
             
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 24.dp else 40.dp))
             
             // Login Title
             Text(
@@ -101,51 +110,47 @@ fun LoginScreen(
                     .padding(bottom = 24.dp)
             )
             
-            // Login Button and Forgot Password Link Row
-            Row(
+            // Login Button
+            Button(
+                onClick = {
+                    viewModel.handleIntent(LoginIntent.Login)
+                },
+                enabled = !uiState.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryButton,
+                    contentColor = Color.White,
+                    disabledContainerColor = SecondaryButton
+                )
             ) {
-                // Login Button
-                Button(
-                    onClick = {
-                        viewModel.handleIntent(LoginIntent.Login)
-                    },
-                    enabled = !uiState.isLoading,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = PrimaryButton,
-                        contentColor = Color.White,
-                        disabledContainerColor = SecondaryButton
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
                     )
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.login_button),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Bold,
-                                size = FontSize.Medium
-                            ),
-                            color = Color.White
-                        )
-                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.login_button),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = Color.White
+                    )
                 }
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                // Forgot Password Link
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Forgot Password Link
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
                 Text(
                     text = stringResource(R.string.forgot_password),
                     style = FontUtils.mainFont(
@@ -160,12 +165,12 @@ fun LoginScreen(
                 )
             }
             
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(if (isLandscape) 24.dp else 48.dp))
             
             // Create Account Link
             CreateAccountLink(
                 onCreateAccountClick = onCreateAccountClick,
-                modifier = Modifier.padding(bottom = 40.dp)
+                modifier = Modifier.padding(bottom = if (isLandscape) 24.dp else 40.dp)
             )
         }
     }
@@ -267,18 +272,6 @@ fun LogoSection() {
             painter = painterResource(id = R.drawable.logo_appstore),
             contentDescription = "App Logo",
             modifier = Modifier.size(80.dp)
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Logo Text
-        Text(
-            text = stringResource(R.string.app_logo_text),
-            style = FontUtils.mainFont(
-                style = AppFontStyle.Bold,
-                size = FontSize.Larger
-            ),
-            color = PrimaryText
         )
     }
 }
@@ -385,13 +378,19 @@ fun PasswordField(
                     enabled = enabled
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_open_eye),
+                        painter = painterResource(
+                            id = if (isPasswordVisible) {
+                                R.drawable.ic_close_eye
+                            } else {
+                                R.drawable.ic_open_eye
+                            }
+                        ),
                         contentDescription = if (isPasswordVisible) {
                             "Hide password"
                         } else {
                             "Show password"
                         },
-                        tint = PlaceholderText,
+                        tint = Color.Unspecified,
                         modifier = Modifier.size(24.dp)
                     )
                 }
