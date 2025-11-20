@@ -89,32 +89,54 @@ class LoginViewModel @Inject constructor(
         _state.value = LoginState.Loading
         
         viewModelScope.launch {
-            val request = LoginRequest(email = email, password = password)
-            loginUseCase(request)
-                .onSuccess { user ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            isLoginSuccess = true,
-                            successMessage = "เข้าสู่ระบบสำเร็จ",
-                            user = user,
-                            errorMessage = null
-                        )
+            try {
+                val request = LoginRequest(email = email, password = password)
+                loginUseCase(request)
+                    .onSuccess { user ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isLoginSuccess = true,
+                                successMessage = "เข้าสู่ระบบสำเร็จ",
+                                user = user,
+                                errorMessage = null
+                            )
+                        }
+                        _state.value = LoginState.Success(user)
                     }
-                    _state.value = LoginState.Success(user)
-                }
-                .onFailure { exception ->
-                    val errorMessage = exception.message ?: "Login failed"
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            isLoginSuccess = false,
-                            successMessage = null,
-                            errorMessage = errorMessage
-                        )
+                    .onFailure { exception ->
+                        val errorMessage = when {
+                            exception.message != null -> exception.message!!
+                            exception.cause?.message != null -> exception.cause!!.message!!
+                            else -> "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isLoginSuccess = false,
+                                successMessage = null,
+                                errorMessage = errorMessage
+                            )
+                        }
+                        _state.value = LoginState.Error(errorMessage)
                     }
-                    _state.value = LoginState.Error(errorMessage)
+            } catch (e: Exception) {
+                // Catch any unexpected exceptions to prevent app crash
+                val errorMessage = when {
+                    e.message != null -> e.message!!
+                    e.cause?.message != null -> e.cause!!.message!!
+                    else -> "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง"
                 }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isLoginSuccess = false,
+                        successMessage = null,
+                        errorMessage = errorMessage
+                    )
+                }
+                _state.value = LoginState.Error(errorMessage)
+            }
         }
     }
 }
