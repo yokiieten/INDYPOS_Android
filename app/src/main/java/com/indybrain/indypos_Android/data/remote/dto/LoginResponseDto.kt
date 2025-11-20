@@ -33,11 +33,33 @@ data class LoginUserDto(
     val role: String? = null,
     @SerializedName("shop_name")
     val shopName: String? = null,
+    @SerializedName("shop_description")
+    val shopDescription: String? = null,
+    @SerializedName("shop_image_url")
+    val shopImageUrl: String? = null,
     @SerializedName("subscription_plan")
     val subscriptionPlan: String? = null,
+    @SerializedName("subscription_expires_at")
+    val subscriptionExpiresAt: String? = null,
     @SerializedName("max_devices")
     val maxDevices: Int? = null,
     @SerializedName("current_device_uuid")
-    val currentDeviceUuid: String? = null
+    val currentDeviceUuid: String? = null,
+    @SerializedName("is_activated")
+    val isActivated: Boolean? = null,
+    @SerializedName("term_of_use")
+    val termOfUse: Boolean? = null,
+    @SerializedName("privacy_policy")
+    val privacyPolicy: Boolean? = null,
+    @SerializedName("marketing_consent")
+    val marketingConsent: Boolean? = null,
+    @SerializedName("birth_date")
+    val birthDate: String? = null,
+    @SerializedName("created_at")
+    val createdAt: String? = null,
+    @SerializedName("updated_at")
+    val updatedAt: String? = null,
+    @SerializedName("order_count")
+    val orderCount: Int? = null
 )
 
