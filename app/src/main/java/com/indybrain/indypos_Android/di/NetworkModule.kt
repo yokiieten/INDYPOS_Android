@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
+import com.indybrain.indypos_Android.data.remote.interceptor.CurlLoggingInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,6 +36,7 @@ object NetworkModule {
         }
         
         return OkHttpClient.Builder()
+            .addInterceptor(CurlLoggingInterceptor())
             .addInterceptor(loggingInterceptor)
             .build()
     }
