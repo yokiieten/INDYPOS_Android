@@ -35,4 +35,15 @@
     <string name="home_nav_orders">ออเดอร์</string>
     <string name="home_nav_charts">กราฟ</string>
     <string name="home_nav_settings">ตั้งค่า</string>
+    
+    <!-- Graph Screen -->
+    <string name="graph_title">กราฟ</string>
+    <string name="graph_select_period">เลือกช่วงเวลา</string>
+    <string name="graph_summary_title">สรุป</string>
+    <string name="graph_today_sales">ยอดขายวันนี้</string>
+    <string name="graph_cost_expenses">ค่าใช้จ่ายต้นทุน</string>
+    <string name="graph_orders_today">ออเดอร์วันนี้</string>
+    <string name="graph_cancelled_orders">ออเดอร์ยกเลิก</string>
+    <string name="graph_chart_title">กราฟ</string>
+    <string name="graph_total_sales">ผลรวมการขาย</string>
 </resources>

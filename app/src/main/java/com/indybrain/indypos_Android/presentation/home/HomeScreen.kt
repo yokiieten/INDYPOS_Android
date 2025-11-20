@@ -58,6 +58,8 @@ import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.core.ui.components.ShopTopAppBar
+import com.indybrain.indypos_Android.presentation.graph.GraphScreen
+import com.indybrain.indypos_Android.presentation.navigation.HomeBottomDestination
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
@@ -75,10 +77,14 @@ fun HomeScreen(
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
-            ShopTopAppBar(
-                shopName = uiState.shopName,
-                onEditClick = { /* TODO hook edit */ }
-            )
+            if (selectedDestination != HomeBottomDestination.Charts) {
+                @androidx.compose.runtime.Composable {
+                    ShopTopAppBar(
+                        shopName = uiState.shopName,
+                        onEditClick = { /* TODO hook edit */ }
+                    )
+                }
+            } else null
         },
         bottomBar = {
             HomeBottomBar(
@@ -87,29 +93,36 @@ fun HomeScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 20.dp, vertical = 24.dp)
-        ) {
-            ShopCoverCard(
-                description = uiState.shopDescription,
-                onDescriptionClick = { /* TODO open edit */ }
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            DailyOverviewSection(statistics = uiState.statistics)
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            TopProductSection(statistics = uiState.statistics)
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            ShortcutsSection(shortcuts = uiState.shortcuts)
+        when (selectedDestination) {
+            HomeBottomDestination.Charts -> {
+                GraphScreen()
+            }
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 20.dp, vertical = 24.dp)
+                ) {
+                    ShopCoverCard(
+                        description = uiState.shopDescription,
+                        onDescriptionClick = { /* TODO open edit */ }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    DailyOverviewSection(statistics = uiState.statistics)
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    TopProductSection(statistics = uiState.statistics)
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    ShortcutsSection(shortcuts = uiState.shortcuts)
+                }
+            }
         }
     }
 }
@@ -418,16 +431,6 @@ private fun HomeBottomBar(
     }
 }
 
-enum class HomeBottomDestination(
-    val icon: ImageVector,
-    val selectedIcon: ImageVector,
-    val labelRes: Int
-) {
-    Home(Icons.Outlined.Home, Icons.Filled.Home, R.string.home_nav_home),
-    Orders(Icons.Outlined.ShoppingCart, Icons.Filled.ShoppingCart, R.string.home_nav_orders),
-    Charts(Icons.Outlined.Analytics, Icons.Outlined.Analytics, R.string.home_nav_charts), // ไม่มี filled version
-    Settings(Icons.Outlined.Settings, Icons.Filled.Settings, R.string.home_nav_settings)
-}
 
 private fun formatCurrency(value: Double): String {
     val formatter = DecimalFormat("#,##0.00")
