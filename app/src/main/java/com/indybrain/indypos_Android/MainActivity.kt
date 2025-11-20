@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.indybrain.indypos_Android.presentation.home.HomeScreen
 import com.indybrain.indypos_Android.presentation.login.LoginScreen
 import com.indybrain.indypos_Android.presentation.navigation.NavRoutes
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
@@ -47,8 +48,7 @@ class MainActivity : ComponentActivity() {
                         }
                         
                         composable(NavRoutes.Home.route) {
-                            // TODO: Create HomeScreen
-                            androidx.compose.material3.Text("Home Screen")
+                            HomeScreen()
                         }
                     }
                 }

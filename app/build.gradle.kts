@@ -51,9 +51,11 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
     
     // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.androidx.foundation.layout.android)
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
     

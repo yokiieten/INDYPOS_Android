@@ -17,4 +17,22 @@
     <string name="dialog_success_title">เข้าสู่ระบบสำเร็จ</string>
     <string name="dialog_success_message">ยินดีต้อนรับกลับ!</string>
     <string name="dialog_button_ok">ตกลง</string>
+    
+    <!-- Home Screen -->
+    <string name="home_default_shop_name">หน้าร้านฉัน</string>
+    <string name="home_edit_shop_cd">แก้ไขข้อมูลร้าน</string>
+    <string name="home_change_cover">แก้ไขรูปภาพหน้าปก</string>
+    <string name="home_description_placeholder">แตะเพื่อเพิ่มรายละเอียดร้าน...</string>
+    <string name="home_daily_sales_title">ยอดขายวันนี้</string>
+    <string name="home_daily_sales_label">ยอดขายวันนี้</string>
+    <string name="home_orders_today_label">ออเดอร์วันนี้</string>
+    <string name="home_orders_unit">รายการ</string>
+    <string name="home_best_seller_title">สินค้าขายดี</string>
+    <string name="home_best_seller_empty">ยังไม่มีข้อมูลสินค้าแนะนำ</string>
+    <string name="home_shortcuts_title">Shortcuts</string>
+    <string name="home_currency_suffix">บาท</string>
+    <string name="home_nav_home">หน้าแรก</string>
+    <string name="home_nav_orders">ออเดอร์</string>
+    <string name="home_nav_charts">กราฟ</string>
+    <string name="home_nav_settings">ตั้งค่า</string>
 </resources>
