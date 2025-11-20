@@ -77,6 +77,9 @@ dependencies {
     // Navigation Compose
     implementation(libs.navigation.compose)
     
+    // Pager for swipe gestures
+    implementation(libs.androidx.foundation)
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

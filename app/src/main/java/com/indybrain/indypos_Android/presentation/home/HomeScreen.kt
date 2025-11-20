@@ -60,6 +60,7 @@ import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.core.ui.components.ShopTopAppBar
 import com.indybrain.indypos_Android.presentation.graph.GraphScreen
 import com.indybrain.indypos_Android.presentation.navigation.HomeBottomDestination
+import com.indybrain.indypos_Android.presentation.order.OrderScreen
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
@@ -77,7 +78,7 @@ fun HomeScreen(
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
-            if (selectedDestination != HomeBottomDestination.Charts) {
+            if (selectedDestination != HomeBottomDestination.Charts && selectedDestination != HomeBottomDestination.Orders) {
                 @androidx.compose.runtime.Composable {
                     ShopTopAppBar(
                         shopName = uiState.shopName,
@@ -96,6 +97,9 @@ fun HomeScreen(
         when (selectedDestination) {
             HomeBottomDestination.Charts -> {
                 GraphScreen()
+            }
+            HomeBottomDestination.Orders -> {
+                OrderScreen()
             }
             else -> {
                 Column(
