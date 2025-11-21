@@ -61,6 +61,7 @@ import com.indybrain.indypos_Android.core.ui.components.ShopTopAppBar
 import com.indybrain.indypos_Android.presentation.graph.GraphScreen
 import com.indybrain.indypos_Android.presentation.navigation.HomeBottomDestination
 import com.indybrain.indypos_Android.presentation.order.OrderScreen
+import com.indybrain.indypos_Android.presentation.settings.SettingsScreen
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
@@ -100,6 +101,9 @@ fun HomeScreen(
             }
             HomeBottomDestination.Orders -> {
                 OrderScreen()
+            }
+            HomeBottomDestination.Settings -> {
+                SettingsScreen()
             }
             else -> {
                 Column(

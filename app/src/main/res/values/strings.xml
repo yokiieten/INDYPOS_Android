@@ -70,4 +70,17 @@
     <string name="order_status_failed">ล้มเหลว</string>
     <string name="order_loading">กำลังโหลด...</string>
     <string name="order_empty">ไม่มีออเดอร์</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">ตั้งค่า</string>
+    <string name="settings_account">บัญชี</string>
+    <string name="settings_change_password">เปลี่ยนรหัสผ่าน</string>
+    <string name="settings_language">ตั้งค่าภาษา</string>
+    <string name="settings_sales">ตั้งค่าการขาย</string>
+    <string name="settings_printer">ตั้งค่าพรินเตอร์</string>
+    <string name="settings_manage_stock">จัดการสต็อก</string>
+    <string name="settings_receipt">ตั้งค่าใบเสร็จ</string>
+    <string name="settings_manage_data">จัดการข้อมูล</string>
+    <string name="settings_contact_us">ติดต่อเรา</string>
+    <string name="settings_logout">ออกจากระบบ</string>
 </resources>
