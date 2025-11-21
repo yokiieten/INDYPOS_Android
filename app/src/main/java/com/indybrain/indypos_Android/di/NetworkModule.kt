@@ -4,6 +4,8 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
+import com.indybrain.indypos_Android.data.remote.api.OrdersApi
+import com.indybrain.indypos_Android.data.remote.interceptor.AuthInterceptor
 import com.indybrain.indypos_Android.data.remote.interceptor.CurlLoggingInterceptor
 import dagger.Module
 import dagger.Provides
@@ -30,12 +32,15 @@ object NetworkModule {
     
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(
+        authInterceptor: AuthInterceptor
+    ): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
         
         return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
             .addInterceptor(CurlLoggingInterceptor())
             .addInterceptor(loggingInterceptor)
             .build()
@@ -58,6 +63,12 @@ object NetworkModule {
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi {
         return retrofit.create(AuthApi::class.java)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideOrdersApi(retrofit: Retrofit): OrdersApi {
+        return retrofit.create(OrdersApi::class.java)
     }
 }
 
