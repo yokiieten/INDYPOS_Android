@@ -219,45 +219,11 @@ fun LoginScreen(
         )
     }
 
-    // Success dialog
-    if (uiState.isLoginSuccess) {
-        AlertDialog(
-            onDismissRequest = { },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.handleIntent(LoginIntent.AcknowledgeSuccess)
-                        onLoginSuccess()
-                    }
-                ) {
-                    Text(
-                        text = stringResource(R.string.dialog_button_ok),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Medium,
-                            size = FontSize.Medium
-                        )
-                    )
-                }
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.dialog_success_title),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Large
-                    )
-                )
-            },
-            text = {
-                Text(
-                    text = uiState.successMessage ?: stringResource(R.string.dialog_success_message),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Medium
-                    )
-                )
-            }
-        )
+    // Navigate to home when login is successful
+    LaunchedEffect(uiState.isLoginSuccess) {
+        if (uiState.isLoginSuccess) {
+            onLoginSuccess()
+        }
     }
 }
 

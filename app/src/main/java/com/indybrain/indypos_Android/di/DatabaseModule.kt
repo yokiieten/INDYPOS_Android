@@ -2,9 +2,7 @@ package com.indybrain.indypos_Android.di
 
 import android.content.Context
 import androidx.room.Room
-import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
-import com.indybrain.indypos_Android.data.local.dao.OrderDao
-import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
+import com.indybrain.indypos_Android.data.local.dao.*
 import com.indybrain.indypos_Android.data.local.database.IndyPosDatabase
 import dagger.Module
 import dagger.Provides
@@ -26,7 +24,9 @@ object DatabaseModule {
             context,
             IndyPosDatabase::class.java,
             "indypos_database"
-        ).build()
+        )
+        .fallbackToDestructiveMigration() // For development - remove in production
+        .build()
     }
     
     @Provides
@@ -42,6 +42,26 @@ object DatabaseModule {
     @Provides
     fun provideOrderAddonDao(database: IndyPosDatabase): OrderAddonDao {
         return database.orderAddonDao()
+    }
+    
+    @Provides
+    fun provideCategoryDao(database: IndyPosDatabase): CategoryDao {
+        return database.categoryDao()
+    }
+    
+    @Provides
+    fun provideProductDao(database: IndyPosDatabase): ProductDao {
+        return database.productDao()
+    }
+    
+    @Provides
+    fun provideAddonGroupDao(database: IndyPosDatabase): AddonGroupDao {
+        return database.addonGroupDao()
+    }
+    
+    @Provides
+    fun provideAddonDao(database: IndyPosDatabase): AddonDao {
+        return database.addonDao()
     }
 }
 

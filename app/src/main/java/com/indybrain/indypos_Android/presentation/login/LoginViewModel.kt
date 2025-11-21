@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.domain.model.LoginRequest
 import com.indybrain.indypos_Android.domain.usecase.LoginUseCase
+import com.indybrain.indypos_Android.domain.usecase.SyncProductDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +18,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val loginUseCase: LoginUseCase
+    private val loginUseCase: LoginUseCase,
+    private val syncProductDataUseCase: SyncProductDataUseCase
 ) : ViewModel() {
     
     // UI State Flow
@@ -93,16 +95,34 @@ class LoginViewModel @Inject constructor(
                 val request = LoginRequest(email = email, password = password)
                 loginUseCase(request)
                     .onSuccess { user ->
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                isLoginSuccess = true,
-                                successMessage = "เข้าสู่ระบบสำเร็จ",
-                                user = user,
-                                errorMessage = null
-                            )
-                        }
-                        _state.value = LoginState.Success(user)
+                        // Sync product data after successful login
+                        syncProductDataUseCase()
+                            .onSuccess {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isLoginSuccess = true,
+                                        successMessage = null,
+                                        user = user,
+                                        errorMessage = null
+                                    )
+                                }
+                                _state.value = LoginState.Success(user)
+                            }
+                            .onFailure { syncException ->
+                                // Show error if sync fails
+                                val errorMessage = syncException.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า"
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isLoginSuccess = false,
+                                        successMessage = null,
+                                        user = null,
+                                        errorMessage = errorMessage
+                                    )
+                                }
+                                _state.value = LoginState.Error(errorMessage)
+                            }
                     }
                     .onFailure { exception ->
                         val errorMessage = when {

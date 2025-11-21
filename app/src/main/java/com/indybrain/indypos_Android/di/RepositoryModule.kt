@@ -4,8 +4,10 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.indybrain.indypos_Android.data.repository.AuthRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.OrderRepositoryImpl
+import com.indybrain.indypos_Android.data.repository.ProductRepositoryImpl
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
+import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -39,6 +41,14 @@ object RepositoryModule {
         orderRepositoryImpl: OrderRepositoryImpl
     ): OrderRepository {
         return orderRepositoryImpl
+    }
+    
+    @Provides
+    @Singleton
+    fun provideProductRepository(
+        productRepositoryImpl: ProductRepositoryImpl
+    ): ProductRepository {
+        return productRepositoryImpl
     }
 }
 
