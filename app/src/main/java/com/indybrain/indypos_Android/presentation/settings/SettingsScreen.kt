@@ -92,6 +92,9 @@ fun SettingsScreen(
                     )
                 }
             }
+            
+            // Add bottom padding to ensure logout button is visible above bottom navigation
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
