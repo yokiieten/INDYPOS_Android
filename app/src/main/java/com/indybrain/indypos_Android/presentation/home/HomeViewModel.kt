@@ -25,7 +25,17 @@ class HomeViewModel @Inject constructor(
     
     init {
         observeUser()
-        fetchOrders()
+        observeOrders()
+    }
+    
+    /**
+     * Refresh data when screen appears (like viewWillAppear in iOS)
+     */
+    fun refreshData() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            orderRepository.refreshOrders()
+        }
     }
     
     private fun observeUser() {
@@ -45,23 +55,24 @@ class HomeViewModel @Inject constructor(
         }
     }
     
-    private fun fetchOrders() {
-        // Refresh orders from API first
-        viewModelScope.launch {
-            orderRepository.refreshOrders()
-        }
-        
+    private fun observeOrders() {
         // Observe orders from local database
         viewModelScope.launch {
             orderRepository.getOrders().collect { result ->
                 result.onSuccess { orders ->
                     val statistics = buildStatistics(orders)
                     _uiState.update { current ->
-                        current.copy(statistics = statistics)
+                        current.copy(
+                            statistics = statistics,
+                            isLoading = false
+                        )
                     }
                 }.onFailure { error ->
                     _uiState.update { current ->
-                        current.copy(errorMessage = error.message)
+                        current.copy(
+                            errorMessage = error.message,
+                            isLoading = false
+                        )
                     }
                 }
             }

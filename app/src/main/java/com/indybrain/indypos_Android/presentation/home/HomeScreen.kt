@@ -38,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -75,6 +76,16 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     var selectedDestination by rememberSaveable { mutableStateOf(HomeBottomDestination.Home) }
+    
+    // Fetch data when screen appears (like viewWillAppear in iOS)
+    // This will trigger when:
+    // 1. Screen first appears (selectedDestination is Home)
+    // 2. User navigates back to Home tab from other tabs
+    LaunchedEffect(selectedDestination) {
+        if (selectedDestination == HomeBottomDestination.Home) {
+            viewModel.refreshData()
+        }
+    }
     
     Scaffold(
         containerColor = BaseBackground,
