@@ -3,13 +3,13 @@ package com.indybrain.indypos_Android.presentation.orderproduct
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,11 +21,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,8 +40,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,8 +53,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -68,6 +75,7 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +86,7 @@ fun OrderProductScreen(
     viewModel: OrderProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var itemToDelete by remember { mutableStateOf<CartItemEntity?>(null) }
     
     Scaffold(
         containerColor = BaseBackground,
@@ -171,12 +180,17 @@ fun OrderProductScreen(
                         key = { it.id }
                     ) { cartItem ->
                         val addons = viewModel.getCartAddons(cartItem.id)
-                        CartItemRow(
-                            cartItem = cartItem,
-                            addons = addons,
-                            onEditClick = { onEditItemClick(cartItem.id) },
-                            onDeleteClick = { viewModel.deleteCartItem(cartItem.id) }
-                        )
+
+                        SwipeToDeleteCartItem(
+                            onDelete = { itemToDelete = cartItem }
+                        ) {
+                            CartItemRow(
+                                cartItem = cartItem,
+                                addons = addons,
+                                onEditClick = { onEditItemClick(cartItem.id) },
+                                onDeleteClick = { itemToDelete = cartItem }
+                            )
+                        }
                     }
                     
                     // Divider
@@ -325,6 +339,146 @@ fun OrderProductScreen(
             }
         }
     }
+
+    if (itemToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { itemToDelete = null },
+            title = {
+                Text(
+                    text = "ลบสินค้า",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryText
+                )
+            },
+            text = {
+                Text(
+                    text = "ต้องการลบสินค้านี้ออกจากตะกร้าหรือไม่?",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        itemToDelete?.let { viewModel.deleteCartItem(it.id) }
+                        itemToDelete = null
+                    }
+                ) {
+                    Text(
+                        text = "ลบ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemToDelete = null }) {
+                    Text(
+                        text = "ยกเลิก",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun SwipeToDeleteCartItem(
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val density = LocalDensity.current
+    val actionWidthDp = 96.dp
+    val maxOffsetPx = with(density) { -actionWidthDp.toPx() } // เลื่อนได้สุดเท่าความกว้างปุ่มลบ
+
+    var offsetX by remember { mutableStateOf(0f) } // px
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        // ปล่อยนิ้วแล้ว ถ้าลากเกินครึ่งหนึ่งของปุ่มลบ ให้ค้างเปิดไว้
+                        if (offsetX < maxOffsetPx / 2f) {
+                            offsetX = maxOffsetPx
+                        } else {
+                            offsetX = 0f
+                        }
+                    }
+                ) { _, dragAmount ->
+                    // เลื่อนจากขวาไปซ้ายเท่านั้น
+                    val newOffset = offsetX + dragAmount
+                    offsetX = newOffset.coerceIn(maxOffsetPx, 0f)
+                }
+            }
+    ) {
+        // พื้นหลังปุ่มลบสีแดง (แบบ iOS) อยู่ด้านหลัง content
+        // แสดงเฉพาะตอนที่มีการลากให้ offsetX < 0 เท่านั้น
+        if (offsetX < 0f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(end = 8.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(actionWidthDp)
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            onDelete()
+                        },
+                    color = Color(0xFFFF5252)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "ลบ",
+                            tint = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "ลบ",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+        }
+
+        // เนื้อหาหลัก เลื่อนไปตาม offsetX
+        Box(
+            modifier = Modifier.offset { IntOffset(offsetX.roundToInt(), 0) }
+        ) {
+            content()
+        }
+    }
 }
 
 @Composable
@@ -459,14 +613,45 @@ private fun CartItemRow(
         }
         
         // Price
-        Text(
-            text = formatCurrency(cartItem.unitPrice * cartItem.quantity + addons.sumOf { it.addonPrice } * cartItem.quantity),
-            style = FontUtils.mainFont(
-                style = AppFontStyle.Bold,
-                size = FontSize.Medium
-            ),
-            color = PrimaryText
-        )
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = formatCurrency(
+                    cartItem.unitPrice * cartItem.quantity +
+                        addons.sumOf { it.addonPrice } * cartItem.quantity
+                ),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryText
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TextButton(
+                onClick = onDeleteClick,
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "ลบ",
+                    tint = Color(0xFFFF5252),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "ลบ",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = Color(0xFFFF5252)
+                )
+            }
+        }
     }
 }
 
