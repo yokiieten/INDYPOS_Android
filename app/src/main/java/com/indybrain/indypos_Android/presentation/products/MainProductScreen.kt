@@ -210,10 +210,17 @@ fun MainProductScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Category filter bar at top
+            // Category filter bar at top - only show categories that have products
+            val categoriesWithProducts = uiState.categories.filter { category ->
+                uiState.allProducts.any { it.categoryId == category.id }
+            }
+            // Only show focused category if it has products
+            val validFocusedCategoryId = uiState.focusedCategoryId?.takeIf { categoryId ->
+                uiState.allProducts.any { it.categoryId == categoryId }
+            }
             CategoryFilterBar(
-                categories = uiState.categories,
-                focusedCategoryId = uiState.focusedCategoryId,
+                categories = categoriesWithProducts,
+                focusedCategoryId = validFocusedCategoryId,
                 onCategorySelected = { categoryId ->
                     viewModel.selectCategory(categoryId)
                 },
