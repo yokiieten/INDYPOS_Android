@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import com.indybrain.indypos_Android.presentation.home.HomeScreen
 import com.indybrain.indypos_Android.presentation.login.LoginScreen
 import com.indybrain.indypos_Android.presentation.navigation.NavRoutes
+import com.indybrain.indypos_Android.presentation.products.MainProductScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -68,7 +69,19 @@ class MainActivity : ComponentActivity() {
                         }
                         
                         composable(NavRoutes.Home.route) {
-                            HomeScreen()
+                            HomeScreen(
+                                onNavigateToMainProduct = {
+                                    navController.navigate(NavRoutes.MainProduct.route)
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.MainProduct.route) {
+                            MainProductScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
                         }
                     }
                 }

@@ -71,7 +71,8 @@ import java.text.DecimalFormat
 
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    onNavigateToMainProduct: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -139,7 +140,15 @@ fun HomeScreen(
                     
                     Spacer(modifier = Modifier.height(32.dp))
                     
-                    ShortcutsSection(shortcuts = uiState.shortcuts)
+                    ShortcutsSection(
+                        shortcuts = uiState.shortcuts,
+                        onShortcutClick = { shortcutId ->
+                            when (shortcutId) {
+                                "start_order" -> onNavigateToMainProduct()
+                                // Add other shortcut handlers here
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -335,7 +344,10 @@ private fun TopProductSection(statistics: HomeStatistics) {
 }
 
 @Composable
-private fun ShortcutsSection(shortcuts: List<HomeShortcut>) {
+private fun ShortcutsSection(
+    shortcuts: List<HomeShortcut>,
+    onShortcutClick: (String) -> Unit
+) {
     Text(
         text = stringResource(id = R.string.home_shortcuts_title),
         style = FontUtils.mainFont(style = AppFontStyle.Bold, size = FontSize.Medium),
@@ -355,6 +367,7 @@ private fun ShortcutsSection(shortcuts: List<HomeShortcut>) {
                 for (shortcut in rowItems) {
                     ShortcutCard(
                         shortcut = shortcut,
+                        onClick = { onShortcutClick(shortcut.id) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -369,10 +382,12 @@ private fun ShortcutsSection(shortcuts: List<HomeShortcut>) {
 @Composable
 private fun ShortcutCard(
     shortcut: HomeShortcut,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
