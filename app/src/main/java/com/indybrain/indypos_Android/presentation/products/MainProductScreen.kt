@@ -85,6 +85,7 @@ import java.text.DecimalFormat
 fun MainProductScreen(
     onBackClick: () -> Unit = {},
     onProductClick: (String) -> Unit = {},
+    onCartClick: () -> Unit = {},
     viewModel: MainProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -391,7 +392,7 @@ fun MainProductScreen(
             if (cartItemCount > 0) {
                 CartButton(
                     itemCount = cartItemCount,
-                    onClick = { /* TODO: Open cart */ },
+                    onClick = onCartClick,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)

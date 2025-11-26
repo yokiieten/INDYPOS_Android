@@ -15,6 +15,7 @@ import androidx.navigation.navArgument
 import com.indybrain.indypos_Android.presentation.home.HomeScreen
 import com.indybrain.indypos_Android.presentation.login.LoginScreen
 import com.indybrain.indypos_Android.presentation.navigation.NavRoutes
+import com.indybrain.indypos_Android.presentation.orderproduct.OrderProductScreen
 import com.indybrain.indypos_Android.presentation.products.MainProductScreen
 import com.indybrain.indypos_Android.presentation.products.ProductDetailScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
@@ -85,6 +86,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onProductClick = { productId ->
                                     navController.navigate(NavRoutes.productDetail(productId))
+                                },
+                                onCartClick = {
+                                    navController.navigate(NavRoutes.OrderProduct.route)
                                 }
                             )
                         }
@@ -98,6 +102,22 @@ class MainActivity : ComponentActivity() {
                                 productId = productId,
                                 onBackClick = {
                                     navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.OrderProduct.route) {
+                            OrderProductScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onAddMenuClick = {
+                                    navController.navigate(NavRoutes.MainProduct.route) {
+                                        popUpTo(NavRoutes.OrderProduct.route)
+                                    }
+                                },
+                                onEditItemClick = { itemId ->
+                                    // TODO: Navigate to edit item screen or product detail
                                 }
                             )
                         }

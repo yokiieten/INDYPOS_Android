@@ -8,6 +8,7 @@ sealed class NavRoutes(val route: String) {
     data object Login : NavRoutes("login")
     data object Home : NavRoutes("home")
     data object MainProduct : NavRoutes("main_product")
+    data object OrderProduct : NavRoutes("order_product")
     
     companion object {
         const val PRODUCT_DETAIL_ROUTE = "product_detail/{productId}"
