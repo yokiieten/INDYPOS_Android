@@ -15,9 +15,11 @@ import com.indybrain.indypos_Android.data.local.entity.*
         CategoryEntity::class,
         ProductEntity::class,
         AddonGroupEntity::class,
-        AddonEntity::class
+        AddonEntity::class,
+        CartItemEntity::class,
+        CartAddonEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(DateConverter::class)
@@ -29,5 +31,6 @@ abstract class IndyPosDatabase : RoomDatabase() {
     abstract fun productDao(): ProductDao
     abstract fun addonGroupDao(): AddonGroupDao
     abstract fun addonDao(): AddonDao
+    abstract fun cartDao(): CartDao
 }
 

@@ -3,9 +3,11 @@ package com.indybrain.indypos_Android.di
 import android.content.Context
 import android.content.SharedPreferences
 import com.indybrain.indypos_Android.data.repository.AuthRepositoryImpl
+import com.indybrain.indypos_Android.data.repository.CartRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.OrderRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.ProductRepositoryImpl
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
+import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.Module
@@ -49,6 +51,14 @@ object RepositoryModule {
         productRepositoryImpl: ProductRepositoryImpl
     ): ProductRepository {
         return productRepositoryImpl
+    }
+    
+    @Provides
+    @Singleton
+    fun provideCartRepository(
+        cartRepositoryImpl: CartRepositoryImpl
+    ): CartRepository {
+        return cartRepositoryImpl
     }
 }
 

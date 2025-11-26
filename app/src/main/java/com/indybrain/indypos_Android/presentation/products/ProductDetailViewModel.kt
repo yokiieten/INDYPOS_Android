@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
+import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
+import com.indybrain.indypos_Android.domain.repository.CartRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +19,8 @@ import javax.inject.Inject
 class ProductDetailViewModel @Inject constructor(
     private val productDao: ProductDao,
     private val addonGroupDao: AddonGroupDao,
-    private val addonDao: AddonDao
+    private val addonDao: AddonDao,
+    private val cartRepository: CartRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ProductDetailUiState())
@@ -111,8 +114,50 @@ class ProductDetailViewModel @Inject constructor(
     }
     
     fun addToCart() {
-        // TODO: Implement add to cart logic
-        // This will be handled by a cart repository or use case
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            val product = currentState.product ?: return@launch
+            
+            // Calculate addon price
+            val addonPrice = currentState.selectedAddons.values.flatten().sumOf { addonId ->
+                currentState.addonsByGroup.values.flatten().find { it.id == addonId }?.price ?: 0.0
+            }
+            val unitPrice = product.price + addonPrice
+            
+            // Prepare addons
+            val cartAddons = mutableListOf<CartAddonEntity>()
+            currentState.selectedAddons.forEach { (groupId, addonIds) ->
+                val addonGroup = currentState.addonGroups.find { it.id == groupId }
+                addonIds.forEach { addonId ->
+                    val addon = currentState.addonsByGroup[groupId]?.find { it.id == addonId }
+                    if (addon != null && addonGroup != null) {
+                        cartAddons.add(
+                            CartAddonEntity(
+                                cartItemId = 0, // Will be set by repository
+                                addonId = addon.id,
+                                addonName = addon.name,
+                                addonPrice = addon.price,
+                                addonGroupId = addonGroup.id,
+                                addonGroupName = addonGroup.name
+                            )
+                        )
+                    }
+                }
+            }
+            
+            // Add to cart
+            cartRepository.addToCart(
+                productId = product.id,
+                productName = product.name,
+                productImageUrl = product.imageUrl,
+                productColorHex = product.selectedColorHex,
+                unitPrice = unitPrice,
+                quantity = currentState.quantity,
+                specialRequest = currentState.specialRequest.takeIf { it.isNotBlank() },
+                addons = cartAddons
+            )
+        }
     }
 }
+
 

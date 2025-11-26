@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -31,7 +32,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -48,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,7 +88,22 @@ fun MainProductScreen(
     viewModel: MainProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val scrollState = rememberLazyListState()
+    val cartItems by viewModel.cartItems.collectAsStateWithLifecycle(initialValue = emptyList())
+    
+    // Save scroll position
+    var savedScrollIndex by rememberSaveable { mutableStateOf(0) }
+    var savedScrollOffset by rememberSaveable { mutableStateOf(0) }
+    
+    val scrollState = rememberLazyListState(
+        initialFirstVisibleItemIndex = savedScrollIndex,
+        initialFirstVisibleItemScrollOffset = savedScrollOffset
+    )
+    
+    // Save scroll position when it changes
+    LaunchedEffect(scrollState.firstVisibleItemIndex, scrollState.firstVisibleItemScrollOffset) {
+        savedScrollIndex = scrollState.firstVisibleItemIndex
+        savedScrollOffset = scrollState.firstVisibleItemScrollOffset
+    }
     
     // Load products when screen opens
     LaunchedEffect(Unit) {
@@ -206,61 +226,69 @@ fun MainProductScreen(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Category filter bar at top - only show categories that have products
-            val categoriesWithProducts = uiState.categories.filter { category ->
-                uiState.allProducts.any { it.categoryId == category.id }
-            }
-            // Only show focused category if it has products
-            val validFocusedCategoryId = uiState.focusedCategoryId?.takeIf { categoryId ->
-                uiState.allProducts.any { it.categoryId == categoryId }
-            }
-            CategoryFilterBar(
-                categories = categoriesWithProducts,
-                focusedCategoryId = validFocusedCategoryId,
-                onCategorySelected = { categoryId ->
-                    viewModel.selectCategory(categoryId)
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            // Products grid
-            if (uiState.isLoading && uiState.products.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = PrimaryButton)
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Category filter bar at top - only show categories that have products
+                val categoriesWithProducts = uiState.categories.filter { category ->
+                    uiState.allProducts.any { it.categoryId == category.id }
                 }
-            } else if (uiState.products.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "ไม่มีสินค้า",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = SecondaryText
-                    )
+                // Only show focused category if it has products
+                val validFocusedCategoryId = uiState.focusedCategoryId?.takeIf { categoryId ->
+                    uiState.allProducts.any { it.categoryId == categoryId }
                 }
-            } else {
-                // Always show all products grouped by category
-                // Filtering is handled by scrolling to the selected category
-                val allProductsGrouped = uiState.allProducts.groupBy { it.categoryId }
+                CategoryFilterBar(
+                    categories = categoriesWithProducts,
+                    focusedCategoryId = validFocusedCategoryId,
+                    onCategorySelected = { categoryId ->
+                        viewModel.selectCategory(categoryId)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 
-                LazyColumn(
-                    state = scrollState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
+                // Products grid
+                if (uiState.isLoading && uiState.products.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = PrimaryButton)
+                    }
+                } else if (uiState.products.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "ไม่มีสินค้า",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = SecondaryText
+                        )
+                    }
+                } else {
+                    // Always show all products grouped by category
+                    // Filtering is handled by scrolling to the selected category
+                    val allProductsGrouped = uiState.allProducts.groupBy { it.categoryId }
+                    
+                    LazyColumn(
+                        state = scrollState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = 8.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
                     if (allProductsGrouped.isEmpty()) {
                         item {
                             Box(
@@ -310,8 +338,13 @@ fun MainProductScreen(
                                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                                         ) {
                                             rowProducts.forEach { product ->
+                                                val cartQuantity = cartItems
+                                                    .filter { it.productId == product.id }
+                                                    .sumOf { it.quantity }
+                                                
                                                 ProductCard(
                                                     product = product,
+                                                    cartQuantity = cartQuantity,
                                                     onClick = { onProductClick(product.id) },
                                                     modifier = Modifier
                                                         .weight(1f)
@@ -331,25 +364,38 @@ fun MainProductScreen(
                 }
             }
             
-            // Error message
-            uiState.errorMessage?.let { error ->
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFFFEBEE)
-                ) {
-                    Text(
-                        text = error,
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color(0xFFC62828),
-                        modifier = Modifier.padding(12.dp)
-                    )
+                // Error message
+                uiState.errorMessage?.let { error ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFFEBEE)
+                    ) {
+                        Text(
+                            text = error,
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color(0xFFC62828),
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
                 }
+            }
+            
+            // Cart Button - Floating at bottom
+            val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle(initialValue = 0)
+            if (cartItemCount > 0) {
+                CartButton(
+                    itemCount = cartItemCount,
+                    onClick = { /* TODO: Open cart */ },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                )
             }
         }
     }
@@ -428,6 +474,7 @@ private fun CategoryChip(
 @Composable
 private fun ProductCard(
     product: ProductEntity,
+    cartQuantity: Int = 0,
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -455,14 +502,17 @@ private fun ProductCard(
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    .background(backgroundColor),
-                contentAlignment = Alignment.Center
+                    .background(backgroundColor)
             ) {
-                // Check if imageUrl exists and is not empty
-                val imageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
-                val hasColor = product.selectedColorHex != null && product.selectedColorHex.isNotBlank()
-                
-                if (!imageUrl.isNullOrBlank()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Check if imageUrl exists and is not empty
+                    val imageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
+                    val hasColor = product.selectedColorHex != null && product.selectedColorHex.isNotBlank()
+                    
+                    if (!imageUrl.isNullOrBlank()) {
                     // Load image from URL using Coil
                     // Handle both absolute URLs and relative URLs
                     val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
@@ -472,27 +522,28 @@ private fun ProductCard(
                         "https://indy-pos.com$imageUrl"
                     }
                     
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(fullImageUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = product.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                        error = painterResource(id = R.drawable.logo_appstore),
-                        placeholder = painterResource(id = R.drawable.logo_appstore)
-                    )
-                } else if (!hasColor) {
-                    // If no image URL and no color, show placeholder icon
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_appstore),
-                        contentDescription = product.name,
-                        modifier = Modifier.size(60.dp),
-                        contentScale = ContentScale.Fit
-                    )
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(fullImageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = product.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            error = painterResource(id = R.drawable.logo_appstore),
+                            placeholder = painterResource(id = R.drawable.logo_appstore)
+                        )
+                    } else if (!hasColor) {
+                        // If no image URL and no color, show placeholder icon
+                        Image(
+                            painter = painterResource(id = R.drawable.logo_appstore),
+                            contentDescription = product.name,
+                            modifier = Modifier.size(60.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    // If has color but no image, just show the background color (no icon)
                 }
-                // If has color but no image, just show the background color (no icon)
             }
             
             // Product info
@@ -514,15 +565,83 @@ private fun ProductCard(
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                Text(
-                    text = formatCurrency(product.price),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Small
-                    ),
-                    color = PrimaryButton
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = formatCurrency(product.price),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Small
+                        ),
+                        color = PrimaryButton
+                    )
+                    
+                    // Cart Badge - Bottom Right (if in cart)
+                    if (cartQuantity > 0) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(PrimaryButton),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = cartQuantity.toString(),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Bold,
+                                    size = FontSize.Small
+                                ),
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun CartButton(
+    itemCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .clickable(onClick = onClick),
+        color = PrimaryButton
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.ShoppingCart,
+                contentDescription = "ตะกร้า",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Text(
+                text = "ดูสินค้า ($itemCount)",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
+                ),
+                color = Color.White
+            )
         }
     }
 }

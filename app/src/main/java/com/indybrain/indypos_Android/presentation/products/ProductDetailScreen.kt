@@ -151,6 +151,7 @@ fun ProductDetailScreen(
                     },
                     onAddToCart = {
                         viewModel.addToCart()
+                        onBackClick() // Navigate back after adding to cart
                     },
                     modifier = Modifier.padding(padding)
                 )

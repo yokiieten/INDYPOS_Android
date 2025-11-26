@@ -3,6 +3,7 @@ package com.indybrain.indypos_Android.presentation.products
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,8 +17,12 @@ import javax.inject.Inject
 @HiltViewModel
 class MainProductViewModel @Inject constructor(
     private val productRepository: ProductRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val cartRepository: CartRepository
 ) : ViewModel() {
+    
+    val cartItemCount = cartRepository.getCartItemCount()
+    val cartItems = cartRepository.getCartItems()
     
     private val _uiState = MutableStateFlow(MainProductUiState())
     val uiState: StateFlow<MainProductUiState> = _uiState.asStateFlow()
