@@ -79,6 +79,7 @@ import java.text.DecimalFormat
 @Composable
 fun MainProductScreen(
     onBackClick: () -> Unit = {},
+    onProductClick: (String) -> Unit = {},
     viewModel: MainProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -311,6 +312,7 @@ fun MainProductScreen(
                                             rowProducts.forEach { product ->
                                                 ProductCard(
                                                     product = product,
+                                                    onClick = { onProductClick(product.id) },
                                                     modifier = Modifier
                                                         .weight(1f)
                                                         .fillMaxWidth()
@@ -426,6 +428,7 @@ private fun CategoryChip(
 @Composable
 private fun ProductCard(
     product: ProductEntity,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -438,7 +441,7 @@ private fun ProductCard(
     } ?: Color(0xFFE0E0E0)
     
     Card(
-        modifier = modifier,
+        modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)

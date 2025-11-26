@@ -11,10 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.indybrain.indypos_Android.presentation.home.HomeScreen
 import com.indybrain.indypos_Android.presentation.login.LoginScreen
 import com.indybrain.indypos_Android.presentation.navigation.NavRoutes
 import com.indybrain.indypos_Android.presentation.products.MainProductScreen
+import com.indybrain.indypos_Android.presentation.products.ProductDetailScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -78,6 +80,22 @@ class MainActivity : ComponentActivity() {
                         
                         composable(NavRoutes.MainProduct.route) {
                             MainProductScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onProductClick = { productId ->
+                                    navController.navigate(NavRoutes.productDetail(productId))
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.PRODUCT_DETAIL_ROUTE,
+                            arguments = listOf(navArgument("productId") {})
+                        ) { backStackEntry ->
+                            val productId = backStackEntry.arguments?.getString("productId") ?: ""
+                            ProductDetailScreen(
+                                productId = productId,
                                 onBackClick = {
                                     navController.popBackStack()
                                 }
