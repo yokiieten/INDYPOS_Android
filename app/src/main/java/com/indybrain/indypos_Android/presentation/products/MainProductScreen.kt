@@ -150,8 +150,12 @@ fun MainProductScreen(
     }
     
     // Scroll to selected category when category is selected
+    // Only perform scroll when the selected category actually changes,
+    // so navigating back from ProductDetail won't trigger an extra scroll.
+    var lastScrolledCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(uiState.selectedCategoryId) {
-        uiState.selectedCategoryId?.let { categoryId ->
+        val categoryId = uiState.selectedCategoryId
+        if (categoryId != null && categoryId != lastScrolledCategoryId) {
             // Find the position of this category in the list
             val productsByCategory = uiState.allProducts.groupBy { it.categoryId }
             val sortedCategories = productsByCategory.toList().sortedBy { (catId, _) ->
@@ -173,6 +177,8 @@ fun MainProductScreen(
                 // Each category uses 2 items: header + products grid
                 targetIndex += 2
             }
+            
+            lastScrolledCategoryId = categoryId
         }
     }
     
@@ -284,8 +290,8 @@ fun MainProductScreen(
                             start = 16.dp,
                             end = 16.dp,
                             top = 8.dp,
-                            // Add extra bottom padding when cart button is visible
-                            bottom = if (cartItemCount > 0) 80.dp else 8.dp
+                            // Fixed bottom padding so content doesn't jump when cart button appears/disappears
+                            bottom = 80.dp
                         ),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
