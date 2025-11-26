@@ -58,5 +58,21 @@ class CartRepositoryImpl @Inject constructor(
         cartDao.deleteAllCartItems()
         cartDao.deleteAllCartAddons()
     }
+    
+    override suspend fun restoreProductIdsForCartItems(products: List<com.indybrain.indypos_Android.data.local.entity.ProductEntity>) {
+        // Get all cart items with null productId
+        val cartItemsWithNullProductId = cartDao.getCartItemsWithNullProductId()
+        
+        // Create a map of product name to product id for quick lookup
+        val productNameToIdMap = products.associateBy { it.name }
+        
+        // Restore productId for each cart item by matching product name
+        cartItemsWithNullProductId.forEach { cartItem ->
+            val productId = productNameToIdMap[cartItem.productName]?.id
+            if (productId != null) {
+                cartDao.updateCartItemProductId(cartItem.id, productId)
+            }
+        }
+    }
 }
 

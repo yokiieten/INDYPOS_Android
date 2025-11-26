@@ -41,6 +41,12 @@ interface CartDao {
     @Query("DELETE FROM cart_addons")
     suspend fun deleteAllCartAddons()
     
+    @Query("UPDATE cart_items SET productId = :productId WHERE id = :itemId")
+    suspend fun updateCartItemProductId(itemId: Long, productId: String?)
+    
+    @Query("SELECT * FROM cart_items WHERE productId IS NULL")
+    suspend fun getCartItemsWithNullProductId(): List<CartItemEntity>
+    
     @Transaction
     suspend fun deleteCartItemWithAddons(itemId: Long) {
         deleteCartItem(itemId)

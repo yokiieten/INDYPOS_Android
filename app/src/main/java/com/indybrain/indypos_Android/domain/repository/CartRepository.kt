@@ -20,5 +20,6 @@ interface CartRepository {
     )
     suspend fun deleteCartItem(itemId: Long)
     suspend fun clearCart()
+    suspend fun restoreProductIdsForCartItems(products: List<com.indybrain.indypos_Android.data.local.entity.ProductEntity>)
 }
 

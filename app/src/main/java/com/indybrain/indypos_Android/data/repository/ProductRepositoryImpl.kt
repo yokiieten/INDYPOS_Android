@@ -130,7 +130,11 @@ class ProductRepositoryImpl @Inject constructor(
             
             // Convert and save products
             val products = productsResponse.data.map { ProductMapper.toEntity(it) }
-            productDao.deleteAll()
+            // Important: do NOT call deleteAll() here.
+            // Deleting all products would trigger the foreign key on cart_items
+            // (onDelete = SET_NULL) and clear productId on existing cart items,
+            // which makes quantities disappear in the product list after refresh.
+            // Using REPLACE keeps existing rows (and cart relations) while updating data.
             productDao.insertAll(products)
             
             Result.success(Unit)

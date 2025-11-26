@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -44,7 +45,12 @@ class MainProductViewModel @Inject constructor(
             // Try to fetch from API if connected, otherwise use local data
             if (networkConnectivityChecker.isConnected()) {
                 val result = productRepository.fetchAndSaveProducts()
-                result.onFailure { error ->
+                result.onSuccess {
+                    // After successfully fetching and saving products, restore productId for cart items
+                    // that may have been set to null due to previous deleteAll() calls
+                    val products = productRepository.getAllActiveProducts().first()
+                    cartRepository.restoreProductIdsForCartItems(products)
+                }.onFailure { error ->
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
