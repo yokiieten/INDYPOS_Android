@@ -31,8 +31,11 @@ class MainProductViewModel @Inject constructor(
     private val selectedCategoryFlow = MutableStateFlow<String?>(null)
     
     init {
+        // Start observing local Room data immediately
         observeCategories()
         observeProducts()
+        // Load latest products from API once when ViewModel is created
+        loadProducts()
     }
     
     /**

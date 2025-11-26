@@ -106,11 +106,6 @@ fun MainProductScreen(
         savedScrollOffset = scrollState.firstVisibleItemScrollOffset
     }
     
-    // Load products when screen opens
-    LaunchedEffect(Unit) {
-        viewModel.loadProducts()
-    }
-    
     // Track which category is visible based on scroll position
     val visibleCategoryId = remember {
         derivedStateOf {
@@ -232,6 +227,9 @@ fun MainProductScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // Observe cart count once for both list padding and cart button
+            val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle(initialValue = 0)
+            
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -286,7 +284,8 @@ fun MainProductScreen(
                             start = 16.dp,
                             end = 16.dp,
                             top = 8.dp,
-                            bottom = 8.dp
+                            // Add extra bottom padding when cart button is visible
+                            bottom = if (cartItemCount > 0) 80.dp else 8.dp
                         ),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
@@ -388,7 +387,6 @@ fun MainProductScreen(
             }
             
             // Cart Button - Floating at bottom
-            val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle(initialValue = 0)
             if (cartItemCount > 0) {
                 CartButton(
                     itemCount = cartItemCount,
