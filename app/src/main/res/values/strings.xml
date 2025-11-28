@@ -65,9 +65,13 @@
     <string name="order_sort_highest">ยอดสูงสุด</string>
     <string name="order_created_at">วันที่สร้าง:</string>
     <string name="order_cancelled_at">วันที่ยกเลิก:</string>
-    <string name="order_status_completed">เสร็จสิ้น</string>
+    <!-- Order status labels -->
+    <string name="order_status_draft">ฉบับร่าง</string>
+    <string name="order_status_confirmed">ยืนยันแล้ว</string>
+    <string name="order_status_preparing">กำลังเตรียม</string>
+    <string name="order_status_ready">พร้อมเสิร์ฟ</string>
+    <string name="order_status_delivered">ส่งแล้ว</string>
     <string name="order_status_cancelled">ยกเลิกแล้ว</string>
-    <string name="order_status_failed">ล้มเหลว</string>
     <string name="order_loading">กำลังโหลด...</string>
     <string name="order_empty">ไม่มีออเดอร์</string>
     

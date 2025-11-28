@@ -23,24 +23,30 @@ class OrderRepositoryImpl @Inject constructor(
 ) : OrderRepository {
     
     override fun getOrders(): Flow<Result<List<OrderEntity>>> {
-        // Return local database flow
-        // Call refreshOrders() separately to update from API
         return orderDao.getAllOrders().map { Result.success(it) }
     }
     
     override suspend fun refreshOrders() {
         if (networkConnectivityChecker.isConnected()) {
             try {
-                val response = ordersApi.getOrders()
+                // Default params: first page, reasonable limit, no status/date filtering
+                val response = ordersApi.getOrders(
+                    limit = 100,
+                    page = 1,
+                    status = null,
+                    startDate = null,
+                    endDate = null
+                )
                 
-                if (response.status == 200 && response.data != null) {
+                val ordersDto = response.data?.orders
+                if (response.status == 200 && ordersDto != null) {
                     // Convert DTOs to entities
-                    val orders = response.data.map { OrderMapper.toEntity(it) }
+                    val orders = ordersDto.map { OrderMapper.toEntity(it) }
                     val orderItems = mutableListOf<OrderItemEntity>()
                     val orderAddons = mutableListOf<OrderAddonEntity>()
                     
                     // Process items and addons
-                    response.data.forEach { orderDto ->
+                    ordersDto.forEach { orderDto ->
                         orderDto.items?.forEach { itemDto ->
                             orderItems.add(OrderMapper.toEntity(itemDto, orderDto.id))
                             itemDto.addons?.forEach { addonDto ->

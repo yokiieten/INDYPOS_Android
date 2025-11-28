@@ -1,13 +1,31 @@
 package com.indybrain.indypos_Android.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
-import java.util.Date
 
 data class OrdersResponseDto(
     val status: Int,
     val message: String,
-    val data: List<OrderDto>?,
+    val data: OrdersPageDataDto?,
     val timestamp: String?
+)
+
+data class OrdersPageDataDto(
+    val orders: List<OrderDto>?,
+    val pagination: PaginationDto?
+)
+
+data class PaginationDto(
+    @SerializedName("current_page")
+    val currentPage: Int,
+    val limit: Int,
+    @SerializedName("total_count")
+    val totalCount: Int,
+    @SerializedName("total_pages")
+    val totalPages: Int,
+    @SerializedName("has_next")
+    val hasNext: Boolean,
+    @SerializedName("has_previous")
+    val hasPrevious: Boolean
 )
 
 data class OrderDto(

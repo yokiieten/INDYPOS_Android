@@ -758,18 +758,20 @@ private fun OrderItem(order: Order) {
                 
                 Text(
                     text = when (order.status) {
-                        com.indybrain.indypos_Android.domain.model.OrderStatus.COMPLETED -> stringResource(id = R.string.order_status_completed)
+                        com.indybrain.indypos_Android.domain.model.OrderStatus.DRAFT -> stringResource(id = R.string.order_status_draft)
+                        com.indybrain.indypos_Android.domain.model.OrderStatus.CONFIRMED -> stringResource(id = R.string.order_status_confirmed)
+                        com.indybrain.indypos_Android.domain.model.OrderStatus.PREPARING -> stringResource(id = R.string.order_status_preparing)
+                        com.indybrain.indypos_Android.domain.model.OrderStatus.READY -> stringResource(id = R.string.order_status_ready)
+                        com.indybrain.indypos_Android.domain.model.OrderStatus.DELIVERED -> stringResource(id = R.string.order_status_delivered)
                         com.indybrain.indypos_Android.domain.model.OrderStatus.CANCELLED -> stringResource(id = R.string.order_status_cancelled)
-                        com.indybrain.indypos_Android.domain.model.OrderStatus.FAILED -> stringResource(id = R.string.order_status_failed)
                     },
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Small
                     ),
                     color = when (order.status) {
-                        com.indybrain.indypos_Android.domain.model.OrderStatus.COMPLETED -> GreenComplete
                         com.indybrain.indypos_Android.domain.model.OrderStatus.CANCELLED -> RedFailure
-                        com.indybrain.indypos_Android.domain.model.OrderStatus.FAILED -> RedFailure
+                        else -> GreenComplete
                     }
                 )
             }
