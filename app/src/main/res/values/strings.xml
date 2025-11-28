@@ -98,4 +98,13 @@
     <string name="logout_no_internet_message">กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตก่อนออกจากระบบ</string>
     <string name="logout_success_title">สำเร็จ</string>
     <string name="logout_success_message">ออกจากระบบสำเร็จ</string>
+    
+    <!-- Product Screen -->
+    <string name="product_title">สินค้า</string>
+    <string name="product_back">กลับ</string>
+    <string name="product_search">ค้นหา</string>
+    <string name="product_change_view">เปลี่ยนมุมมอง</string>
+    <string name="product_empty">ไม่มีสินค้า</string>
+    <string name="product_view_cart">ดูสินค้า (%1$d)</string>
+    <string name="product_cart">ตะกร้า</string>
 </resources>

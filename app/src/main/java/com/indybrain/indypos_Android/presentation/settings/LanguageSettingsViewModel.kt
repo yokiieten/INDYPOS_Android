@@ -37,15 +37,23 @@ class LanguageSettingsViewModel @Inject constructor(
     
     /**
      * Handle language selection
+     * Returns true if language was changed (different from current)
      */
-    fun selectLanguage(languageOption: LanguageOption) {
-        viewModelScope.launch {
-            // Save language preference
-            languageLocalDataSource.saveLanguageLocale(languageOption.localeCode)
-            
-            // Update UI state
-            _uiState.update { it.copy(selectedLanguage = languageOption) }
+    fun selectLanguage(languageOption: LanguageOption): Boolean {
+        val currentLanguage = languageLocalDataSource.getCurrentLanguageOption()
+        val isChanged = currentLanguage != languageOption
+        
+        if (isChanged) {
+            viewModelScope.launch {
+                // Save language preference
+                languageLocalDataSource.saveLanguageLocale(languageOption.localeCode)
+                
+                // Update UI state
+                _uiState.update { it.copy(selectedLanguage = languageOption) }
+            }
         }
+        
+        return isChanged
     }
 }
 

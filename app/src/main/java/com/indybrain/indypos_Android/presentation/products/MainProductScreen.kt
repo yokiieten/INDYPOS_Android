@@ -68,6 +68,7 @@ import coil.request.ImageRequest
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
+import androidx.compose.ui.res.stringResource
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -211,7 +212,7 @@ fun MainProductScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "สินค้า",
+                        text = stringResource(id = R.string.product_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -223,7 +224,7 @@ fun MainProductScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "กลับ",
+                            contentDescription = stringResource(id = R.string.product_back),
                             tint = PrimaryText
                         )
                     }
@@ -232,14 +233,14 @@ fun MainProductScreen(
                     IconButton(onClick = { /* TODO: Search */ }) {
                         Icon(
                             imageVector = Icons.Filled.Search,
-                            contentDescription = "ค้นหา",
+                            contentDescription = stringResource(id = R.string.product_search),
                             tint = PrimaryText
                         )
                     }
                     IconButton(onClick = { /* TODO: Grid/List toggle */ }) {
                         Icon(
                             imageVector = Icons.Outlined.GridView,
-                            contentDescription = "เปลี่ยนมุมมอง",
+                            contentDescription = stringResource(id = R.string.product_change_view),
                             tint = PrimaryText
                         )
                     }
@@ -301,7 +302,7 @@ fun MainProductScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "ไม่มีสินค้า",
+                                text = stringResource(id = R.string.product_empty),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -342,7 +343,7 @@ fun MainProductScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "ไม่มีสินค้า",
+                                    text = stringResource(id = R.string.product_empty),
                                     style = FontUtils.mainFont(
                                         style = AppFontStyle.Regular,
                                         size = FontSize.Medium
@@ -708,7 +709,7 @@ private fun CartButton(
         ) {
             Icon(
                 imageVector = Icons.Filled.ShoppingCart,
-                contentDescription = "ตะกร้า",
+                contentDescription = stringResource(id = R.string.product_cart),
                 tint = Color.White,
                 modifier = Modifier.size(20.dp)
             )
@@ -716,7 +717,7 @@ private fun CartButton(
             Spacer(modifier = Modifier.width(8.dp))
             
             Text(
-                text = "ดูสินค้า ($itemCount)",
+                text = stringResource(id = R.string.product_view_cart, itemCount),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Medium

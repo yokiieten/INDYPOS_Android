@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,6 +13,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.presentation.home.HomeScreen
 import com.indybrain.indypos_Android.presentation.login.LoginScreen
 import com.indybrain.indypos_Android.presentation.navigation.NavRoutes
@@ -22,9 +25,25 @@ import com.indybrain.indypos_Android.presentation.settings.LanguageSettingsScree
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    
+    @Inject
+    lateinit var languageLocalDataSource: LanguageLocalDataSource
+    
+    override fun attachBaseContext(newBase: Context) {
+        val localeCode = try {
+            val prefs = newBase.getSharedPreferences("indypos_prefs", Context.MODE_PRIVATE)
+            prefs.getInt("key_language_locale", 1054)
+        } catch (e: Exception) {
+            1054
+        }
+        val context = LocaleHelper.setLocale(newBase, localeCode)
+        super.attachBaseContext(context)
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

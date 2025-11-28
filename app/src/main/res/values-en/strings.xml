@@ -1,0 +1,111 @@
+<resources>
+    <string name="app_name">INDYPOS_Android</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Sign In</string>
+    <string name="email_label">Email</string>
+    <string name="email_placeholder">Enter your email</string>
+    <string name="password_label">Password</string>
+    <string name="password_placeholder">Enter your password</string>
+    <string name="login_button">Sign In</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="no_account">Don\'t have an account?</string>
+    <string name="create_account">Create Account</string>
+    <string name="app_logo_text">ANDY POS</string>
+    <string name="dialog_error_title">Error</string>
+    <string name="dialog_error_message_generic">Unable to sign in. Please try again.</string>
+    <string name="dialog_success_title">Sign In Successful</string>
+    <string name="dialog_success_message">Welcome back!</string>
+    <string name="dialog_button_ok">OK</string>
+    
+    <!-- Home Screen -->
+    <string name="home_default_shop_name">My Shop</string>
+    <string name="home_edit_shop_cd">Edit shop information</string>
+    <string name="home_change_cover">Change cover image</string>
+    <string name="home_description_placeholder">Tap to add shop details...</string>
+    <string name="home_daily_sales_title">Today\'s Sales</string>
+    <string name="home_daily_sales_label">Today\'s Sales</string>
+    <string name="home_orders_today_label">Orders Today</string>
+    <string name="home_orders_unit">items</string>
+    <string name="home_best_seller_title">Best Seller</string>
+    <string name="home_best_seller_empty">No product recommendations yet</string>
+    <string name="home_shortcuts_title">Shortcuts</string>
+    <string name="home_currency_suffix">THB</string>
+    <string name="home_nav_home">Home</string>
+    <string name="home_nav_orders">Orders</string>
+    <string name="home_nav_charts">Charts</string>
+    <string name="home_nav_settings">Settings</string>
+    
+    <!-- Graph Screen -->
+    <string name="graph_title">Charts</string>
+    <string name="graph_select_period">Select Period</string>
+    <string name="graph_summary_title">Summary</string>
+    <string name="graph_today_sales">Today\'s Sales</string>
+    <string name="graph_cost_expenses">Cost Expenses</string>
+    <string name="graph_orders_today">Orders Today</string>
+    <string name="graph_cancelled_orders">Cancelled Orders</string>
+    <string name="graph_chart_title">Chart</string>
+    <string name="graph_total_sales">Total Sales</string>
+    
+    <!-- Order Screen -->
+    <string name="order_history_title">Order History</string>
+    <string name="order_refresh">Refresh</string>
+    <string name="order_tab_completed">Completed</string>
+    <string name="order_tab_cancelled">Cancelled/Failed</string>
+    <string name="order_filter_all">All</string>
+    <string name="order_sort_latest">Latest</string>
+    <string name="order_filter_sort_title">Filter and Sort</string>
+    <string name="order_filter_by_date">Filter by Date</string>
+    <string name="order_filter_today">Today</string>
+    <string name="order_filter_this_week">This Week</string>
+    <string name="order_filter_this_month">This Month</string>
+    <string name="order_filter_select_date">Select Date</string>
+    <string name="order_sort_title">Sort</string>
+    <string name="order_sort_oldest">Oldest</string>
+    <string name="order_sort_highest">Highest Amount</string>
+    <string name="order_created_at">Created at:</string>
+    <string name="order_cancelled_at">Cancelled at:</string>
+    <!-- Order status labels -->
+    <string name="order_status_draft">Draft</string>
+    <string name="order_status_confirmed">Confirmed</string>
+    <string name="order_status_preparing">Preparing</string>
+    <string name="order_status_ready">Ready</string>
+    <string name="order_status_delivered">Delivered</string>
+    <string name="order_status_cancelled">Cancelled</string>
+    <string name="order_loading">Loading...</string>
+    <string name="order_empty">No orders</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_change_password">Change Password</string>
+    <string name="settings_language">Language Settings</string>
+    <string name="settings_sales">Sales Settings</string>
+    <string name="settings_printer">Printer Settings</string>
+    <string name="settings_manage_stock">Manage Stock</string>
+    <string name="settings_receipt">Receipt Settings</string>
+    <string name="settings_manage_data">Manage Data</string>
+    <string name="settings_contact_us">Contact Us</string>
+    <string name="settings_logout">Logout</string>
+    
+    <!-- Logout Dialogs -->
+    <string name="logout_confirm_title">Confirm Logout</string>
+    <string name="logout_confirm_message">Are you sure you want to logout?</string>
+    <string name="logout_warning_message">Logging out will cause you to lose all unsynced data that has not been uploaded to the server.</string>
+    <string name="logout_button">Logout</string>
+    <string name="logout_cancel">Cancel</string>
+    <string name="logout_no_internet_title">No Internet Connection</string>
+    <string name="logout_no_internet_message">Please check your internet connection before logging out</string>
+    <string name="logout_success_title">Success</string>
+    <string name="logout_success_message">Logout successful</string>
+    
+    <!-- Product Screen -->
+    <string name="product_title">Products</string>
+    <string name="product_back">Back</string>
+    <string name="product_search">Search</string>
+    <string name="product_change_view">Change View</string>
+    <string name="product_empty">No products</string>
+    <string name="product_view_cart">View Cart (%1$d)</string>
+    <string name="product_cart">Cart</string>
+</resources>
+
