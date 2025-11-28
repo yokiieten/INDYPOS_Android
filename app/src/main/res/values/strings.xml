@@ -132,4 +132,14 @@
     <string name="order_settings_product_management">จัดการสินค้า</string>
     <string name="order_settings_addon_group_management">จัดการกลุ่มแอดออน</string>
     <string name="order_settings_addon_management">จัดการแอดออน</string>
+    
+    <!-- Category Management Screen -->
+    <string name="category_management_title">การจัดการหมวดหมู่</string>
+    <string name="category_management_edit">แก้ไข</string>
+    <string name="category_management_search_placeholder">ค้นหาหมวดหมู่…</string>
+    <string name="category_management_use">ใช้งาน</string>
+    <string name="category_management_add_category">เพิ่มหมวดหมู่</string>
+    <string name="category_management_items">%1$d รายการ</string>
+    <string name="category_management_empty">ไม่มีหมวดหมู่</string>
+    <string name="category_management_loading">กำลังโหลด...</string>
 </resources>

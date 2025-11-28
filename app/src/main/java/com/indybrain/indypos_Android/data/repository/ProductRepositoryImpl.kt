@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.data.repository
 
 import com.indybrain.indypos_Android.data.local.dao.*
+import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
@@ -148,6 +149,54 @@ class ProductRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
         }
+    }
+    
+    override suspend fun fetchAndSyncCategories(): Result<Unit> {
+        return try {
+            // Fetch categories from API
+            val categoriesResponse = productsApi.getCategories()
+            if (categoriesResponse.status != 200 || categoriesResponse.data == null) {
+                return Result.failure(Exception(categoriesResponse.message ?: "Failed to fetch categories"))
+            }
+            
+            // Get existing categories from Room
+            val existingCategories = categoryDao.getAllCategories()
+            val existingCategoryIds = existingCategories.map { it.id }.toSet()
+            
+            // Convert API categories to entities
+            val apiCategories = categoriesResponse.data.map { ProductMapper.toEntity(it) }
+            
+            // Find new categories that don't exist in Room
+            val newCategories = apiCategories.filter { it.id !in existingCategoryIds }
+            
+            // Insert only new categories (existing ones are already in Room)
+            if (newCategories.isNotEmpty()) {
+                categoryDao.insertAll(newCategories)
+            }
+            
+            // Also update existing categories if they have changed (using REPLACE strategy)
+            // This ensures data stays in sync
+            categoryDao.insertAll(apiCategories)
+            
+            Result.success(Unit)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
+    }
+    
+    override suspend fun getAllCategories(): List<CategoryEntity> {
+        return categoryDao.getAllCategories()
+    }
+    
+    override fun getAllCategoriesFlow(): Flow<List<CategoryEntity>> {
+        return categoryDao.getAllCategoriesFlow()
     }
 }
 

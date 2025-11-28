@@ -26,6 +26,8 @@ import com.indybrain.indypos_Android.presentation.settings.AccountScreen
 import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
+import com.indybrain.indypos_Android.presentation.categorymanagement.CategoryManagementScreen
+import com.indybrain.indypos_Android.presentation.settings.OrderSettingsItem
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -195,7 +197,25 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onOrderSettingsItemClick = { item ->
-                                    // TODO: Handle order settings item clicks
+                                    when (item) {
+                                        OrderSettingsItem.CategoryManagement -> {
+                                            navController.navigate(NavRoutes.CategoryManagement.route)
+                                        }
+                                        else -> {
+                                            // TODO: Handle other order settings items
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.CategoryManagement.route) {
+                            CategoryManagementScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onAddCategoryClick = {
+                                    // TODO: Navigate to add category screen
                                 }
                             )
                         }

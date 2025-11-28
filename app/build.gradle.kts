@@ -88,6 +88,9 @@ dependencies {
     // Coil for image loading
     implementation(libs.coil.compose)
     
+    // Accompanist SwipeRefresh for pull-to-refresh
+    implementation(libs.accompanist.swiperefresh)
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

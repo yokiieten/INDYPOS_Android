@@ -33,5 +33,21 @@ interface ProductRepository {
      * Fetch products from API and save to local database
      */
     suspend fun fetchAndSaveProducts(): Result<Unit>
+    
+    /**
+     * Fetch categories from API and save to local database
+     * Compares with existing Room data and only adds new categories
+     */
+    suspend fun fetchAndSyncCategories(): Result<Unit>
+    
+    /**
+     * Get all categories from local database (including inactive)
+     */
+    suspend fun getAllCategories(): List<CategoryEntity>
+    
+    /**
+     * Get all categories from local database as Flow (including inactive)
+     */
+    fun getAllCategoriesFlow(): Flow<List<CategoryEntity>>
 }
 
