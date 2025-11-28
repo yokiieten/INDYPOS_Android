@@ -125,4 +125,11 @@
     <string name="product_empty">ไม่มีสินค้า</string>
     <string name="product_view_cart">ดูสินค้า (%1$d)</string>
     <string name="product_cart">ตะกร้า</string>
+    
+    <!-- Order Settings Screen -->
+    <string name="order_settings_title">ตั้งค่าการสั่งซื้อ</string>
+    <string name="order_settings_category_management">การจัดการหมวดหมู่</string>
+    <string name="order_settings_product_management">จัดการสินค้า</string>
+    <string name="order_settings_addon_group_management">จัดการกลุ่มแอดออน</string>
+    <string name="order_settings_addon_management">จัดการแอดออน</string>
 </resources>

@@ -63,6 +63,7 @@ import com.indybrain.indypos_Android.presentation.graph.GraphScreen
 import com.indybrain.indypos_Android.presentation.navigation.HomeBottomDestination
 import com.indybrain.indypos_Android.presentation.order.OrderScreen
 import com.indybrain.indypos_Android.presentation.settings.SettingsScreen
+import com.indybrain.indypos_Android.presentation.settings.SettingsItem
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
@@ -76,7 +77,8 @@ fun HomeScreen(
     onLogoutSuccess: () -> Unit = {},
     onNavigateToLanguageSettings: () -> Unit = {},
     onNavigateToAccountSettings: () -> Unit = {},
-    onNavigateToChangePassword: () -> Unit = {}
+    onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToOrderSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -122,14 +124,17 @@ fun HomeScreen(
                 SettingsScreen(
                     onSettingsItemClick = { item ->
                         when (item) {
-                            com.indybrain.indypos_Android.presentation.settings.SettingsItem.Account -> {
+                            SettingsItem.Account -> {
                                 onNavigateToAccountSettings()
                             }
-                            com.indybrain.indypos_Android.presentation.settings.SettingsItem.Language -> {
+                            SettingsItem.Language -> {
                                 onNavigateToLanguageSettings()
                             }
-                            com.indybrain.indypos_Android.presentation.settings.SettingsItem.ChangePassword -> {
+                            SettingsItem.ChangePassword -> {
                                 onNavigateToChangePassword()
+                            }
+                            SettingsItem.SalesSettings -> {
+                                onNavigateToOrderSettings()
                             }
                             // Handle other settings items here
                             else -> {}

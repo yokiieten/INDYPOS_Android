@@ -119,5 +119,12 @@
     <string name="product_empty">No products</string>
     <string name="product_view_cart">View Cart (%1$d)</string>
     <string name="product_cart">Cart</string>
+    
+    <!-- Order Settings Screen -->
+    <string name="order_settings_title">Order Settings</string>
+    <string name="order_settings_category_management">Category Management</string>
+    <string name="order_settings_product_management">Product Management</string>
+    <string name="order_settings_addon_group_management">Add-on Group Management</string>
+    <string name="order_settings_addon_management">Add-on Management</string>
 </resources>
 

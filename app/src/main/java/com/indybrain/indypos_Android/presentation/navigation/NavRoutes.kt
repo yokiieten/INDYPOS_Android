@@ -12,6 +12,7 @@ sealed class NavRoutes(val route: String) {
     data object LanguageSettings : NavRoutes("language_settings")
     data object AccountSettings : NavRoutes("account_settings")
     data object ChangePassword : NavRoutes("change_password")
+    data object OrderSettings : NavRoutes("order_settings")
     
     companion object {
         const val PRODUCT_DETAIL_ROUTE = "product_detail/{productId}"
