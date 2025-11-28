@@ -53,9 +53,10 @@ class MainProductViewModel @Inject constructor(
                     // that may have been set to null due to previous deleteAll() calls
                     val products = productRepository.getAllActiveProducts().first()
                     cartRepository.restoreProductIdsForCartItems(products)
+                    // isLoading will be set to false by observeProducts() when data arrives
                 }.onFailure { error ->
-                    _uiState.update { 
-                        it.copy(
+                    _uiState.update { current ->
+                        current.copy(
                             isLoading = false,
                             errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
                         )
@@ -63,7 +64,7 @@ class MainProductViewModel @Inject constructor(
                 }
             } else {
                 // No internet, data will be loaded from Room via Flow
-                _uiState.update { it.copy(isLoading = false) }
+                // isLoading will be set to false by observeProducts() when data arrives
             }
         }
     }
@@ -81,7 +82,7 @@ class MainProductViewModel @Inject constructor(
                     val newFocusedCategoryId = current.focusedCategoryId ?: firstCategoryId
                     current.copy(
                         categories = categories,
-                        isLoading = false,
+                        // Don't update isLoading here - let it be managed by loadProducts()
                         focusedCategoryId = newFocusedCategoryId,
                         selectedCategoryId = current.selectedCategoryId ?: firstCategoryId
                     )
@@ -93,14 +94,22 @@ class MainProductViewModel @Inject constructor(
     /**
      * Observe products from Room database
      * Always show all products - category selection is for scrolling, not filtering
+     * Filter out products without categoryId (null or empty string)
      */
     private fun observeProducts() {
         viewModelScope.launch {
             productRepository.getAllActiveProducts().collect { allProducts ->
+                // Filter out products without categoryId (null or empty/blank string)
+                val productsWithCategory = allProducts.filter { 
+                    it.categoryId != null && it.categoryId.isNotBlank() 
+                }
                 _uiState.update { current ->
+                    // Set isLoading to false when we receive data from Room (even if empty)
+                    // This ensures loading state is cleared after initial data load
                     current.copy(
-                        allProducts = allProducts,
-                        products = allProducts // Always show all products
+                        allProducts = productsWithCategory,
+                        products = productsWithCategory, // Always show all products with category
+                        isLoading = false // Clear loading state once we have data from Room
                     )
                 }
             }

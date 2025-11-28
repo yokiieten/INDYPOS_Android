@@ -106,15 +106,19 @@ fun MainProductScreen(
         savedScrollOffset = scrollState.firstVisibleItemScrollOffset
     }
     
-    // Track which category is visible based on scroll position
-    val visibleCategoryId = remember {
-        derivedStateOf {
-            if (uiState.allProducts.isEmpty() || scrollState.layoutInfo.visibleItemsInfo.isEmpty()) {
-                return@derivedStateOf null
-            }
-            
-            // Group all products by category
-            val productsByCategory = uiState.allProducts.groupBy { it.categoryId }
+            // Track which category is visible based on scroll position
+            val visibleCategoryId = remember {
+                derivedStateOf {
+                    // Filter products without categoryId (null or empty string)
+                    val productsWithCategory = uiState.allProducts.filter { 
+                        it.categoryId != null && it.categoryId.isNotBlank() 
+                    }
+                    if (productsWithCategory.isEmpty() || scrollState.layoutInfo.visibleItemsInfo.isEmpty()) {
+                        return@derivedStateOf null
+                    }
+                    
+                    // Group all products by category
+                    val productsByCategory = productsWithCategory.groupBy { it.categoryId }
             val sortedCategories = productsByCategory.toList().sortedBy { (categoryId, _) ->
                 uiState.categories.find { it.id == categoryId }?.sortOrder ?: Int.MAX_VALUE
             }
@@ -172,7 +176,11 @@ fun MainProductScreen(
         val categoryId = uiState.selectedCategoryId
         if (categoryId != null && categoryId != lastScrolledCategoryId) {
             // Find the position of this category in the list
-            val productsByCategory = uiState.allProducts.groupBy { it.categoryId }
+            // Filter products without categoryId (null or empty string)
+            val productsWithCategory = uiState.allProducts.filter { 
+                it.categoryId != null && it.categoryId.isNotBlank() 
+            }
+            val productsByCategory = productsWithCategory.groupBy { it.categoryId }
             val sortedCategories = productsByCategory.toList().sortedBy { (catId, _) ->
                 uiState.categories.find { it.id == catId }?.sortOrder ?: Int.MAX_VALUE
             }
@@ -255,6 +263,7 @@ fun MainProductScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 // Category filter bar at top - only show categories that have products
+                // Products without categoryId are already filtered in ViewModel
                 val categoriesWithProducts = uiState.categories.filter { category ->
                     uiState.allProducts.any { it.categoryId == category.id }
                 }
@@ -272,31 +281,47 @@ fun MainProductScreen(
                 )
                 
                 // Products grid
-                if (uiState.isLoading && uiState.products.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = PrimaryButton)
+                // Use allProducts instead of products to avoid flickering
+                val hasProducts = uiState.allProducts.isNotEmpty()
+                
+                when {
+                    uiState.isLoading -> {
+                        // Show loading only when loading
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = PrimaryButton)
+                        }
                     }
-                } else if (uiState.products.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "ไม่มีสินค้า",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = SecondaryText
-                        )
+                    !hasProducts -> {
+                        // Show empty state only when not loading and no products
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "ไม่มีสินค้า",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = SecondaryText
+                            )
+                        }
                     }
-                } else {
+                    else -> {
+                        // Show products when we have products
                     // Always show all products grouped by category
                     // Filtering is handled by scrolling to the selected category
-                    val allProductsGrouped = uiState.allProducts.groupBy { it.categoryId }
+                    // Products without categoryId are already filtered in ViewModel
+                    // Additional filter to ensure no null/empty categoryId groups
+                    val productsWithCategory = uiState.allProducts.filter { 
+                        it.categoryId != null && it.categoryId.isNotBlank() 
+                    }
+                    val allProductsGrouped = productsWithCategory
+                        .groupBy { it.categoryId }
+                        .filterKeys { it != null && it.isNotBlank() }
                     
                     LazyColumn(
                         state = scrollState,
@@ -329,15 +354,26 @@ fun MainProductScreen(
                     } else {
                         // Show products grouped by category
                         // If a category is selected, we still show all but could scroll to it
-                        allProductsGrouped.toList().sortedBy { (categoryId, _) ->
-                            uiState.categories.find { it.id == categoryId }?.sortOrder ?: Int.MAX_VALUE
-                        }.forEach { (categoryId, products) ->
-                            val category = uiState.categories.find { it.id == categoryId }
-                            
-                            item(key = "category_$categoryId") {
-                                // Category header
-                                Text(
-                                    text = category?.name ?: "ไม่มีหมวดหมู่",
+                        // Filter out groups with null/empty categoryId or category not found
+                        allProductsGrouped.toList()
+                            .filter { (categoryId, _) -> 
+                                categoryId != null && 
+                                categoryId.isNotBlank() && 
+                                uiState.categories.any { it.id == categoryId }
+                            }
+                            .sortedBy { (categoryId, _) ->
+                                uiState.categories.find { it.id == categoryId }?.sortOrder ?: Int.MAX_VALUE
+                            }
+                            .forEach { (categoryId,  products) ->
+                                val category = uiState.categories.find { it.id == categoryId }
+                                
+                                // Skip if category not found (should not happen after filter, but safety check)
+                                if (category == null) return@forEach
+                                
+                                item(key = "category_$categoryId") {
+                                    // Category header
+                                    Text(
+                                        text = category.name,
                                     style = FontUtils.mainFont(
                                         style = AppFontStyle.Bold,
                                         size = FontSize.Large
@@ -381,6 +417,7 @@ fun MainProductScreen(
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
