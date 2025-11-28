@@ -21,6 +21,12 @@ interface AuthApi {
      */
     @POST("protected/auth/logout")
     suspend fun logout(@Body request: LogoutRequestDto): LogoutResponseDto
+    
+    /**
+     * Change password endpoint
+     */
+    @POST("protected/auth/change-password")
+    suspend fun changePassword(@Body request: ChangePasswordRequestDto): ChangePasswordResponseDto
 }
 
 /**
@@ -48,5 +54,25 @@ data class LoginRequestDto(
 data class LogoutRequestDto(
     @SerializedName("device_uuid")
     val deviceUuid: String
+)
+
+/**
+ * Request DTO for change password
+ */
+data class ChangePasswordRequestDto(
+    @SerializedName("old_password")
+    val oldPassword: String,
+    @SerializedName("new_password")
+    val newPassword: String
+)
+
+/**
+ * Response DTO for change password
+ */
+data class ChangePasswordResponseDto(
+    val status: Int?,
+    val message: String?,
+    val data: Any?,
+    val timestamp: String?
 )
 

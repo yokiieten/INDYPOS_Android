@@ -99,6 +99,18 @@
     <string name="logout_success_title">Success</string>
     <string name="logout_success_message">Logout successful</string>
     
+    <!-- Change Password Screen -->
+    <string name="change_password_instruction">For security, use at least 6 characters</string>
+    <string name="change_password_old_label">Old Password</string>
+    <string name="change_password_new_label">New Password</string>
+    <string name="change_password_confirm_label">Confirm New Password</string>
+    <string name="change_password_save">Save</string>
+    <string name="change_password_success">Password changed successfully</string>
+    <string name="change_password_error_old_incorrect">Old password is incorrect</string>
+    <string name="change_password_error_generic">Failed to change password</string>
+    <string name="success_title">Success</string>
+    <string name="common_error">Error</string>
+    
     <!-- Product Screen -->
     <string name="product_title">Products</string>
     <string name="product_back">Back</string>

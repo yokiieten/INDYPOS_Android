@@ -94,6 +94,18 @@
     <string name="account_package_label">แพ็กเกจ</string>
     <string name="account_package_basic">Basic</string>
     
+    <!-- Change Password Screen -->
+    <string name="change_password_instruction">เพื่อความปลอดภัย ใช้อย่างน้อย 6 ตัวอักษร</string>
+    <string name="change_password_old_label">รหัสผ่านเดิม</string>
+    <string name="change_password_new_label">รหัสผ่านใหม่</string>
+    <string name="change_password_confirm_label">ยืนยันรหัสผ่านใหม่</string>
+    <string name="change_password_save">บันทึก</string>
+    <string name="change_password_success">เปลี่ยนรหัสผ่านสำเร็จ</string>
+    <string name="change_password_error_old_incorrect">รหัสผ่านเดิมไม่ถูกต้อง</string>
+    <string name="change_password_error_generic">เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน</string>
+    <string name="success_title">สำเร็จ</string>
+    <string name="common_error">เกิดข้อผิดพลาด</string>
+    
     <!-- Logout Dialogs -->
     <string name="logout_confirm_title">ยืนยันการออกจากระบบ</string>
     <string name="logout_confirm_message">คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?</string>

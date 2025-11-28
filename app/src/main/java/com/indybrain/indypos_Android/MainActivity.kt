@@ -23,6 +23,7 @@ import com.indybrain.indypos_Android.presentation.products.MainProductScreen
 import com.indybrain.indypos_Android.presentation.products.ProductDetailScreen
 import com.indybrain.indypos_Android.presentation.settings.LanguageSettingsScreen
 import com.indybrain.indypos_Android.presentation.settings.AccountScreen
+import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -110,6 +111,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToAccountSettings = {
                                     navController.navigate(NavRoutes.AccountSettings.route)
+                                },
+                                onNavigateToChangePassword = {
+                                    navController.navigate(NavRoutes.ChangePassword.route)
                                 }
                             )
                         }
@@ -167,6 +171,14 @@ class MainActivity : ComponentActivity() {
 
                         composable(NavRoutes.AccountSettings.route) {
                             AccountScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.ChangePassword.route) {
+                            ChangePasswordScreen(
                                 onBackClick = {
                                     navController.popBackStack()
                                 }

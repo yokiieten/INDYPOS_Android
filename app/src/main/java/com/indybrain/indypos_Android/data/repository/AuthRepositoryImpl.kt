@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.device.DeviceInfoProvider
 import com.indybrain.indypos_Android.data.local.AuthLocalDataSource
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
+import com.indybrain.indypos_Android.data.remote.api.ChangePasswordRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LoginRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LogoutRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
@@ -138,6 +139,89 @@ class AuthRepositoryImpl @Inject constructor(
         return localDataSource.isLoggedIn()
     }
     
+    override suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> {
+        return try {
+            val response = authApi.changePassword(
+                ChangePasswordRequestDto(
+                    oldPassword = oldPassword,
+                    newPassword = newPassword
+                )
+            )
+            
+            if (response.status == 200) {
+                Result.success(Unit)
+            } else {
+                val errorMessage = getLocalizedChangePasswordErrorMessage(
+                    errorText = response.message,
+                    statusCode = response.status
+                ) ?: response.message ?: "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+                Result.failure(IllegalStateException(errorMessage))
+            }
+        } catch (e: HttpException) {
+            val errorMessage = parseChangePasswordErrorMessage(e.response()?.errorBody())
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
+                e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
+                else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        }
+    }
+    
+    /**
+     * Get localized error message for change password errors
+     * Similar to iOS implementation
+     */
+    private fun getLocalizedChangePasswordErrorMessage(
+        errorText: String?,
+        statusCode: Int? = null
+    ): String? {
+        val error = errorText?.lowercase() ?: return null
+        
+        // Check for "old password is incorrect" pattern
+        if (error.contains("old password") && 
+            (error.contains("incorrect") || error.contains("wrong") || 
+             error.contains("invalid") || error.contains("not match"))) {
+            return "รหัสผ่านเดิมไม่ถูกต้อง"
+        }
+        
+        // Check for "password" and "incorrect" together
+        if (error.contains("password") && 
+            (error.contains("incorrect") || error.contains("wrong") || error.contains("invalid"))) {
+            return "รหัสผ่านเดิมไม่ถูกต้อง"
+        }
+        
+        return null
+    }
+    
+    /**
+     * Parse error message from HTTP error response body
+     */
+    private fun parseChangePasswordErrorMessage(errorBody: ResponseBody?): String {
+        return try {
+            if (errorBody == null) {
+                return "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+            }
+            
+            val errorJson = errorBody.string()
+            if (errorJson.isBlank()) {
+                return "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+            }
+            
+            val errorResponse = gson.fromJson(errorJson, ChangePasswordErrorResponse::class.java)
+            val errorMessage = errorResponse?.message?.takeIf { it.isNotBlank() } 
+                ?: errorResponse?.error?.takeIf { it.isNotBlank() }
+                ?: "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+            
+            // Apply localized error message logic
+            getLocalizedChangePasswordErrorMessage(errorMessage) ?: errorMessage
+        } catch (e: Exception) {
+            "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+        }
+    }
+    
     /**
      * Extension function to map DTO to domain model
      */
@@ -196,5 +280,10 @@ class AuthRepositoryImpl @Inject constructor(
 
 private data class LoginErrorResponse(
     val error: String?
+)
+
+private data class ChangePasswordErrorResponse(
+    val error: String?,
+    val message: String?
 )
 

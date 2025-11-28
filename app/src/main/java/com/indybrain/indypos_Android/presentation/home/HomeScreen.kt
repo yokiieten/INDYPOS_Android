@@ -75,7 +75,8 @@ fun HomeScreen(
     onNavigateToMainProduct: () -> Unit = {},
     onLogoutSuccess: () -> Unit = {},
     onNavigateToLanguageSettings: () -> Unit = {},
-    onNavigateToAccountSettings: () -> Unit = {}
+    onNavigateToAccountSettings: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -126,6 +127,9 @@ fun HomeScreen(
                             }
                             com.indybrain.indypos_Android.presentation.settings.SettingsItem.Language -> {
                                 onNavigateToLanguageSettings()
+                            }
+                            com.indybrain.indypos_Android.presentation.settings.SettingsItem.ChangePassword -> {
+                                onNavigateToChangePassword()
                             }
                             // Handle other settings items here
                             else -> {}

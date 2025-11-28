@@ -29,5 +29,13 @@ interface AuthRepository {
      * Check if user is logged in
      */
     suspend fun isLoggedIn(): Boolean
+    
+    /**
+     * Change password
+     * @param oldPassword Current password
+     * @param newPassword New password
+     * @return Result indicating success or failure
+     */
+    suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit>
 }
 
