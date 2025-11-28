@@ -74,7 +74,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToMainProduct: () -> Unit = {},
     onLogoutSuccess: () -> Unit = {},
-    onNavigateToLanguageSettings: () -> Unit = {}
+    onNavigateToLanguageSettings: () -> Unit = {},
+    onNavigateToAccountSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -120,6 +121,9 @@ fun HomeScreen(
                 SettingsScreen(
                     onSettingsItemClick = { item ->
                         when (item) {
+                            com.indybrain.indypos_Android.presentation.settings.SettingsItem.Account -> {
+                                onNavigateToAccountSettings()
+                            }
                             com.indybrain.indypos_Android.presentation.settings.SettingsItem.Language -> {
                                 onNavigateToLanguageSettings()
                             }

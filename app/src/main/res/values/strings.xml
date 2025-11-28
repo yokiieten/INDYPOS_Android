@@ -88,6 +88,12 @@
     <string name="settings_contact_us">ติดต่อเรา</string>
     <string name="settings_logout">ออกจากระบบ</string>
     
+    <!-- Account Screen -->
+    <string name="account_title">บัญชี</string>
+    <string name="account_email_label">อีเมล</string>
+    <string name="account_package_label">แพ็กเกจ</string>
+    <string name="account_package_basic">Basic</string>
+    
     <!-- Logout Dialogs -->
     <string name="logout_confirm_title">ยืนยันการออกจากระบบ</string>
     <string name="logout_confirm_message">คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?</string>
