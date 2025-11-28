@@ -73,7 +73,8 @@ import java.text.DecimalFormat
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToMainProduct: () -> Unit = {},
-    onLogoutSuccess: () -> Unit = {}
+    onLogoutSuccess: () -> Unit = {},
+    onNavigateToLanguageSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -117,6 +118,15 @@ fun HomeScreen(
             }
             HomeBottomDestination.Settings -> {
                 SettingsScreen(
+                    onSettingsItemClick = { item ->
+                        when (item) {
+                            com.indybrain.indypos_Android.presentation.settings.SettingsItem.Language -> {
+                                onNavigateToLanguageSettings()
+                            }
+                            // Handle other settings items here
+                            else -> {}
+                        }
+                    },
                     onLogoutSuccess = onLogoutSuccess
                 )
             }

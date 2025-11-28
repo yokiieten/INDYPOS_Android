@@ -18,6 +18,7 @@ import com.indybrain.indypos_Android.presentation.navigation.NavRoutes
 import com.indybrain.indypos_Android.presentation.orderproduct.OrderProductScreen
 import com.indybrain.indypos_Android.presentation.products.MainProductScreen
 import com.indybrain.indypos_Android.presentation.products.ProductDetailScreen
+import com.indybrain.indypos_Android.presentation.settings.LanguageSettingsScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -83,6 +84,9 @@ class MainActivity : ComponentActivity() {
                                             inclusive = true
                                         }
                                     }
+                                },
+                                onNavigateToLanguageSettings = {
+                                    navController.navigate(NavRoutes.LanguageSettings.route)
                                 }
                             )
                         }
@@ -126,6 +130,14 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onEditItemClick = { itemId ->
                                     // TODO: Navigate to edit item screen or product detail
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.LanguageSettings.route) {
+                            LanguageSettingsScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
                                 }
                             )
                         }
