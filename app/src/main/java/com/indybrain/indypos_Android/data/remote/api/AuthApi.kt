@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.data.remote.api
 
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
+import com.indybrain.indypos_Android.data.remote.dto.LogoutResponseDto
 import com.google.gson.annotations.SerializedName
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -14,6 +15,12 @@ interface AuthApi {
      */
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequestDto): LoginResponseDto
+    
+    /**
+     * Logout endpoint
+     */
+    @POST("protected/auth/logout")
+    suspend fun logout(@Body request: LogoutRequestDto): LogoutResponseDto
 }
 
 /**
@@ -33,5 +40,13 @@ data class LoginRequestDto(
     val version: String,
     @SerializedName("app_version")
     val appVersion: String
+)
+
+/**
+ * Request DTO for logout
+ */
+data class LogoutRequestDto(
+    @SerializedName("device_uuid")
+    val deviceUuid: String
 )
 

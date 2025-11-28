@@ -75,6 +75,14 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 onNavigateToMainProduct = {
                                     navController.navigate(NavRoutes.MainProduct.route)
+                                },
+                                onLogoutSuccess = {
+                                    // Navigate to login screen after logout
+                                    navController.navigate(NavRoutes.Login.route) {
+                                        popUpTo(NavRoutes.Home.route) {
+                                            inclusive = true
+                                        }
+                                    }
                                 }
                             )
                         }

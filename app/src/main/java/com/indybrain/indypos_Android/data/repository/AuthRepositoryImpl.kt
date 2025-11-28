@@ -5,10 +5,12 @@ import com.indybrain.indypos_Android.core.device.DeviceInfoProvider
 import com.indybrain.indypos_Android.data.local.AuthLocalDataSource
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
 import com.indybrain.indypos_Android.data.remote.api.LoginRequestDto
+import com.indybrain.indypos_Android.data.remote.api.LogoutRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.domain.model.LoginRequest
 import com.indybrain.indypos_Android.domain.model.User
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
+import com.indybrain.indypos_Android.domain.repository.CartRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import okhttp3.ResponseBody
@@ -22,6 +24,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val authApi: AuthApi,
     private val localDataSource: AuthLocalDataSource,
     private val deviceInfoProvider: DeviceInfoProvider,
+    private val cartRepository: CartRepository,
     private val gson: Gson
 ) : AuthRepository {
     
@@ -86,8 +89,49 @@ class AuthRepositoryImpl @Inject constructor(
         emit(localDataSource.getUser())
     }
     
-    override suspend fun logout() {
-        localDataSource.clearUser()
+    override suspend fun logout(): Result<Unit> {
+        return try {
+            // Get device UUID for logout request
+            val deviceInfo = try {
+                deviceInfoProvider.getDeviceInfo()
+            } catch (e: Exception) {
+                // If we can't get device info, still clear local data
+                localDataSource.clearUser()
+                return Result.failure(IllegalStateException("ไม่สามารถอ่านข้อมูลอุปกรณ์ได้: ${e.message}", e))
+            }
+            
+            // Try to call logout API
+            try {
+                authApi.logout(
+                    LogoutRequestDto(
+                        deviceUuid = deviceInfo.deviceUuid
+                    )
+                )
+            } catch (e: Exception) {
+                // Even if API call fails, clear local data
+                // This ensures user is logged out locally
+            }
+            
+            // Clear local data regardless of API call result
+            localDataSource.clearUser()
+            // Clear cart data as well
+            try {
+                cartRepository.clearCart()
+            } catch (e: Exception) {
+                // Log error but don't fail logout if cart clear fails
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            // Clear local data even on error
+            localDataSource.clearUser()
+            // Clear cart data as well
+            try {
+                cartRepository.clearCart()
+            } catch (cartError: Exception) {
+                // Log error but don't fail logout if cart clear fails
+            }
+            Result.failure(IllegalStateException("เกิดข้อผิดพลาดในการออกจากระบบ: ${e.message}", e))
+        }
     }
     
     override suspend fun isLoggedIn(): Boolean {

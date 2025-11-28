@@ -72,7 +72,8 @@ import java.text.DecimalFormat
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    onNavigateToMainProduct: () -> Unit = {}
+    onNavigateToMainProduct: () -> Unit = {},
+    onLogoutSuccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -115,7 +116,9 @@ fun HomeScreen(
                 OrderScreen()
             }
             HomeBottomDestination.Settings -> {
-                SettingsScreen()
+                SettingsScreen(
+                    onLogoutSuccess = onLogoutSuccess
+                )
             }
             else -> {
                 Column(

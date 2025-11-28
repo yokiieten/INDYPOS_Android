@@ -21,8 +21,9 @@ interface AuthRepository {
     
     /**
      * Logout current user
+     * @return Result indicating success or failure
      */
-    suspend fun logout()
+    suspend fun logout(): Result<Unit>
     
     /**
      * Check if user is logged in

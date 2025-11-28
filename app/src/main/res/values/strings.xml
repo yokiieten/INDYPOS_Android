@@ -87,4 +87,15 @@
     <string name="settings_manage_data">จัดการข้อมูล</string>
     <string name="settings_contact_us">ติดต่อเรา</string>
     <string name="settings_logout">ออกจากระบบ</string>
+    
+    <!-- Logout Dialogs -->
+    <string name="logout_confirm_title">ยืนยันการออกจากระบบ</string>
+    <string name="logout_confirm_message">คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?</string>
+    <string name="logout_warning_message">การออกจากระบบจะทำให้สูญเสียข้อมูล การซิงค์ทั้งหมดที่ยังไม่ได้อัปโหลดขึ้น เซิร์ฟเวอร์</string>
+    <string name="logout_button">ออกจากระบบ</string>
+    <string name="logout_cancel">ยกเลิก</string>
+    <string name="logout_no_internet_title">ไม่มีการเชื่อมต่ออินเทอร์เน็ต</string>
+    <string name="logout_no_internet_message">กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตก่อนออกจากระบบ</string>
+    <string name="logout_success_title">สำเร็จ</string>
+    <string name="logout_success_message">ออกจากระบบสำเร็จ</string>
 </resources>
