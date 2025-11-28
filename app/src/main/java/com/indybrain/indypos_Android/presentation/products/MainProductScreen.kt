@@ -119,20 +119,35 @@ fun MainProductScreen(
                 uiState.categories.find { it.id == categoryId }?.sortOrder ?: Int.MAX_VALUE
             }
             
-            // Get the first visible item index
-            val firstVisibleIndex = scrollState.firstVisibleItemIndex
+            // Get visible items info
+            val visibleItems = scrollState.layoutInfo.visibleItemsInfo
             
-            // Calculate which category is currently visible
-            var currentIndex = 0
-            for ((categoryId, products) in sortedCategories) {
-                // Each category section has: 1 header item + 1 grid container item
-                val gridRows = (products.size + 1) / 2 // 2 columns per row
-                val sectionSize = 1 + gridRows // header + grid rows
-                
-                if (firstVisibleIndex < currentIndex + sectionSize) {
-                    return@derivedStateOf categoryId
+            // Find the first visible item that is a category header or products grid
+            for (visibleItem in visibleItems) {
+                val itemKey = visibleItem.key as? String
+                if (itemKey != null) {
+                    when {
+                        itemKey.startsWith("category_") -> {
+                            // Found a category header
+                            val categoryId = itemKey.removePrefix("category_")
+                            return@derivedStateOf categoryId
+                        }
+                        itemKey.startsWith("products_") -> {
+                            // Found a products grid - get the category ID
+                            val categoryId = itemKey.removePrefix("products_")
+                            return@derivedStateOf categoryId
+                        }
+                    }
                 }
-                currentIndex += sectionSize
+            }
+            
+            // If no category found in visible items, check the first visible index
+            // Each category takes 2 items: header (even index) and products (odd index)
+            val firstVisibleIndex = scrollState.firstVisibleItemIndex
+            val categoryIndex = firstVisibleIndex / 2
+            
+            if (categoryIndex < sortedCategories.size) {
+                return@derivedStateOf sortedCategories[categoryIndex].first
             }
             
             // Default to last category if scrolled to bottom
@@ -413,7 +428,31 @@ private fun CategoryFilterBar(
     onCategorySelected: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val categoryScrollState = rememberLazyListState()
+    
+    // Scroll to focused category when it changes
+    LaunchedEffect(focusedCategoryId) {
+        focusedCategoryId?.let { categoryId ->
+            val categoryIndex = categories.indexOfFirst { it.id == categoryId }
+            if (categoryIndex >= 0) {
+                // Check if the item is visible
+                val layoutInfo = categoryScrollState.layoutInfo
+                val visibleItems = layoutInfo.visibleItemsInfo
+                val isVisible = visibleItems.any { it.index == categoryIndex }
+                
+                if (!isVisible) {
+                    // Scroll to the category if it's not visible
+                    categoryScrollState.animateScrollToItem(
+                        index = categoryIndex,
+                        scrollOffset = 0
+                    )
+                }
+            }
+        }
+    }
+    
     LazyRow(
+        state = categoryScrollState,
         modifier = modifier
             .background(BaseBackground)
             .padding(vertical = 12.dp),
