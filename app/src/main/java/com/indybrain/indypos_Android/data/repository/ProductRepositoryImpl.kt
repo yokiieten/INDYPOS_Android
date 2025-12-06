@@ -7,6 +7,7 @@ import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.CreateCategoryRequestDto
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
+import com.indybrain.indypos_Android.data.remote.api.ToggleCategoryStatusRequestDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateCategoryRequestDto
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
@@ -423,6 +424,70 @@ class ProductRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่"))
+        }
+    }
+    
+    override suspend fun toggleCategoryStatus(
+        categoryId: String,
+        newStatus: Boolean
+    ): Result<CategoryEntity> {
+        return try {
+            val categoryEntity: CategoryEntity
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val request = ToggleCategoryStatusRequestDto(status = newStatus)
+                    val response = productsApi.toggleCategoryStatus(categoryId, request)
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success (200 OK) - convert to entity and save to Room
+                        categoryEntity = ProductMapper.toEntity(response.data)
+                        categoryDao.insert(categoryEntity)
+                        Result.success(categoryEntity)
+                    } else {
+                        // API returned error status
+                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                            ?: response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะหมวดหมู่"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = when (e.code()) {
+                        400 -> parseApiErrorResponse(errorBody, e.code())
+                        401 -> {
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> parseApiErrorResponse(errorBody, e.code())
+                        404 -> parseApiErrorResponse(errorBody, e.code())
+                        500 -> parseApiErrorResponse(errorBody, e.code())
+                        else -> parseApiErrorResponse(errorBody, e.code())
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - update in Room only (for sync later)
+                val existingCategory = categoryDao.getCategoryById(categoryId)
+                if (existingCategory == null) {
+                    return Result.failure(Exception("ไม่พบหมวดหมู่ที่ต้องการอัปเดต"))
+                }
+                
+                categoryEntity = existingCategory.copy(
+                    isActive = newStatus,
+                    updatedAt = Date()
+                )
+                categoryDao.insert(categoryEntity)
+                Result.success(categoryEntity)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะหมวดหมู่"))
         }
     }
     

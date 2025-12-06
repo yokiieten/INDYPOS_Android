@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -58,6 +59,7 @@ import com.indybrain.indypos_Android.ui.theme.GreenComplete
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
+import com.indybrain.indypos_Android.ui.theme.RedFailure
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 
 /**
@@ -253,7 +255,7 @@ fun CategoryManagementScreen(
                 category = category,
                 onDismiss = { selectedCategory = null },
                 onDeactivate = {
-                    // TODO: Handle deactivate
+                    viewModel.toggleCategoryStatus(category.id, category.isActive)
                     selectedCategory = null
                 },
                 onEdit = {
@@ -268,7 +270,64 @@ fun CategoryManagementScreen(
                 }
             )
         }
+        
+        // Toggle Status Success Dialog
+        uiState.toggleSuccessMessage?.let { message ->
+            ToggleStatusSuccessDialog(
+                message = message,
+                onOkClick = {
+                    viewModel.dismissToggleSuccess()
+                }
+            )
+        }
     }
+}
+
+/**
+ * Toggle Status Success Dialog
+ */
+@Composable
+private fun ToggleStatusSuccessDialog(
+    message: String,
+    onOkClick: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { /* Prevent dismissing by clicking outside */ },
+        title = {
+            Text(
+                text = stringResource(id = R.string.success_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = SecondaryText
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onOkClick
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_button_ok),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryButton
+                )
+            }
+        }
+    )
 }
 
 /**
@@ -325,22 +384,42 @@ private fun CategoryItem(
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Use Button
-            Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable(onClick = onUseClick),
-                color = GreenComplete
-            ) {
-                Text(
-                    text = stringResource(id = R.string.category_management_use),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Small
-                    ),
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+            // Status Badge or Use Button
+            if (category.isActive) {
+                // Active - Show Use Button
+                Surface(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onUseClick),
+                    color = GreenComplete
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.category_management_use),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+            } else {
+                // Inactive - Show Red Badge
+                Surface(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp)),
+                    color = RedFailure
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.category_management_inactive),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
             }
         }
     }
@@ -409,13 +488,18 @@ private fun CategoryActionSheet(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Deactivate
+                    // Toggle Status (Activate/Deactivate)
                     TextButton(
                         onClick = onDeactivate,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = stringResource(id = R.string.category_management_action_deactivate),
+                            text = stringResource(
+                                id = if (category.isActive) 
+                                    R.string.category_management_action_deactivate 
+                                else 
+                                    R.string.category_management_action_activate
+                            ),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium

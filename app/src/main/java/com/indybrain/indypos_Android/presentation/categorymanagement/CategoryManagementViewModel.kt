@@ -104,7 +104,48 @@ class CategoryManagementViewModel @Inject constructor(
     fun clearSearch() {
         _uiState.update { it.copy(searchQuery = "", filteredCategories = emptyList()) }
     }
+    
+    /**
+     * Toggle category status (activate/deactivate)
+     */
+    fun toggleCategoryStatus(categoryId: String, currentStatus: Boolean) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            
+            val newStatus = !currentStatus
+            val result = productRepository.toggleCategoryStatus(categoryId, newStatus)
+            
+            result.onSuccess { category ->
+                // Get category name for success message
+                val categoryName = category.name
+                val statusText = if (newStatus) "เปิดใช้งาน" else "ปิดใช้งาน"
+                val successMessage = "อัปเดตสถานะหมวดหมู่ '$categoryName' เป็น '$statusText' เรียบร้อยแล้ว"
+                
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        toggleSuccessMessage = successMessage
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Dismiss toggle success message
+     */
+    fun dismissToggleSuccess() {
+        _uiState.update { it.copy(toggleSuccessMessage = null) }
+    }
 }
+
 
 
 

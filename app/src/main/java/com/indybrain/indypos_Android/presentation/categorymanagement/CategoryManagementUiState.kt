@@ -10,8 +10,10 @@ data class CategoryManagementUiState(
     val filteredCategories: List<CategoryEntity> = emptyList(),
     val searchQuery: String = "",
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val toggleSuccessMessage: String? = null
 )
+
 
 
 

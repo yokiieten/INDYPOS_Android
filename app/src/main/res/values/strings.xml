@@ -139,6 +139,7 @@
     <string name="category_management_edit_title">แก้ไขหมวดหมู่</string>
     <string name="category_management_search_placeholder">ค้นหาหมวดหมู่…</string>
     <string name="category_management_use">ใช้งาน</string>
+    <string name="category_management_inactive">ไม่ใช้งาน</string>
     <string name="category_management_add_category">เพิ่มหมวดหมู่</string>
     <string name="category_management_items">%1$d รายการ</string>
     <string name="category_management_empty">ไม่มีหมวดหมู่</string>
@@ -146,6 +147,7 @@
     <string name="category_management_action_title">การดำเนินการหมวดหมู่</string>
     <string name="category_management_action_subtitle">คุณต้องการทำอะไร?</string>
     <string name="category_management_action_deactivate">ปิดใช้งาน</string>
+    <string name="category_management_action_activate">เปิดใช้งาน</string>
     <string name="category_management_action_edit">แก้ไขหมวดหมู่</string>
     <string name="category_management_action_delete">ลบหมวดหมู่</string>
     <string name="category_management_action_cancel">ยกเลิก</string>

@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName
 import com.indybrain.indypos_Android.data.remote.dto.*
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -32,6 +33,15 @@ interface ProductsApi {
     suspend fun updateCategory(
         @Path("id") id: String,
         @Body request: UpdateCategoryRequestDto
+    ): ApiResponseDto<CategoryDto>
+    
+    /**
+     * Toggle category status endpoint
+     */
+    @PATCH("protected/indypos/categories/{id}/toggle-status")
+    suspend fun toggleCategoryStatus(
+        @Path("id") id: String,
+        @Body request: ToggleCategoryStatusRequestDto
     ): ApiResponseDto<CategoryDto>
     
     /**
@@ -79,5 +89,12 @@ data class UpdateCategoryRequestDto(
     val description: String? = "",
     @SerializedName("image_url")
     val imageUrl: String? = ""
+)
+
+/**
+ * Request DTO for toggling category status
+ */
+data class ToggleCategoryStatusRequestDto(
+    val status: Boolean
 )
 

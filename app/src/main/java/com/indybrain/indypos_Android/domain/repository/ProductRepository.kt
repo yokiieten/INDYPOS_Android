@@ -92,5 +92,15 @@ interface ProductRepository {
         sortOrder: Int,
         isActive: Boolean
     ): Result<CategoryEntity>
+    
+    /**
+     * Toggle category status (activate/deactivate)
+     * If network is available, calls API and saves to Room
+     * If network is not available, updates in Room only (for sync later)
+     */
+    suspend fun toggleCategoryStatus(
+        categoryId: String,
+        newStatus: Boolean
+    ): Result<CategoryEntity>
 }
 
