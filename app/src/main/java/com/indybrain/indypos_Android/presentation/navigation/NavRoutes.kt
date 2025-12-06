@@ -18,6 +18,13 @@ sealed class NavRoutes(val route: String) {
     companion object {
         const val PRODUCT_DETAIL_ROUTE = "product_detail/{productId}"
         fun productDetail(productId: String) = "product_detail/$productId"
+        
+        const val ADD_EDIT_CATEGORY_ROUTE = "add_edit_category/{categoryId}"
+        fun addEditCategory(categoryId: String?) = if (categoryId != null) {
+            "add_edit_category/$categoryId"
+        } else {
+            "add_edit_category/null"
+        }
     }
 }
 

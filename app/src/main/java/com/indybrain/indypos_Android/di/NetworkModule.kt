@@ -54,7 +54,7 @@ object NetworkModule {
         gson: Gson
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://indy-pos.com/api/v1/")
+            .baseUrl("https://stg.indy-pos.com/api/v1/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()

@@ -12,6 +12,12 @@ interface CategoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(categories: List<CategoryEntity>)
     
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(category: CategoryEntity)
+    
+    @Query("SELECT * FROM categories WHERE id = :id")
+    suspend fun getCategoryById(id: String): CategoryEntity?
+    
     @Query("SELECT * FROM categories WHERE isActive = 1 ORDER BY sortOrder ASC")
     suspend fun getAllActiveCategories(): List<CategoryEntity>
     
@@ -23,6 +29,9 @@ interface CategoryDao {
     
     @Query("SELECT * FROM categories ORDER BY sortOrder ASC")
     fun getAllCategoriesFlow(): Flow<List<CategoryEntity>>
+    
+    @Query("SELECT MAX(sortOrder) FROM categories")
+    suspend fun getMaxSortOrder(): Int?
     
     @Query("DELETE FROM categories")
     suspend fun deleteAll()

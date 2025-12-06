@@ -136,6 +136,7 @@
     <!-- Category Management Screen -->
     <string name="category_management_title">การจัดการหมวดหมู่</string>
     <string name="category_management_edit">แก้ไข</string>
+    <string name="category_management_edit_title">แก้ไขหมวดหมู่</string>
     <string name="category_management_search_placeholder">ค้นหาหมวดหมู่…</string>
     <string name="category_management_use">ใช้งาน</string>
     <string name="category_management_add_category">เพิ่มหมวดหมู่</string>
@@ -148,4 +149,9 @@
     <string name="category_management_action_edit">แก้ไขหมวดหมู่</string>
     <string name="category_management_action_delete">ลบหมวดหมู่</string>
     <string name="category_management_action_cancel">ยกเลิก</string>
+    <string name="category_management_name_label">ชื่อหมวดหมู่ *</string>
+    <string name="category_management_name_placeholder">กรอกชื่อหมวดหมู่</string>
+    <string name="category_management_save_changes">บันทึกการแก้ไข</string>
+    <string name="category_management_add_success">เพิ่มหมวดหมู่เรียบร้อยแล้ว</string>
+    <string name="category_management_edit_success">แก้ไขหมวดหมู่เรียบร้อยแล้ว</string>
 </resources>

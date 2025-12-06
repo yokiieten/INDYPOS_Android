@@ -68,6 +68,7 @@ import com.indybrain.indypos_Android.ui.theme.SecondaryText
 fun CategoryManagementScreen(
     onBackClick: () -> Unit = {},
     onAddCategoryClick: () -> Unit = {},
+    onEditCategoryClick: (String) -> Unit = {},
     viewModel: CategoryManagementViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -256,7 +257,9 @@ fun CategoryManagementScreen(
                     selectedCategory = null
                 },
                 onEdit = {
-                    // TODO: Handle edit
+                    selectedCategory?.id?.let { categoryId ->
+                        onEditCategoryClick(categoryId)
+                    }
                     selectedCategory = null
                 },
                 onDelete = {

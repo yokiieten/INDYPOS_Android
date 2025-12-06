@@ -1,7 +1,10 @@
 package com.indybrain.indypos_Android.data.remote.api
 
+import com.google.gson.annotations.SerializedName
 import com.indybrain.indypos_Android.data.remote.dto.*
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 /**
@@ -13,6 +16,12 @@ interface ProductsApi {
      */
     @GET("protected/indypos/categories")
     suspend fun getCategories(): ApiResponseDto<List<CategoryDto>>
+    
+    /**
+     * Create category endpoint
+     */
+    @POST("protected/indypos/categories")
+    suspend fun createCategory(@Body request: CreateCategoryRequestDto): ApiResponseDto<CategoryDto>
     
     /**
      * Get all products endpoint
@@ -34,4 +43,15 @@ interface ProductsApi {
     @GET("protected/indypos/addons")
     suspend fun getAddons(): ApiResponseDto<List<AddonDto>>
 }
+
+/**
+ * Request DTO for creating a category
+ */
+data class CreateCategoryRequestDto(
+    val name: String,
+    @SerializedName("sort_order")
+    val sortOrder: Int,
+    @SerializedName("is_active")
+    val isActive: Boolean
+)
 

@@ -49,5 +49,36 @@ interface ProductRepository {
      * Get all categories from local database as Flow (including inactive)
      */
     fun getAllCategoriesFlow(): Flow<List<CategoryEntity>>
+    
+    /**
+     * Get category by ID
+     */
+    suspend fun getCategoryById(id: String): CategoryEntity?
+    
+    /**
+     * Add a new category to local database
+     */
+    suspend fun addCategory(category: CategoryEntity): Result<Unit>
+    
+    /**
+     * Update an existing category in local database
+     */
+    suspend fun updateCategory(category: CategoryEntity): Result<Unit>
+    
+    /**
+     * Get current user ID
+     */
+    suspend fun getCurrentUserId(): Int?
+    
+    /**
+     * Create a new category
+     * If network is available, calls API and saves to Room
+     * If network is not available, saves to Room only (for sync later)
+     */
+    suspend fun createCategory(
+        name: String,
+        sortOrder: Int,
+        isActive: Boolean = true
+    ): Result<CategoryEntity>
 }
 

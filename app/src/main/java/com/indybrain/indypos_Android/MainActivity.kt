@@ -26,6 +26,7 @@ import com.indybrain.indypos_Android.presentation.settings.AccountScreen
 import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
+import com.indybrain.indypos_Android.presentation.categorymanagement.AddEditCategoryScreen
 import com.indybrain.indypos_Android.presentation.categorymanagement.CategoryManagementScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsItem
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
@@ -215,7 +216,27 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onAddCategoryClick = {
-                                    // TODO: Navigate to add category screen
+                                    navController.navigate(NavRoutes.addEditCategory(null))
+                                },
+                                onEditCategoryClick = { categoryId ->
+                                    navController.navigate(NavRoutes.addEditCategory(categoryId))
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.ADD_EDIT_CATEGORY_ROUTE,
+                            arguments = listOf(navArgument("categoryId") { nullable = true })
+                        ) { backStackEntry ->
+                            val categoryId = backStackEntry.arguments?.getString("categoryId")
+                            val actualCategoryId = if (categoryId == "null") null else categoryId
+                            AddEditCategoryScreen(
+                                categoryId = actualCategoryId,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onSaveSuccess = {
+                                    navController.popBackStack()
                                 }
                             )
                         }

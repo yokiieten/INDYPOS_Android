@@ -1,12 +1,20 @@
 package com.indybrain.indypos_Android.data.repository
 
+import com.google.gson.Gson
+import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.dao.*
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
+import com.indybrain.indypos_Android.data.remote.api.CreateCategoryRequestDto
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
+import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import okhttp3.ResponseBody
 import retrofit2.HttpException
+import java.util.Date
+import java.util.UUID
 import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
@@ -14,7 +22,10 @@ class ProductRepositoryImpl @Inject constructor(
     private val categoryDao: CategoryDao,
     private val productDao: ProductDao,
     private val addonGroupDao: AddonGroupDao,
-    private val addonDao: AddonDao
+    private val addonDao: AddonDao,
+    private val authRepository: AuthRepository,
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val gson: Gson
 ) : ProductRepository {
     
     override suspend fun syncAllProductData(): Result<Unit> {
@@ -198,5 +209,228 @@ class ProductRepositoryImpl @Inject constructor(
     override fun getAllCategoriesFlow(): Flow<List<CategoryEntity>> {
         return categoryDao.getAllCategoriesFlow()
     }
+    
+    override suspend fun getCategoryById(id: String): CategoryEntity? {
+        return categoryDao.getCategoryById(id)
+    }
+    
+    override suspend fun addCategory(category: CategoryEntity): Result<Unit> {
+        return try {
+            categoryDao.insert(category)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่"))
+        }
+    }
+    
+    override suspend fun updateCategory(category: CategoryEntity): Result<Unit> {
+        return try {
+            categoryDao.insert(category) // Using REPLACE strategy
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่"))
+        }
+    }
+    
+    override suspend fun getCurrentUserId(): Int? {
+        return authRepository.getCurrentUser().first()?.id
+    }
+    
+    override suspend fun createCategory(
+        name: String,
+        sortOrder: Int,
+        isActive: Boolean
+    ): Result<CategoryEntity> {
+        val userId = getCurrentUserId() ?: return Result.failure(
+            Exception("ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่")
+        )
+        
+        return try {
+            val categoryEntity: CategoryEntity
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val request = CreateCategoryRequestDto(
+                        name = name,
+                        sortOrder = sortOrder,
+                        isActive = isActive
+                    )
+                    
+                    val response = productsApi.createCategory(request)
+                    
+                    if (response.status == 201 && response.data != null) {
+                        // API success (201 Created) - convert to entity and save to Room
+                        categoryEntity = ProductMapper.toEntity(response.data)
+                        categoryDao.insert(categoryEntity)
+                        Result.success(categoryEntity)
+                    } else {
+                        // API returned error status
+                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                            ?: response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการสร้างหมวดหมู่"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = when (e.code()) {
+                        400 -> {
+                            // Bad Request - parse error message
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        401 -> {
+                            // Unauthorized - parse specific error
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> {
+                            // Forbidden - Free plan limit exceeded
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        409 -> {
+                            // Conflict - Duplicate category name
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        500 -> {
+                            // Internal Server Error
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        else -> {
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - save to Room only (for sync later)
+                categoryEntity = CategoryEntity(
+                    id = UUID.randomUUID().toString(),
+                    name = name,
+                    sortOrder = sortOrder,
+                    isActive = isActive,
+                    userId = userId,
+                    productCount = 0,
+                    createdAt = Date(),
+                    updatedAt = Date()
+                )
+                categoryDao.insert(categoryEntity)
+                Result.success(categoryEntity)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการสร้างหมวดหมู่"))
+        }
+    }
+    
+    /**
+     * Parse API error response body
+     */
+    private fun parseApiErrorResponse(errorBody: ResponseBody?, statusCode: Int): String {
+        return try {
+            if (errorBody == null) {
+                return getDefaultErrorMessage(statusCode)
+            }
+            
+            val errorJson = errorBody.string()
+            if (errorJson.isBlank()) {
+                return getDefaultErrorMessage(statusCode)
+            }
+            
+            // Try to parse as error response
+            try {
+                val errorResponse = gson.fromJson(errorJson, ErrorResponse::class.java)
+                val errorText = errorResponse.error?.lowercase() ?: ""
+                val messageText = errorResponse.message?.lowercase() ?: ""
+                
+                // Handle specific status codes
+                when (statusCode) {
+                    400 -> {
+                        // Bad Request - return message or error field
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
+                    }
+                    401 -> {
+                        // Unauthorized - return message or error field
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                    }
+                    403 -> {
+                        // Forbidden - Free plan limit exceeded
+                        // Return the message field which contains Thai message
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "คุณใช้หมวดหมู่ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                    }
+                    409 -> {
+                        // Conflict - Duplicate category name
+                        if (errorText.contains("duplicate category name") || 
+                            messageText.contains("duplicate category name")) {
+                            "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
+                        } else {
+                            errorResponse.message?.takeIf { it.isNotBlank() }
+                                ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                                ?: "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
+                        }
+                    }
+                    500 -> {
+                        // Internal Server Error
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "Server error - กรุณาลองใหม่อีกครั้ง"
+                    }
+                    else -> {
+                        // Return error or message if available
+                        errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการสร้างหมวดหมู่"
+                    }
+                }
+            } catch (e: Exception) {
+                // If parsing fails, check raw string
+                val errorLower = errorJson.lowercase()
+                when {
+                    statusCode == 409 && errorLower.contains("duplicate category name") -> {
+                        "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
+                    }
+                    statusCode == 403 && errorLower.contains("free_plan_limit_exceeded") -> {
+                        "คุณใช้หมวดหมู่ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                    }
+                    else -> {
+                        getDefaultErrorMessage(statusCode)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            getDefaultErrorMessage(statusCode)
+        }
+    }
+    
+    /**
+     * Get default error message for status code
+     */
+    private fun getDefaultErrorMessage(statusCode: Int): String {
+        return when (statusCode) {
+            400 -> "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
+            401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+            403 -> "คุณใช้หมวดหมู่ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+            409 -> "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
+            500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+            else -> "เกิดข้อผิดพลาดในการสร้างหมวดหมู่"
+        }
+    }
 }
+
+/**
+ * Error response DTO for parsing API errors
+ */
+private data class ErrorResponse(
+    val error: String?,
+    val message: String?
+)
 
