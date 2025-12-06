@@ -5,6 +5,8 @@ import com.indybrain.indypos_Android.data.remote.dto.*
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 /**
@@ -22,6 +24,15 @@ interface ProductsApi {
      */
     @POST("protected/indypos/categories")
     suspend fun createCategory(@Body request: CreateCategoryRequestDto): ApiResponseDto<CategoryDto>
+    
+    /**
+     * Update category endpoint
+     */
+    @PUT("protected/indypos/categories/{id}")
+    suspend fun updateCategory(
+        @Path("id") id: String,
+        @Body request: UpdateCategoryRequestDto
+    ): ApiResponseDto<CategoryDto>
     
     /**
      * Get all products endpoint
@@ -53,5 +64,20 @@ data class CreateCategoryRequestDto(
     val sortOrder: Int,
     @SerializedName("is_active")
     val isActive: Boolean
+)
+
+/**
+ * Request DTO for updating a category
+ */
+data class UpdateCategoryRequestDto(
+    val name: String,
+    @SerializedName("sort_order")
+    val sortOrder: Int,
+    @SerializedName("is_active")
+    val isActive: Boolean,
+    val id: String,
+    val description: String? = "",
+    @SerializedName("image_url")
+    val imageUrl: String? = ""
 )
 

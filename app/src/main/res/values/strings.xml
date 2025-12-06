@@ -153,5 +153,5 @@
     <string name="category_management_name_placeholder">กรอกชื่อหมวดหมู่</string>
     <string name="category_management_save_changes">บันทึกการแก้ไข</string>
     <string name="category_management_add_success">เพิ่มหมวดหมู่เรียบร้อยแล้ว</string>
-    <string name="category_management_edit_success">แก้ไขหมวดหมู่เรียบร้อยแล้ว</string>
+    <string name="category_management_edit_success">อัปเดตหมวดหมู่เรียบร้อยแล้ว</string>
 </resources>

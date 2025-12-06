@@ -80,5 +80,17 @@ interface ProductRepository {
         sortOrder: Int,
         isActive: Boolean = true
     ): Result<CategoryEntity>
+    
+    /**
+     * Update an existing category
+     * If network is available, calls API and saves to Room
+     * If network is not available, saves to Room only (for sync later)
+     */
+    suspend fun updateCategory(
+        categoryId: String,
+        name: String,
+        sortOrder: Int,
+        isActive: Boolean
+    ): Result<CategoryEntity>
 }
 

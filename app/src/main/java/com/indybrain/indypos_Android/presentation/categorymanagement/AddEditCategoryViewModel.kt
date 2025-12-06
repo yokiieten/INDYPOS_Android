@@ -84,9 +84,9 @@ class AddEditCategoryViewModel @Inject constructor(
                 return@launch
             }
             
-            val result = if (categoryId != null) {
-                // Update existing category
-                val existingCategory = productRepository.getCategoryById(categoryId!!)
+            val result = categoryId?.let { id ->
+                // Update existing category - use updateCategory which handles API call and Room save
+                val existingCategory = productRepository.getCategoryById(id)
                 if (existingCategory == null) {
                     _uiState.update { 
                         it.copy(
@@ -97,12 +97,13 @@ class AddEditCategoryViewModel @Inject constructor(
                     return@launch
                 }
                 
-                val updatedCategory = existingCategory.copy(
+                productRepository.updateCategory(
+                    categoryId = id,
                     name = name,
-                    updatedAt = Date()
-                )
-                productRepository.updateCategory(updatedCategory)
-            } else {
+                    sortOrder = existingCategory.sortOrder,
+                    isActive = existingCategory.isActive
+                ).map { Unit }
+            } ?: run {
                 // Add new category - use createCategory which handles API call and Room save
                 val maxSortOrder = productRepository.getAllCategories().maxOfOrNull { it.sortOrder } ?: 0
                 productRepository.createCategory(
