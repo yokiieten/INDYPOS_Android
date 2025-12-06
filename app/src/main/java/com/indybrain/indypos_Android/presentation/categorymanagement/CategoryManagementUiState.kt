@@ -13,3 +13,5 @@ data class CategoryManagementUiState(
     val errorMessage: String? = null
 )
 
+
+

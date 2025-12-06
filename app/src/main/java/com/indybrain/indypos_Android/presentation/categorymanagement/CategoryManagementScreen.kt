@@ -72,6 +72,7 @@ fun CategoryManagementScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<com.indybrain.indypos_Android.data.local.entity.CategoryEntity?>(null) }
     
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
@@ -208,7 +209,8 @@ fun CategoryManagementScreen(
                             items(categoriesToShow) { category ->
                                 CategoryItem(
                                     category = category,
-                                    onUseClick = { /* TODO: Handle use click */ }
+                                    onUseClick = { /* TODO: Handle use click */ },
+                                    onClick = { selectedCategory = category }
                                 )
                             }
                         }
@@ -225,7 +227,7 @@ fun CategoryManagementScreen(
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .clickable(onClick = onAddCategoryClick),
-                color = Color(0xFF87CEEB) // Light blue color
+                color = PrimaryButton
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -243,6 +245,26 @@ fun CategoryManagementScreen(
                 }
             }
         }
+        
+        // Category Action Sheet
+        selectedCategory?.let { category ->
+            CategoryActionSheet(
+                category = category,
+                onDismiss = { selectedCategory = null },
+                onDeactivate = {
+                    // TODO: Handle deactivate
+                    selectedCategory = null
+                },
+                onEdit = {
+                    // TODO: Handle edit
+                    selectedCategory = null
+                },
+                onDelete = {
+                    // TODO: Handle delete
+                    selectedCategory = null
+                }
+            )
+        }
     }
 }
 
@@ -252,10 +274,13 @@ fun CategoryManagementScreen(
 @Composable
 private fun CategoryItem(
     category: com.indybrain.indypos_Android.data.local.entity.CategoryEntity,
-    onUseClick: () -> Unit
+    onUseClick: () -> Unit,
+    onClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         color = Color.White,
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -313,6 +338,147 @@ private fun CategoryItem(
                     color = Color.White,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Category Action Sheet
+ */
+@Composable
+private fun CategoryActionSheet(
+    category: com.indybrain.indypos_Android.data.local.entity.CategoryEntity,
+    onDismiss: () -> Unit,
+    onDeactivate: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    // Backdrop
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable(onClick = onDismiss)
+    ) {
+        // Action Sheet Content
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            color = Color.White,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Title
+                Text(
+                    text = stringResource(id = R.string.category_management_action_title),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Subtitle
+                Text(
+                    text = stringResource(id = R.string.category_management_action_subtitle),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = SecondaryText,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Action Buttons
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Deactivate
+                    TextButton(
+                        onClick = onDeactivate,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.category_management_action_deactivate),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                    
+                    // Edit
+                    TextButton(
+                        onClick = onEdit,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.category_management_action_edit),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                    
+                    // Delete
+                    TextButton(
+                        onClick = onDelete,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.category_management_action_delete),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = Color(0xFFE83808) // Red color
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Cancel Button
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(onClick = onDismiss),
+                        color = PrimaryButton
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.category_management_action_cancel),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Bold,
+                                    size = FontSize.Medium
+                                ),
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
