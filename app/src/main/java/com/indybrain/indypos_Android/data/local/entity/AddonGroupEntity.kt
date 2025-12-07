@@ -15,11 +15,15 @@ data class AddonGroupEntity(
     val isRequired: Boolean,
     val isSingleSelection: Boolean,
     val maxSelection: Int?,
-    val minSelection: Int?,
-    val sortOrder: Int,
     val isActive: Boolean,
-    val userId: Int,
+    val isDeletedLocally: Boolean = false,
+    val isFromServer: Boolean = true,
+    val isSynced: Boolean = true,
     val createdAt: Date,
-    val updatedAt: Date
+    val updatedAt: Date,
+    // Extra fields (not in Core Data but kept for compatibility)
+    val minSelection: Int? = null,
+    val sortOrder: Int? = null,
+    val userId: Int? = null
 )
 

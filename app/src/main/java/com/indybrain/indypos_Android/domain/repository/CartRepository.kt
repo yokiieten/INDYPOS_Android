@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface CartRepository {
     fun getCartItems(): Flow<List<CartItemEntity>>
-    suspend fun getCartAddonsByItemId(itemId: Long): List<CartAddonEntity>
+    suspend fun getCartAddonsByItemId(itemId: String): List<CartAddonEntity>
     fun getCartItemCount(): Flow<Int>
     suspend fun addToCart(
         productId: String?,
@@ -18,7 +18,7 @@ interface CartRepository {
         specialRequest: String?,
         addons: List<CartAddonEntity>
     )
-    suspend fun deleteCartItem(itemId: Long)
+    suspend fun deleteCartItem(itemId: String)
     suspend fun clearCart()
     suspend fun restoreProductIdsForCartItems(products: List<com.indybrain.indypos_Android.data.local.entity.ProductEntity>)
 }

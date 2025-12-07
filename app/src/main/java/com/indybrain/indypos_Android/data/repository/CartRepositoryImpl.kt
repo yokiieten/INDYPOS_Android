@@ -5,6 +5,8 @@ import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import kotlinx.coroutines.flow.Flow
+import java.util.Date
+import java.util.UUID
 import javax.inject.Inject
 
 class CartRepositoryImpl @Inject constructor(
@@ -15,7 +17,7 @@ class CartRepositoryImpl @Inject constructor(
         return cartDao.getAllCartItems()
     }
     
-    override suspend fun getCartAddonsByItemId(itemId: Long): List<CartAddonEntity> {
+    override suspend fun getCartAddonsByItemId(itemId: String): List<CartAddonEntity> {
         return cartDao.getCartAddonsByItemId(itemId)
     }
     
@@ -33,24 +35,30 @@ class CartRepositoryImpl @Inject constructor(
         specialRequest: String?,
         addons: List<CartAddonEntity>
     ) {
+        // Generate UUID for cart item id
+        val cartItemId = UUID.randomUUID().toString()
+        
         val cartItem = CartItemEntity(
+            id = cartItemId,
             productId = productId,
+            quantity = quantity,
+            specialRequest = specialRequest,
+            createdAt = Date(),
+            // Extra fields (snapshot data for display)
             productName = productName,
             productImageUrl = productImageUrl,
             productColorHex = productColorHex,
-            unitPrice = unitPrice,
-            quantity = quantity,
-            specialRequest = specialRequest
+            unitPrice = unitPrice
         )
         
-        val itemId = cartDao.insertCartItem(cartItem)
+        cartDao.insertCartItem(cartItem)
         
         // Update addons with cartItemId
-        val addonsWithItemId = addons.map { it.copy(cartItemId = itemId) }
+        val addonsWithItemId = addons.map { it.copy(cartItemId = cartItemId) }
         cartDao.insertCartAddons(addonsWithItemId)
     }
     
-    override suspend fun deleteCartItem(itemId: Long) {
+    override suspend fun deleteCartItem(itemId: String) {
         cartDao.deleteCartItemWithAddons(itemId)
     }
     

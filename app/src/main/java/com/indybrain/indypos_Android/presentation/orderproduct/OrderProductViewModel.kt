@@ -22,7 +22,7 @@ class OrderProductViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(OrderProductUiState())
     val uiState: StateFlow<OrderProductUiState> = _uiState.asStateFlow()
     
-    private val _cartAddonsMap = MutableStateFlow<Map<Long, List<CartAddonEntity>>>(emptyMap())
+    private val _cartAddonsMap = MutableStateFlow<Map<String, List<CartAddonEntity>>>(emptyMap())
     
     init {
         observeCartItems()
@@ -34,7 +34,7 @@ class OrderProductViewModel @Inject constructor(
                 _uiState.update { it.copy(cartItems = cartItems) }
                 
                 // Load addons for each cart item
-                val addonsMap = mutableMapOf<Long, List<CartAddonEntity>>()
+                val addonsMap = mutableMapOf<String, List<CartAddonEntity>>()
                 cartItems.forEach { item ->
                     val addons = cartRepository.getCartAddonsByItemId(item.id)
                     addonsMap[item.id] = addons
@@ -52,13 +52,13 @@ class OrderProductViewModel @Inject constructor(
         _uiState.update { it.copy(discountAmount = amount) }
     }
     
-    fun getCartAddons(itemId: Long): List<CartAddonEntity> {
+    fun getCartAddons(itemId: String): List<CartAddonEntity> {
         return _cartAddonsMap.value[itemId] ?: emptyList()
     }
     
     fun calculateSubtotal(): Double {
         return _uiState.value.cartItems.sumOf { item ->
-            val itemPrice = item.unitPrice * item.quantity
+            val itemPrice = (item.unitPrice ?: 0.0) * item.quantity
             val addonsPrice = (_cartAddonsMap.value[item.id] ?: emptyList())
                 .sumOf { it.addonPrice } * item.quantity
             itemPrice + addonsPrice
@@ -71,7 +71,7 @@ class OrderProductViewModel @Inject constructor(
         return (subtotal - discount).coerceAtLeast(0.0)
     }
     
-    fun deleteCartItem(itemId: Long) {
+    fun deleteCartItem(itemId: String) {
         viewModelScope.launch {
             cartRepository.deleteCartItem(itemId)
         }

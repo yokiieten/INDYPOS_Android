@@ -9,28 +9,52 @@ import com.indybrain.indypos_Android.data.local.entity.*
 
 @Database(
     entities = [
+        // Order entities
         OrderEntity::class, 
         OrderItemEntity::class, 
         OrderAddonEntity::class,
+        // Category and Product entities
         CategoryEntity::class,
         ProductEntity::class,
+        // Addon entities
         AddonGroupEntity::class,
         AddonEntity::class,
+        // Cart entities
         CartItemEntity::class,
-        CartAddonEntity::class
+        CartAddonEntity::class,
+        SelectedAddonEntity::class,
+        // Junction tables for Many-to-Many relationships
+        ProductAddonGroupJunctionEntity::class,
+        AddonGroupAddonJunctionEntity::class,
+        SelectedAddonJunctionEntity::class,
+        // Store and Settings entities
+        StoreEntity::class,
+        ReceiptSettingsEntity::class
     ],
-    version = 4,
+    version = 5, // Incremented version for schema changes
     exportSchema = false
 )
 @TypeConverters(DateConverter::class)
 abstract class IndyPosDatabase : RoomDatabase() {
+    // Order DAOs
     abstract fun orderDao(): OrderDao
     abstract fun orderItemDao(): OrderItemDao
     abstract fun orderAddonDao(): OrderAddonDao
+    // Category and Product DAOs
     abstract fun categoryDao(): CategoryDao
     abstract fun productDao(): ProductDao
+    // Addon DAOs
     abstract fun addonGroupDao(): AddonGroupDao
     abstract fun addonDao(): AddonDao
+    // Cart DAOs
     abstract fun cartDao(): CartDao
+    abstract fun selectedAddonDao(): SelectedAddonDao
+    // Junction table DAOs
+    abstract fun productAddonGroupJunctionDao(): ProductAddonGroupJunctionDao
+    abstract fun addonGroupAddonJunctionDao(): AddonGroupAddonJunctionDao
+    abstract fun selectedAddonJunctionDao(): SelectedAddonJunctionDao
+    // Store and Settings DAOs
+    abstract fun storeDao(): StoreDao
+    abstract fun receiptSettingsDao(): ReceiptSettingsDao
 }
 

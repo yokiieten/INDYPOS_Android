@@ -22,16 +22,19 @@ import java.util.Date
 data class OrderItemEntity(
     @PrimaryKey
     val id: String,
-    val orderId: String,
-    val productId: String?,
-    val productName: String,
-    val productCode: String?,
-    val unitPrice: Double,
-    val unitCost: Double,
+    val orderId: String, // Many-to-One with OrderEntity
+    val productName: String, // Snapshot (not relationship)
+    val productPrice: Double, // Snapshot (productPrice)
+    val productUnitPrice: Double, // Snapshot (productUnitPrice)
     val quantity: Int,
     val totalPrice: Double,
+    val addons: String?, // JSON string (snapshot of addons)
     val specialRequest: String?,
-    val notes: String?,
-    val createdAt: Date
+    // Extra fields (not in Core Data but kept for compatibility)
+    val productId: String? = null,
+    val productCode: String? = null,
+    val unitCost: Double? = null,
+    val notes: String? = null,
+    val createdAt: Date? = null
 )
 

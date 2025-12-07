@@ -14,21 +14,22 @@ import java.util.Date
             entity = ProductEntity::class,
             parentColumns = ["id"],
             childColumns = ["productId"],
-            onDelete = ForeignKey.SET_NULL
+            onDelete = ForeignKey.CASCADE // Changed from SET_NULL to CASCADE per requirements
         )
     ]
 )
 @TypeConverters(DateConverter::class)
 data class CartItemEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val productId: String?,
-    val productName: String,
-    val productImageUrl: String?,
-    val productColorHex: String?,
-    val unitPrice: Double,
+    @PrimaryKey
+    val id: String, // Changed from Long to String to match Core Data
+    val productId: String?, // Many-to-One with ProductEntity
     val quantity: Int,
     val specialRequest: String?,
-    val createdAt: Date = Date()
+    val createdAt: Date,
+    // Extra fields (snapshot data for display, not in Core Data relationships)
+    val productName: String? = null,
+    val productImageUrl: String? = null,
+    val productColorHex: String? = null,
+    val unitPrice: Double? = null
 )
 

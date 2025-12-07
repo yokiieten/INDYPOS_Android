@@ -82,7 +82,7 @@ import kotlin.math.roundToInt
 fun OrderProductScreen(
     onBackClick: () -> Unit = {},
     onAddMenuClick: () -> Unit = {},
-    onEditItemClick: (Long) -> Unit = {},
+    onEditItemClick: (String) -> Unit = {}, // Changed from Long to String to match CartItemEntity.id
     viewModel: OrderProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -523,7 +523,7 @@ private fun CartItemRow(
                             .data(fullImageUrl)
                             .crossfade(true)
                             .build(),
-                        contentDescription = cartItem.productName,
+                        contentDescription = cartItem.productName ?: "",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                         error = painterResource(id = R.drawable.logo_appstore),
@@ -532,7 +532,7 @@ private fun CartItemRow(
                 } else {
                     Image(
                         painter = painterResource(id = R.drawable.logo_appstore),
-                        contentDescription = cartItem.productName,
+                        contentDescription = cartItem.productName ?: "",
                         modifier = Modifier.size(40.dp),
                         contentScale = ContentScale.Fit
                     )
@@ -563,7 +563,7 @@ private fun CartItemRow(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = cartItem.productName,
+                text = cartItem.productName ?: "",
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Medium
@@ -619,7 +619,7 @@ private fun CartItemRow(
         ) {
             Text(
                 text = formatCurrency(
-                    cartItem.unitPrice * cartItem.quantity +
+                    (cartItem.unitPrice ?: 0.0) * cartItem.quantity +
                         addons.sumOf { it.addonPrice } * cartItem.quantity
                 ),
                 style = FontUtils.mainFont(

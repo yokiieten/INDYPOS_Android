@@ -133,7 +133,7 @@ class ProductDetailViewModel @Inject constructor(
                     if (addon != null && addonGroup != null) {
                         cartAddons.add(
                             CartAddonEntity(
-                                cartItemId = 0, // Will be set by repository
+                                cartItemId = "", // Will be set by repository (temporary empty string)
                                 addonId = addon.id,
                                 addonName = addon.name,
                                 addonPrice = addon.price,

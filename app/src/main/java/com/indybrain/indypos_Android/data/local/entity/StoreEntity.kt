@@ -6,21 +6,20 @@ import androidx.room.TypeConverters
 import com.indybrain.indypos_Android.data.local.converter.DateConverter
 import java.util.Date
 
-@Entity(tableName = "categories")
+/**
+ * StoreEntity from StoreDataModel
+ * Standalone entity (no relationships)
+ */
+@Entity(tableName = "stores")
 @TypeConverters(DateConverter::class)
-data class CategoryEntity(
+data class StoreEntity(
     @PrimaryKey
     val id: String,
     val name: String,
+    val storeDescription: String?,
+    val imagePath: String?,
     val isActive: Boolean,
-    val isDeletedLocally: Boolean = false,
-    val isFromServer: Boolean = true,
-    val isSynced: Boolean = true,
     val createdAt: Date,
-    val updatedAt: Date,
-    // Extra fields (not in Core Data but kept for compatibility)
-    val sortOrder: Int? = null,
-    val userId: Int? = null,
-    val productCount: Int? = null
+    val updatedAt: Date
 )
 

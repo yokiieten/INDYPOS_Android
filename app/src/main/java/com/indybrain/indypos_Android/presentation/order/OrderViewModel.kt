@@ -33,7 +33,7 @@ class OrderViewModel @Inject constructor(
             orderRepository.getOrders().collect { result ->
                 result.onSuccess { entities ->
                     val orders = entities.map { entity ->
-                        val status = OrderStatus.fromCode(entity.orderStatus)
+                        val status = OrderStatus.fromCode(entity.statusRaw) // Changed from orderStatus to statusRaw
                         Order(
                             id = entity.id,
                             orderId = entity.orderNumber,

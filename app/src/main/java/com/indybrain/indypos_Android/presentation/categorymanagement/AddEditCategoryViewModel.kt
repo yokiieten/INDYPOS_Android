@@ -100,12 +100,14 @@ class AddEditCategoryViewModel @Inject constructor(
                 productRepository.updateCategory(
                     categoryId = id,
                     name = name,
-                    sortOrder = existingCategory.sortOrder,
+                    sortOrder = existingCategory.sortOrder ?: 0, // Handle nullable sortOrder
                     isActive = existingCategory.isActive
                 ).map { Unit }
             } ?: run {
                 // Add new category - use createCategory which handles API call and Room save
-                val maxSortOrder = productRepository.getAllCategories().maxOfOrNull { it.sortOrder } ?: 0
+                val maxSortOrder = productRepository.getAllCategories()
+                    .mapNotNull { it.sortOrder } // Filter out null values
+                    .maxOrNull() ?: 0
                 productRepository.createCategory(
                     name = name,
                     sortOrder = maxSortOrder + 1,

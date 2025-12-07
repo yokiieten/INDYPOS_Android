@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CartDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCartItem(item: CartItemEntity): Long
+    suspend fun insertCartItem(item: CartItemEntity)
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCartAddons(addons: List<CartAddonEntity>)
@@ -30,10 +30,10 @@ interface CartDao {
     suspend fun getCartItemCountSync(): Int
     
     @Query("SELECT * FROM cart_addons WHERE cartItemId = :cartItemId")
-    suspend fun getCartAddonsByItemId(cartItemId: Long): List<CartAddonEntity>
+    suspend fun getCartAddonsByItemId(cartItemId: String): List<CartAddonEntity>
     
     @Query("DELETE FROM cart_items WHERE id = :itemId")
-    suspend fun deleteCartItem(itemId: Long)
+    suspend fun deleteCartItem(itemId: String)
     
     @Query("DELETE FROM cart_items")
     suspend fun deleteAllCartItems()
@@ -42,13 +42,13 @@ interface CartDao {
     suspend fun deleteAllCartAddons()
     
     @Query("UPDATE cart_items SET productId = :productId WHERE id = :itemId")
-    suspend fun updateCartItemProductId(itemId: Long, productId: String?)
+    suspend fun updateCartItemProductId(itemId: String, productId: String?)
     
     @Query("SELECT * FROM cart_items WHERE productId IS NULL")
     suspend fun getCartItemsWithNullProductId(): List<CartItemEntity>
     
     @Transaction
-    suspend fun deleteCartItemWithAddons(itemId: Long) {
+    suspend fun deleteCartItemWithAddons(itemId: String) {
         deleteCartItem(itemId)
         // Addons will be deleted automatically due to CASCADE
     }

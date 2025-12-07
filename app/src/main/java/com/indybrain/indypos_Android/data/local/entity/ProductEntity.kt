@@ -23,25 +23,29 @@ data class ProductEntity(
     @PrimaryKey
     val id: String,
     val name: String,
-    val description: String?,
+    val categoryId: String?, // Manual FK (not using @Relation)
     val price: Double,
     val costPrice: Double?,
     val imageUrl: String?,
-    val categoryId: String?,
-    val userId: Int,
-    val popularityRank: Int?,
-    val productCode: String?,
     val unit: String?,
-    val skuCode: String?,
-    val stockQuantity: Int?,
-    val minStockQuantity: Int?,
     val selectedUnit: String?,
     val selectedColorHex: String?,
+    val productCode: String?,
+    val skuCode: String?,
+    val stockQuantity: Int?,
+    val isActive: Boolean,
     val isSkuEnabled: Boolean?,
     val isStockEnabled: Boolean?,
     val hasAdditionalOptions: Boolean?,
-    val isActive: Boolean,
+    val popularityRank: Int?,
+    val isDeletedLocally: Boolean = false,
+    val isFromServer: Boolean = true,
+    val isSynced: Boolean = true,
     val createdAt: Date,
-    val updatedAt: Date
+    val updatedAt: Date,
+    // Extra fields (not in Core Data but kept for compatibility)
+    val description: String? = null,
+    val userId: Int? = null,
+    val minStockQuantity: Int? = null
 )
 

@@ -18,7 +18,7 @@ import androidx.room.PrimaryKey
 data class CartAddonEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val cartItemId: Long,
+    val cartItemId: String, // Changed from Long to String to match CartItemEntity.id
     val addonId: String,
     val addonName: String,
     val addonPrice: Double,
