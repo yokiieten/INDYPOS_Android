@@ -17,6 +17,9 @@ data class CategoryEntity(
     val userId: Int,
     val productCount: Int?,
     val createdAt: Date,
-    val updatedAt: Date
+    val updatedAt: Date,
+    val isDeletedLocally: Boolean = false,
+    val isFromServer: Boolean = true,
+    val isSynced: Boolean = true
 )
 

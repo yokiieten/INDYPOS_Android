@@ -11,8 +11,13 @@ data class CategoryManagementUiState(
     val searchQuery: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val toggleSuccessMessage: String? = null
+    val toggleSuccessMessage: String? = null,
+    val deleteSuccessMessage: String? = null,
+    val isEditMode: Boolean = false,
+    val selectedCategoryIds: Set<String> = emptySet()
 )
+
+
 
 
 

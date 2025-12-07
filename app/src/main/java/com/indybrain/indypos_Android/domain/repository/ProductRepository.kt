@@ -102,5 +102,12 @@ interface ProductRepository {
         categoryId: String,
         newStatus: Boolean
     ): Result<CategoryEntity>
+    
+    /**
+     * Delete a category
+     * If network is available, calls API and deletes from Room
+     * If network is not available, marks as deleted locally (isDeletedLocally = true)
+     */
+    suspend fun deleteCategory(categoryId: String): Result<Unit>
 }
 

@@ -3,6 +3,7 @@ package com.indybrain.indypos_Android.data.remote.api
 import com.google.gson.annotations.SerializedName
 import com.indybrain.indypos_Android.data.remote.dto.*
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -43,6 +44,12 @@ interface ProductsApi {
         @Path("id") id: String,
         @Body request: ToggleCategoryStatusRequestDto
     ): ApiResponseDto<CategoryDto>
+    
+    /**
+     * Delete category endpoint
+     */
+    @DELETE("protected/indypos/categories/{id}")
+    suspend fun deleteCategory(@Path("id") id: String): ApiResponseDto<CategoryDto>
     
     /**
      * Get all products endpoint

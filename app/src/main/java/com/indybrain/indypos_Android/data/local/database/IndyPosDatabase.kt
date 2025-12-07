@@ -19,7 +19,7 @@ import com.indybrain.indypos_Android.data.local.entity.*
         CartItemEntity::class,
         CartAddonEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(DateConverter::class)

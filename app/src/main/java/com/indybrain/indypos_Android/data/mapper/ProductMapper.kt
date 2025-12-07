@@ -26,7 +26,10 @@ object ProductMapper {
             userId = dto.userId,
             productCount = dto.productCount,
             createdAt = parseDate(dto.createdAt),
-            updatedAt = parseDate(dto.updatedAt)
+            updatedAt = parseDate(dto.updatedAt),
+            isDeletedLocally = false,
+            isFromServer = true,
+            isSynced = true
         )
     }
     

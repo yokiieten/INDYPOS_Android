@@ -318,7 +318,10 @@ class ProductRepositoryImpl @Inject constructor(
                     userId = userId,
                     productCount = 0,
                     createdAt = Date(),
-                    updatedAt = Date()
+                    updatedAt = Date(),
+                    isDeletedLocally = false,
+                    isFromServer = false,
+                    isSynced = false
                 )
                 categoryDao.insert(categoryEntity)
                 Result.success(categoryEntity)
@@ -417,7 +420,8 @@ class ProductRepositoryImpl @Inject constructor(
                     name = name,
                     sortOrder = sortOrder,
                     isActive = isActive,
-                    updatedAt = Date()
+                    updatedAt = Date(),
+                    isSynced = false
                 )
                 categoryDao.insert(categoryEntity)
                 Result.success(categoryEntity)
@@ -481,13 +485,67 @@ class ProductRepositoryImpl @Inject constructor(
                 
                 categoryEntity = existingCategory.copy(
                     isActive = newStatus,
-                    updatedAt = Date()
+                    updatedAt = Date(),
+                    isSynced = false
                 )
                 categoryDao.insert(categoryEntity)
                 Result.success(categoryEntity)
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะหมวดหมู่"))
+        }
+    }
+    
+    override suspend fun deleteCategory(categoryId: String): Result<Unit> {
+        return try {
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val response = productsApi.deleteCategory(categoryId)
+                    
+                    if (response.status == 200) {
+                        // API success (200 OK) - delete from Room
+                        categoryDao.deleteCategoryById(categoryId)
+                        Result.success(Unit)
+                    } else {
+                        // API returned error status
+                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                            ?: response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = when (e.code()) {
+                        400 -> parseApiErrorResponse(errorBody, e.code())
+                        401 -> {
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> parseApiErrorResponse(errorBody, e.code())
+                        404 -> parseApiErrorResponse(errorBody, e.code())
+                        500 -> parseApiErrorResponse(errorBody, e.code())
+                        else -> parseApiErrorResponse(errorBody, e.code())
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - mark as deleted locally (for sync later)
+                val existingCategory = categoryDao.getCategoryById(categoryId)
+                if (existingCategory == null) {
+                    return Result.failure(Exception("ไม่พบหมวดหมู่ที่ต้องการลบ"))
+                }
+                
+                categoryDao.markAsDeletedLocally(categoryId)
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"))
         }
     }
     

@@ -144,7 +144,137 @@ class CategoryManagementViewModel @Inject constructor(
     fun dismissToggleSuccess() {
         _uiState.update { it.copy(toggleSuccessMessage = null) }
     }
+    
+    /**
+     * Delete category
+     */
+    fun deleteCategory(categoryId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            
+            // Get category name before deleting
+            val category = productRepository.getCategoryById(categoryId)
+            val categoryName = category?.name ?: "หมวดหมู่"
+            
+            val result = productRepository.deleteCategory(categoryId)
+            
+            result.onSuccess {
+                val successMessage = "ลบหมวดหมู่ '$categoryName' เรียบร้อยแล้ว"
+                
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        deleteSuccessMessage = successMessage
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Dismiss delete success message
+     */
+    fun dismissDeleteSuccess() {
+        _uiState.update { it.copy(deleteSuccessMessage = null) }
+    }
+    
+    /**
+     * Toggle edit mode
+     */
+    fun toggleEditMode() {
+        _uiState.update { current ->
+            if (current.isEditMode) {
+                // Exit edit mode - clear selections
+                current.copy(
+                    isEditMode = false,
+                    selectedCategoryIds = emptySet()
+                )
+            } else {
+                // Enter edit mode
+                current.copy(isEditMode = true)
+            }
+        }
+    }
+    
+    /**
+     * Toggle category selection
+     */
+    fun toggleCategorySelection(categoryId: String) {
+        _uiState.update { current ->
+            val newSelection = if (current.selectedCategoryIds.contains(categoryId)) {
+                current.selectedCategoryIds - categoryId
+            } else {
+                current.selectedCategoryIds + categoryId
+            }
+            current.copy(selectedCategoryIds = newSelection)
+        }
+    }
+    
+    /**
+     * Select all categories
+     */
+    fun selectAllCategories() {
+        _uiState.update { current ->
+            val allCategoryIds = current.categories.map { it.id }.toSet()
+            current.copy(selectedCategoryIds = allCategoryIds)
+        }
+    }
+    
+    /**
+     * Delete selected categories
+     */
+    fun deleteSelectedCategories() {
+        viewModelScope.launch {
+            val selectedIds = _uiState.value.selectedCategoryIds.toList()
+            if (selectedIds.isEmpty()) return@launch
+            
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            
+            var successCount = 0
+            var failureMessage: String? = null
+            
+            selectedIds.forEach { categoryId ->
+                val result = productRepository.deleteCategory(categoryId)
+                result.onSuccess {
+                    successCount++
+                }.onFailure { error ->
+                    failureMessage = error.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
+                }
+            }
+            
+            if (failureMessage != null) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = failureMessage
+                    )
+                }
+            } else {
+                val successMessage = if (successCount == 1) {
+                    "ลบหมวดหมู่เรียบร้อยแล้ว"
+                } else {
+                    "ลบหมวดหมู่ $successCount รายการเรียบร้อยแล้ว"
+                }
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        deleteSuccessMessage = successMessage,
+                        selectedCategoryIds = emptySet(),
+                        isEditMode = false
+                    )
+                }
+            }
+        }
+    }
 }
+
 
 
 

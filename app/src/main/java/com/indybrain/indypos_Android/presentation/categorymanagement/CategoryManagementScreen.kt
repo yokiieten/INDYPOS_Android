@@ -29,6 +29,8 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -76,9 +78,19 @@ fun CategoryManagementScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<com.indybrain.indypos_Android.data.local.entity.CategoryEntity?>(null) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var categoryToDelete by remember { mutableStateOf<com.indybrain.indypos_Android.data.local.entity.CategoryEntity?>(null) }
+    var showMultipleDeleteConfirmation by remember { mutableStateOf(false) }
     
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
+    
+    // Calculate categories to show
+    val categoriesToShow = if (uiState.searchQuery.isNotBlank()) {
+        uiState.filteredCategories
+    } else {
+        uiState.categories
+    }
     
     // Update search when query changes
     LaunchedEffect(searchQuery) {
@@ -91,7 +103,10 @@ fun CategoryManagementScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(id = R.string.category_management_title),
+                        text = if (uiState.isEditMode) 
+                            stringResource(id = R.string.category_management_select_category)
+                        else 
+                            stringResource(id = R.string.category_management_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -109,17 +124,20 @@ fun CategoryManagementScreen(
                     }
                 },
                 actions = {
-                    // Edit button only
+                    // Edit/Cancel button
                     TextButton(
-                        onClick = { /* TODO: Edit mode */ }
+                        onClick = { viewModel.toggleEditMode() }
                     ) {
                         Text(
-                            text = stringResource(id = R.string.category_management_edit),
+                            text = if (uiState.isEditMode) 
+                                stringResource(id = R.string.category_management_action_cancel)
+                            else 
+                                stringResource(id = R.string.category_management_edit),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
                             ),
-                            color = GreenComplete
+                            color = if (uiState.isEditMode) PrimaryText else GreenComplete
                         )
                     }
                 },
@@ -138,48 +156,44 @@ fun CategoryManagementScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Search Bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    placeholder = {
-                        Text(
-                            text = stringResource(id = R.string.category_management_search_placeholder),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = PlaceholderText
+                // Search Bar - Hide in edit mode
+                if (!uiState.isEditMode) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        placeholder = {
+                            Text(
+                                text = stringResource(id = R.string.category_management_search_placeholder),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = PlaceholderText
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = null,
+                                tint = PlaceholderText,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            focusedContainerColor = Color.White,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Color.Transparent
                         )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.Search,
-                            contentDescription = null,
-                            tint = PlaceholderText,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF5F5F5),
-                        focusedContainerColor = Color.White,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = Color.Transparent
                     )
-                )
-                
-                // Category List with Pull to Refresh
-                val categoriesToShow = if (uiState.searchQuery.isNotBlank()) {
-                    uiState.filteredCategories
-                } else {
-                    uiState.categories
                 }
                 
+                // Category List with Pull to Refresh
                 SwipeRefresh(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshCategories() }
@@ -205,15 +219,23 @@ fun CategoryManagementScreen(
                                 start = 16.dp,
                                 top = 8.dp,
                                 end = 16.dp,
-                                bottom = 80.dp // Space for bottom button
+                                bottom = if (uiState.isEditMode) 80.dp else 80.dp // Space for bottom button
                             ),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(categoriesToShow) { category ->
                                 CategoryItem(
                                     category = category,
+                                    isEditMode = uiState.isEditMode,
+                                    isSelected = uiState.selectedCategoryIds.contains(category.id),
                                     onUseClick = { /* TODO: Handle use click */ },
-                                    onClick = { selectedCategory = category }
+                                    onClick = { 
+                                        if (uiState.isEditMode) {
+                                            viewModel.toggleCategorySelection(category.id)
+                                        } else {
+                                            selectedCategory = category
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -221,30 +243,46 @@ fun CategoryManagementScreen(
                 }
             }
             
-            // Add Category Button - Fixed at bottom
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .clickable(onClick = onAddCategoryClick),
-                color = PrimaryButton
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+            // Bottom Action Bar - Show different UI based on edit mode
+            if (uiState.isEditMode) {
+                // Edit Mode - Show selection actions
+                EditModeBottomBar(
+                    selectedCount = uiState.selectedCategoryIds.size,
+                    totalCount = categoriesToShow.size,
+                    onSelectAll = { viewModel.selectAllCategories() },
+                    onDelete = {
+                        if (uiState.selectedCategoryIds.isNotEmpty()) {
+                            showMultipleDeleteConfirmation = true
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            } else {
+                // Normal Mode - Show Add Category Button
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .clickable(onClick = onAddCategoryClick),
+                    color = PrimaryButton
                 ) {
-                    Text(
-                        text = stringResource(id = R.string.category_management_add_category),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Bold,
-                            size = FontSize.Medium
-                        ),
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.category_management_add_category),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Medium
+                            ),
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
@@ -265,7 +303,8 @@ fun CategoryManagementScreen(
                     selectedCategory = null
                 },
                 onDelete = {
-                    // TODO: Handle delete
+                    categoryToDelete = selectedCategory
+                    showDeleteConfirmation = true
                     selectedCategory = null
                 }
             )
@@ -277,6 +316,48 @@ fun CategoryManagementScreen(
                 message = message,
                 onOkClick = {
                     viewModel.dismissToggleSuccess()
+                }
+            )
+        }
+        
+        // Delete Success Dialog
+        uiState.deleteSuccessMessage?.let { message ->
+            DeleteSuccessDialog(
+                message = message,
+                onOkClick = {
+                    viewModel.dismissDeleteSuccess()
+                }
+            )
+        }
+        
+        // Delete Confirmation Dialog (Single)
+        if (showDeleteConfirmation && categoryToDelete != null) {
+            DeleteConfirmationDialog(
+                categoryName = categoryToDelete!!.name,
+                onConfirm = {
+                    categoryToDelete?.id?.let { categoryId ->
+                        viewModel.deleteCategory(categoryId)
+                    }
+                    showDeleteConfirmation = false
+                    categoryToDelete = null
+                },
+                onDismiss = {
+                    showDeleteConfirmation = false
+                    categoryToDelete = null
+                }
+            )
+        }
+        
+        // Multiple Delete Confirmation Dialog
+        if (showMultipleDeleteConfirmation) {
+            MultipleDeleteConfirmationDialog(
+                selectedCount = uiState.selectedCategoryIds.size,
+                onConfirm = {
+                    viewModel.deleteSelectedCategories()
+                    showMultipleDeleteConfirmation = false
+                },
+                onDismiss = {
+                    showMultipleDeleteConfirmation = false
                 }
             )
         }
@@ -331,11 +412,264 @@ private fun ToggleStatusSuccessDialog(
 }
 
 /**
+ * Delete Success Dialog
+ */
+@Composable
+private fun DeleteSuccessDialog(
+    message: String,
+    onOkClick: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { /* Prevent dismissing by clicking outside */ },
+        title = {
+            Text(
+                text = stringResource(id = R.string.success_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = SecondaryText
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onOkClick
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_button_ok),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryButton
+                )
+            }
+        }
+    )
+}
+
+/**
+ * Delete Confirmation Dialog (Single Category)
+ */
+@Composable
+private fun DeleteConfirmationDialog(
+    categoryName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(id = R.string.category_management_action_delete),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+        },
+        text = {
+            Text(
+                text = "คุณต้องการลบหมวดหมู่ '$categoryName' ใช่หรือไม่?",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = SecondaryText
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_button_ok),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = RedFailure
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text(
+                    text = stringResource(id = R.string.category_management_action_cancel),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+            }
+        }
+    )
+}
+
+/**
+ * Multiple Delete Confirmation Dialog
+ */
+@Composable
+private fun MultipleDeleteConfirmationDialog(
+    selectedCount: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(id = R.string.category_management_confirm_delete_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(id = R.string.category_management_confirm_delete_message),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(id = R.string.category_management_confirm_delete_warning),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm
+            ) {
+                Text(
+                    text = stringResource(id = R.string.category_management_action_delete),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = RedFailure
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text(
+                    text = stringResource(id = R.string.category_management_action_cancel),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryButton
+                )
+            }
+        }
+    )
+}
+
+/**
+ * Edit Mode Bottom Action Bar
+ */
+@Composable
+private fun EditModeBottomBar(
+    selectedCount: Int,
+    totalCount: Int,
+    onSelectAll: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth(),
+        color = Color.White,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Select All Button
+            TextButton(
+                onClick = onSelectAll
+            ) {
+                Text(
+                    text = stringResource(id = R.string.category_management_select_all),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryButton
+                )
+            }
+            
+            // Selected Count
+            Text(
+                text = stringResource(
+                    id = R.string.category_management_select_items,
+                    selectedCount
+                ),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryButton
+            )
+            
+            // Delete Button
+            TextButton(
+                onClick = onDelete,
+                enabled = selectedCount > 0
+            ) {
+                Text(
+                    text = stringResource(id = R.string.category_management_action_delete),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = if (selectedCount > 0) RedFailure else SecondaryText
+                )
+            }
+        }
+    }
+}
+
+/**
  * Category Item Row
  */
 @Composable
 private fun CategoryItem(
     category: com.indybrain.indypos_Android.data.local.entity.CategoryEntity,
+    isEditMode: Boolean,
+    isSelected: Boolean,
     onUseClick: () -> Unit,
     onClick: () -> Unit
 ) {
@@ -343,7 +677,7 @@ private fun CategoryItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        color = Color.White,
+        color = if (isEditMode && isSelected) Color(0xFFF5F5F5) else Color.White,
         shape = RoundedCornerShape(8.dp)
     ) {
         Row(
@@ -353,6 +687,19 @@ private fun CategoryItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Radio Button (in edit mode)
+            if (isEditMode) {
+                RadioButton(
+                    selected = isSelected,
+                    onClick = onClick,
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = PrimaryButton,
+                        unselectedColor = SecondaryText
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+            
             Column(
                 modifier = Modifier.weight(1f)
             ) {

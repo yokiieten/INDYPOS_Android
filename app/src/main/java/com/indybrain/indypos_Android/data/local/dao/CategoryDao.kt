@@ -18,16 +18,16 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getCategoryById(id: String): CategoryEntity?
     
-    @Query("SELECT * FROM categories WHERE isActive = 1 ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM categories WHERE isActive = 1 AND isDeletedLocally = 0 ORDER BY sortOrder ASC")
     suspend fun getAllActiveCategories(): List<CategoryEntity>
     
-    @Query("SELECT * FROM categories WHERE isActive = 1 ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM categories WHERE isActive = 1 AND isDeletedLocally = 0 ORDER BY sortOrder ASC")
     fun getAllActiveCategoriesFlow(): Flow<List<CategoryEntity>>
     
-    @Query("SELECT * FROM categories ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM categories WHERE isDeletedLocally = 0 ORDER BY sortOrder ASC")
     suspend fun getAllCategories(): List<CategoryEntity>
     
-    @Query("SELECT * FROM categories ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM categories WHERE isDeletedLocally = 0 ORDER BY sortOrder ASC")
     fun getAllCategoriesFlow(): Flow<List<CategoryEntity>>
     
     @Query("SELECT MAX(sortOrder) FROM categories")
@@ -35,5 +35,11 @@ interface CategoryDao {
     
     @Query("DELETE FROM categories")
     suspend fun deleteAll()
+    
+    @Query("DELETE FROM categories WHERE id = :id")
+    suspend fun deleteCategoryById(id: String)
+    
+    @Query("UPDATE categories SET isDeletedLocally = 1 WHERE id = :id")
+    suspend fun markAsDeletedLocally(id: String)
 }
 
