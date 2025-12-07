@@ -31,7 +31,7 @@ import com.indybrain.indypos_Android.data.local.entity.*
         StoreEntity::class,
         ReceiptSettingsEntity::class
     ],
-    version = 5, // Incremented version for schema changes
+    version = 1, // Reset to version 1 for fresh start (not in production yet)
     exportSchema = false
 )
 @TypeConverters(DateConverter::class)
