@@ -1,38 +1,87 @@
 package com.indybrain.indypos_Android.presentation.productmanagement
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Intent
+import android.net.Uri
+import android.provider.MediaStore
+import androidx.core.content.FileProvider
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import java.io.File
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
+import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
+import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
+import com.indybrain.indypos_Android.ui.theme.SecondaryText
 
 /**
  * Add/Edit Product Screen
@@ -43,9 +92,52 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryText
 fun AddEditProductScreen(
     productId: String? = null,
     onBackClick: () -> Unit = {},
-    onSaveSuccess: () -> Unit = {}
+    onSaveSuccess: () -> Unit = {},
+    viewModel: AddEditProductViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
     val isEditMode = productId != null
+    val context = LocalContext.current
+    var showImagePickerDialog by remember { mutableStateOf(false) }
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // Image picker launcher (Gallery)
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            // Convert URI to string and update image URL
+            viewModel.updateImageUrl(it.toString())
+        }
+    }
+    
+    // Camera launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraImageUri != null) {
+            // Image captured successfully
+            cameraImageUri?.let { uri ->
+                viewModel.updateImageUrl(uri.toString())
+            }
+        }
+    }
+    
+    // Load product data if in edit mode
+    LaunchedEffect(productId) {
+        if (productId != null) {
+            viewModel.loadProduct(productId)
+        }
+    }
+    
+    // Handle success dialog
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            onSaveSuccess()
+            viewModel.dismissSuccessDialog()
+        }
+    }
     
     Scaffold(
         containerColor = BaseBackground,
@@ -85,24 +177,622 @@ fun AddEditProductScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Column(
+            if (uiState.isLoading && isEditMode) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    // Product Name
+                    FormFieldLabel("ชื่อสินค้า", required = true)
+                    OutlinedTextField(
+                        value = uiState.productName,
+                        onValueChange = { viewModel.updateProductName(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("กรุณากรอกชื่อสินค้า", color = PlaceholderText) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            focusedContainerColor = Color.White,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = PrimaryButton
+                        ),
+                        enabled = !uiState.isLoading
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Product Code
+                    FormFieldLabel("รหัสสินค้า", required = true)
+                    OutlinedTextField(
+                        value = uiState.productCode,
+                        onValueChange = { viewModel.updateProductCode(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("กรุณากรอกรหัสสินค้า", color = PlaceholderText) },
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(onClick = { /* TODO: Open barcode scanner */ }) {
+                                Icon(
+                                    imageVector = Icons.Filled.QrCodeScanner,
+                                    contentDescription = "สแกนบาร์โค้ด",
+                                    tint = SecondaryText
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            focusedContainerColor = Color.White,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = PrimaryButton
+                        ),
+                        enabled = !uiState.isLoading
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Selling Price
+                    FormFieldLabel("ราคาขาย", required = true)
+                    OutlinedTextField(
+                        value = uiState.sellingPrice,
+                        onValueChange = { viewModel.updateSellingPrice(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("0", color = PlaceholderText) },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            focusedContainerColor = Color.White,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = PrimaryButton
+                        ),
+                        enabled = !uiState.isLoading
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Cost Price
+                    FormFieldLabel("ราคาต้นทุน", required = false)
+                    OutlinedTextField(
+                        value = uiState.costPrice,
+                        onValueChange = { viewModel.updateCostPrice(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("0 (ไม่บังคับ)", color = PlaceholderText) },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            focusedContainerColor = Color.White,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = PrimaryButton
+                        ),
+                        enabled = !uiState.isLoading
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Unit
+                    FormFieldLabel("หน่วยนับ", required = true)
+                    OutlinedTextField(
+                        value = uiState.unit,
+                        onValueChange = { viewModel.updateUnit(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("เช่น ชิ้น, แพ็ค, กล่อง", color = PlaceholderText) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            focusedContainerColor = Color.White,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = PrimaryButton
+                        ),
+                        enabled = !uiState.isLoading
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Product Image/Color
+                    FormFieldLabel("ภาพสินค้า", required = true)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { 
+                                viewModel.updateImageUrl(null)
+                            }
+                        ) {
+                            RadioButton(
+                                selected = uiState.isImageSelected,
+                                onClick = { 
+                                    viewModel.updateImageUrl(null)
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = PrimaryButton
+                                )
+                            )
+                            Text("รูปภาพ", style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium))
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { 
+                                viewModel.updateSelectedColorHex(null)
+                            }
+                        ) {
+                            RadioButton(
+                                selected = !uiState.isImageSelected,
+                                onClick = { 
+                                    viewModel.updateSelectedColorHex(null)
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = PrimaryButton
+                                )
+                            )
+                            Text("สี", style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    if (uiState.isImageSelected) {
+                        // Show image picker or selected image
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { showImagePickerDialog = true },
+                            color = Color(0xFFE3F2FD)
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val imageUrl = uiState.imageUrl?.takeIf { it.isNotBlank() }
+                                if (!imageUrl.isNullOrBlank()) {
+                                    // Show selected image
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(imageUrl)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "รูปภาพสินค้า",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    // Show placeholder text
+                                    Text(
+                                        text = "เลือกรูปภาพ",
+                                        style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium),
+                                        color = PrimaryButton
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // Show color picker grid
+                        ColorPickerGrid(
+                            selectedColorHex = uiState.selectedColorHex,
+                            onColorSelected = { colorHex ->
+                                viewModel.updateSelectedColorHex(colorHex)
+                            }
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Category
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FormFieldLabel("หมวดหมู่", required = true, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { viewModel.showAddCategoryDialog() }) {
+                            Text("+เพิ่ม", color = PrimaryButton)
+                        }
+                    }
+                    CategoryDropdown(
+                        categories = categories,
+                        selectedCategoryId = uiState.categoryId,
+                        onCategorySelected = { viewModel.updateCategory(it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // SKU Enabled
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "สินค้า SKU",
+                            style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium),
+                            color = PrimaryText
+                        )
+                        Switch(
+                            checked = uiState.isSkuEnabled,
+                            onCheckedChange = { viewModel.updateSkuEnabled(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryButton
+                            )
+                        )
+                    }
+                    
+                    // SKU Code (if enabled)
+                    if (uiState.isSkuEnabled) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        FormFieldLabel("รหัส SKU", required = false)
+                        OutlinedTextField(
+                            value = uiState.skuCode,
+                            onValueChange = { viewModel.updateSkuCode(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("กรอกรหัส SKU", color = PlaceholderText) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = Color(0xFFF5F5F5),
+                                focusedContainerColor = Color.White,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedBorderColor = Color.Transparent
+                            ),
+                            enabled = !uiState.isLoading
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Stock Enabled
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "สต็อกสินค้า",
+                            style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium),
+                            color = PrimaryText
+                        )
+                        Switch(
+                            checked = uiState.isStockEnabled,
+                            onCheckedChange = { viewModel.updateStockEnabled(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryButton
+                            )
+                        )
+                    }
+                    
+                    // Stock Quantity (if enabled)
+                    if (uiState.isStockEnabled) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        FormFieldLabel("จำนวนสินค้า", required = false)
+                        OutlinedTextField(
+                            value = uiState.stockQuantity,
+                            onValueChange = { viewModel.updateStockQuantity(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("กรอกจำนวนสินค้า", color = PlaceholderText) },
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = Color(0xFFF5F5F5),
+                                focusedContainerColor = Color.White,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedBorderColor = Color.Transparent
+                            ),
+                            enabled = !uiState.isLoading
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Additional Options Enabled
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "มีออปชั่นเพิ่มเติม",
+                            style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium),
+                            color = PrimaryText
+                        )
+                        Switch(
+                            checked = uiState.hasAdditionalOptions,
+                            onCheckedChange = { viewModel.updateAdditionalOptionsEnabled(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryButton
+                            )
+                        )
+                    }
+                    
+                    // AddOn Groups (if enabled)
+                    if (uiState.hasAdditionalOptions) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        FormFieldLabel("เลือก AddOn Groups", required = false)
+                        Text(
+                            text = "ไม่มี AddOn Groups ที่สามารถเลือกได้",
+                            style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Small),
+                            color = SecondaryText,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(80.dp)) // Space for save button
+                }
+            }
+            
+            // Save Button - Fixed at bottom
+            Surface(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
-            ) {
-                Text(
-                    text = if (isEditMode) "แก้ไขสินค้า" else "เพิ่มสินค้าใหม่",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Large
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .clickable(
+                        enabled = !uiState.isLoading,
+                        onClick = { viewModel.saveProduct {} }
                     ),
-                    color = PrimaryText
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                color = if (uiState.isLoading) 
+                    PrimaryButton.copy(alpha = 0.6f) 
+                else 
+                    PrimaryButton
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White
+                        )
+                    } else {
+                        Text(
+                            text = "บันทึกข้อมูล",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Medium
+                            ),
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Success Dialog
+        if (uiState.isSuccess) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissSuccessDialog() },
+                title = {
+                    Text(
+                        text = "สำเร็จ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = if (isEditMode) "แก้ไขสินค้าสำเร็จ" else "เพิ่มสินค้าสำเร็จ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { 
+                        viewModel.dismissSuccessDialog()
+                        onSaveSuccess()
+                    }) {
+                        Text("ตกลง", color = PrimaryButton)
+                    }
+                }
+            )
+        }
+        
+        // Error dialog
+        uiState.errorMessage?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearError() },
+                title = {
+                    Text(
+                        text = "เกิดข้อผิดพลาด",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        )
+                    )
+                },
+                text = {
+                    Text(
+                        text = error,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        )
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text("ตกลง")
+                    }
+                }
+            )
+        }
+        
+        // Add Category Dialog
+        if (uiState.showAddCategoryDialog) {
+            AddCategoryDialog(
+                categoryName = uiState.categoryName,
+                isLoading = uiState.isCreatingCategory,
+                errorMessage = uiState.categoryError,
+                onCategoryNameChange = { viewModel.updateCategoryName(it) },
+                onConfirm = { viewModel.createCategory() },
+                onDismiss = { viewModel.dismissAddCategoryDialog() }
+            )
+        }
+        
+        // Category Success Dialog
+        uiState.categorySuccess?.let { message ->
+            AlertDialog(
+                onDismissRequest = { 
+                    viewModel.clearCategorySuccess()
+                },
+                title = {
+                    Text(
+                        text = "สำเร็จ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = message,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { 
+                            viewModel.clearCategorySuccess()
+                        }
+                    ) {
+                        Text(
+                            text = "ตกลง",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                }
+            )
+        }
+        
+        // Image Picker Dialog
+        if (showImagePickerDialog) {
+            ImagePickerDialog(
+                onDismiss = { showImagePickerDialog = false },
+                onCameraClick = {
+                    showImagePickerDialog = false
+                    // Open camera
+                    try {
+                        val photoFile = File(context.cacheDir, "temp_photo.jpg")
+                        val photoUri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            photoFile
+                        )
+                        cameraImageUri = photoUri
+                        cameraLauncher.launch(photoUri)
+                    } catch (e: Exception) {
+                        // Fallback to simple camera intent
+                        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // Handle error - show message to user
+                        }
+                    }
+                },
+                onGalleryClick = {
+                    showImagePickerDialog = false
+                    // Open gallery
+                    imagePickerLauncher.launch("image/*")
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Image Picker Dialog
+ */
+@Composable
+private fun ImagePickerDialog(
+    onDismiss: () -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "เลือกรูปภาพ",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+        },
+        text = {
+            Column {
+                TextButton(
+                    onClick = onCameraClick,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "ถ่ายรูป",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                }
+                TextButton(
+                    onClick = onGalleryClick,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "เลือกรูปจากแกลเลอรี",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
                 Text(
-                    text = "หน้าจอนี้กำลังอยู่ในระหว่างการพัฒนา",
+                    text = "ยกเลิก",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -111,6 +801,349 @@ fun AddEditProductScreen(
                 )
             }
         }
+    )
+}
+
+/**
+ * Color Picker Grid Component
+ */
+@Composable
+private fun ColorPickerGrid(
+    selectedColorHex: String?,
+    onColorSelected: (String) -> Unit
+) {
+    val colors = listOf(
+        "#000000", // Black
+        "#4CAF50", // Green
+        "#2196F3", // Blue
+        "#FFEB3B", // Yellow
+        "#9C27B0", // Purple
+        "#FF9800", // Orange
+        "#F44336", // Red
+        "#795548", // Brown
+        "#00BCD4", // Cyan
+        "#FFC107", // Amber
+        "#3F51B5", // Indigo
+        "#E91E63"  // Pink
+    )
+    
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp)),
+        color = Color.White,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                colors.take(6).forEach { colorHex ->
+                    ColorSwatch(
+                        colorHex = colorHex,
+                        isSelected = selectedColorHex == colorHex,
+                        onClick = { onColorSelected(colorHex) }
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                colors.drop(6).forEach { colorHex ->
+                    ColorSwatch(
+                        colorHex = colorHex,
+                        isSelected = selectedColorHex == colorHex,
+                        onClick = { onColorSelected(colorHex) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Color Swatch Component
+ */
+@Composable
+private fun ColorSwatch(
+    colorHex: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val color = try {
+        Color(android.graphics.Color.parseColor(colorHex))
+    } catch (e: Exception) {
+        Color.Gray
+    }
+    
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .then(
+                if (isSelected) {
+                    Modifier.padding(2.dp)
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(20.dp))
+                .background(color)
+        )
+        if (isSelected) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = Color.Transparent,
+                border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFE0E0E0))
+            ) {}
+        }
+    }
+}
+
+/**
+ * Add Category Dialog
+ */
+@Composable
+private fun AddCategoryDialog(
+    categoryName: String,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onCategoryNameChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = {
+            Text(
+                text = "เพิ่มหมวดหมู่ใหม่",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "กรุณาใส่ชื่อหมวดหมู่",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = SecondaryText,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                OutlinedTextField(
+                    value = categoryName,
+                    onValueChange = onCategoryNameChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            text = "กรอกชื่อหมวดหมู่",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PlaceholderText
+                        )
+                    },
+                    singleLine = true,
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFFF5F5F5),
+                        focusedContainerColor = Color.White,
+                        unfocusedBorderColor = Color(0xFFE5E5E5),
+                        focusedBorderColor = PrimaryButton
+                    )
+                )
+                errorMessage?.let { error ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = error,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = Color(0xFFE83808)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !isLoading,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "ยกเลิก",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                }
+                TextButton(
+                    onClick = onConfirm,
+                    enabled = !isLoading && categoryName.trim().isNotBlank(),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = PrimaryButton
+                        )
+                    } else {
+                        Text(
+                            text = "ตกลง",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun FormFieldLabel(
+    text: String,
+    required: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val annotatedLabel = buildAnnotatedString {
+        append(text)
+        if (required) {
+            append(" ")
+            withStyle(style = SpanStyle(color = Color(0xFFE83808))) {
+                append("*")
+            }
+        }
+    }
+    Text(
+        text = annotatedLabel,
+        style = FontUtils.mainFont(
+            style = AppFontStyle.Regular,
+            size = FontSize.Medium
+        ),
+        modifier = modifier.padding(bottom = 8.dp),
+        color = PrimaryText
+    )
+}
+
+@Composable
+private fun CategoryDropdown(
+    categories: List<CategoryEntity>,
+    selectedCategoryId: String?,
+    onCategorySelected: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showDropdown by remember { mutableStateOf(false) }
+    
+    val selectedCategoryName = selectedCategoryId?.let { id ->
+        categories.find { it.id == id }?.name
+    } ?: "กรุณาเลือกหมวดหมู่"
+    
+    Surface(
+        modifier = modifier
+            .height(44.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { showDropdown = true },
+        color = Color(0xFFF5F5F5),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = selectedCategoryName,
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = if (selectedCategoryId == null) PlaceholderText else PrimaryText,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Filled.ArrowDropDown,
+                contentDescription = null,
+                tint = SecondaryText
+            )
+        }
+    }
+    
+    if (showDropdown) {
+        AlertDialog(
+            onDismissRequest = { showDropdown = false },
+            title = {
+                Text(
+                    text = "เลือกหมวดหมู่",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText
+                )
+            },
+            text = {
+                Column {
+                    categories.forEach { category ->
+                        TextButton(
+                            onClick = {
+                                onCategorySelected(category.id)
+                                showDropdown = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = category.name,
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = if (selectedCategoryId == category.id) PrimaryButton else PrimaryText
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDropdown = false }) {
+                    Text("ยกเลิก", color = PrimaryText)
+                }
+            }
+        )
     }
 }
 

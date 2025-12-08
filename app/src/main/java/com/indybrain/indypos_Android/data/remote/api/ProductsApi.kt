@@ -2,12 +2,15 @@ package com.indybrain.indypos_Android.data.remote.api
 
 import com.google.gson.annotations.SerializedName
 import com.indybrain.indypos_Android.data.remote.dto.*
+import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -91,6 +94,12 @@ interface ProductsApi {
         @Path("id") id: String,
         @Body request: ToggleProductStatusRequestDto
     ): ApiResponseDto<ProductDto>
+    
+    /**
+     * Create product endpoint
+     */
+    @POST("protected/indypos/products")
+    suspend fun createProduct(@Body request: CreateProductRequestDto): ApiResponseDto<CreateProductResponseDto>
 }
 
 /**
@@ -138,5 +147,43 @@ data class DeleteProductsRequestDto(
  */
 data class ToggleProductStatusRequestDto(
     val status: Boolean
+)
+
+/**
+ * Request DTO for creating a product
+ */
+data class CreateProductRequestDto(
+    val name: String,
+    val description: String? = null,
+    val price: Double,
+    @SerializedName("cost_price")
+    val costPrice: Double? = null,
+    @SerializedName("image_url")
+    val imageUrl: String? = null,
+    @SerializedName("category_id")
+    val categoryId: String? = null,
+    @SerializedName("product_code")
+    val productCode: String? = null,
+    val unit: String? = null,
+    @SerializedName("sku_code")
+    val skuCode: String? = null,
+    @SerializedName("stock_quantity")
+    val stockQuantity: Int? = null,
+    @SerializedName("min_stock_quantity")
+    val minStockQuantity: Int? = null,
+    @SerializedName("selected_unit")
+    val selectedUnit: String? = null,
+    @SerializedName("selected_color_hex")
+    val selectedColorHex: String? = null,
+    @SerializedName("is_sku_enabled")
+    val isSkuEnabled: Boolean? = null,
+    @SerializedName("is_stock_enabled")
+    val isStockEnabled: Boolean? = null,
+    @SerializedName("has_additional_options")
+    val hasAdditionalOptions: Boolean? = null,
+    @SerializedName("is_active")
+    val isActive: Boolean = true,
+    @SerializedName("addon_group_ids")
+    val addonGroupIds: List<String>? = null
 )
 

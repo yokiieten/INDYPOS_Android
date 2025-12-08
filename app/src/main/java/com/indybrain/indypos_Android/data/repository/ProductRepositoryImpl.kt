@@ -7,6 +7,7 @@ import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.CreateCategoryRequestDto
+import com.indybrain.indypos_Android.data.remote.api.CreateProductRequestDto
 import com.indybrain.indypos_Android.data.remote.api.DeleteProductsRequestDto
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
 import com.indybrain.indypos_Android.data.remote.api.ToggleCategoryStatusRequestDto
@@ -861,6 +862,141 @@ class ProductRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะสินค้า"))
+        }
+    }
+    
+    override suspend fun createProduct(
+        name: String,
+        productCode: String?,
+        price: Double,
+        costPrice: Double?,
+        unit: String?,
+        imageUrl: String?,
+        selectedColorHex: String?,
+        categoryId: String?,
+        skuCode: String?,
+        stockQuantity: Int?,
+        isSkuEnabled: Boolean?,
+        isStockEnabled: Boolean?,
+        hasAdditionalOptions: Boolean?,
+        addonGroupIds: List<String>?
+    ): Result<ProductEntity> {
+        val userId = getCurrentUserId() ?: return Result.failure(
+            Exception("ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่")
+        )
+        
+        return try {
+            val productEntity: ProductEntity
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val request = CreateProductRequestDto(
+                        name = name,
+                        description = null,
+                        price = price,
+                        costPrice = costPrice,
+                        imageUrl = imageUrl,
+                        categoryId = categoryId,
+                        productCode = productCode,
+                        unit = unit,
+                        skuCode = skuCode,
+                        stockQuantity = stockQuantity,
+                        minStockQuantity = null,
+                        selectedUnit = null,
+                        selectedColorHex = selectedColorHex,
+                        isSkuEnabled = isSkuEnabled,
+                        isStockEnabled = isStockEnabled,
+                        hasAdditionalOptions = hasAdditionalOptions,
+                        isActive = true,
+                        addonGroupIds = addonGroupIds
+                    )
+                    
+                    val response = productsApi.createProduct(request)
+                    
+                    if (response.status == 201 && response.data != null) {
+                        // API success (201 Created) - convert to entity and save to Room
+                        // Response has nested structure: data.product
+                        val productDto = response.data.product
+                        productEntity = ProductMapper.toEntity(productDto)
+                        productDao.insertAll(listOf(productEntity))
+                        Result.success(productEntity)
+                    } else {
+                        // API returned error status
+                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                            ?: response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการสร้างสินค้า"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = when (e.code()) {
+                        400 -> {
+                            // Bad Request - parse error message
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        401 -> {
+                            // Unauthorized - parse specific error
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> {
+                            // Forbidden
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        409 -> {
+                            // Conflict - Duplicate product code or name
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        500 -> {
+                            // Internal Server Error
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        else -> {
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - save to Room only (for sync later)
+                productEntity = ProductEntity(
+                    id = UUID.randomUUID().toString(),
+                    name = name,
+                    description = null,
+                    price = price,
+                    costPrice = costPrice,
+                    imageUrl = imageUrl,
+                    categoryId = categoryId,
+                    userId = userId,
+                    popularityRank = null,
+                    productCode = productCode,
+                    unit = unit,
+                    skuCode = skuCode,
+                    stockQuantity = stockQuantity,
+                    minStockQuantity = null,
+                    selectedUnit = null,
+                    selectedColorHex = selectedColorHex,
+                    isSkuEnabled = isSkuEnabled,
+                    isStockEnabled = isStockEnabled,
+                    hasAdditionalOptions = hasAdditionalOptions,
+                    isActive = true,
+                    createdAt = Date(),
+                    updatedAt = Date(),
+                    isDeletedLocally = false,
+                    isFromServer = false,
+                    isSynced = false
+                )
+                productDao.insertAll(listOf(productEntity))
+                Result.success(productEntity)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการสร้างสินค้า"))
         }
     }
     

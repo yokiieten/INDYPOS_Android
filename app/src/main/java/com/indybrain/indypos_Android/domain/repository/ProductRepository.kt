@@ -146,6 +146,28 @@ interface ProductRepository {
     suspend fun toggleProductStatus(productId: String, newStatus: Boolean): Result<ProductEntity>
     
     /**
+     * Create a new product
+     * If network is available, calls API and saves to Room
+     * If network is not available, saves to Room only (isFromServer = false, isSynced = false)
+     */
+    suspend fun createProduct(
+        name: String,
+        productCode: String?,
+        price: Double,
+        costPrice: Double? = null,
+        unit: String? = null,
+        imageUrl: String? = null,
+        selectedColorHex: String? = null,
+        categoryId: String? = null,
+        skuCode: String? = null,
+        stockQuantity: Int? = null,
+        isSkuEnabled: Boolean? = null,
+        isStockEnabled: Boolean? = null,
+        hasAdditionalOptions: Boolean? = null,
+        addonGroupIds: List<String>? = null
+    ): Result<ProductEntity>
+    
+    /**
      * Get sync statistics
      */
     suspend fun getSyncStatistics(): ProductSyncStatistics
