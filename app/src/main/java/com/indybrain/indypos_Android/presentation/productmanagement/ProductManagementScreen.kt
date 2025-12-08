@@ -59,7 +59,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -77,6 +83,50 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
+
+/**
+ * Entry point for accessing NetworkConnectivityChecker in Composable
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface NetworkCheckerEntryPoint {
+    fun networkConnectivityChecker(): NetworkConnectivityChecker
+}
+
+/**
+ * Build proper image URL from image path
+ * Handles both absolute URLs and relative paths
+ */
+@Composable
+private fun buildImageUrl(imagePath: String): String {
+    // Check if it's already an absolute URL
+    if (imagePath.contains("://")) {
+        return imagePath
+    }
+    
+    // Base URL for images (without /api/v1/)
+    val baseURL = "https://stg.indy-pos.com"
+    
+    // Ensure path starts with a single leading slash
+    var path = imagePath
+    if (!path.startsWith("/")) {
+        path = "/$path"
+    }
+    
+    // If path is already under the expected product-images route
+    if (path.startsWith("/api/v1/files/product-images/")) {
+        return "$baseURL$path"
+    }
+    
+    // Treat as a bare filename; place it under the product-images folder
+    val cleanFile = if (path.startsWith("/")) {
+        path.drop(1)
+    } else {
+        path
+    }
+    
+    return "$baseURL/api/v1/files/product-images/$cleanFile"
+}
 
 /**
  * Product Management Screen
@@ -589,16 +639,39 @@ private fun ProductItem(
             ) {
                 val imageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
                 if (!imageUrl.isNullOrBlank()) {
-                    val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-                        imageUrl
-                    } else {
-                        "https://indy-pos.com$imageUrl"
+                    // Build proper image URL
+                    val fullImageUrl = buildImageUrl(imageUrl)
+                    
+                    // Check network connectivity
+                    val networkChecker = remember { 
+                        EntryPointAccessors.fromApplication(
+                            context.applicationContext,
+                            NetworkCheckerEntryPoint::class.java
+                        ).networkConnectivityChecker()
                     }
+                    val hasNetwork = networkChecker.isConnected()
+                    
+                    // Build ImageRequest with cache policy
+                    val imageRequest = ImageRequest.Builder(context)
+                        .data(fullImageUrl)
+                        .crossfade(true)
+                        .apply {
+                            if (hasNetwork) {
+                                // Online: allow network and cache
+                                memoryCachePolicy(CachePolicy.ENABLED)
+                                diskCachePolicy(CachePolicy.ENABLED)
+                                networkCachePolicy(CachePolicy.ENABLED)
+                            } else {
+                                // Offline: only use cache
+                                memoryCachePolicy(CachePolicy.ENABLED)
+                                diskCachePolicy(CachePolicy.ENABLED)
+                                networkCachePolicy(CachePolicy.DISABLED)
+                            }
+                        }
+                        .build()
+                    
                     AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(fullImageUrl)
-                            .crossfade(true)
-                            .build(),
+                        model = imageRequest,
                         contentDescription = product.name,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
