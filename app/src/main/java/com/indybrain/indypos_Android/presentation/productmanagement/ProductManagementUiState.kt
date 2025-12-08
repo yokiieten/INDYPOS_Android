@@ -17,6 +17,7 @@ data class ProductManagementUiState(
     val isSelectionMode: Boolean = false,
     val selectedProductIds: Set<String> = emptySet(),
     val errorMessage: String? = null,
+    val toggleSuccessMessage: String? = null,
     val syncStatistics: ProductSyncStatistics? = null
 )
 

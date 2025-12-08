@@ -204,7 +204,7 @@ class ProductManagementViewModel @Inject constructor(
      */
     fun toggleProductStatus(productId: String, currentStatus: Boolean) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, toggleSuccessMessage = null) }
             
             val newStatus = !currentStatus
             val result = productRepository.toggleProductStatus(productId, newStatus)
@@ -212,25 +212,32 @@ class ProductManagementViewModel @Inject constructor(
             result.onSuccess { product ->
                 val productName = product.name ?: "สินค้า"
                 val statusText = if (newStatus) "เปิดใช้งาน" else "ปิดใช้งาน"
-                val successMessage = "อัปเดตสถานะสินค้า '$productName' เป็น '$statusText' เรียบร้อยแล้ว"
+                val successMessage = "$productName ได้รับการ $statusText"
                 
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = null
+                        errorMessage = null,
+                        toggleSuccessMessage = successMessage
                     )
                 }
-                // Show toast via errorMessage (will be handled by UI)
-                // In a real app, you might want a separate successMessage field
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ"
+                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ",
+                        toggleSuccessMessage = null
                     )
                 }
             }
         }
+    }
+    
+    /**
+     * Clear toggle success message
+     */
+    fun clearToggleSuccessMessage() {
+        _uiState.update { it.copy(toggleSuccessMessage = null) }
     }
     
     /**

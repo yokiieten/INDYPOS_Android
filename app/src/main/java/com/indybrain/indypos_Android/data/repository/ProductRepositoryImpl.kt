@@ -845,9 +845,10 @@ class ProductRepositoryImpl @Inject constructor(
                     return Result.failure(Exception("ไม่พบสินค้าที่ต้องการอัปเดต"))
                 }
                 
-                        val updatedProduct = existingProduct.copy(
+                val updatedProduct = existingProduct.copy(
                     isActive = newStatus,
-                    isSynced = false
+                    isSynced = false,
+                    updatedAt = Date()
                 )
                 productDao.insertAll(listOf(updatedProduct))
                 

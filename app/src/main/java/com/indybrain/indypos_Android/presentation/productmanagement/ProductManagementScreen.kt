@@ -392,6 +392,16 @@ fun ProductManagementScreen(
             )
         }
         
+        // Toggle Success Dialog
+        uiState.toggleSuccessMessage?.let { message ->
+            ToggleSuccessDialog(
+                message = message,
+                onDismiss = {
+                    viewModel.clearToggleSuccessMessage()
+                }
+            )
+        }
+        
         // Error Message
         uiState.errorMessage?.let { error ->
             LaunchedEffect(error) {
@@ -640,7 +650,7 @@ private fun ProductItem(
             // Active Status Button (right side)
             if (!isSelectionMode) {
                 Surface(
-                    color = if (product.isActive == true) GreenComplete else Color(0xFFE0E0E0),
+                    color = if (product.isActive == true) GreenComplete else RedFailure,
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
@@ -649,7 +659,7 @@ private fun ProductItem(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
                         ),
-                        color = if (product.isActive == true) Color.White else SecondaryText,
+                        color = Color.White,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
@@ -1099,6 +1109,53 @@ private fun SyncStatusDialog(
                 )
             }
         }
+    )
+}
+
+/**
+ * Toggle Success Dialog
+ */
+@Composable
+private fun ToggleSuccessDialog(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(id = R.string.product_management_toggle_success_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryText
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = stringResource(id = R.string.dialog_button_ok),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryButton
+                )
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
     )
 }
 

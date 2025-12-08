@@ -196,4 +196,5 @@
     <string name="product_management_sync_now">ซิงค์ตอนนี้</string>
     <string name="product_management_sync_success">ซิงค์สำเร็จ</string>
     <string name="product_management_sync_error">เกิดข้อผิดพลาดในการซิงค์</string>
+    <string name="product_management_toggle_success_title">สำเร็จ</string>
 </resources>
