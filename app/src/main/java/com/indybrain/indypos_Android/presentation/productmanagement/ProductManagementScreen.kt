@@ -452,12 +452,68 @@ fun ProductManagementScreen(
             )
         }
         
-        // Error Message
+        // Delete Success Dialog
+        uiState.deleteSuccessMessage?.let { message ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearDeleteSuccessMessage() },
+                title = {
+                    Text(
+                        text = "สำเร็จ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = message,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearDeleteSuccessMessage() }) {
+                        Text("ตกลง", color = PrimaryButton)
+                    }
+                }
+            )
+        }
+        
+        // Error Message Dialog
         uiState.errorMessage?.let { error ->
-            LaunchedEffect(error) {
-                // Show error toast - in a real app, use a proper toast/snackbar
-                viewModel.clearError()
-            }
+            AlertDialog(
+                onDismissRequest = { viewModel.clearError() },
+                title = {
+                    Text(
+                        text = "เกิดข้อผิดพลาด",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = error,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text("ตกลง", color = PrimaryButton)
+                    }
+                }
+            )
         }
     }
 }

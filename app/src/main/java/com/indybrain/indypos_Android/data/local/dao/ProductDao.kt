@@ -48,6 +48,9 @@ interface ProductDao {
     @Query("UPDATE products SET isDeletedLocally = 1 WHERE id = :id")
     suspend fun markAsDeletedLocally(id: String)
     
+    @Query("UPDATE products SET isDeletedLocally = 1, isSynced = 0 WHERE id = :id")
+    suspend fun markAsDeletedLocallyAndUnsynced(id: String)
+    
     @Query("UPDATE products SET isActive = :isActive, isSynced = :isSynced WHERE id = :id")
     suspend fun updateProductStatus(id: String, isActive: Boolean, isSynced: Boolean)
     

@@ -6,6 +6,7 @@ import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -82,9 +83,10 @@ interface ProductsApi {
     
     /**
      * Delete multiple products endpoint
+     * Note: Using @HTTP instead of @DELETE because DELETE with body is not directly supported
      */
-    @DELETE("protected/indypos/products/batch")
-    suspend fun deleteMultipleProducts(@Body request: DeleteProductsRequestDto): ApiResponseDto<Any>
+    @HTTP(method = "DELETE", path = "protected/indypos/products", hasBody = true)
+    suspend fun deleteMultipleProducts(@Body request: DeleteProductsRequestDto): DeleteProductsResponseDto
     
     /**
      * Toggle product status endpoint
@@ -146,7 +148,8 @@ data class ToggleCategoryStatusRequestDto(
  * Request DTO for deleting multiple products
  */
 data class DeleteProductsRequestDto(
-    val ids: List<String>
+    @SerializedName("product_ids")
+    val productIds: List<String>
 )
 
 /**

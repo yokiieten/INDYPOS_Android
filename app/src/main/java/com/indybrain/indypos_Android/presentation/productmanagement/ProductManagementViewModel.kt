@@ -277,29 +277,51 @@ class ProductManagementViewModel @Inject constructor(
     fun deleteSelectedProducts() {
         viewModelScope.launch {
             val selectedIds = _uiState.value.selectedProductIds.toList()
-            if (selectedIds.isEmpty()) return@launch
+            if (selectedIds.isEmpty()) {
+                _uiState.update { 
+                    it.copy(errorMessage = "กรุณาเลือกสินค้าที่ต้องการลบ")
+                }
+                return@launch
+            }
             
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, deleteSuccessMessage = null) }
             
             val result = productRepository.deleteMultipleProducts(selectedIds)
             
             result.onSuccess {
+                val count = selectedIds.size
+                val successMessage = if (count == 1) {
+                    "ลบสินค้าสำเร็จ"
+                } else {
+                    "ลบสินค้า $count รายการสำเร็จ"
+                }
+                
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
                         selectedProductIds = emptySet(),
-                        isSelectionMode = false
+                        isSelectionMode = false,
+                        deleteSuccessMessage = successMessage,
+                        errorMessage = null
                     )
                 }
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบสินค้า"
+                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบสินค้า",
+                        deleteSuccessMessage = null
                     )
                 }
             }
         }
+    }
+    
+    /**
+     * Clear delete success message
+     */
+    fun clearDeleteSuccessMessage() {
+        _uiState.update { it.copy(deleteSuccessMessage = null) }
     }
     
     /**

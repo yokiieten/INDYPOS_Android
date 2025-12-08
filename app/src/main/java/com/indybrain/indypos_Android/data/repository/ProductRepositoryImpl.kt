@@ -755,7 +755,7 @@ class ProductRepositoryImpl @Inject constructor(
                     Result.failure(Exception(errorMessage))
                 }
             } else {
-                // No network - check if product can be permanently deleted
+                // No network - mark as deleted locally and unsynced
                 val product = productDao.getProductById(productId)
                 if (product == null) {
                     return Result.failure(Exception("ไม่พบสินค้าที่ต้องการลบ"))
@@ -765,8 +765,8 @@ class ProductRepositoryImpl @Inject constructor(
                     // Not synced and not from server - permanently delete
                     productDao.deleteProductById(productId)
                 } else {
-                    // Mark as deleted locally for sync later
-                    productDao.markAsDeletedLocally(productId)
+                    // Mark as deleted locally and unsynced for sync later
+                    productDao.markAsDeletedLocallyAndUnsynced(productId)
                 }
                 Result.success(Unit)
             }
@@ -777,20 +777,33 @@ class ProductRepositoryImpl @Inject constructor(
     
     override suspend fun deleteMultipleProducts(productIds: List<String>): Result<Unit> {
         return try {
+            if (productIds.isEmpty()) {
+                return Result.failure(Exception("กรุณาเลือกสินค้าที่ต้องการลบ"))
+            }
+            
             if (networkConnectivityChecker.isConnected()) {
                 // Has network - call API first
                 try {
-                    val response = productsApi.deleteMultipleProducts(DeleteProductsRequestDto(productIds))
+                    val request = DeleteProductsRequestDto(productIds = productIds)
+                    val response = productsApi.deleteMultipleProducts(request)
                     
                     if (response.status == 200) {
                         // API success - permanently delete from Room
-                        productIds.forEach { productId ->
-                            productDao.deleteProductById(productId)
+                        // Use deleted_ids from response to ensure we only delete what was actually deleted
+                        val deletedIds = response.deletedIds
+                        if (deletedIds.isNotEmpty()) {
+                            deletedIds.forEach { productId ->
+                                productDao.deleteProductById(productId)
+                            }
+                        } else {
+                            // Fallback: delete all requested IDs if response doesn't have deleted_ids
+                            productIds.forEach { productId ->
+                                productDao.deleteProductById(productId)
+                            }
                         }
                         Result.success(Unit)
                     } else {
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
+                        val errorMessage = response.message.takeIf { it.isNotBlank() }
                             ?: "เกิดข้อผิดพลาดในการลบสินค้า"
                         Result.failure(Exception(errorMessage))
                     }
@@ -800,14 +813,16 @@ class ProductRepositoryImpl @Inject constructor(
                     Result.failure(Exception(errorMessage))
                 }
             } else {
-                // No network - handle each product individually
+                // No network - mark as deleted locally and unsynced
                 productIds.forEach { productId ->
                     val product = productDao.getProductById(productId)
                     if (product != null) {
                         if (!product.isSynced && !product.isFromServer) {
+                            // Not synced and not from server - permanently delete
                             productDao.deleteProductById(productId)
                         } else {
-                            productDao.markAsDeletedLocally(productId)
+                            // Mark as deleted locally and unsynced for sync later
+                            productDao.markAsDeletedLocallyAndUnsynced(productId)
                         }
                     }
                 }
