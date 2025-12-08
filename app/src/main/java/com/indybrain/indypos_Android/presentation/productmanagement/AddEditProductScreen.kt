@@ -131,15 +131,7 @@ fun AddEditProductScreen(
         }
     }
     
-    // Handle success - navigate back immediately
-    LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) {
-            // Wait a bit to show success message, then navigate back
-            kotlinx.coroutines.delay(1500)
-            viewModel.dismissSuccessDialog()
-            onSaveSuccess()
-        }
-    }
+    // Success dialog will handle navigation when user clicks OK button
     
     Scaffold(
         containerColor = BaseBackground,
@@ -563,10 +555,23 @@ fun AddEditProductScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White
+                            )
+                            if (!uiState.loadingMessage.isNullOrBlank()) {
+                                Text(
+                                    text = uiState.loadingMessage ?: "",
+                                    style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Small),
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     } else {
                         Text(
                             text = "บันทึกข้อมูล",
@@ -582,17 +587,11 @@ fun AddEditProductScreen(
             }
         }
         
-        // Success Dialog - auto dismiss and navigate back
+        // Success Dialog - wait for user to click OK
         if (uiState.isSuccess) {
-            LaunchedEffect(Unit) {
-                kotlinx.coroutines.delay(1500) // Show success message for 1.5 seconds
-                viewModel.dismissSuccessDialog()
-                onSaveSuccess()
-            }
             AlertDialog(
                 onDismissRequest = { 
-                    viewModel.dismissSuccessDialog()
-                    onSaveSuccess()
+                    // Prevent dismissing by clicking outside
                 },
                 title = {
                     Text(
@@ -747,6 +746,72 @@ fun AddEditProductScreen(
                                 size = FontSize.Medium
                             ),
                             color = PrimaryButton
+                        )
+                    }
+                }
+            )
+        }
+        
+        // Image Upload Error Dialog (when image upload fails)
+        if (uiState.showImageUploadErrorDialog) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissImageUploadErrorDialog() },
+                title = {
+                    Text(
+                        text = "อัปโหลดรูปภาพไม่สำเร็จ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = uiState.errorMessage ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = SecondaryText
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "ต้องการบันทึกสินค้าโดยไม่มีรูปภาพหรือไม่?",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = SecondaryText
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { viewModel.saveProductWithoutImage() }
+                    ) {
+                        Text(
+                            text = "บันทึกโดยไม่มีรูป",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { viewModel.dismissImageUploadErrorDialog() }
+                    ) {
+                        Text(
+                            text = "ยกเลิก",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = SecondaryText
                         )
                     }
                 }

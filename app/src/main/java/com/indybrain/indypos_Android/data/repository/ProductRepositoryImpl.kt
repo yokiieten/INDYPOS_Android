@@ -897,25 +897,33 @@ class ProductRepositoryImpl @Inject constructor(
                 return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
             }
             
-            // Read file from URI
-            val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
-            if (inputStream == null) {
-                return Result.failure(Exception("ไม่สามารถอ่านไฟล์รูปภาพได้"))
+            // Resize image to 100x100 before upload
+            val resizedBitmap = com.indybrain.indypos_Android.core.utils.ImageUtils.resizeImage(
+                imageUri = imageUri,
+                targetWidth = 100,
+                targetHeight = 100,
+                context = context
+            )
+            
+            if (resizedBitmap == null) {
+                return Result.failure(Exception("ไม่สามารถประมวลผลรูปภาพได้"))
             }
             
-            // Create temporary file
-            val tempFile = File(context.cacheDir, "upload_${System.currentTimeMillis()}.jpg")
-            val outputStream = FileOutputStream(tempFile)
+            // Save resized bitmap to temporary file
+            val tempFile = File(context.cacheDir, "upload_resized_${System.currentTimeMillis()}.jpg")
+            val saved = com.indybrain.indypos_Android.core.utils.ImageUtils.saveBitmapToFile(
+                bitmap = resizedBitmap,
+                file = tempFile,
+                quality = 85
+            )
             
-            try {
-                inputStream.copyTo(outputStream)
-            } finally {
-                inputStream.close()
-                outputStream.close()
+            if (!saved) {
+                resizedBitmap.recycle()
+                return Result.failure(Exception("ไม่สามารถบันทึกไฟล์รูปภาพได้"))
             }
             
-            // Get file extension and MIME type
-            val mimeType = context.contentResolver.getType(imageUri) ?: "image/jpeg"
+            // Get MIME type
+            val mimeType = "image/jpeg"
             val mediaType = mimeType.toMediaTypeOrNull() ?: "image/jpeg".toMediaTypeOrNull()
             
             // Create request body
@@ -925,7 +933,8 @@ class ProductRepositoryImpl @Inject constructor(
             // Upload image
             val response = productsApi.uploadProductImage(body)
             
-            // Clean up temp file
+            // Clean up
+            resizedBitmap.recycle()
             tempFile.delete()
             
             Result.success(response.url)

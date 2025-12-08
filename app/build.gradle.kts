@@ -88,6 +88,9 @@ dependencies {
     // Coil for image loading
     implementation(libs.coil.compose)
     
+    // ExifInterface for image orientation
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+    
     // Accompanist SwipeRefresh for pull-to-refresh
     implementation(libs.accompanist.swiperefresh)
     

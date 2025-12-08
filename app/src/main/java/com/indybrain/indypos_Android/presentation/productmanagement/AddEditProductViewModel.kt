@@ -202,6 +202,31 @@ class AddEditProductViewModel @Inject constructor(
     }
     
     /**
+     * Dismiss image upload error dialog
+     */
+    fun dismissImageUploadErrorDialog() {
+        _uiState.update { it.copy(showImageUploadErrorDialog = false) }
+    }
+    
+    /**
+     * Save product without image (when image upload fails)
+     */
+    fun saveProductWithoutImage() {
+        val state = _uiState.value
+        // Update state to remove image
+        _uiState.update { 
+            it.copy(
+                imageUrl = null,
+                isImageSelected = false,
+                showImageUploadErrorDialog = false,
+                loadingMessage = "กำลังบันทึกสินค้า..."
+            )
+        }
+        // Retry save product
+        saveProduct { }
+    }
+    
+    /**
      * Update addon group IDs
      */
     fun updateAddonGroupIds(ids: List<String>) {
@@ -408,13 +433,21 @@ class AddEditProductViewModel @Inject constructor(
         }
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { 
+                it.copy(
+                    isLoading = true, 
+                    errorMessage = null,
+                    loadingMessage = null,
+                    showImageUploadErrorDialog = false
+                )
+            }
             
             val userId = productRepository.getCurrentUserId()
             if (userId == null) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
+                        loadingMessage = null,
                         errorMessage = "ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่"
                     )
                 }
@@ -430,15 +463,26 @@ class AddEditProductViewModel @Inject constructor(
                     // Check if imageUrl is a local URI (needs upload)
                     val isLocalUri = state.imageUrl.startsWith("content://") || state.imageUrl.startsWith("file://")
                     if (isLocalUri) {
+                        // Show uploading image message
+                        _uiState.update { 
+                            it.copy(loadingMessage = "กำลังอัปโหลดรูปภาพ...")
+                        }
+                        
                         try {
                             val uri = android.net.Uri.parse(state.imageUrl)
                             val uploadResult = productRepository.uploadProductImage(uri)
                             uploadResult.onSuccess { uploadedUrl ->
                                 finalImageUrl = uploadedUrl
+                                // Change loading message to saving product
+                                _uiState.update { 
+                                    it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                                }
                             }.onFailure { error ->
                                 _uiState.update { 
                                     it.copy(
                                         isLoading = false,
+                                        loadingMessage = null,
+                                        showImageUploadErrorDialog = true,
                                         errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
                                     )
                                 }
@@ -448,10 +492,24 @@ class AddEditProductViewModel @Inject constructor(
                             _uiState.update { 
                                 it.copy(
                                     isLoading = false,
+                                    loadingMessage = null,
+                                    showImageUploadErrorDialog = true,
                                     errorMessage = "ไม่สามารถอัปโหลดรูปภาพได้: ${e.message}"
                                 )
                             }
                             return@launch
+                        }
+                    } else {
+                        // Image URL is already uploaded, show saving message
+                        _uiState.update { 
+                            it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                        }
+                    }
+                } else {
+                    // No image or offline, show saving message
+                    if (hasNetwork) {
+                        _uiState.update { 
+                            it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
                         }
                     }
                 }

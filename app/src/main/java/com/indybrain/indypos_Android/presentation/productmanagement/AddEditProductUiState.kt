@@ -20,6 +20,7 @@ data class AddEditProductUiState(
     val hasAdditionalOptions: Boolean = false,
     val addonGroupIds: List<String> = emptyList(),
     val isLoading: Boolean = false,
+    val loadingMessage: String? = null, // Custom loading message
     val errorMessage: String? = null,
     val isSuccess: Boolean = false,
     // Add category dialog state
@@ -29,6 +30,8 @@ data class AddEditProductUiState(
     val categoryError: String? = null,
     val categorySuccess: String? = null,
     // Network error dialog
-    val showNoInternetDialog: Boolean = false
+    val showNoInternetDialog: Boolean = false,
+    // Image upload error dialog
+    val showImageUploadErrorDialog: Boolean = false
 )
 
