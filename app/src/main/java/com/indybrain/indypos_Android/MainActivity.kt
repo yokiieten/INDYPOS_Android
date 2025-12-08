@@ -28,6 +28,8 @@ import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.presentation.categorymanagement.AddEditCategoryScreen
 import com.indybrain.indypos_Android.presentation.categorymanagement.CategoryManagementScreen
+import com.indybrain.indypos_Android.presentation.productmanagement.AddEditProductScreen
+import com.indybrain.indypos_Android.presentation.productmanagement.ProductManagementScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsItem
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -202,6 +204,9 @@ class MainActivity : ComponentActivity() {
                                         OrderSettingsItem.CategoryManagement -> {
                                             navController.navigate(NavRoutes.CategoryManagement.route)
                                         }
+                                        OrderSettingsItem.ProductManagement -> {
+                                            navController.navigate(NavRoutes.ProductManagement.route)
+                                        }
                                         else -> {
                                             // TODO: Handle other order settings items
                                         }
@@ -220,6 +225,37 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onEditCategoryClick = { categoryId ->
                                     navController.navigate(NavRoutes.addEditCategory(categoryId))
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.ProductManagement.route) {
+                            ProductManagementScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onAddProductClick = {
+                                    navController.navigate(NavRoutes.addEditProduct(null))
+                                },
+                                onEditProductClick = { productId ->
+                                    navController.navigate(NavRoutes.addEditProduct(productId))
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.ADD_EDIT_PRODUCT_ROUTE,
+                            arguments = listOf(navArgument("productId") { nullable = true })
+                        ) { backStackEntry ->
+                            val productId = backStackEntry.arguments?.getString("productId")
+                            val actualProductId = if (productId == "null") null else productId
+                            AddEditProductScreen(
+                                productId = actualProductId,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onSaveSuccess = {
+                                    navController.popBackStack()
                                 }
                             )
                         }

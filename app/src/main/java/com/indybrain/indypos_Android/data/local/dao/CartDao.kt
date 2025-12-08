@@ -52,5 +52,8 @@ interface CartDao {
         deleteCartItem(itemId)
         // Addons will be deleted automatically due to CASCADE
     }
+    
+    @Query("DELETE FROM cart_items WHERE productId = :productId")
+    suspend fun deleteCartItemsByProductId(productId: String)
 }
 

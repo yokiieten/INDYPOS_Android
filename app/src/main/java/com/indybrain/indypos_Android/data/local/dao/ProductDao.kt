@@ -33,6 +33,36 @@ interface ProductDao {
     @Query("SELECT * FROM products ORDER BY popularityRank ASC")
     fun getAllProductsFlow(): Flow<List<ProductEntity>>
     
+    @Query("SELECT * FROM products WHERE isDeletedLocally = 0 ORDER BY isSynced ASC, name ASC")
+    fun getAllProductsForManagementFlow(): Flow<List<ProductEntity>>
+    
+    @Query("SELECT * FROM products WHERE (name LIKE '%' || :query || '%' OR :query = '') AND (categoryId = :categoryId OR :categoryId IS NULL) AND isDeletedLocally = 0 ORDER BY isSynced ASC, name ASC")
+    fun searchProductsFlow(query: String, categoryId: String?): Flow<List<ProductEntity>>
+    
+    @Query("SELECT * FROM products WHERE id = :id")
+    suspend fun getProductById(id: String): ProductEntity?
+    
+    @Query("DELETE FROM products WHERE id = :id")
+    suspend fun deleteProductById(id: String)
+    
+    @Query("UPDATE products SET isDeletedLocally = 1 WHERE id = :id")
+    suspend fun markAsDeletedLocally(id: String)
+    
+    @Query("UPDATE products SET isActive = :isActive, isSynced = :isSynced WHERE id = :id")
+    suspend fun updateProductStatus(id: String, isActive: Boolean, isSynced: Boolean)
+    
+    @Query("SELECT COUNT(*) FROM products WHERE isDeletedLocally = 0")
+    suspend fun getTotalProductCount(): Int
+    
+    @Query("SELECT COUNT(*) FROM products WHERE isSynced = 1 AND isDeletedLocally = 0")
+    suspend fun getSyncedProductCount(): Int
+    
+    @Query("SELECT COUNT(*) FROM products WHERE isSynced = 0 AND isDeletedLocally = 0")
+    suspend fun getPendingSyncProductCount(): Int
+    
+    @Query("SELECT COUNT(*) FROM products WHERE isDeletedLocally = 1")
+    suspend fun getDeletedProductCount(): Int
+    
     @Query("DELETE FROM products")
     suspend fun deleteAll()
 }

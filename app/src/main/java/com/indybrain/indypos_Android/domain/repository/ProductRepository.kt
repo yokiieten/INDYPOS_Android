@@ -109,5 +109,60 @@ interface ProductRepository {
      * If network is not available, marks as deleted locally (isDeletedLocally = true)
      */
     suspend fun deleteCategory(categoryId: String): Result<Unit>
+    
+    /**
+     * Get all products for management (including inactive, excluding deleted)
+     */
+    fun getAllProductsForManagement(): Flow<List<ProductEntity>>
+    
+    /**
+     * Search products by name and category
+     */
+    fun searchProducts(query: String, categoryId: String?): Flow<List<ProductEntity>>
+    
+    /**
+     * Get product by ID
+     */
+    suspend fun getProductById(id: String): ProductEntity?
+    
+    /**
+     * Delete a product
+     * If network is available, calls API and permanently deletes from Room
+     * If network is not available and product is not synced, permanently deletes
+     * Otherwise, marks as deleted locally (isDeletedLocally = true)
+     */
+    suspend fun deleteProduct(productId: String): Result<Unit>
+    
+    /**
+     * Delete multiple products
+     */
+    suspend fun deleteMultipleProducts(productIds: List<String>): Result<Unit>
+    
+    /**
+     * Toggle product status (activate/deactivate)
+     * If network is available, calls API and updates Room
+     * If network is not available, updates in Room only (for sync later)
+     */
+    suspend fun toggleProductStatus(productId: String, newStatus: Boolean): Result<ProductEntity>
+    
+    /**
+     * Get sync statistics
+     */
+    suspend fun getSyncStatistics(): ProductSyncStatistics
+    
+    /**
+     * Clear cart items for a product (when product is deactivated)
+     */
+    suspend fun clearCartItemsByProduct(productId: String)
 }
+
+/**
+ * Product sync statistics
+ */
+data class ProductSyncStatistics(
+    val totalProducts: Int,
+    val syncedCount: Int,
+    val pendingSyncCount: Int,
+    val deletedCount: Int
+)
 

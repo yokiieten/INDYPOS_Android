@@ -4,13 +4,18 @@ import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.dao.*
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
+import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.CreateCategoryRequestDto
+import com.indybrain.indypos_Android.data.remote.api.DeleteProductsRequestDto
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
 import com.indybrain.indypos_Android.data.remote.api.ToggleCategoryStatusRequestDto
+import com.indybrain.indypos_Android.data.remote.api.ToggleProductStatusRequestDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateCategoryRequestDto
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
+import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
+import com.indybrain.indypos_Android.domain.repository.ProductSyncStatistics
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import okhttp3.ResponseBody
@@ -27,39 +32,61 @@ class ProductRepositoryImpl @Inject constructor(
     private val addonDao: AddonDao,
     private val authRepository: AuthRepository,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val cartRepository: CartRepository,
     private val gson: Gson
 ) : ProductRepository {
     
     override suspend fun syncAllProductData(): Result<Unit> {
         return try {
-            // Fetch categories
+            // Fetch categories (to get all categories, not just those in products)
             val categoriesResponse = productsApi.getCategories()
             if (categoriesResponse.status != 200 || categoriesResponse.data == null) {
                 return Result.failure(Exception(categoriesResponse.message ?: "Failed to fetch categories"))
             }
             
-            // Fetch products
+            // Fetch products with nested category and addon groups/addons
             val productsResponse = productsApi.getMyProductsAll()
             if (productsResponse.status != 200 || productsResponse.data == null) {
                 return Result.failure(Exception(productsResponse.message ?: "Failed to fetch products"))
             }
             
-            // Fetch addon groups
-            val addonGroupsResponse = productsApi.getAddonGroups()
-            if (addonGroupsResponse.status != 200 || addonGroupsResponse.data == null) {
-                return Result.failure(Exception(addonGroupsResponse.message ?: "Failed to fetch addon groups"))
+            // Extract categories from products (in case there are categories not in categories endpoint)
+            val categoriesFromProductsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.CategoryDto>()
+            productsResponse.data.forEach { productDto ->
+                productDto.category?.let { categoryDto ->
+                    categoriesFromProductsMap[categoryDto.id] = categoryDto
+                }
             }
             
-            // Fetch addons
-            val addonsResponse = productsApi.getAddons()
-            if (addonsResponse.status != 200 || addonsResponse.data == null) {
-                return Result.failure(Exception(addonsResponse.message ?: "Failed to fetch addons"))
+            // Merge categories: use categories from categories endpoint, but also include any from products
+            val allCategoriesMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.CategoryDto>()
+            categoriesResponse.data.forEach { categoryDto ->
+                allCategoriesMap[categoryDto.id] = categoryDto
+            }
+            categoriesFromProductsMap.forEach { (id, categoryDto) ->
+                allCategoriesMap[id] = categoryDto
             }
             
             // Convert and save categories
-            val categories = categoriesResponse.data.map { ProductMapper.toEntity(it) }
+            val categories = allCategoriesMap.values.map { ProductMapper.toEntity(it) }
             categoryDao.deleteAll()
             categoryDao.insertAll(categories)
+            
+            // Extract addon groups and addons from products
+            val addonGroupsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto>()
+            val addonsMap = mutableMapOf<String, Pair<com.indybrain.indypos_Android.data.remote.dto.AddonDto, String?>>()
+            
+            productsResponse.data.forEach { productDto ->
+                productDto.addonGroups?.forEach { addonGroupDto ->
+                    // Add addon group
+                    addonGroupsMap[addonGroupDto.id] = addonGroupDto
+                    
+                    // Add addons from this group
+                    addonGroupDto.addons?.forEach { addonDto ->
+                        addonsMap[addonDto.id] = Pair(addonDto, addonGroupDto.id)
+                    }
+                }
+            }
             
             // Convert and save products
             val products = productsResponse.data.map { ProductMapper.toEntity(it) }
@@ -71,29 +98,16 @@ class ProductRepositoryImpl @Inject constructor(
             productDao.insertAll(products)
             
             // Convert and save addon groups
-            val addonGroups = addonGroupsResponse.data.map { ProductMapper.toEntity(it) }
+            val addonGroups = addonGroupsMap.values.map { ProductMapper.toEntity(it) }
             addonGroupDao.deleteAll()
             addonGroupDao.insertAll(addonGroups)
             
             // Convert and save addons
-            // First, collect addons from addon groups (with groupId)
-            val addonsFromGroupsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.local.entity.AddonEntity>()
-            addonGroupsResponse.data.forEach { groupDto ->
-                groupDto.addons?.forEach { addonDto ->
-                    addonsFromGroupsMap[addonDto.id] = ProductMapper.toEntity(addonDto, groupDto.id)
-                }
+            val addons = addonsMap.values.map { (addonDto, groupId) ->
+                ProductMapper.toEntity(addonDto, groupId)
             }
-            
-            // Then, add standalone addons from addons endpoint (only if not already in groups)
-            addonsResponse.data.forEach { addonDto ->
-                if (!addonsFromGroupsMap.containsKey(addonDto.id)) {
-                    addonsFromGroupsMap[addonDto.id] = ProductMapper.toEntity(addonDto, null)
-                }
-            }
-            
-            // Save all addons
             addonDao.deleteAll()
-            addonDao.insertAll(addonsFromGroupsMap.values.toList())
+            addonDao.insertAll(addons)
             
             Result.success(Unit)
         } catch (e: HttpException) {
@@ -122,7 +136,7 @@ class ProductRepositoryImpl @Inject constructor(
     
     override suspend fun fetchAndSaveProducts(): Result<Unit> {
         return try {
-            // Fetch products from API
+            // Fetch products from API (includes category and addon groups/addons)
             val productsResponse = productsApi.getMyProductsAll()
             if (productsResponse.status != 200 || productsResponse.data == null) {
                 return Result.failure(Exception(productsResponse.message ?: "Failed to fetch products"))
@@ -140,6 +154,36 @@ class ProductRepositoryImpl @Inject constructor(
             if (categoriesMap.isNotEmpty()) {
                 val categories = categoriesMap.values.map { ProductMapper.toEntity(it) }
                 categoryDao.insertAll(categories)
+            }
+            
+            // Extract addon groups and addons from products
+            val addonGroupsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto>()
+            val addonsMap = mutableMapOf<String, Pair<com.indybrain.indypos_Android.data.remote.dto.AddonDto, String?>>()
+            
+            productsResponse.data.forEach { productDto ->
+                productDto.addonGroups?.forEach { addonGroupDto ->
+                    // Add addon group
+                    addonGroupsMap[addonGroupDto.id] = addonGroupDto
+                    
+                    // Add addons from this group
+                    addonGroupDto.addons?.forEach { addonDto ->
+                        addonsMap[addonDto.id] = Pair(addonDto, addonGroupDto.id)
+                    }
+                }
+            }
+            
+            // Convert and save addon groups
+            if (addonGroupsMap.isNotEmpty()) {
+                val addonGroups = addonGroupsMap.values.map { ProductMapper.toEntity(it) }
+                addonGroupDao.insertAll(addonGroups)
+            }
+            
+            // Convert and save addons
+            if (addonsMap.isNotEmpty()) {
+                val addons = addonsMap.values.map { (addonDto, groupId) ->
+                    ProductMapper.toEntity(addonDto, groupId)
+                }
+                addonDao.insertAll(addons)
             }
             
             // Convert and save products
@@ -662,6 +706,178 @@ class ProductRepositoryImpl @Inject constructor(
             500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
             else -> "เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่"
         }
+    }
+    
+    override fun getAllProductsForManagement(): Flow<List<ProductEntity>> {
+        return productDao.getAllProductsForManagementFlow()
+    }
+    
+    override fun searchProducts(query: String, categoryId: String?): Flow<List<ProductEntity>> {
+        return productDao.searchProductsFlow(query, categoryId)
+    }
+    
+    override suspend fun getProductById(id: String): ProductEntity? {
+        return productDao.getProductById(id)
+    }
+    
+    override suspend fun deleteProduct(productId: String): Result<Unit> {
+        return try {
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val response = productsApi.deleteProduct(productId)
+                    
+                    if (response.status == 200) {
+                        // API success - permanently delete from Room
+                        productDao.deleteProductById(productId)
+                        Result.success(Unit)
+                    } else {
+                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                            ?: response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการลบสินค้า"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - check if product can be permanently deleted
+                val product = productDao.getProductById(productId)
+                if (product == null) {
+                    return Result.failure(Exception("ไม่พบสินค้าที่ต้องการลบ"))
+                }
+                
+                if (!product.isSynced && !product.isFromServer) {
+                    // Not synced and not from server - permanently delete
+                    productDao.deleteProductById(productId)
+                } else {
+                    // Mark as deleted locally for sync later
+                    productDao.markAsDeletedLocally(productId)
+                }
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบสินค้า"))
+        }
+    }
+    
+    override suspend fun deleteMultipleProducts(productIds: List<String>): Result<Unit> {
+        return try {
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val response = productsApi.deleteMultipleProducts(DeleteProductsRequestDto(productIds))
+                    
+                    if (response.status == 200) {
+                        // API success - permanently delete from Room
+                        productIds.forEach { productId ->
+                            productDao.deleteProductById(productId)
+                        }
+                        Result.success(Unit)
+                    } else {
+                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                            ?: response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการลบสินค้า"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - handle each product individually
+                productIds.forEach { productId ->
+                    val product = productDao.getProductById(productId)
+                    if (product != null) {
+                        if (!product.isSynced && !product.isFromServer) {
+                            productDao.deleteProductById(productId)
+                        } else {
+                            productDao.markAsDeletedLocally(productId)
+                        }
+                    }
+                }
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบสินค้า"))
+        }
+    }
+    
+    override suspend fun toggleProductStatus(productId: String, newStatus: Boolean): Result<ProductEntity> {
+        return try {
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val response = productsApi.toggleProductStatus(
+                        productId,
+                        ToggleProductStatusRequestDto(newStatus)
+                    )
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success - convert to entity and save to Room
+                        val productEntity = ProductMapper.toEntity(response.data)
+                        productDao.insertAll(listOf(productEntity))
+                        
+                        // If deactivated, clear cart items for this product
+                        if (!newStatus) {
+                            cartRepository.clearCartItemsByProduct(productId)
+                        }
+                        
+                        Result.success(productEntity)
+                    } else {
+                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                            ?: response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะสินค้า"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - update in Room only (for sync later)
+                val existingProduct = productDao.getProductById(productId)
+                if (existingProduct == null) {
+                    return Result.failure(Exception("ไม่พบสินค้าที่ต้องการอัปเดต"))
+                }
+                
+                        val updatedProduct = existingProduct.copy(
+                    isActive = newStatus,
+                    isSynced = false
+                )
+                productDao.insertAll(listOf(updatedProduct))
+                
+                // If deactivated, clear cart items for this product
+                if (!newStatus) {
+                    cartRepository.clearCartItemsByProduct(productId)
+                }
+                
+                Result.success(updatedProduct)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะสินค้า"))
+        }
+    }
+    
+    override suspend fun getSyncStatistics(): ProductSyncStatistics {
+        val totalProducts = productDao.getTotalProductCount()
+        val syncedCount = productDao.getSyncedProductCount()
+        val pendingSyncCount = productDao.getPendingSyncProductCount()
+        val deletedCount = productDao.getDeletedProductCount()
+        return ProductSyncStatistics(
+            totalProducts = totalProducts,
+            syncedCount = syncedCount,
+            pendingSyncCount = pendingSyncCount,
+            deletedCount = deletedCount
+        )
+    }
+    
+    override suspend fun clearCartItemsByProduct(productId: String) {
+        cartRepository.clearCartItemsByProduct(productId)
     }
 }
 

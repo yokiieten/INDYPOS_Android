@@ -70,6 +70,27 @@ interface ProductsApi {
      */
     @GET("protected/indypos/addons")
     suspend fun getAddons(): ApiResponseDto<List<AddonDto>>
+    
+    /**
+     * Delete product endpoint
+     */
+    @DELETE("protected/indypos/products/{id}")
+    suspend fun deleteProduct(@Path("id") id: String): ApiResponseDto<Any>
+    
+    /**
+     * Delete multiple products endpoint
+     */
+    @DELETE("protected/indypos/products/batch")
+    suspend fun deleteMultipleProducts(@Body request: DeleteProductsRequestDto): ApiResponseDto<Any>
+    
+    /**
+     * Toggle product status endpoint
+     */
+    @PATCH("protected/indypos/products/{id}/toggle-status")
+    suspend fun toggleProductStatus(
+        @Path("id") id: String,
+        @Body request: ToggleProductStatusRequestDto
+    ): ApiResponseDto<ProductDto>
 }
 
 /**
@@ -102,6 +123,20 @@ data class UpdateCategoryRequestDto(
  * Request DTO for toggling category status
  */
 data class ToggleCategoryStatusRequestDto(
+    val status: Boolean
+)
+
+/**
+ * Request DTO for deleting multiple products
+ */
+data class DeleteProductsRequestDto(
+    val ids: List<String>
+)
+
+/**
+ * Request DTO for toggling product status
+ */
+data class ToggleProductStatusRequestDto(
     val status: Boolean
 )
 

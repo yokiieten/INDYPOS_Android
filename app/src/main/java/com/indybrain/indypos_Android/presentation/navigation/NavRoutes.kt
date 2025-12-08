@@ -14,8 +14,16 @@ sealed class NavRoutes(val route: String) {
     data object ChangePassword : NavRoutes("change_password")
     data object OrderSettings : NavRoutes("order_settings")
     data object CategoryManagement : NavRoutes("category_management")
+    data object ProductManagement : NavRoutes("product_management")
+    data object AddEditProduct : NavRoutes("add_edit_product")
     
     companion object {
+        const val ADD_EDIT_PRODUCT_ROUTE = "add_edit_product/{productId}"
+        fun addEditProduct(productId: String?) = if (productId != null) {
+            "add_edit_product/$productId"
+        } else {
+            "add_edit_product/null"
+        }
         const val PRODUCT_DETAIL_ROUTE = "product_detail/{productId}"
         fun productDetail(productId: String) = "product_detail/$productId"
         

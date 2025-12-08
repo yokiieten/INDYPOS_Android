@@ -82,5 +82,9 @@ class CartRepositoryImpl @Inject constructor(
             }
         }
     }
+    
+    override suspend fun clearCartItemsByProduct(productId: String) {
+        cartDao.deleteCartItemsByProductId(productId)
+    }
 }
 

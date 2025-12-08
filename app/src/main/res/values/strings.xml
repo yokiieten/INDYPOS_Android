@@ -162,4 +162,38 @@
     <string name="category_management_save_changes">บันทึกการแก้ไข</string>
     <string name="category_management_add_success">เพิ่มหมวดหมู่เรียบร้อยแล้ว</string>
     <string name="category_management_edit_success">อัปเดตหมวดหมู่เรียบร้อยแล้ว</string>
+    
+    <!-- Product Management Screen -->
+    <string name="product_management_title">จัดการสินค้า</string>
+    <string name="product_management_edit">แก้ไข</string>
+    <string name="product_management_cancel">ยกเลิก</string>
+    <string name="product_management_search_placeholder">ค้นหาสินค้า…</string>
+    <string name="product_management_all_categories">หมวดหมู่ทั้งหมด</string>
+    <string name="product_management_add_product">เพิ่มสินค้าใหม่</string>
+    <string name="product_management_empty">ไม่มีสินค้า</string>
+    <string name="product_management_loading">กำลังโหลด...</string>
+    <string name="product_management_select_products">เลือกสินค้า</string>
+    <string name="product_management_select_all">เลือกทั้งหมด</string>
+    <string name="product_management_deselect_all">ยกเลิกการเลือกทั้งหมด</string>
+    <string name="product_management_select_items">เลือก %1$d รายการ</string>
+    <string name="product_management_delete">ลบ</string>
+    <string name="product_management_action_title">การดำเนินการสินค้า</string>
+    <string name="product_management_action_subtitle">คุณต้องการทำอะไร?</string>
+    <string name="product_management_action_activate">เปิดใช้งาน</string>
+    <string name="product_management_action_deactivate">ปิดใช้งาน</string>
+    <string name="product_management_action_edit">แก้ไขสินค้า</string>
+    <string name="product_management_action_delete">ลบสินค้า</string>
+    <string name="product_management_confirm_delete_title">ยืนยันการลบ</string>
+    <string name="product_management_confirm_delete_message">คุณแน่ใจหรือไม่ที่จะลบสินค้านี้?</string>
+    <string name="product_management_confirm_delete_warning">การกระทำนี้ไม่สามารถย้อนกลับได้</string>
+    <string name="product_management_sync">ซิงค์</string>
+    <string name="product_management_refresh">รีเฟรช</string>
+    <string name="product_management_sync_status_title">สถานะการซิงค์</string>
+    <string name="product_management_sync_total">สินค้าทั้งหมด: %1$d</string>
+    <string name="product_management_sync_synced">ซิงค์แล้ว: %1$d</string>
+    <string name="product_management_sync_pending">รอซิงค์: %1$d</string>
+    <string name="product_management_sync_deleted">ถูกลบ: %1$d</string>
+    <string name="product_management_sync_now">ซิงค์ตอนนี้</string>
+    <string name="product_management_sync_success">ซิงค์สำเร็จ</string>
+    <string name="product_management_sync_error">เกิดข้อผิดพลาดในการซิงค์</string>
 </resources>
