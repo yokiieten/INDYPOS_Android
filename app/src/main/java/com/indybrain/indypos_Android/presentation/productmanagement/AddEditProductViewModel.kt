@@ -1,9 +1,13 @@
 package com.indybrain.indypos_Android.presentation.productmanagement
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
+import com.indybrain.indypos_Android.presentation.productmanagement.ProductConstants.SELECTED_UNIT_COLOR
+import com.indybrain.indypos_Android.presentation.productmanagement.ProductConstants.SELECTED_UNIT_IMAGE
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +21,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AddEditProductViewModel @Inject constructor(
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository,
+    private val networkConnectivityChecker: NetworkConnectivityChecker
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(AddEditProductUiState())
@@ -160,7 +165,7 @@ class AddEditProductViewModel @Inject constructor(
     }
     
     /**
-     * Update image URL
+     * Update image URL (from URI string)
      */
     fun updateImageUrl(imageUrl: String?) {
         _uiState.update { 
@@ -168,7 +173,8 @@ class AddEditProductViewModel @Inject constructor(
                 imageUrl = imageUrl,
                 selectedColorHex = null,
                 isImageSelected = true,
-                errorMessage = null
+                errorMessage = null,
+                showNoInternetDialog = false
             ) 
         }
     }
@@ -182,9 +188,17 @@ class AddEditProductViewModel @Inject constructor(
                 selectedColorHex = colorHex,
                 imageUrl = null,
                 isImageSelected = false,
-                errorMessage = null
+                errorMessage = null,
+                showNoInternetDialog = false
             ) 
         }
+    }
+    
+    /**
+     * Dismiss no internet dialog
+     */
+    fun dismissNoInternetDialog() {
+        _uiState.update { it.copy(showNoInternetDialog = false) }
     }
     
     /**
@@ -363,6 +377,7 @@ class AddEditProductViewModel @Inject constructor(
             return
         }
         
+        // Check if image/color is selected
         if (state.isImageSelected && state.imageUrl == null && state.selectedColorHex == null) {
             _uiState.update { 
                 it.copy(errorMessage = "กรุณาเลือกรูปภาพหรือสี")
@@ -375,6 +390,21 @@ class AddEditProductViewModel @Inject constructor(
                 it.copy(errorMessage = "กรุณาเลือกสี")
             }
             return
+        }
+        
+        // Check network connectivity
+        val hasNetwork = networkConnectivityChecker.isConnected()
+        
+        // If no network and image is selected, show dialog
+        if (!hasNetwork && state.isImageSelected && state.imageUrl != null) {
+            // Check if imageUrl is a local URI (content:// or file://)
+            val isLocalUri = state.imageUrl.startsWith("content://") || state.imageUrl.startsWith("file://")
+            if (isLocalUri) {
+                _uiState.update { 
+                    it.copy(showNoInternetDialog = true)
+                }
+                return
+            }
         }
         
         viewModelScope.launch {
@@ -393,6 +423,39 @@ class AddEditProductViewModel @Inject constructor(
             
             // For now, only handle create mode (edit mode will be implemented later)
             if (productId == null) {
+                var finalImageUrl = state.imageUrl
+                
+                // If has network and image is selected, upload image first
+                if (hasNetwork && state.isImageSelected && state.imageUrl != null) {
+                    // Check if imageUrl is a local URI (needs upload)
+                    val isLocalUri = state.imageUrl.startsWith("content://") || state.imageUrl.startsWith("file://")
+                    if (isLocalUri) {
+                        try {
+                            val uri = android.net.Uri.parse(state.imageUrl)
+                            val uploadResult = productRepository.uploadProductImage(uri)
+                            uploadResult.onSuccess { uploadedUrl ->
+                                finalImageUrl = uploadedUrl
+                            }.onFailure { error ->
+                                _uiState.update { 
+                                    it.copy(
+                                        isLoading = false,
+                                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
+                                    )
+                                }
+                                return@launch
+                            }
+                        } catch (e: Exception) {
+                            _uiState.update { 
+                                it.copy(
+                                    isLoading = false,
+                                    errorMessage = "ไม่สามารถอัปโหลดรูปภาพได้: ${e.message}"
+                                )
+                            }
+                            return@launch
+                        }
+                    }
+                }
+                
                 // Create new product
                 val costPrice = try {
                     state.costPrice.trim().toDoubleOrNull()
@@ -422,7 +485,7 @@ class AddEditProductViewModel @Inject constructor(
                     price = sellingPrice,
                     costPrice = costPrice,
                     unit = state.unit.trim(),
-                    imageUrl = if (state.isImageSelected) state.imageUrl else null,
+                    imageUrl = if (state.isImageSelected) finalImageUrl else null,
                     selectedColorHex = if (!state.isImageSelected) state.selectedColorHex else null,
                     categoryId = state.categoryId,
                     skuCode = if (state.isSkuEnabled) state.skuCode.trim().takeIf { it.isNotBlank() } else null,

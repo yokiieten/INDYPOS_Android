@@ -1,5 +1,7 @@
 package com.indybrain.indypos_Android.data.repository
 
+import android.content.Context
+import android.net.Uri
 import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.dao.*
@@ -17,10 +19,17 @@ import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.repository.ProductSyncStatistics
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
 import retrofit2.HttpException
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
@@ -34,7 +43,8 @@ class ProductRepositoryImpl @Inject constructor(
     private val authRepository: AuthRepository,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val cartRepository: CartRepository,
-    private val gson: Gson
+    private val gson: Gson,
+    @ApplicationContext private val context: Context
 ) : ProductRepository {
     
     override suspend fun syncAllProductData(): Result<Unit> {
@@ -651,14 +661,15 @@ class ProductRepositoryImpl @Inject constructor(
                             ?: "ไม่พบหมวดหมู่ที่ต้องการแก้ไข"
                     }
                     409 -> {
-                        // Conflict - Duplicate category name
-                        if (errorText.contains("duplicate category name") || 
-                            messageText.contains("duplicate category name")) {
-                            "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
-                        } else {
-                            errorResponse.message?.takeIf { it.isNotBlank() }
-                                ?: errorResponse.error?.takeIf { it.isNotBlank() }
-                                ?: "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
+                        // Conflict - Duplicate name or code
+                        // Show both error and message if available
+                        val errorTextValue = errorResponse.error?.takeIf { it.isNotBlank() }
+                        val messageTextValue = errorResponse.message?.takeIf { it.isNotBlank() }
+                        when {
+                            errorTextValue != null && messageTextValue != null -> "$errorTextValue ($messageTextValue)"
+                            errorTextValue != null -> errorTextValue
+                            messageTextValue != null -> messageTextValue
+                            else -> "ข้อมูลซ้ำกัน กรุณาตรวจสอบอีกครั้ง"
                         }
                     }
                     500 -> {
@@ -862,6 +873,65 @@ class ProductRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะสินค้า"))
+        }
+    }
+    
+    override suspend fun uploadProductImage(imageUri: Uri): Result<String> {
+        return try {
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
+            }
+            
+            // Read file from URI
+            val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
+            if (inputStream == null) {
+                return Result.failure(Exception("ไม่สามารถอ่านไฟล์รูปภาพได้"))
+            }
+            
+            // Create temporary file
+            val tempFile = File(context.cacheDir, "upload_${System.currentTimeMillis()}.jpg")
+            val outputStream = FileOutputStream(tempFile)
+            
+            try {
+                inputStream.copyTo(outputStream)
+            } finally {
+                inputStream.close()
+                outputStream.close()
+            }
+            
+            // Get file extension and MIME type
+            val mimeType = context.contentResolver.getType(imageUri) ?: "image/jpeg"
+            val mediaType = mimeType.toMediaTypeOrNull() ?: "image/jpeg".toMediaTypeOrNull()
+            
+            // Create request body
+            val requestFile = tempFile.asRequestBody(mediaType)
+            val body = MultipartBody.Part.createFormData("image", tempFile.name, requestFile)
+            
+            // Upload image
+            val response = productsApi.uploadProductImage(body)
+            
+            // Clean up temp file
+            tempFile.delete()
+            
+            Result.success(response.url)
+        } catch (e: HttpException) {
+            val errorBody = e.response()?.errorBody()
+            val errorMessage = when (e.code()) {
+                400 -> {
+                    // Bad Request - parse error message
+                    try {
+                        errorBody?.string() ?: "ไม่สามารถอัปโหลดรูปภาพได้"
+                    } catch (ex: Exception) {
+                        "ไม่สามารถอัปโหลดรูปภาพได้"
+                    }
+                }
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"))
         }
     }
     

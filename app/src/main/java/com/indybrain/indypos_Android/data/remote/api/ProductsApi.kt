@@ -9,8 +9,8 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
-import retrofit2.http.PUT
 import retrofit2.http.Part
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -100,6 +100,13 @@ interface ProductsApi {
      */
     @POST("protected/indypos/products")
     suspend fun createProduct(@Body request: CreateProductRequestDto): ApiResponseDto<CreateProductResponseDto>
+    
+    /**
+     * Upload product image endpoint
+     */
+    @Multipart
+    @POST("protected/upload/product-image")
+    suspend fun uploadProductImage(@Part image: MultipartBody.Part): UploadImageResponseDto
 }
 
 /**

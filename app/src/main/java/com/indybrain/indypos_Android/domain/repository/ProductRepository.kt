@@ -146,6 +146,13 @@ interface ProductRepository {
     suspend fun toggleProductStatus(productId: String, newStatus: Boolean): Result<ProductEntity>
     
     /**
+     * Upload product image
+     * @param imageUri URI of the image file to upload
+     * @return Result containing the image URL from server
+     */
+    suspend fun uploadProductImage(imageUri: android.net.Uri): Result<String>
+    
+    /**
      * Create a new product
      * If network is available, calls API and saves to Room
      * If network is not available, saves to Room only (isFromServer = false, isSynced = false)

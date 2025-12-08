@@ -131,11 +131,13 @@ fun AddEditProductScreen(
         }
     }
     
-    // Handle success dialog
+    // Handle success - navigate back immediately
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
-            onSaveSuccess()
+            // Wait a bit to show success message, then navigate back
+            kotlinx.coroutines.delay(1500)
             viewModel.dismissSuccessDialog()
+            onSaveSuccess()
         }
     }
     
@@ -185,9 +187,9 @@ fun AddEditProductScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp)
                 ) {
@@ -580,10 +582,18 @@ fun AddEditProductScreen(
             }
         }
         
-        // Success Dialog
+        // Success Dialog - auto dismiss and navigate back
         if (uiState.isSuccess) {
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(1500) // Show success message for 1.5 seconds
+                viewModel.dismissSuccessDialog()
+                onSaveSuccess()
+            }
             AlertDialog(
-                onDismissRequest = { viewModel.dismissSuccessDialog() },
+                onDismissRequest = { 
+                    viewModel.dismissSuccessDialog()
+                    onSaveSuccess()
+                },
                 title = {
                     Text(
                         text = "สำเร็จ",
@@ -702,6 +712,47 @@ fun AddEditProductScreen(
             )
         }
         
+        // No Internet Dialog (when trying to save with image but no network)
+        if (uiState.showNoInternetDialog) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissNoInternetDialog() },
+                title = {
+                    Text(
+                        text = "ไม่สามารถบันทึกได้",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = "กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่ออัปโหลดรูปภาพ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { viewModel.dismissNoInternetDialog() }
+                    ) {
+                        Text(
+                            text = "ตกลง",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                }
+            )
+        }
+        
         // Image Picker Dialog
         if (showImagePickerDialog) {
             ImagePickerDialog(
@@ -750,14 +801,14 @@ private fun ImagePickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
+                Text(
                 text = "เลือกรูปภาพ",
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Large
-                ),
-                color = PrimaryText
-            )
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText
+                )
         },
         text = {
             Column {

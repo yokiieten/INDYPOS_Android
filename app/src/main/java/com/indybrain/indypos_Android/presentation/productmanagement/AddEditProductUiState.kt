@@ -27,6 +27,8 @@ data class AddEditProductUiState(
     val categoryName: String = "",
     val isCreatingCategory: Boolean = false,
     val categoryError: String? = null,
-    val categorySuccess: String? = null
+    val categorySuccess: String? = null,
+    // Network error dialog
+    val showNoInternetDialog: Boolean = false
 )
 
