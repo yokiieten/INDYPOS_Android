@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -103,200 +106,307 @@ fun CashPaymentScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 20.dp)
-        ) {
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Total amount section
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+        
+        if (isLandscape) {
+            // Landscape layout
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "ราคาที่ต้องจ่าย",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Medium,
-                        size = FontSize.Medium
-                    ),
-                    color = PrimaryText
-                )
-                
-                Text(
-                    text = formatNumberWithCommas(totalAmount),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Largest
-                    ),
-                    color = PrimaryText
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Received amount input field
-            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
-                    .background(Color.White)
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Row(
+                // Left side: Amount info and input
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp),
+                        .weight(0.45f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Total amount section
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "ราคาที่ต้องจ่าย",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                        
+                        Text(
+                            text = formatNumberWithCommas(totalAmount),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Largest
+                            ),
+                            color = PrimaryText
+                        )
+                    }
+                    
+                    // Received amount input field
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                            .background(Color.White)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (uiState.enteredAmount.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { viewModel.onClearClick() },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "ลบ",
+                                        tint = Color(0xFFFF9800),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.size(24.dp))
+                            }
+                            
+                            Text(
+                                text = if (uiState.enteredAmount.isEmpty()) {
+                                    "กรุณากรอกตัวเลข"
+                                } else {
+                                    formatDisplayAmount(uiState.enteredAmount)
+                                },
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Bold,
+                                    size = FontSize.Largest
+                                ),
+                                color = if (uiState.enteredAmount.isEmpty()) PlaceholderText else PrimaryText,
+                                textAlign = TextAlign.Right,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.weight(1f, fill = true))
+                    
+                    // Confirm button
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .clip(RoundedCornerShape(25.dp))
+                            .clickable(
+                                enabled = !uiState.isProcessingOrder && uiState.receivedAmount >= totalAmount - 0.01,
+                                onClick = {
+                                    viewModel.onConfirmClick(
+                                        onSuccess = { change ->
+                                            onPaymentComplete(change)
+                                        },
+                                        onError = { error ->
+                                            showErrorDialog = error
+                                        }
+                                    )
+                                }
+                            ),
+                        color = if (uiState.isProcessingOrder || uiState.receivedAmount < totalAmount - 0.01) {
+                            Color(0xFFE0E0E0)
+                        } else {
+                            PrimaryButton
+                        }
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "ตกลง",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.SemiBold,
+                                    size = FontSize.Medium
+                                ),
+                                color = if (uiState.isProcessingOrder || uiState.receivedAmount < totalAmount - 0.01) {
+                                    SecondaryText
+                                } else {
+                                    Color.White
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Right side: Keypad
+                Column(
+                    modifier = Modifier
+                        .weight(0.55f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Keypad(
+                        onButtonClick = { button ->
+                            viewModel.onKeypadButtonClick(button)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        } else {
+            // Portrait layout
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 20.dp)
+            ) {
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Total amount section
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Clear button
-                    if (uiState.enteredAmount.isNotEmpty()) {
-                        IconButton(
-                            onClick = { viewModel.onClearClick() },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "ลบ",
-                                tint = Color(0xFFFF9800),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.size(24.dp))
-                    }
-                    
-                    // Amount text
                     Text(
-                        text = if (uiState.enteredAmount.isEmpty()) {
-                            "กรุณากรอกตัวเลข"
-                        } else {
-                            formatDisplayAmount(uiState.enteredAmount)
-                        },
+                        text = "ราคาที่ต้องจ่าย",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                    
+                    Text(
+                        text = formatNumberWithCommas(totalAmount),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Largest
                         ),
-                        color = if (uiState.enteredAmount.isEmpty()) PlaceholderText else PrimaryText,
-                        textAlign = TextAlign.Right,
-                        modifier = Modifier.weight(1f)
+                        color = PrimaryText
                     )
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(30.dp))
-            
-            // Keypad
-            Keypad(
-                onButtonClick = { button ->
-                    viewModel.onKeypadButtonClick(button)
-                },
-                modifier = Modifier.weight(1f)
-            )
-            
-            Spacer(modifier = Modifier.height(30.dp))
-            
-            // Confirm button
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .clip(RoundedCornerShape(25.dp))
-                    .clickable(
-                        enabled = !uiState.isProcessingOrder && uiState.receivedAmount >= totalAmount - 0.01,
-                        onClick = {
-                            viewModel.onConfirmClick(
-                                onSuccess = { change ->
-                                    onPaymentComplete(change)
-                                },
-                                onError = { error ->
-                                    showErrorDialog = error
-                                }
-                            )
-                        }
-                    ),
-                color = if (uiState.isProcessingOrder || uiState.receivedAmount < totalAmount - 0.01) {
-                    Color(0xFFE0E0E0)
-                } else {
-                    PrimaryButton
-                }
-            ) {
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Received amount input field
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                        .background(Color.White)
                 ) {
-                    Text(
-                        text = "ตกลง",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.SemiBold,
-                            size = FontSize.Medium
-                        ),
-                        color = if (uiState.isProcessingOrder || uiState.receivedAmount < totalAmount - 0.01) {
-                            SecondaryText
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (uiState.enteredAmount.isNotEmpty()) {
+                            IconButton(
+                                onClick = { viewModel.onClearClick() },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = "ลบ",
+                                    tint = Color(0xFFFF9800),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         } else {
-                            Color.White
+                            Spacer(modifier = Modifier.size(24.dp))
                         }
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-    }
-    
-    // Change alert dialog
-    if (uiState.showChangeAlert) {
-        AlertDialog(
-            onDismissRequest = { viewModel.onDismissChangeAlert() },
-            title = {
-                Text(
-                    text = "เงินทอน",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Medium
-                    ),
-                    color = PrimaryText
-                )
-            },
-            text = {
-                Text(
-                    text = "เงินทอน: ${formatNumberWithCommas(uiState.changeAmount)}",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Medium
-                    ),
-                    color = PrimaryText
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.onConfirmChangeAlert(
-                            onSuccess = { change ->
-                                onPaymentComplete(change)
+                        
+                        Text(
+                            text = if (uiState.enteredAmount.isEmpty()) {
+                                "กรุณากรอกตัวเลข"
+                            } else {
+                                formatDisplayAmount(uiState.enteredAmount)
                             },
-                            onError = { error ->
-                                showErrorDialog = error
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Largest
+                            ),
+                            color = if (uiState.enteredAmount.isEmpty()) PlaceholderText else PrimaryText,
+                            textAlign = TextAlign.Right,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(30.dp))
+                
+                // Keypad
+                Keypad(
+                    onButtonClick = { button ->
+                        viewModel.onKeypadButtonClick(button)
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                
+                Spacer(modifier = Modifier.height(30.dp))
+                
+                // Confirm button
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .clip(RoundedCornerShape(25.dp))
+                        .clickable(
+                            enabled = !uiState.isProcessingOrder && uiState.receivedAmount >= totalAmount - 0.01,
+                            onClick = {
+                                viewModel.onConfirmClick(
+                                    onSuccess = { change ->
+                                        onPaymentComplete(change)
+                                    },
+                                    onError = { error ->
+                                        showErrorDialog = error
+                                    }
+                                )
+                            }
+                        ),
+                    color = if (uiState.isProcessingOrder || uiState.receivedAmount < totalAmount - 0.01) {
+                        Color(0xFFE0E0E0)
+                    } else {
+                        PrimaryButton
+                    }
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "ตกลง",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.SemiBold,
+                                size = FontSize.Medium
+                            ),
+                            color = if (uiState.isProcessingOrder || uiState.receivedAmount < totalAmount - 0.01) {
+                                SecondaryText
+                            } else {
+                                Color.White
                             }
                         )
                     }
-                ) {
-                    Text(
-                        text = "ตกลง",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Bold,
-                            size = FontSize.Medium
-                        ),
-                        color = PrimaryButton
-                    )
                 }
+                
+                Spacer(modifier = Modifier.height(20.dp))
             }
-        )
+        }
     }
     
     // Error dialog
@@ -344,9 +454,17 @@ private fun Keypad(
     onButtonClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = if (isLandscape) {
+            Arrangement.spacedBy(8.dp)
+        } else {
+            Arrangement.spacedBy(16.dp)
+        },
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Row 1: 7, 8, 9, 1000
         KeypadRow(
@@ -399,9 +517,12 @@ private fun KeypadRow(
     buttons: List<KeypadButton>,
     onButtonClick: (String) -> Unit
 ) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (isLandscape) 8.dp else 16.dp)
     ) {
         buttons.forEach { button ->
             when (button.type) {
@@ -439,9 +560,19 @@ private fun KeypadButton(
         else -> title
     }
     
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    
     Surface(
         modifier = modifier
-            .height(72.dp)
+            .then(
+                if (isLandscape) {
+                    // In landscape, use smaller height
+                    Modifier.height(56.dp)
+                } else {
+                    Modifier.height(72.dp)
+                }
+            )
             .clip(RoundedCornerShape(25.dp))
             .clickable(onClick = onClick),
         color = SecondaryButton,

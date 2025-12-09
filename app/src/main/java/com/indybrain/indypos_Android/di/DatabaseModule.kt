@@ -78,5 +78,10 @@ object DatabaseModule {
     fun provideCartDao(database: IndyPosDatabase): CartDao {
         return database.cartDao()
     }
+    
+    @Provides
+    fun provideReceiptSettingsDao(database: IndyPosDatabase): ReceiptSettingsDao {
+        return database.receiptSettingsDao()
+    }
 }
 

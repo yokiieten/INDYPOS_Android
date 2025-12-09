@@ -9,10 +9,20 @@ import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.dto.CreateOrderRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.CreateOrderResponseDto
 import com.indybrain.indypos_Android.domain.model.PaymentType
+import com.google.gson.Gson
+import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
+import com.indybrain.indypos_Android.data.local.dao.OrderDao
+import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
+import com.indybrain.indypos_Android.data.local.entity.OrderAddonEntity
+import com.indybrain.indypos_Android.data.local.entity.OrderEntity
+import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
+import com.indybrain.indypos_Android.domain.model.OrderStatus
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.Date
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +37,10 @@ class CashPaymentViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val ordersApi: OrdersApi,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
-    private val productDao: ProductDao
+    private val productDao: ProductDao,
+    private val orderDao: OrderDao,
+    private val orderItemDao: OrderItemDao,
+    private val orderAddonDao: OrderAddonDao
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(CashPaymentUiState())
@@ -120,31 +133,8 @@ class CashPaymentViewModel @Inject constructor(
             return
         }
         
-        // Calculate change
-        val change = currentState.receivedAmount - totalAmount
-        
-        // If there's change, show alert first
-        if (change > tolerance) {
-            _uiState.update { 
-                it.copy(
-                    showChangeAlert = true,
-                    changeAmount = change
-                )
-            }
-            return
-        }
-        
-        // No change, proceed with payment
+        // Proceed with payment directly (no change alert)
         completePayment(onSuccess, onError)
-    }
-    
-    fun onConfirmChangeAlert(onSuccess: (Double) -> Unit, onError: (String) -> Unit) {
-        _uiState.update { it.copy(showChangeAlert = false) }
-        completePayment(onSuccess, onError)
-    }
-    
-    fun onDismissChangeAlert() {
-        _uiState.update { it.copy(showChangeAlert = false) }
     }
     
     private fun completePayment(onSuccess: (Double) -> Unit, onError: (String) -> Unit) {
@@ -186,7 +176,16 @@ class CashPaymentViewModel @Inject constructor(
                 // Check network connectivity
                 if (!networkConnectivityChecker.isConnected()) {
                     // Offline: Save locally only
-                    saveOrderLocally(onSuccess, onError)
+                    val orderId = saveOrderToRoom(cartItems)
+                    if (orderId != null) {
+                        cartRepository.clearCart()
+                        val change = _uiState.value.receivedAmount - totalAmount
+                        _uiState.update { it.copy(isProcessingOrder = false) }
+                        onSuccess(change)
+                    } else {
+                        _uiState.update { it.copy(isProcessingOrder = false) }
+                        onError("ไม่สามารถบันทึกออเดอร์ได้")
+                    }
                 } else {
                     // Online: Try API first
                     try {
@@ -213,26 +212,37 @@ class CashPaymentViewModel @Inject constructor(
                                 else -> errorMessage
                             }
                             
+                            // API error: Don't save to Room, just show error
                             _uiState.update { it.copy(isProcessingOrder = false) }
                             onError(displayMessage)
                             return@launch
                         }
                         
-                        // Success: Save locally and update with API response
-                        val orderNumber = saveOrderLocally(onSuccess, onError)
+                        // API Success: Save locally with API response data
+                        val orderId = if (response.data != null) {
+                            saveOrderToRoom(cartItems, response.data.orderNumber, response.data.id)
+                        } else {
+                            saveOrderToRoom(cartItems)
+                        }
                         
-                        // Update with server order number if available
-                        if (response.data != null && response.data.orderNumber != null) {
-                            // Update local order with server order number
-                            // This would require updating the order repository
+                        if (orderId != null) {
+                            cartRepository.clearCart()
+                            val change = _uiState.value.receivedAmount - totalAmount
+                            _uiState.update { it.copy(isProcessingOrder = false) }
+                            onSuccess(change)
+                        } else {
+                            _uiState.update { it.copy(isProcessingOrder = false) }
+                            onError("ไม่สามารถบันทึกออเดอร์ได้")
                         }
                         
                     } catch (e: HttpException) {
-                        // API error, fallback to local save
-                        saveOrderLocally(onSuccess, onError)
+                        // API error: Don't save to Room, show error
+                        _uiState.update { it.copy(isProcessingOrder = false) }
+                        onError("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}")
                     } catch (e: Exception) {
-                        // Network error, fallback to local save
-                        saveOrderLocally(onSuccess, onError)
+                        // Network error: Don't save to Room, show error
+                        _uiState.update { it.copy(isProcessingOrder = false) }
+                        onError("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}")
                     }
                 }
                 
@@ -243,27 +253,110 @@ class CashPaymentViewModel @Inject constructor(
         }
     }
     
-    private suspend fun saveOrderLocally(onSuccess: (Double) -> Unit, onError: (String) -> Unit): String {
+    private suspend fun saveOrderToRoom(
+        cartItems: List<CartItemEntity>,
+        serverOrderNumber: String? = null,
+        serverOrderId: String? = null
+    ): String? {
         return try {
-            // Generate order number
-            val orderNumber = generateOrderNumber()
+            val now = Date()
+            val orderId = serverOrderId ?: UUID.randomUUID().toString()
+            val orderNumber = serverOrderNumber ?: generateOrderNumber()
             
-            // Save order to local database
-            // This would require implementing saveOrderLocalOnly in OrderRepository
-            // For now, we'll just clear the cart and return success
+            // Create order entity
+            val orderEntity = OrderEntity(
+                id = orderId,
+                orderNumber = orderNumber,
+                orderDate = now,
+                subtotal = subtotal,
+                discount = discount,
+                total = totalAmount,
+                paymentTypeRaw = PaymentType.CASH.code,
+                statusRaw = OrderStatus.CONFIRMED.code,
+                isDeletedLocally = false,
+                isFromServer = serverOrderId != null,
+                isSynced = serverOrderId != null,
+                updatedAt = now,
+                discountAmount = discount,
+                discountPercentage = if (subtotal > 0.000001) (discount / subtotal) * 100.0 else 0.0,
+                createdAt = now
+            )
             
-            // Clear cart
-            cartRepository.clearCart()
+            // Save order
+            orderDao.insertOrder(orderEntity)
             
-            val change = _uiState.value.receivedAmount - totalAmount
-            _uiState.update { it.copy(isProcessingOrder = false) }
+            // Create order items and addons
+            val orderItems = mutableListOf<OrderItemEntity>()
+            val orderAddons = mutableListOf<OrderAddonEntity>()
             
-            onSuccess(change)
-            orderNumber
+            cartItems.forEach { cartItem ->
+                val addons = _cartAddonsMap.value[cartItem.id] ?: emptyList()
+                val product = if (cartItem.productId != null) {
+                    productDao.getProductById(cartItem.productId)
+                } else {
+                    null
+                }
+                
+                val itemTotalPrice = (cartItem.unitPrice ?: 0.0) * cartItem.quantity +
+                    addons.sumOf { it.addonPrice } * cartItem.quantity
+                
+                // Convert addons to JSON
+                val addonsJson = if (addons.isNotEmpty()) {
+                    Gson().toJson(addons.map { 
+                        mapOf(
+                            "addonId" to it.addonId,
+                            "addonName" to it.addonName,
+                            "addonPrice" to it.addonPrice,
+                            "addonGroupId" to it.addonGroupId
+                        )
+                    })
+                } else {
+                    null
+                }
+                
+                val orderItemId = UUID.randomUUID().toString()
+                val orderItem = OrderItemEntity(
+                    id = orderItemId,
+                    orderId = orderId,
+                    productName = cartItem.productName ?: "",
+                    productPrice = cartItem.unitPrice ?: 0.0,
+                    productUnitPrice = cartItem.unitPrice ?: 0.0,
+                    quantity = cartItem.quantity,
+                    totalPrice = itemTotalPrice,
+                    addons = addonsJson,
+                    specialRequest = cartItem.specialRequest,
+                    productId = cartItem.productId,
+                    unitCost = product?.costPrice ?: 0.0,
+                    createdAt = now
+                )
+                orderItems.add(orderItem)
+                
+                // Create order addons
+                addons.forEach { addon ->
+                    orderAddons.add(
+                        OrderAddonEntity(
+                            orderItemId = orderItemId,
+                            addonId = addon.addonId,
+                            addonName = addon.addonName,
+                            addonPrice = addon.addonPrice,
+                            quantity = 1
+                        )
+                    )
+                }
+            }
+            
+            // Save order items and addons
+            if (orderItems.isNotEmpty()) {
+                orderItemDao.insertOrderItems(orderItems)
+            }
+            if (orderAddons.isNotEmpty()) {
+                orderAddonDao.insertOrderAddons(orderAddons)
+            }
+            
+            orderId
         } catch (e: Exception) {
-            _uiState.update { it.copy(isProcessingOrder = false) }
-            onError(e.message ?: "ไม่สามารถบันทึกออเดอร์ได้")
-            ""
+            e.printStackTrace()
+            null
         }
     }
     
@@ -306,7 +399,9 @@ class CashPaymentViewModel @Inject constructor(
     
     private fun generateOrderNumber(): String {
         val timestamp = System.currentTimeMillis()
-        return "ORD$timestamp"
+        val dateFormat = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.getDefault())
+        val dateStr = dateFormat.format(Date())
+        return "ORD$dateStr${timestamp.toString().takeLast(6)}"
     }
     
     private fun formatNumberWithCommas(number: Double): String {

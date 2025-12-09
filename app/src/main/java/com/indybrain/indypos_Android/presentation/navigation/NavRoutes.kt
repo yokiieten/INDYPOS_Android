@@ -25,6 +25,7 @@ sealed class NavRoutes(val route: String) {
     data object SearchProduct : NavRoutes("search_product")
     data object Discount : NavRoutes("discount")
     data object CashPayment : NavRoutes("cash_payment")
+    data object OrderSummary : NavRoutes("order_summary")
     
     companion object {
         const val ADD_EDIT_PRODUCT_ROUTE = "add_edit_product/{productId}"
@@ -67,6 +68,9 @@ sealed class NavRoutes(val route: String) {
         const val CASH_PAYMENT_ROUTE = "cash_payment/{totalAmount}/{subtotal}/{discount}"
         fun cashPayment(totalAmount: Double, subtotal: Double, discount: Double) = 
             "cash_payment/$totalAmount/$subtotal/$discount"
+        
+        const val ORDER_SUMMARY_ROUTE = "order_summary/{totalAmount}"
+        fun orderSummary(totalAmount: Double) = "order_summary/$totalAmount"
     }
 }
 

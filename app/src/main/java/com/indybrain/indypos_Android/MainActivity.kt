@@ -290,10 +290,31 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onPaymentComplete = { change ->
-                                    // Navigate to order screen or home
-                                    navController.navigate(NavRoutes.Home.route) {
+                                    // Navigate to order summary screen
+                                    navController.navigate(NavRoutes.orderSummary(change)) {
                                         popUpTo(NavRoutes.OrderProduct.route) {
                                             inclusive = true
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.ORDER_SUMMARY_ROUTE,
+                            arguments = listOf(navArgument("totalAmount") {})
+                        ) { backStackEntry ->
+                            val totalAmountString = backStackEntry.arguments?.getString("totalAmount") ?: "0.0"
+                            val totalAmount = totalAmountString.toDoubleOrNull() ?: 0.0
+                            
+                            com.indybrain.indypos_Android.presentation.ordersummary.OrderSummaryScreen(
+                                totalAmount = totalAmount,
+                                onAddOrderClick = {
+                                    // Navigate back to MainProduct
+                                    navController.navigate(NavRoutes.MainProduct.route) {
+                                        // Pop all back stack until we reach MainProduct or Home
+                                        popUpTo(NavRoutes.Home.route) {
+                                            inclusive = false
                                         }
                                     }
                                 }
