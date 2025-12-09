@@ -3,6 +3,7 @@ package com.indybrain.indypos_Android.presentation.products
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -138,6 +139,13 @@ class MainProductViewModel @Inject constructor(
      */
     fun updateFocusedCategory(categoryId: String?) {
         _uiState.update { it.copy(focusedCategoryId = categoryId) }
+    }
+    
+    /**
+     * Find product by barcode (productCode or skuCode)
+     */
+    suspend fun findProductByCode(code: String): ProductEntity? {
+        return productRepository.getProductByCode(code)
     }
 }
 

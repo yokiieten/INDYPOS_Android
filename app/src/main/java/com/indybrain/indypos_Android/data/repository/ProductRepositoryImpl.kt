@@ -730,6 +730,10 @@ class ProductRepositoryImpl @Inject constructor(
         return productDao.getProductById(id)
     }
     
+    override suspend fun getProductByCode(code: String): ProductEntity? {
+        return productDao.getProductByCode(code)
+    }
+    
     override suspend fun deleteProduct(productId: String): Result<Unit> {
         return try {
             if (networkConnectivityChecker.isConnected()) {

@@ -126,6 +126,11 @@ interface ProductRepository {
     suspend fun getProductById(id: String): ProductEntity?
     
     /**
+     * Get product by barcode (productCode or skuCode)
+     */
+    suspend fun getProductByCode(code: String): ProductEntity?
+    
+    /**
      * Delete a product
      * If network is available, calls API and permanently deletes from Room
      * If network is not available and product is not synced, permanently deletes

@@ -8,6 +8,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -67,6 +71,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
+                    var scannedBarcode by remember { mutableStateOf<String?>(null) }
                     
                     NavHost(
                         navController = navController,
@@ -148,6 +153,24 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onCartClick = {
                                     navController.navigate(NavRoutes.OrderProduct.route)
+                                },
+                                onBarcodeScannerClick = {
+                                    scannedBarcode = null // Clear previous barcode
+                                    navController.navigate(NavRoutes.BarcodeScanner.route)
+                                },
+                                scannedBarcode = scannedBarcode
+                            )
+                        }
+                        
+                        composable(NavRoutes.BarcodeScanner.route) {
+                            com.indybrain.indypos_Android.presentation.barcodescanner.BarcodeScannerScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onBarcodeScanned = { barcode ->
+                                    // Set scanned barcode and navigate back to MainProduct
+                                    scannedBarcode = barcode
+                                    navController.popBackStack()
                                 }
                             )
                         }

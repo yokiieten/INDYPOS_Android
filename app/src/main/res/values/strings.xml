@@ -125,6 +125,18 @@
     <string name="product_empty">ไม่มีสินค้า</string>
     <string name="product_view_cart">ดูสินค้า (%1$d)</string>
     <string name="product_cart">ตะกร้า</string>
+    <string name="product_barcode_scanner">สแกนบาร์โค้ด</string>
+    
+    <!-- Barcode Scanner Screen -->
+    <string name="barcode_scanner_title">สแกนบาร์โค้ด</string>
+    <string name="barcode_scanner_instruction">วางบาร์โค้ดภายในกรอบเพื่อสแกน</string>
+    <string name="barcode_scanner_permission_title">ต้องการสิทธิ์กล้อง</string>
+    <string name="barcode_scanner_permission_message">แอปต้องการใช้กล้องเพื่อสแกนบาร์โค้ด กรุณาอนุญาตสิทธิ์กล้องในตั้งค่า</string>
+    <string name="barcode_scanner_permission_settings">ไปที่ตั้งค่า</string>
+    <string name="barcode_scanner_camera_error">ไม่สามารถเข้าถึงกล้องได้</string>
+    <string name="barcode_scanner_camera_error_message">เกิดข้อผิดพลาดในการเปิดกล้อง กรุณาลองใหม่อีกครั้ง</string>
+    <string name="barcode_scanner_product_not_found_title">ไม่พบสินค้า</string>
+    <string name="barcode_scanner_product_not_found_message">ไม่พบสินค้าที่ตรงกับบาร์โค้ดที่สแกน</string>
     
     <!-- Order Settings Screen -->
     <string name="order_settings_title">ตั้งค่าการสั่งซื้อ</string>

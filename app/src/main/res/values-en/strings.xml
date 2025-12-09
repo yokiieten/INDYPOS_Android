@@ -119,6 +119,18 @@
     <string name="product_empty">No products</string>
     <string name="product_view_cart">View Cart (%1$d)</string>
     <string name="product_cart">Cart</string>
+    <string name="product_barcode_scanner">Scan Barcode</string>
+    
+    <!-- Barcode Scanner Screen -->
+    <string name="barcode_scanner_title">Barcode Scanner</string>
+    <string name="barcode_scanner_instruction">Place barcode within the frame to scan</string>
+    <string name="barcode_scanner_permission_title">Camera Permission Required</string>
+    <string name="barcode_scanner_permission_message">The app needs camera access to scan barcodes. Please grant camera permission in settings.</string>
+    <string name="barcode_scanner_permission_settings">Go to Settings</string>
+    <string name="barcode_scanner_camera_error">Cannot Access Camera</string>
+    <string name="barcode_scanner_camera_error_message">An error occurred while opening the camera. Please try again.</string>
+    <string name="barcode_scanner_product_not_found_title">Product Not Found</string>
+    <string name="barcode_scanner_product_not_found_message">No product found matching the scanned barcode</string>
     
     <!-- Order Settings Screen -->
     <string name="order_settings_title">Order Settings</string>

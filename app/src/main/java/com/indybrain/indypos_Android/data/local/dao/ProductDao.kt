@@ -42,6 +42,9 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE id = :id")
     suspend fun getProductById(id: String): ProductEntity?
     
+    @Query("SELECT * FROM products WHERE (productCode = :code OR skuCode = :code) AND isActive = 1 LIMIT 1")
+    suspend fun getProductByCode(code: String): ProductEntity?
+    
     @Query("DELETE FROM products WHERE id = :id")
     suspend fun deleteProductById(id: String)
     

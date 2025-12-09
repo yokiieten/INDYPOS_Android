@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.GridView
@@ -43,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -53,6 +55,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -87,10 +91,37 @@ fun MainProductScreen(
     onBackClick: () -> Unit = {},
     onProductClick: (productId: String, productName: String, isInCart: Boolean) -> Unit = { _, _, _ -> },
     onCartClick: () -> Unit = {},
+    onBarcodeScannerClick: () -> Unit = {},
+    scannedBarcode: String? = null,
     viewModel: MainProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle(initialValue = emptyList())
+    
+    // Handle scanned barcode
+    var showProductNotFoundDialog by remember { mutableStateOf(false) }
+    var processedBarcode by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(scannedBarcode) {
+        scannedBarcode?.let { barcode ->
+            // Only process if not already processed
+            if (barcode != processedBarcode) {
+                processedBarcode = barcode
+                val product: ProductEntity? = viewModel.findProductByCode(barcode)
+                product?.let { foundProduct ->
+                    // Product found - navigate to detail
+                    val currentCartItems = cartItems
+                    val cartQuantity = currentCartItems
+                        .filter { it.productId == foundProduct.id }
+                        .sumOf { it.quantity }
+                    onProductClick(foundProduct.id, foundProduct.name, cartQuantity > 0)
+                } ?: run {
+                    // Product not found - show dialog
+                    showProductNotFoundDialog = true
+                }
+            }
+        }
+    }
     
     // Save scroll position
     var savedScrollIndex by rememberSaveable { mutableStateOf(0) }
@@ -220,6 +251,13 @@ fun MainProductScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onBarcodeScannerClick) {
+                        Icon(
+                            imageVector = Icons.Filled.QrCodeScanner,
+                            contentDescription = stringResource(id = R.string.product_barcode_scanner),
+                            tint = PrimaryText
+                        )
+                    }
                     IconButton(onClick = { /* TODO: Search */ }) {
                         Icon(
                             imageVector = Icons.Filled.Search,
@@ -441,6 +479,47 @@ fun MainProductScreen(
                         .padding(16.dp)
                 )
             }
+        }
+        
+        // Product Not Found Dialog
+        if (showProductNotFoundDialog) {
+            AlertDialog(
+                onDismissRequest = { showProductNotFoundDialog = false },
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.barcode_scanner_product_not_found_title),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = stringResource(id = R.string.barcode_scanner_product_not_found_message),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { showProductNotFoundDialog = false }
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.dialog_button_ok),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                }
+            )
         }
     }
 }
