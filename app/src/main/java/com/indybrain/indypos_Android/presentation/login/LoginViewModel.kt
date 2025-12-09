@@ -3,9 +3,14 @@ package com.indybrain.indypos_Android.presentation.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.domain.model.LoginRequest
+import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
+import com.indybrain.indypos_Android.domain.repository.AddonRepository
+import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.usecase.LoginUseCase
-import com.indybrain.indypos_Android.domain.usecase.SyncProductDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +24,9 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val syncProductDataUseCase: SyncProductDataUseCase
+    private val productRepository: ProductRepository,
+    private val addonGroupRepository: AddonGroupRepository,
+    private val addonRepository: AddonRepository
 ) : ViewModel() {
     
     // UI State Flow
@@ -95,9 +102,23 @@ class LoginViewModel @Inject constructor(
                 val request = LoginRequest(email = email, password = password)
                 loginUseCase(request)
                     .onSuccess { user ->
-                        // Sync product data after successful login
-                        syncProductDataUseCase()
-                            .onSuccess {
+                        // Fetch all data after successful login
+                        fetchAllDataAfterLogin { hasError ->
+                            if (hasError) {
+                                // Some data fetching failed, but continue with login
+                                val errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูลบางส่วน แต่สามารถเข้าสู่ระบบได้"
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isLoginSuccess = true,
+                                        successMessage = null,
+                                        user = user,
+                                        errorMessage = errorMessage
+                                    )
+                                }
+                                _state.value = LoginState.Success(user)
+                            } else {
+                                // All data fetched successfully
                                 _uiState.update {
                                     it.copy(
                                         isLoading = false,
@@ -109,20 +130,7 @@ class LoginViewModel @Inject constructor(
                                 }
                                 _state.value = LoginState.Success(user)
                             }
-                            .onFailure { syncException ->
-                                // Show error if sync fails
-                                val errorMessage = syncException.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า"
-                                _uiState.update {
-                                    it.copy(
-                                        isLoading = false,
-                                        isLoginSuccess = false,
-                                        successMessage = null,
-                                        user = null,
-                                        errorMessage = errorMessage
-                                    )
-                                }
-                                _state.value = LoginState.Error(errorMessage)
-                            }
+                        }
                     }
                     .onFailure { exception ->
                         val errorMessage = when {
@@ -158,6 +166,102 @@ class LoginViewModel @Inject constructor(
                 _state.value = LoginState.Error(errorMessage)
             }
         }
+    }
+    
+    /**
+     * Fetch all data after login (Categories, Products, Addon Groups, Addons)
+     * Similar to DispatchGroup pattern in iOS - waits for all requests to complete
+     */
+    private suspend fun fetchAllDataAfterLogin(completion: (hasError: Boolean) -> Unit) {
+        println("🔄 Starting to fetch all data after login...")
+        
+        var hasError = false
+        
+        // Fetch all APIs in parallel using async/awaitAll within coroutineScope
+        coroutineScope {
+            val categoriesDeferred = async {
+                try {
+                    val result = productRepository.fetchAndSyncCategories()
+                    if (result.isSuccess) {
+                        println("✅ Categories fetched successfully")
+                        false // no error
+                    } else {
+                        println("❌ Failed to fetch categories: ${result.exceptionOrNull()?.message}")
+                        true // has error
+                    }
+                } catch (e: Exception) {
+                    println("❌ Failed to fetch categories: ${e.message}")
+                    true // has error
+                }
+            }
+            
+            val productsDeferred = async {
+                try {
+                    val result = productRepository.fetchAndSaveProducts()
+                    if (result.isSuccess) {
+                        println("✅ Products fetched successfully")
+                        false // no error
+                    } else {
+                        println("❌ Failed to fetch products: ${result.exceptionOrNull()?.message}")
+                        true // has error
+                    }
+                } catch (e: Exception) {
+                    println("❌ Failed to fetch products: ${e.message}")
+                    true // has error
+                }
+            }
+            
+            val addonGroupsDeferred = async {
+                try {
+                    val result = addonGroupRepository.fetchAndSyncAddonGroups()
+                    if (result.isSuccess) {
+                        println("✅ Addon Groups fetched successfully")
+                        false // no error
+                    } else {
+                        println("❌ Failed to fetch addon groups: ${result.exceptionOrNull()?.message}")
+                        true // has error
+                    }
+                } catch (e: Exception) {
+                    println("❌ Failed to fetch addon groups: ${e.message}")
+                    true // has error
+                }
+            }
+            
+            val addonsDeferred = async {
+                try {
+                    val result = addonRepository.fetchAndSyncAddons()
+                    if (result.isSuccess) {
+                        println("✅ Addons fetched successfully")
+                        false // no error
+                    } else {
+                        println("❌ Failed to fetch addons: ${result.exceptionOrNull()?.message}")
+                        true // has error
+                    }
+                } catch (e: Exception) {
+                    println("❌ Failed to fetch addons: ${e.message}")
+                    true // has error
+                }
+            }
+            
+            // Wait for all requests to complete
+            val results = awaitAll(
+                categoriesDeferred,
+                productsDeferred,
+                addonGroupsDeferred,
+                addonsDeferred
+            )
+            
+            // Check if any request failed
+            hasError = results.any { it }
+        }
+        
+        if (hasError) {
+            println("⚠️ Some data fetching failed, but continuing with login...")
+        } else {
+            println("✅ All data fetched successfully")
+        }
+        
+        completion(hasError)
     }
 }
 
