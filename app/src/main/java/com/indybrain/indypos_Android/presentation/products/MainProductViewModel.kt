@@ -79,12 +79,13 @@ class MainProductViewModel @Inject constructor(
         viewModelScope.launch {
             productRepository.getAllActiveCategories().collect { categories ->
                 _uiState.update { current ->
-                    val sortedCategories = categories.sortedBy { it.sortOrder }
+                    // Sort categories by sortOrder (handle null values)
+                    val sortedCategories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
                     val firstCategoryId = sortedCategories.firstOrNull()?.id
                     // Set initial focused category to first category if not set
                     val newFocusedCategoryId = current.focusedCategoryId ?: firstCategoryId
                     current.copy(
-                        categories = categories,
+                        categories = sortedCategories, // Use sorted categories
                         // Don't update isLoading here - let it be managed by loadProducts()
                         focusedCategoryId = newFocusedCategoryId,
                         selectedCategoryId = current.selectedCategoryId ?: firstCategoryId

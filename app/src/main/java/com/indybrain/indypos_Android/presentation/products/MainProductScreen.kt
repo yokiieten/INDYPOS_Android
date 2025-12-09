@@ -110,19 +110,14 @@ fun MainProductScreen(
             // Track which category is visible based on scroll position
             val visibleCategoryId = remember {
                 derivedStateOf {
-                    // Filter products without categoryId (null or empty string)
-                    val productsWithCategory = uiState.allProducts.filter { 
-                        it.categoryId != null && it.categoryId.isNotBlank() 
-                    }
-                    if (productsWithCategory.isEmpty() || scrollState.layoutInfo.visibleItemsInfo.isEmpty()) {
-                        return@derivedStateOf null
+                    // Use the same categories order as CategoryFilterBar
+                    val categoriesWithProducts = uiState.categories.filter { category ->
+                        uiState.allProducts.any { it.categoryId == category.id }
                     }
                     
-                    // Group all products by category
-                    val productsByCategory = productsWithCategory.groupBy { it.categoryId }
-            val sortedCategories = productsByCategory.toList().sortedBy { (categoryId, _) ->
-                uiState.categories.find { it.id == categoryId }?.sortOrder ?: Int.MAX_VALUE
-            }
+                    if (categoriesWithProducts.isEmpty() || scrollState.layoutInfo.visibleItemsInfo.isEmpty()) {
+                        return@derivedStateOf null
+                    }
             
             // Get visible items info
             val visibleItems = scrollState.layoutInfo.visibleItemsInfo
@@ -151,12 +146,12 @@ fun MainProductScreen(
             val firstVisibleIndex = scrollState.firstVisibleItemIndex
             val categoryIndex = firstVisibleIndex / 2
             
-            if (categoryIndex < sortedCategories.size) {
-                return@derivedStateOf sortedCategories[categoryIndex].first
+            if (categoryIndex < categoriesWithProducts.size) {
+                return@derivedStateOf categoriesWithProducts[categoryIndex].id
             }
             
             // Default to last category if scrolled to bottom
-            sortedCategories.lastOrNull()?.first
+            categoriesWithProducts.lastOrNull()?.id
         }
     }
     
@@ -176,21 +171,16 @@ fun MainProductScreen(
     LaunchedEffect(uiState.selectedCategoryId) {
         val categoryId = uiState.selectedCategoryId
         if (categoryId != null && categoryId != lastScrolledCategoryId) {
-            // Find the position of this category in the list
-            // Filter products without categoryId (null or empty string)
-            val productsWithCategory = uiState.allProducts.filter { 
-                it.categoryId != null && it.categoryId.isNotBlank() 
-            }
-            val productsByCategory = productsWithCategory.groupBy { it.categoryId }
-            val sortedCategories = productsByCategory.toList().sortedBy { (catId, _) ->
-                uiState.categories.find { it.id == catId }?.sortOrder ?: Int.MAX_VALUE
+            // Use the same categories order as CategoryFilterBar
+            val categoriesWithProducts = uiState.categories.filter { category ->
+                uiState.allProducts.any { it.categoryId == category.id }
             }
             
             // Each category has 2 items: header (index 0) and products grid (index 1)
             // So category indices are: 0, 2, 4, 6, ...
             var targetIndex = 0
-            for ((catId, _) in sortedCategories) {
-                if (catId == categoryId) {
+            for (category in categoriesWithProducts) {
+                if (category.id == categoryId) {
                     // Scroll to category header with a small offset to ensure header is visible
                     scrollState.animateScrollToItem(
                         index = targetIndex,
@@ -313,16 +303,19 @@ fun MainProductScreen(
                     }
                     else -> {
                         // Show products when we have products
-                    // Always show all products grouped by category
-                    // Filtering is handled by scrolling to the selected category
-                    // Products without categoryId are already filtered in ViewModel
-                    // Additional filter to ensure no null/empty categoryId groups
-                    val productsWithCategory = uiState.allProducts.filter { 
-                        it.categoryId != null && it.categoryId.isNotBlank() 
-                    }
-                    val allProductsGrouped = productsWithCategory
-                        .groupBy { it.categoryId }
-                        .filterKeys { it != null && it.isNotBlank() }
+                        // Always show all products grouped by category
+                        // Filtering is handled by scrolling to the selected category
+                        // Products without categoryId are already filtered in ViewModel
+                        
+                        // Use the same categories order as CategoryFilterBar
+                        val categoriesWithProducts = uiState.categories.filter { category ->
+                            uiState.allProducts.any { it.categoryId == category.id }
+                        }
+                        
+                        // Group products by categoryId for quick lookup
+                        val productsByCategoryId = uiState.allProducts
+                            .filter { it.categoryId != null && it.categoryId.isNotBlank() }
+                            .groupBy { it.categoryId }
                     
                     LazyColumn(
                         state = scrollState,
@@ -336,7 +329,7 @@ fun MainProductScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                    if (allProductsGrouped.isEmpty()) {
+                    if (categoriesWithProducts.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier.fillMaxWidth(),
@@ -353,28 +346,17 @@ fun MainProductScreen(
                             }
                         }
                     } else {
-                        // Show products grouped by category
-                        // If a category is selected, we still show all but could scroll to it
-                        // Filter out groups with null/empty categoryId or category not found
-                        allProductsGrouped.toList()
-                            .filter { (categoryId, _) -> 
-                                categoryId != null && 
-                                categoryId.isNotBlank() && 
-                                uiState.categories.any { it.id == categoryId }
-                            }
-                            .sortedBy { (categoryId, _) ->
-                                uiState.categories.find { it.id == categoryId }?.sortOrder ?: Int.MAX_VALUE
-                            }
-                            .forEach { (categoryId,  products) ->
-                                val category = uiState.categories.find { it.id == categoryId }
-                                
-                                // Skip if category not found (should not happen after filter, but safety check)
-                                if (category == null) return@forEach
-                                
-                                item(key = "category_$categoryId") {
-                                    // Category header
-                                    Text(
-                                        text = category.name,
+                        // Show products grouped by category in the same order as CategoryFilterBar
+                        categoriesWithProducts.forEach { category ->
+                            val products = productsByCategoryId[category.id] ?: emptyList()
+                            
+                            // Skip if no products in this category
+                            if (products.isEmpty()) return@forEach
+                            
+                            item(key = "category_${category.id}") {
+                                // Category header
+                                Text(
+                                    text = category.name,
                                     style = FontUtils.mainFont(
                                         style = AppFontStyle.Bold,
                                         size = FontSize.Large
@@ -385,7 +367,7 @@ fun MainProductScreen(
                             }
                             
                             // Products grid for this category
-                            item(key = "products_$categoryId") {
+                            item(key = "products_${category.id}") {
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
