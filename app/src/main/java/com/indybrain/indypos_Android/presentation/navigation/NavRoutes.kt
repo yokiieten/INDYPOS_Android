@@ -23,6 +23,7 @@ sealed class NavRoutes(val route: String) {
     data object ProductEdit : NavRoutes("product_edit")
     data object BarcodeScanner : NavRoutes("barcode_scanner")
     data object SearchProduct : NavRoutes("search_product")
+    data object Discount : NavRoutes("discount")
     
     companion object {
         const val ADD_EDIT_PRODUCT_ROUTE = "add_edit_product/{productId}"
@@ -58,6 +59,9 @@ sealed class NavRoutes(val route: String) {
         const val PRODUCT_EDIT_ROUTE = "product_edit/{productId}/{productName}"
         fun productEdit(productId: String, productName: String = "") = 
             "product_edit/$productId/${java.net.URLEncoder.encode(productName, "UTF-8")}"
+        
+        const val DISCOUNT_ROUTE = "discount/{subtotal}"
+        fun discount(subtotal: Double) = "discount/$subtotal"
     }
 }
 

@@ -40,6 +40,7 @@ import com.indybrain.indypos_Android.presentation.categorymanagement.CategoryMan
 import com.indybrain.indypos_Android.presentation.productmanagement.AddEditProductScreen
 import com.indybrain.indypos_Android.presentation.productmanagement.ProductManagementScreen
 import com.indybrain.indypos_Android.presentation.productedit.ProductEditScreen
+import com.indybrain.indypos_Android.presentation.discount.DiscountScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsItem
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -210,6 +211,7 @@ class MainActivity : ComponentActivity() {
                         }
                         
                         composable(NavRoutes.OrderProduct.route) {
+                            val orderProductViewModel = androidx.hilt.navigation.compose.hiltViewModel<com.indybrain.indypos_Android.presentation.orderproduct.OrderProductViewModel>()
                             OrderProductScreen(
                                 onBackClick = {
                                     navController.popBackStack()
@@ -221,6 +223,42 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onEditItemClick = { productId, productName ->
                                     navController.navigate(NavRoutes.productEdit(productId, productName))
+                                },
+                                onDiscountClick = {
+                                    val subtotal = orderProductViewModel.calculateSubtotal()
+                                    navController.navigate(NavRoutes.discount(subtotal))
+                                },
+                                viewModel = orderProductViewModel
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.DISCOUNT_ROUTE,
+                            arguments = listOf(navArgument("subtotal") {})
+                        ) { backStackEntry ->
+                            val subtotalString = backStackEntry.arguments?.getString("subtotal") ?: "0.0"
+                            val subtotal = subtotalString.toDoubleOrNull() ?: 0.0
+                            val orderProductViewModel = androidx.hilt.navigation.compose.hiltViewModel<com.indybrain.indypos_Android.presentation.orderproduct.OrderProductViewModel>()
+                            
+                            DiscountScreen(
+                                subtotal = subtotal,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onCancel = {
+                                    navController.popBackStack()
+                                },
+                                onDiscountSelected = { discount ->
+                                    val discountAmount = when (discount.type) {
+                                        com.indybrain.indypos_Android.presentation.discount.DiscountType.PERCENTAGE -> {
+                                            (subtotal * discount.value / 100.0).coerceAtMost(subtotal)
+                                        }
+                                        com.indybrain.indypos_Android.presentation.discount.DiscountType.FIXED_AMOUNT -> {
+                                            discount.value.coerceAtMost(subtotal)
+                                        }
+                                    }
+                                    orderProductViewModel.setDiscountAmount(discountAmount)
+                                    navController.popBackStack()
                                 }
                             )
                         }

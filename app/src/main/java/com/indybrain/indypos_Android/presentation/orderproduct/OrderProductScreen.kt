@@ -83,6 +83,7 @@ fun OrderProductScreen(
     onBackClick: () -> Unit = {},
     onAddMenuClick: () -> Unit = {},
     onEditItemClick: (productId: String, productName: String) -> Unit = { _, _ -> },
+    onDiscountClick: () -> Unit = {},
     viewModel: OrderProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -258,15 +259,26 @@ fun OrderProductScreen(
                                 color = PrimaryText
                             )
                             
-                            TextButton(onClick = { /* TODO: Add discount dialog */ }) {
+                            if (uiState.discountAmount > 0) {
                                 Text(
-                                    text = "เพิ่ม (ถ้ามี)",
+                                    text = formatCurrency(uiState.discountAmount),
                                     style = FontUtils.mainFont(
                                         style = AppFontStyle.Regular,
-                                        size = FontSize.Small
+                                        size = FontSize.Medium
                                     ),
                                     color = PrimaryButton
                                 )
+                            } else {
+                                TextButton(onClick = onDiscountClick) {
+                                    Text(
+                                        text = "เพิ่ม (ถ้ามี)",
+                                        style = FontUtils.mainFont(
+                                            style = AppFontStyle.Regular,
+                                            size = FontSize.Small
+                                        ),
+                                        color = PrimaryButton
+                                    )
+                                }
                             }
                         }
                     }
@@ -295,6 +307,32 @@ fun OrderProductScreen(
                                 ),
                                 color = PrimaryText
                             )
+                        }
+                        
+                        if (uiState.discountAmount > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "ส่วนลด",
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = PrimaryText
+                                )
+                                
+                                Text(
+                                    text = "-${formatCurrency(uiState.discountAmount)}",
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = PrimaryButton
+                                )
+                            }
                         }
                         
                         Spacer(modifier = Modifier.height(8.dp))
