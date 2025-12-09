@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.domain.repository
 
 import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddons
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -18,6 +19,11 @@ interface AddonGroupRepository {
     suspend fun getAddonGroupById(id: String): AddonGroupEntity?
     
     /**
+     * Get addon group with addons by ID
+     */
+    suspend fun getAddonGroupWithAddonsById(id: String): AddonGroupWithAddons?
+    
+    /**
      * Create a new addon group
      * If network is available, calls API and saves to Room
      * If network is not available, saves to Room only (for sync later)
@@ -28,7 +34,8 @@ interface AddonGroupRepository {
         isSingleSelection: Boolean,
         maxSelection: Int,
         minSelection: Int,
-        sortOrder: Int
+        sortOrder: Int,
+        selectedAddonIds: List<String>
     ): Result<AddonGroupEntity>
     
     /**
@@ -44,8 +51,14 @@ interface AddonGroupRepository {
         maxSelection: Int? = null,
         minSelection: Int? = null,
         sortOrder: Int? = null,
-        isActive: Boolean? = null
+        isActive: Boolean? = null,
+        selectedAddonIds: List<String>? = null
     ): Result<AddonGroupEntity>
+    
+    /**
+     * Check for duplicate name (case-insensitive, trimmed)
+     */
+    suspend fun isDuplicateName(name: String, excludeId: String? = null): Boolean
     
     /**
      * Toggle addon group status (activate/deactivate)

@@ -27,6 +27,7 @@ import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddonGroupManagementScreen
+import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddEditAddonGroupScreen
 import com.indybrain.indypos_Android.presentation.addonmanagement.AddEditAddonScreen
 import com.indybrain.indypos_Android.presentation.addonmanagement.AddOnManagementScreen
 import com.indybrain.indypos_Android.presentation.categorymanagement.AddEditCategoryScreen
@@ -292,10 +293,10 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onAddAddonGroupClick = {
-                                    // TODO: Navigate to add/edit addon group screen
+                                    navController.navigate(NavRoutes.addEditAddonGroup(null))
                                 },
                                 onEditAddonGroupClick = { addonGroupId ->
-                                    // TODO: Navigate to add/edit addon group screen
+                                    navController.navigate(NavRoutes.addEditAddonGroup(addonGroupId))
                                 }
                             )
                         }
@@ -322,6 +323,23 @@ class MainActivity : ComponentActivity() {
                             val actualAddonId = if (addonId == "null") null else addonId
                             AddEditAddonScreen(
                                 addonId = actualAddonId,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onSaveSuccess = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.ADD_EDIT_ADDON_GROUP_ROUTE,
+                            arguments = listOf(navArgument("addonGroupId") { nullable = true })
+                        ) { backStackEntry ->
+                            val addonGroupId = backStackEntry.arguments?.getString("addonGroupId")
+                            val actualAddonGroupId = if (addonGroupId == "null") null else addonGroupId
+                            AddEditAddonGroupScreen(
+                                addonGroupId = actualAddonGroupId,
                                 onBackClick = {
                                     navController.popBackStack()
                                 },

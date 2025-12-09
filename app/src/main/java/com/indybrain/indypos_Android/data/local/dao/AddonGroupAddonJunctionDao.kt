@@ -15,11 +15,14 @@ interface AddonGroupAddonJunctionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(junctions: List<AddonGroupAddonJunctionEntity>)
     
-    @Query("SELECT addonId FROM addon_group_addon_junction WHERE addonGroupId = :addonGroupId")
+    @Query("SELECT addonId FROM addon_group_addon_junction WHERE addonGroupId = :addonGroupId ORDER BY sortOrder ASC")
     fun getAddonIdsByAddonGroupId(addonGroupId: String): Flow<List<String>>
     
-    @Query("SELECT addonId FROM addon_group_addon_junction WHERE addonGroupId = :addonGroupId")
+    @Query("SELECT addonId FROM addon_group_addon_junction WHERE addonGroupId = :addonGroupId ORDER BY sortOrder ASC")
     suspend fun getAddonIdsByAddonGroupIdSync(addonGroupId: String): List<String>
+    
+    @Query("SELECT * FROM addon_group_addon_junction WHERE addonGroupId = :addonGroupId ORDER BY sortOrder ASC")
+    suspend fun getJunctionsByAddonGroupId(addonGroupId: String): List<AddonGroupAddonJunctionEntity>
     
     @Query("SELECT addonGroupId FROM addon_group_addon_junction WHERE addonId = :addonId")
     fun getAddonGroupIdsByAddonId(addonId: String): Flow<List<String>>

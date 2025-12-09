@@ -65,6 +65,11 @@ object DatabaseModule {
     }
     
     @Provides
+    fun provideAddonGroupAddonJunctionDao(database: IndyPosDatabase): AddonGroupAddonJunctionDao {
+        return database.addonGroupAddonJunctionDao()
+    }
+    
+    @Provides
     fun provideCartDao(database: IndyPosDatabase): CartDao {
         return database.cartDao()
     }

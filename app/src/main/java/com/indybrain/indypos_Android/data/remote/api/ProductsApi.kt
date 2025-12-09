@@ -282,39 +282,66 @@ data class CreateProductRequestDto(
  * Request DTO for creating an addon group
  */
 data class CreateAddonGroupRequestDto(
-    val name: String,
-    @SerializedName("is_required")
-    val isRequired: Boolean,
-    @SerializedName("is_single_selection")
-    val isSingleSelection: Boolean,
-    @SerializedName("max_selection")
-    val maxSelection: Int,
-    @SerializedName("min_selection")
-    val minSelection: Int,
-    @SerializedName("sort_order")
-    val sortOrder: Int
-)
+    @SerializedName("addon_group")
+    val addonGroup: AddonGroupData,
+    val addons: List<AddonData>
+) {
+    data class AddonGroupData(
+        val name: String,
+        @SerializedName("is_required")
+        val isRequired: Boolean,
+        @SerializedName("is_single_selection")
+        val isSingleSelection: Boolean,
+        @SerializedName("max_selection")
+        val maxSelection: Int,
+        @SerializedName("min_selection")
+        val minSelection: Int,
+        @SerializedName("sort_order")
+        val sortOrder: Int,
+        @SerializedName("is_active")
+        val isActive: Boolean
+    )
+    
+    data class AddonData(
+        @SerializedName("addon_id")
+        val addonId: String,
+        @SerializedName("sort_order")
+        val sortOrder: Int
+    )
+}
 
 /**
  * Request DTO for updating an addon group
  */
 data class UpdateAddonGroupRequestDto(
-    val id: String? = null,
-    val name: String? = null,
-    val description: String? = null,
-    @SerializedName("is_required")
-    val isRequired: Boolean? = null,
-    @SerializedName("is_single_selection")
-    val isSingleSelection: Boolean? = null,
-    @SerializedName("max_selection")
-    val maxSelection: Int? = null,
-    @SerializedName("min_selection")
-    val minSelection: Int? = null,
-    @SerializedName("sort_order")
-    val sortOrder: Int? = null,
-    @SerializedName("is_active")
-    val isActive: Boolean? = null
-)
+    @SerializedName("addon_group")
+    val addonGroup: AddonGroupData,
+    val addons: List<AddonData>
+) {
+    data class AddonGroupData(
+        val id: String,
+        val name: String,
+        @SerializedName("is_required")
+        val isRequired: Boolean,
+        @SerializedName("is_single_selection")
+        val isSingleSelection: Boolean,
+        @SerializedName("max_selection")
+        val maxSelection: Int,
+        @SerializedName("min_selection")
+        val minSelection: Int,
+        @SerializedName("sort_order")
+        val sortOrder: Int,
+        @SerializedName("is_active")
+        val isActive: Boolean
+    )
+    
+    data class AddonData(
+        @SerializedName("addon_id")
+        val addonId: String,
+        @SerializedName("sort_order")
+        val sortOrder: Int
+    )
+}
 
 /**
  * Request DTO for toggling addon group status

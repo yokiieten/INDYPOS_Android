@@ -1,12 +1,17 @@
 package com.indybrain.indypos_Android.data.repository
 
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
+import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupAddonJunctionEntity
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddons
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
 import com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import retrofit2.HttpException
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -18,6 +23,8 @@ import javax.inject.Inject
 class AddonGroupRepositoryImpl @Inject constructor(
     private val productsApi: ProductsApi,
     private val addonGroupDao: AddonGroupDao,
+    private val addonDao: AddonDao,
+    private val junctionDao: AddonGroupAddonJunctionDao,
     private val networkConnectivityChecker: NetworkConnectivityChecker
 ) : AddonGroupRepository {
     
@@ -29,13 +36,21 @@ class AddonGroupRepositoryImpl @Inject constructor(
         return addonGroupDao.getAddonGroupById(id)
     }
     
+    override suspend fun getAddonGroupWithAddonsById(id: String): AddonGroupWithAddons? {
+        val addonGroup = addonGroupDao.getAddonGroupById(id) ?: return null
+        val addonIds = junctionDao.getAddonIdsByAddonGroupIdSync(id)
+        val addons = addonIds.mapNotNull { addonId -> addonDao.getAddonById(addonId) }
+        return AddonGroupWithAddons(addonGroup, addons)
+    }
+    
     override suspend fun createAddonGroup(
         name: String,
         isRequired: Boolean,
         isSingleSelection: Boolean,
         maxSelection: Int,
         minSelection: Int,
-        sortOrder: Int
+        sortOrder: Int,
+        selectedAddonIds: List<String>
     ): Result<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity> {
         return try {
             val addonGroupEntity: com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
@@ -44,29 +59,68 @@ class AddonGroupRepositoryImpl @Inject constructor(
                 // Has network - call API first
                 try {
                     val request = CreateAddonGroupRequestDto(
-                        name = name,
-                        isRequired = isRequired,
-                        isSingleSelection = isSingleSelection,
-                        maxSelection = maxSelection,
-                        minSelection = minSelection,
-                        sortOrder = sortOrder
+                        addonGroup = CreateAddonGroupRequestDto.AddonGroupData(
+                            name = name.trim(),
+                            isRequired = isRequired,
+                            isSingleSelection = isSingleSelection,
+                            maxSelection = maxSelection,
+                            minSelection = minSelection,
+                            sortOrder = sortOrder,
+                            isActive = true
+                        ),
+                        addons = selectedAddonIds.mapIndexed { index, addonId ->
+                            CreateAddonGroupRequestDto.AddonData(
+                                addonId = addonId,
+                                sortOrder = index + 1
+                            )
+                        }
                     )
                     
                     val response = productsApi.createAddonGroup(request)
                     
-                    if (response.status == 200 && response.data != null) {
+                    // Check if response indicates success (200 or 201) and has data
+                    // Also check if message contains success keywords even if status is not 200/201
+                    val isSuccessStatus = response.status == 200 || response.status == 201
+                    val hasSuccessMessage = response.message?.contains("success", ignoreCase = true) == true
+                        || response.message?.contains("created", ignoreCase = true) == true
+                    
+                    if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
                         // API success - convert to entity and save to Room
                         addonGroupEntity = ProductMapper.toEntity(response.data)
                         addonGroupDao.insertAddonGroup(addonGroupEntity)
+                        
+                        // Save relationships
+                        response.data.addons?.forEachIndexed { index, addonDto ->
+                            val addonEntity = ProductMapper.toEntity(addonDto)
+                            addonDao.insert(addonEntity)
+                            junctionDao.insert(
+                                AddonGroupAddonJunctionEntity(
+                                    addonGroupId = addonGroupEntity.id,
+                                    addonId = addonEntity.id,
+                                    sortOrder = index + 1
+                                )
+                            )
+                        }
+                        
                         Result.success(addonGroupEntity)
                     } else {
+                        // API returned error status
                         val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: response.error?.takeIf { it.isNotBlank() }
                             ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
                     val errorMessage = when (e.code()) {
                         401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        403 -> {
+                            val errorBody = e.response()?.errorBody()?.string()
+                            if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
+                                "free_plan_limit_exceeded"
+                            } else {
+                                e.message() ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+                            }
+                        }
                         500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
                         else -> e.message() ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
                     }
@@ -74,9 +128,11 @@ class AddonGroupRepositoryImpl @Inject constructor(
                 }
             } else {
                 // No network - save to Room only (for sync later)
+                val now = Date()
+                val localId = UUID.randomUUID().toString()
                 addonGroupEntity = com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = name,
+                    id = localId,
+                    name = name.trim(),
                     isRequired = isRequired,
                     isSingleSelection = isSingleSelection,
                     maxSelection = maxSelection,
@@ -86,10 +142,22 @@ class AddonGroupRepositoryImpl @Inject constructor(
                     isDeletedLocally = false,
                     isFromServer = false,
                     isSynced = false,
-                    createdAt = Date(),
-                    updatedAt = Date()
+                    createdAt = now,
+                    updatedAt = now
                 )
                 addonGroupDao.insertAddonGroup(addonGroupEntity)
+                
+                // Save relationships
+                selectedAddonIds.forEachIndexed { index, addonId ->
+                    junctionDao.insert(
+                        AddonGroupAddonJunctionEntity(
+                            addonGroupId = localId,
+                            addonId = addonId,
+                            sortOrder = index + 1
+                        )
+                    )
+                }
+                
                 Result.success(addonGroupEntity)
             }
         } catch (e: Exception) {
@@ -105,38 +173,81 @@ class AddonGroupRepositoryImpl @Inject constructor(
         maxSelection: Int?,
         minSelection: Int?,
         sortOrder: Int?,
-        isActive: Boolean?
+        isActive: Boolean?,
+        selectedAddonIds: List<String>?
     ): Result<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity> {
         return try {
             val existing = addonGroupDao.getAddonGroupById(addonGroupId)
                 ?: return Result.failure(Exception("ไม่พบกลุ่ม Addon ที่ต้องการแก้ไข"))
             
             val addonGroupEntity: com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
+            val finalName = name?.trim() ?: existing.name
+            val finalIsRequired = isRequired ?: existing.isRequired
+            val finalIsSingleSelection = isSingleSelection ?: existing.isSingleSelection
+            val finalMaxSelection = maxSelection ?: existing.maxSelection ?: 1
+            val finalMinSelection = minSelection ?: existing.minSelection ?: 0
+            val finalSortOrder = sortOrder ?: existing.sortOrder ?: 0
+            val finalIsActive = isActive ?: existing.isActive
+            val finalSelectedAddonIds = selectedAddonIds ?: junctionDao.getAddonIdsByAddonGroupIdSync(addonGroupId)
             
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
+            // Check if should update via API or locally only
+            val shouldUpdateViaAPI = networkConnectivityChecker.isConnected() && 
+                                    existing.isSynced && 
+                                    existing.isFromServer
+            
+            if (shouldUpdateViaAPI) {
+                // Has network and addon group is synced - call API first
                 try {
                     val request = UpdateAddonGroupRequestDto(
-                        id = addonGroupId,
-                        name = name,
-                        description = null,
-                        isRequired = isRequired,
-                        isSingleSelection = isSingleSelection,
-                        maxSelection = maxSelection,
-                        minSelection = minSelection,
-                        sortOrder = sortOrder,
-                        isActive = isActive
+                        addonGroup = UpdateAddonGroupRequestDto.AddonGroupData(
+                            id = addonGroupId,
+                            name = finalName,
+                            isRequired = finalIsRequired,
+                            isSingleSelection = finalIsSingleSelection,
+                            maxSelection = finalMaxSelection,
+                            minSelection = finalMinSelection,
+                            sortOrder = finalSortOrder,
+                            isActive = finalIsActive
+                        ),
+                        addons = finalSelectedAddonIds.mapIndexed { index, addonId ->
+                            UpdateAddonGroupRequestDto.AddonData(
+                                addonId = addonId,
+                                sortOrder = index + 1
+                            )
+                        }
                     )
                     
                     val response = productsApi.updateAddonGroup(request)
                     
-                    if (response.status == 200 && response.data != null) {
+                    // Check if response indicates success (200 or 201) and has data
+                    // Also check if message contains success keywords even if status is not 200/201
+                    val isSuccessStatus = response.status == 200 || response.status == 201
+                    val hasSuccessMessage = response.message?.contains("success", ignoreCase = true) == true
+                        || response.message?.contains("updated", ignoreCase = true) == true
+                    
+                    if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
                         // API success - convert to entity and save to Room
                         addonGroupEntity = ProductMapper.toEntity(response.data)
                         addonGroupDao.updateAddonGroup(addonGroupEntity)
+                        
+                        // Update relationships
+                        junctionDao.deleteByAddonGroupId(addonGroupId)
+                        response.data.addons?.forEachIndexed { index, addonDto ->
+                            val addonEntity = ProductMapper.toEntity(addonDto)
+                            addonDao.insert(addonEntity)
+                            junctionDao.insert(
+                                AddonGroupAddonJunctionEntity(
+                                    addonGroupId = addonGroupId,
+                                    addonId = addonEntity.id,
+                                    sortOrder = index + 1
+                                )
+                            )
+                        }
+                        
                         Result.success(addonGroupEntity)
                     } else {
                         val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: response.error?.takeIf { it.isNotBlank() }
                             ?: "เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon"
                         Result.failure(Exception(errorMessage))
                     }
@@ -150,23 +261,47 @@ class AddonGroupRepositoryImpl @Inject constructor(
                     Result.failure(Exception(errorMessage))
                 }
             } else {
-                // No network - update in Room only (for sync later)
+                // No network or not synced - update in Room only (for sync later)
                 addonGroupEntity = existing.copy(
-                    name = name ?: existing.name,
-                    isRequired = isRequired ?: existing.isRequired,
-                    isSingleSelection = isSingleSelection ?: existing.isSingleSelection,
-                    maxSelection = maxSelection ?: existing.maxSelection,
-                    minSelection = minSelection ?: existing.minSelection,
-                    sortOrder = sortOrder ?: existing.sortOrder,
-                    isActive = isActive ?: existing.isActive,
+                    name = finalName,
+                    isRequired = finalIsRequired,
+                    isSingleSelection = finalIsSingleSelection,
+                    maxSelection = finalMaxSelection,
+                    minSelection = finalMinSelection,
+                    sortOrder = finalSortOrder,
+                    isActive = finalIsActive,
                     updatedAt = Date(),
                     isSynced = false
                 )
                 addonGroupDao.updateAddonGroup(addonGroupEntity)
+                
+                // Update relationships if provided
+                if (selectedAddonIds != null) {
+                    junctionDao.deleteByAddonGroupId(addonGroupId)
+                    selectedAddonIds.forEachIndexed { index, addonId ->
+                        junctionDao.insert(
+                            AddonGroupAddonJunctionEntity(
+                                addonGroupId = addonGroupId,
+                                addonId = addonId,
+                                sortOrder = index + 1
+                            )
+                        )
+                    }
+                }
+                
                 Result.success(addonGroupEntity)
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon"))
+        }
+    }
+    
+    override suspend fun isDuplicateName(name: String, excludeId: String?): Boolean {
+        val normalizedName = name.trim().lowercase()
+        val allGroups = getAllAddonGroupsFlow().first()
+        return allGroups.any { group ->
+            val groupName = group.name.trim().lowercase()
+            groupName == normalizedName && group.id != excludeId
         }
     }
     

@@ -31,6 +31,7 @@ import androidx.room.Index
 )
 data class AddonGroupAddonJunctionEntity(
     val addonGroupId: String,
-    val addonId: String
+    val addonId: String,
+    val sortOrder: Int = 0
 )
 
