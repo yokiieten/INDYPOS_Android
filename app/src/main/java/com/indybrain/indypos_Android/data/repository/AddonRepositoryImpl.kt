@@ -50,7 +50,13 @@ class AddonRepositoryImpl @Inject constructor(
                     
                     val response = productsApi.createAddon(request)
                     
-                    if (response.status == 200 && response.data != null) {
+                    // Check if response indicates success (200 or 201) and has data
+                    // Also check if message contains success keywords even if status is not 200/201
+                    val isSuccessStatus = response.status == 200 || response.status == 201
+                    val hasSuccessMessage = response.message?.contains("success", ignoreCase = true) == true
+                        || response.message?.contains("created", ignoreCase = true) == true
+                    
+                    if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
                         // API success - convert to entity and save to Room
                         addonEntity = ProductMapper.toEntity(response.data)
                         addonDao.insert(addonEntity)
@@ -58,6 +64,7 @@ class AddonRepositoryImpl @Inject constructor(
                     } else {
                         // API returned error status
                         val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: response.error?.takeIf { it.isNotBlank() }
                             ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
                         Result.failure(Exception(errorMessage))
                     }
@@ -130,13 +137,20 @@ class AddonRepositoryImpl @Inject constructor(
                     
                     val response = productsApi.updateAddon(addonId, request)
                     
-                    if (response.status == 200 && response.data != null) {
+                    // Check if response indicates success (200 or 201) and has data
+                    // Also check if message contains success keywords even if status is not 200/201
+                    val isSuccessStatus = response.status == 200 || response.status == 201
+                    val hasSuccessMessage = response.message?.contains("success", ignoreCase = true) == true
+                        || response.message?.contains("updated", ignoreCase = true) == true
+                    
+                    if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
                         // API success - convert to entity and save to Room
                         addonEntity = ProductMapper.toEntity(response.data)
                         addonDao.insert(addonEntity)
                         Result.success(addonEntity)
                     } else {
                         val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: response.error?.takeIf { it.isNotBlank() }
                             ?: "เกิดข้อผิดพลาดในการแก้ไข Addon"
                         Result.failure(Exception(errorMessage))
                     }

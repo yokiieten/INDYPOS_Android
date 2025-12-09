@@ -87,6 +87,18 @@ fun AddEditAddonScreen(
         priceText = uiState.addonPrice
     }
     
+    // Track if user clicked OK on success dialog
+    var shouldNavigateBack by remember { mutableStateOf(false) }
+    
+    // Navigate back when user clicks OK
+    LaunchedEffect(shouldNavigateBack) {
+        if (shouldNavigateBack) {
+            onSaveSuccess()
+            viewModel.dismissSuccessDialog()
+            shouldNavigateBack = false
+        }
+    }
+    
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
@@ -291,10 +303,8 @@ fun AddEditAddonScreen(
                 isEditMode = isEditMode,
                 isOffline = uiState.isOfflineSuccess,
                 onOkClick = {
-                    // Navigate back first
-                    onSaveSuccess()
-                    // Dismiss dialog (will be cleaned up when screen is popped)
-                    viewModel.dismissSuccessDialog()
+                    // Trigger navigation via LaunchedEffect
+                    shouldNavigateBack = true
                 }
             )
         }
