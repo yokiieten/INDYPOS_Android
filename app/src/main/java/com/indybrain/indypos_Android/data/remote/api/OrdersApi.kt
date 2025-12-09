@@ -1,7 +1,11 @@
 package com.indybrain.indypos_Android.data.remote.api
 
+import com.indybrain.indypos_Android.data.remote.dto.CreateOrderRequestDto
+import com.indybrain.indypos_Android.data.remote.dto.CreateOrderResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.OrdersResponseDto
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 /**
@@ -19,5 +23,13 @@ interface OrdersApi {
         @Query("start_date") startDate: String? = null,
         @Query("end_date") endDate: String? = null
     ): OrdersResponseDto
+    
+    /**
+     * Create order endpoint
+     */
+    @POST("protected/indypos/orders")
+    suspend fun createOrder(
+        @Body request: CreateOrderRequestDto
+    ): CreateOrderResponseDto
 }
 

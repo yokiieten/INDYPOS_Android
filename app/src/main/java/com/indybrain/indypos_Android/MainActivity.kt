@@ -228,6 +228,9 @@ class MainActivity : ComponentActivity() {
                                     val subtotal = orderProductViewModel.calculateSubtotal()
                                     navController.navigate(NavRoutes.discount(subtotal))
                                 },
+                                onPlaceOrderClick = { totalAmount, subtotal, discount ->
+                                    navController.navigate(NavRoutes.cashPayment(totalAmount, subtotal, discount))
+                                },
                                 viewModel = orderProductViewModel
                             )
                         }
@@ -259,6 +262,40 @@ class MainActivity : ComponentActivity() {
                                     }
                                     orderProductViewModel.setDiscountAmount(discountAmount)
                                     navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.CASH_PAYMENT_ROUTE,
+                            arguments = listOf(
+                                navArgument("totalAmount") {},
+                                navArgument("subtotal") {},
+                                navArgument("discount") {}
+                            )
+                        ) { backStackEntry ->
+                            val totalAmountString = backStackEntry.arguments?.getString("totalAmount") ?: "0.0"
+                            val subtotalString = backStackEntry.arguments?.getString("subtotal") ?: "0.0"
+                            val discountString = backStackEntry.arguments?.getString("discount") ?: "0.0"
+                            
+                            val totalAmount = totalAmountString.toDoubleOrNull() ?: 0.0
+                            val subtotal = subtotalString.toDoubleOrNull() ?: 0.0
+                            val discount = discountString.toDoubleOrNull() ?: 0.0
+                            
+                            com.indybrain.indypos_Android.presentation.cashpayment.CashPaymentScreen(
+                                totalAmount = totalAmount,
+                                subtotal = subtotal,
+                                discount = discount,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onPaymentComplete = { change ->
+                                    // Navigate to order screen or home
+                                    navController.navigate(NavRoutes.Home.route) {
+                                        popUpTo(NavRoutes.OrderProduct.route) {
+                                            inclusive = true
+                                        }
+                                    }
                                 }
                             )
                         }

@@ -84,6 +84,7 @@ fun OrderProductScreen(
     onAddMenuClick: () -> Unit = {},
     onEditItemClick: (productId: String, productName: String) -> Unit = { _, _ -> },
     onDiscountClick: () -> Unit = {},
+    onPlaceOrderClick: (totalAmount: Double, subtotal: Double, discount: Double) -> Unit = { _, _, _ -> },
     viewModel: OrderProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -373,7 +374,19 @@ fun OrderProductScreen(
                 OrderButton(
                     itemCount = uiState.cartItems.size,
                     totalAmount = viewModel.calculateTotal(),
-                    onClick = { viewModel.placeOrder() },
+                    onClick = {
+                        val total = viewModel.calculateTotal()
+                        val subtotal = viewModel.calculateSubtotal()
+                        val discount = uiState.discountAmount
+                        
+                        // Navigate to cash payment if CASH is selected
+                        if (uiState.selectedPaymentType == PaymentType.CASH) {
+                            onPlaceOrderClick(total, subtotal, discount)
+                        } else {
+                            // For other payment types, handle differently
+                            viewModel.placeOrder()
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)

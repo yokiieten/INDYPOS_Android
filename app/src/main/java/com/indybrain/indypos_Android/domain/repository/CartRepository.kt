@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface CartRepository {
     fun getCartItems(): Flow<List<CartItemEntity>>
+    suspend fun getCartItemsSync(): List<CartItemEntity>
     suspend fun getCartAddonsByItemId(itemId: String): List<CartAddonEntity>
     fun getCartItemCount(): Flow<Int>
     suspend fun addToCart(

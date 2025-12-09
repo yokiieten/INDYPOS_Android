@@ -26,6 +26,10 @@ class CartRepositoryImpl @Inject constructor(
         return cartDao.getAllCartItems()
     }
     
+    override suspend fun getCartItemsSync(): List<CartItemEntity> {
+        return cartDao.getAllCartItemsSync()
+    }
+    
     override suspend fun getCartAddonsByItemId(itemId: String): List<CartAddonEntity> {
         return cartDao.getCartAddonsByItemId(itemId)
     }
