@@ -127,6 +127,11 @@
     <string name="product_cart">ตะกร้า</string>
     <string name="product_barcode_scanner">สแกนบาร์โค้ด</string>
     
+    <!-- Search Product Screen -->
+    <string name="search_title">ค้นหาสินค้า</string>
+    <string name="search_placeholder">ค้นหาสินค้า…</string>
+    <string name="search_no_results">ไม่พบผลลัพธ์</string>
+    
     <!-- Barcode Scanner Screen -->
     <string name="barcode_scanner_title">สแกนบาร์โค้ด</string>
     <string name="barcode_scanner_instruction">วางบาร์โค้ดภายในกรอบเพื่อสแกน</string>

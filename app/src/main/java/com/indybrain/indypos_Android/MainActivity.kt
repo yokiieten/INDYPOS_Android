@@ -25,6 +25,7 @@ import com.indybrain.indypos_Android.presentation.navigation.NavRoutes
 import com.indybrain.indypos_Android.presentation.orderproduct.OrderProductScreen
 import com.indybrain.indypos_Android.presentation.products.MainProductScreen
 import com.indybrain.indypos_Android.presentation.products.ProductDetailScreen
+import com.indybrain.indypos_Android.presentation.products.SearchProductScreen
 import com.indybrain.indypos_Android.presentation.settings.LanguageSettingsScreen
 import com.indybrain.indypos_Android.presentation.settings.AccountScreen
 import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
@@ -158,7 +159,27 @@ class MainActivity : ComponentActivity() {
                                     scannedBarcode = null // Clear previous barcode
                                     navController.navigate(NavRoutes.BarcodeScanner.route)
                                 },
+                                onSearchClick = {
+                                    navController.navigate(NavRoutes.SearchProduct.route)
+                                },
                                 scannedBarcode = scannedBarcode
+                            )
+                        }
+                        
+                        composable(NavRoutes.SearchProduct.route) {
+                            SearchProductScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onProductClick = { productId, productName, isInCart ->
+                                    if (isInCart) {
+                                        // Navigate to ProductEditScreen if product is in cart
+                                        navController.navigate(NavRoutes.productEdit(productId, productName))
+                                    } else {
+                                        // Navigate to ProductDetailScreen if product is not in cart
+                                        navController.navigate(NavRoutes.productDetail(productId))
+                                    }
+                                }
                             )
                         }
                         

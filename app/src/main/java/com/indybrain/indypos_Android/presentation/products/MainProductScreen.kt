@@ -92,6 +92,7 @@ fun MainProductScreen(
     onProductClick: (productId: String, productName: String, isInCart: Boolean) -> Unit = { _, _, _ -> },
     onCartClick: () -> Unit = {},
     onBarcodeScannerClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
     scannedBarcode: String? = null,
     viewModel: MainProductViewModel = hiltViewModel()
 ) {
@@ -258,7 +259,7 @@ fun MainProductScreen(
                             tint = PrimaryText
                         )
                     }
-                    IconButton(onClick = { /* TODO: Search */ }) {
+                    IconButton(onClick = onSearchClick) {
                         Icon(
                             imageVector = Icons.Filled.Search,
                             contentDescription = stringResource(id = R.string.product_search),
