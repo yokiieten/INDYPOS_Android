@@ -13,7 +13,9 @@ data class AddonGroupManagementUiState(
     val errorMessage: String? = null,
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,
+    val syncSuccessMessage: String? = null,
     val isEditMode: Boolean = false,
-    val selectedAddonGroupIds: Set<String> = emptySet()
+    val selectedAddonGroupIds: Set<String> = emptySet(),
+    val syncStatistics: com.indybrain.indypos_Android.domain.repository.AddonGroupSyncStatistics? = null
 )
 

@@ -68,5 +68,18 @@ interface ProductDao {
     
     @Query("DELETE FROM products")
     suspend fun deleteAll()
+    
+    // Sync operations
+    @Query("SELECT * FROM products WHERE isSynced = 0 AND isDeletedLocally = 0")
+    suspend fun getUnsyncedProducts(): List<ProductEntity>
+    
+    @Query("SELECT * FROM products WHERE isDeletedLocally = 1 AND isSynced = 0")
+    suspend fun getDeletedProducts(): List<ProductEntity>
+    
+    @Query("UPDATE products SET isSynced = 1 WHERE id = :id")
+    suspend fun markAsSynced(id: String)
+    
+    @Query("DELETE FROM products WHERE id = :id AND isDeletedLocally = 1")
+    suspend fun permanentlyDelete(id: String)
 }
 

@@ -273,5 +273,51 @@ class AddonGroupManagementViewModel @Inject constructor(
             }
         }
     }
+    
+    /**
+     * Sync addon groups to server
+     */
+    fun syncAddonGroups() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, syncSuccessMessage = null) }
+            
+            val result = addonGroupRepository.syncAddonGroups()
+            
+            result.onSuccess {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        syncSuccessMessage = "Sync กลุ่มตัวเลือกเพิ่มเติมสำเร็จ"
+                    )
+                }
+                // Refresh addon groups after sync
+                loadAddonGroups()
+            }.onFailure { error ->
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการ sync กลุ่มตัวเลือกเพิ่มเติม"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Dismiss sync success message
+     */
+    fun dismissSyncSuccess() {
+        _uiState.update { it.copy(syncSuccessMessage = null) }
+    }
+    
+    /**
+     * Load sync statistics
+     */
+    fun loadSyncStatistics() {
+        viewModelScope.launch {
+            val stats = addonGroupRepository.getSyncStatistics()
+            _uiState.update { it.copy(syncStatistics = stats) }
+        }
+    }
 }
 

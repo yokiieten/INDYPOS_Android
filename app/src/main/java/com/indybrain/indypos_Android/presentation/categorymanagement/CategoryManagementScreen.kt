@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -82,6 +83,14 @@ fun CategoryManagementScreen(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var categoryToDelete by remember { mutableStateOf<com.indybrain.indypos_Android.data.local.entity.CategoryEntity?>(null) }
     var showMultipleDeleteConfirmation by remember { mutableStateOf(false) }
+    var showSyncDialog by remember { mutableStateOf(false) }
+    
+    // Load sync statistics when dialog opens
+    LaunchedEffect(showSyncDialog) {
+        if (showSyncDialog) {
+            viewModel.loadSyncStatistics()
+        }
+    }
     
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
@@ -125,6 +134,16 @@ fun CategoryManagementScreen(
                     }
                 },
                 actions = {
+                    // Sync button
+                    if (!uiState.isEditMode) {
+                        IconButton(onClick = { showSyncDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.Sync,
+                                contentDescription = "Sync",
+                                tint = GreenComplete
+                            )
+                        }
+                    }
                     // Edit/Cancel button
                     TextButton(
                         onClick = { viewModel.toggleEditMode() }
@@ -362,7 +381,172 @@ fun CategoryManagementScreen(
                 }
             )
         }
+        
+        // Sync Status Dialog
+        if (showSyncDialog) {
+            CategorySyncStatusDialog(
+                statistics = uiState.syncStatistics,
+                onDismiss = { showSyncDialog = false },
+                onSyncNow = {
+                    viewModel.syncCategories()
+                    showSyncDialog = false
+                }
+            )
+        }
+        
+        // Sync Success Dialog
+        uiState.syncSuccessMessage?.let { message ->
+            SyncSuccessDialog(
+                message = message,
+                onDismiss = {
+                    viewModel.dismissSyncSuccess()
+                }
+            )
+        }
     }
+}
+
+/**
+ * Category Sync Status Dialog
+ */
+@Composable
+private fun CategorySyncStatusDialog(
+    statistics: CategorySyncStatistics?,
+    onDismiss: () -> Unit,
+    onSyncNow: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "สถานะการ Sync",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+        },
+        text = {
+            Column {
+                if (statistics != null) {
+                    Text(
+                        text = "ทั้งหมด: ${statistics.total}",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Sync แล้ว: ${statistics.synced}",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "รอ Sync: ${statistics.unsynced}",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "ถูกลบ: ${statistics.deleted}",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                } else {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = PrimaryButton
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (statistics != null && statistics.unsynced > 0) {
+                TextButton(onClick = onSyncNow) {
+                    Text(
+                        text = "Sync ตอนนี้",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = stringResource(id = R.string.dialog_button_ok),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+            }
+        }
+    )
+}
+
+/**
+ * Sync Success Dialog
+ */
+@Composable
+private fun SyncSuccessDialog(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { /* Prevent dismissing by clicking outside */ },
+        title = {
+            Text(
+                text = stringResource(id = R.string.success_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = SecondaryText
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_button_ok),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryButton
+                )
+            }
+        }
+    )
 }
 
 /**

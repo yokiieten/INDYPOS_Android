@@ -307,5 +307,41 @@ class AddOnManagementViewModel @Inject constructor(
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
+    
+    /**
+     * Sync addons to server
+     */
+    fun syncAddons() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, syncSuccessMessage = null) }
+            
+            val result = addonRepository.syncPendingAddons()
+            
+            result.onSuccess {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        syncSuccessMessage = "Sync ตัวเลือกเพิ่มเติมสำเร็จ"
+                    )
+                }
+                // Refresh addons after sync
+                loadAddons()
+            }.onFailure { error ->
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการ sync ตัวเลือกเพิ่มเติม"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Dismiss sync success message
+     */
+    fun dismissSyncSuccess() {
+        _uiState.update { it.copy(syncSuccessMessage = null) }
+    }
 }
 

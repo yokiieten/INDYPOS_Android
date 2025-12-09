@@ -273,6 +273,66 @@ class CategoryManagementViewModel @Inject constructor(
             }
         }
     }
+    
+    /**
+     * Sync categories to server
+     */
+    fun syncCategories() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            
+            val result = productRepository.syncCategories()
+            
+            result.onSuccess {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        syncSuccessMessage = "Sync หมวดหมู่สำเร็จ"
+                    )
+                }
+                // Refresh categories after sync
+                loadCategories()
+            }.onFailure { error ->
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการ sync หมวดหมู่"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Dismiss sync success message
+     */
+    fun dismissSyncSuccess() {
+        _uiState.update { it.copy(syncSuccessMessage = null) }
+    }
+    
+    /**
+     * Load sync statistics
+     */
+    fun loadSyncStatistics() {
+        viewModelScope.launch {
+            val categories = productRepository.getAllCategories()
+            val total = categories.size
+            val synced = categories.count { it.isSynced }
+            val unsynced = categories.count { !it.isSynced }
+            val deleted = categories.count { it.isDeletedLocally }
+            
+            _uiState.update { 
+                it.copy(
+                    syncStatistics = CategorySyncStatistics(
+                        total = total,
+                        synced = synced,
+                        unsynced = unsynced,
+                        deleted = deleted
+                    )
+                )
+            }
+        }
+    }
 }
 
 

@@ -495,12 +495,21 @@ class AddonGroupRepositoryImpl @Inject constructor(
             }
             
             // Date formatter for ISO string
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
             }
             
             // Convert to sync items
             val syncItems = (unsynced + deletedUnsynced).map { entity ->
+                // Get addons for this addon group
+                val junctions = junctionDao.getJunctionsByAddonGroupId(entity.id)
+                val addonItems = junctions.map { junction ->
+                    AddonGroupAddonItemDto(
+                        addonId = junction.addonId,
+                        sortOrder = junction.sortOrder
+                    )
+                }
+                
                 SyncAddonGroupItemDto(
                     id = entity.id,
                     name = entity.name,
@@ -514,7 +523,8 @@ class AddonGroupRepositoryImpl @Inject constructor(
                     isSynced = entity.isSynced,
                     isDeletedLocally = entity.isDeletedLocally,
                     createdAt = dateFormat.format(entity.createdAt),
-                    updatedAt = dateFormat.format(entity.updatedAt)
+                    updatedAt = dateFormat.format(entity.updatedAt),
+                    addons = addonItems
                 )
             }
             
@@ -545,9 +555,42 @@ class AddonGroupRepositoryImpl @Inject constructor(
             }
             
             Result.success(Unit)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                403 -> {
+                    val errorBody = e.response()?.errorBody()?.string()
+                    if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
+                        "คุณใช้กลุ่มตัวเลือกเพิ่มเติมครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                    } else {
+                        e.message() ?: "เกิดข้อผิดพลาดในการ sync"
+                    }
+                }
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการ sync"
+            }
+            Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
         }
+    }
+    
+    override suspend fun getSyncStatistics(): com.indybrain.indypos_Android.domain.repository.AddonGroupSyncStatistics {
+        val allAddonGroups = addonGroupDao.getAllAddonGroups()
+        val unsynced = addonGroupDao.getUnsyncedAddonGroups()
+        val deleted = addonGroupDao.getDeletedUnsyncedAddonGroups()
+        
+        val total = allAddonGroups.size + deleted.size
+        val synced = allAddonGroups.count { it.isSynced }
+        val unsyncedCount = unsynced.size
+        val deletedCount = deleted.size
+        
+        return com.indybrain.indypos_Android.domain.repository.AddonGroupSyncStatistics(
+            total = total,
+            synced = synced,
+            unsynced = unsyncedCount,
+            deleted = deletedCount
+        )
     }
 }
 

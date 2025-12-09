@@ -8,13 +8,10 @@ import com.indybrain.indypos_Android.data.local.dao.*
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
-import com.indybrain.indypos_Android.data.remote.api.CreateCategoryRequestDto
-import com.indybrain.indypos_Android.data.remote.api.CreateProductRequestDto
-import com.indybrain.indypos_Android.data.remote.api.DeleteProductsRequestDto
-import com.indybrain.indypos_Android.data.remote.api.ProductsApi
-import com.indybrain.indypos_Android.data.remote.api.ToggleCategoryStatusRequestDto
-import com.indybrain.indypos_Android.data.remote.api.ToggleProductStatusRequestDto
-import com.indybrain.indypos_Android.data.remote.api.UpdateCategoryRequestDto
+import com.indybrain.indypos_Android.data.remote.api.*
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
@@ -40,6 +37,7 @@ class ProductRepositoryImpl @Inject constructor(
     private val productDao: ProductDao,
     private val addonGroupDao: AddonGroupDao,
     private val addonDao: AddonDao,
+    private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
     private val authRepository: AuthRepository,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val cartRepository: CartRepository,
@@ -1109,6 +1107,197 @@ class ProductRepositoryImpl @Inject constructor(
     
     override suspend fun clearCartItemsByProduct(productId: String) {
         cartRepository.clearCartItemsByProduct(productId)
+    }
+    
+    /**
+     * Sync categories to server
+     */
+    override suspend fun syncCategories(): Result<Unit> {
+        return try {
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.success(Unit) // No network, skip sync
+            }
+            
+            // Get all unsynced categories
+            val unsynced = categoryDao.getUnsyncedCategories()
+            val deleted = categoryDao.getDeletedCategories()
+            
+            if (unsynced.isEmpty() && deleted.isEmpty()) {
+                return Result.success(Unit) // Nothing to sync
+            }
+            
+            // Date formatter for ISO string
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            
+            // Convert to sync items
+            val syncItems = (unsynced + deleted).map { entity ->
+                SyncCategoryItemDto(
+                    id = entity.id,
+                    name = entity.name,
+                    isActive = entity.isActive,
+                    isSynced = entity.isSynced,
+                    isDeletedLocally = entity.isDeletedLocally,
+                    createdAt = dateFormat.format(entity.createdAt),
+                    updatedAt = dateFormat.format(entity.updatedAt)
+                )
+            }
+            
+            val request = SyncCategoriesRequestDto(categories = syncItems)
+            val response = productsApi.syncCategories(request)
+            
+            // Process sync results
+            response.data?.forEach { result ->
+                when {
+                    result.shouldDelete -> {
+                        // Delete locally
+                        categoryDao.deleteCategoryById(result.id)
+                    }
+                    result.serverData != null -> {
+                        // Update with server data
+                        val serverEntity = ProductMapper.toEntity(result.serverData)
+                        categoryDao.insert(serverEntity)
+                    }
+                    result.status.lowercase() == "success" -> {
+                        // Mark as synced
+                        categoryDao.markAsSynced(result.id)
+                    }
+                }
+            }
+            
+            Result.success(Unit)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                403 -> {
+                    val errorBody = e.response()?.errorBody()?.string()
+                    if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
+                        "คุณใช้หมวดหมู่ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                    } else {
+                        e.message() ?: "เกิดข้อผิดพลาดในการ sync"
+                    }
+                }
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการ sync"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
+        }
+    }
+    
+    /**
+     * Sync products to server
+     */
+    override suspend fun syncProducts(): Result<Unit> {
+        return try {
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.success(Unit) // No network, skip sync
+            }
+            
+            // Get all unsynced products
+            val unsynced = productDao.getUnsyncedProducts()
+            val deleted = productDao.getDeletedProducts()
+            
+            if (unsynced.isEmpty() && deleted.isEmpty()) {
+                return Result.success(Unit) // Nothing to sync
+            }
+            
+            // Date formatter for ISO string
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            
+            // Convert to sync items
+            val syncItems = (unsynced + deleted).mapNotNull { entity ->
+                val addonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(entity.id)
+                
+                SyncProductItemDto(
+                    id = entity.id,
+                    name = entity.name ?: "",
+                    description = entity.description ?: "",
+                    price = entity.price,
+                    costPrice = entity.costPrice ?: 0.0,
+                    imageUrl = entity.imageUrl ?: "",
+                    categoryId = entity.categoryId ?: "",
+                    popularityRank = entity.popularityRank ?: 0,
+                    productCode = entity.productCode ?: "",
+                    unit = entity.unit ?: "",
+                    skuCode = entity.skuCode ?: "",
+                    stockQuantity = entity.stockQuantity ?: 0,
+                    minStockQuantity = entity.minStockQuantity ?: 0,
+                    selectedUnit = entity.selectedUnit ?: "",
+                    selectedColorHex = entity.selectedColorHex ?: "",
+                    isSkuEnabled = entity.isSkuEnabled ?: false,
+                    isStockEnabled = entity.isStockEnabled ?: false,
+                    hasAdditionalOptions = entity.hasAdditionalOptions ?: false,
+                    isActive = entity.isActive,
+                    isSynced = entity.isSynced,
+                    isDeletedLocally = entity.isDeletedLocally,
+                    createdAt = dateFormat.format(entity.createdAt),
+                    updatedAt = dateFormat.format(entity.updatedAt),
+                    addonGroupIds = addonGroupIds
+                )
+            }
+            
+            val request = SyncProductsRequestDto(products = syncItems)
+            val response = productsApi.syncProducts(request)
+            
+            // Process sync results
+            response.data?.forEach { result ->
+                when {
+                    result.shouldDelete -> {
+                        // Delete locally
+                        result.id?.let { id ->
+                            productDao.permanentlyDelete(id)
+                        }
+                    }
+                    result.serverData != null -> {
+                        // Update with server data
+                        result.id?.let { id ->
+                            val serverEntity = ProductMapper.toEntity(result.serverData)
+                            productDao.insertAll(listOf(serverEntity))
+                            
+                            // Update addon group relationships
+                            result.serverData.addonGroups?.forEach { addonGroupDto ->
+                                productAddonGroupJunctionDao.insert(
+                                    com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
+                                        productId = id,
+                                        addonGroupId = addonGroupDto.id
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    result.status.lowercase() == "success" -> {
+                        // Mark as synced
+                        result.id?.let { id ->
+                            productDao.markAsSynced(id)
+                        }
+                    }
+                }
+            }
+            
+            Result.success(Unit)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                403 -> {
+                    val errorBody = e.response()?.errorBody()?.string()
+                    if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
+                        "คุณใช้สินค้าครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                    } else {
+                        e.message() ?: "เกิดข้อผิดพลาดในการ sync"
+                    }
+                }
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการ sync"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
+        }
     }
 }
 

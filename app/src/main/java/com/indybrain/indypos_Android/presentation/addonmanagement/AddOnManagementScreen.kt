@@ -359,7 +359,7 @@ fun AddOnManagementScreen(
                 statistics = uiState.syncStatistics,
                 onDismiss = { showSyncDialog = false },
                 onSyncNow = {
-                    viewModel.refreshAddons()
+                    viewModel.syncAddons()
                     showSyncDialog = false
                 }
             )
@@ -401,6 +401,38 @@ fun AddOnManagementScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearDeleteSuccessMessage() }) {
+                        Text("ตกลง", color = PrimaryButton)
+                    }
+                }
+            )
+        }
+        
+        // Sync Success Dialog
+        uiState.syncSuccessMessage?.let { message ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissSyncSuccess() },
+                title = {
+                    Text(
+                        text = "สำเร็จ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = message,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissSyncSuccess() }) {
                         Text("ตกลง", color = PrimaryButton)
                     }
                 }

@@ -41,5 +41,15 @@ interface CategoryDao {
     
     @Query("UPDATE categories SET isDeletedLocally = 1 WHERE id = :id")
     suspend fun markAsDeletedLocally(id: String)
+    
+    // Sync operations
+    @Query("SELECT * FROM categories WHERE isSynced = 0 AND isDeletedLocally = 0")
+    suspend fun getUnsyncedCategories(): List<CategoryEntity>
+    
+    @Query("SELECT * FROM categories WHERE isDeletedLocally = 1 AND isSynced = 0")
+    suspend fun getDeletedCategories(): List<CategoryEntity>
+    
+    @Query("UPDATE categories SET isSynced = 1 WHERE id = :id")
+    suspend fun markAsSynced(id: String)
 }
 

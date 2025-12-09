@@ -180,6 +180,18 @@ interface ProductRepository {
     suspend fun getSyncStatistics(): ProductSyncStatistics
     
     /**
+     * Sync categories to server
+     * Syncs unsynced and deleted categories from local database to server
+     */
+    suspend fun syncCategories(): Result<Unit>
+    
+    /**
+     * Sync products to server
+     * Syncs unsynced and deleted products from local database to server
+     */
+    suspend fun syncProducts(): Result<Unit>
+    
+    /**
      * Clear cart items for a product (when product is deactivated)
      */
     suspend fun clearCartItemsByProduct(productId: String)

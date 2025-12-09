@@ -56,6 +56,12 @@ interface ProductsApi {
     suspend fun deleteCategory(@Path("id") id: String): ApiResponseDto<CategoryDto>
     
     /**
+     * Sync categories endpoint
+     */
+    @POST("protected/indypos/categories/sync")
+    suspend fun syncCategories(@Body request: SyncCategoriesRequestDto): ApiResponseDto<List<SyncCategoryResultDto>>
+    
+    /**
      * Get all products endpoint
      */
     @GET("protected/indypos/my-products-all")
@@ -190,6 +196,12 @@ interface ProductsApi {
     @Multipart
     @POST("protected/upload/product-image")
     suspend fun uploadProductImage(@Part image: MultipartBody.Part): UploadImageResponseDto
+    
+    /**
+     * Sync products endpoint
+     */
+    @POST("protected/indypos/products/sync")
+    suspend fun syncProducts(@Body request: SyncProductsRequestDto): ApiResponseDto<List<SyncProductResultDto>>
 }
 
 /**
@@ -390,9 +402,20 @@ data class SyncAddonGroupItemDto(
     @SerializedName("is_deleted_locally")
     val isDeletedLocally: Boolean? = null,
     @SerializedName("created_at")
-    val createdAt: String,
+    val createdAt: String?,
     @SerializedName("updated_at")
-    val updatedAt: String
+    val updatedAt: String?,
+    val addons: List<AddonGroupAddonItemDto>? = null
+)
+
+/**
+ * Addon group addon item DTO for sync
+ */
+data class AddonGroupAddonItemDto(
+    @SerializedName("addon_id")
+    val addonId: String,
+    @SerializedName("sort_order")
+    val sortOrder: Int
 )
 
 /**
@@ -520,5 +543,112 @@ data class SyncAddonResultDto(
     val shouldDelete: Boolean?,
     @SerializedName("server_data")
     val serverData: AddonDto?
+)
+
+/**
+ * Request DTO for syncing categories
+ */
+data class SyncCategoriesRequestDto(
+    val categories: List<SyncCategoryItemDto>
+)
+
+/**
+ * Sync category item DTO
+ */
+data class SyncCategoryItemDto(
+    val id: String,
+    val name: String,
+    @SerializedName("is_active")
+    val isActive: Boolean,
+    @SerializedName("is_synced")
+    val isSynced: Boolean,
+    @SerializedName("is_deleted_locally")
+    val isDeletedLocally: Boolean,
+    @SerializedName("created_at")
+    val createdAt: String,
+    @SerializedName("updated_at")
+    val updatedAt: String
+)
+
+/**
+ * Sync category result DTO
+ */
+data class SyncCategoryResultDto(
+    val id: String,
+    val status: String,
+    val message: String,
+    @SerializedName("should_delete")
+    val shouldDelete: Boolean,
+    @SerializedName("server_data")
+    val serverData: CategoryDto?
+)
+
+/**
+ * Request DTO for syncing products
+ */
+data class SyncProductsRequestDto(
+    val products: List<SyncProductItemDto>
+)
+
+/**
+ * Sync product item DTO
+ */
+data class SyncProductItemDto(
+    val id: String,
+    val name: String,
+    val description: String,
+    val price: Double,
+    @SerializedName("cost_price")
+    val costPrice: Double,
+    @SerializedName("image_url")
+    val imageUrl: String,
+    @SerializedName("category_id")
+    val categoryId: String,
+    @SerializedName("popularity_rank")
+    val popularityRank: Int,
+    @SerializedName("product_code")
+    val productCode: String,
+    val unit: String,
+    @SerializedName("sku_code")
+    val skuCode: String,
+    @SerializedName("stock_quantity")
+    val stockQuantity: Int,
+    @SerializedName("min_stock_quantity")
+    val minStockQuantity: Int,
+    @SerializedName("selected_unit")
+    val selectedUnit: String,
+    @SerializedName("selected_color_hex")
+    val selectedColorHex: String,
+    @SerializedName("is_sku_enabled")
+    val isSkuEnabled: Boolean,
+    @SerializedName("is_stock_enabled")
+    val isStockEnabled: Boolean,
+    @SerializedName("has_additional_options")
+    val hasAdditionalOptions: Boolean,
+    @SerializedName("is_active")
+    val isActive: Boolean,
+    @SerializedName("is_synced")
+    val isSynced: Boolean,
+    @SerializedName("is_deleted_locally")
+    val isDeletedLocally: Boolean,
+    @SerializedName("created_at")
+    val createdAt: String,
+    @SerializedName("updated_at")
+    val updatedAt: String,
+    @SerializedName("addon_group_ids")
+    val addonGroupIds: List<String>?
+)
+
+/**
+ * Sync product result DTO
+ */
+data class SyncProductResultDto(
+    val id: String?,
+    val status: String,
+    val message: String,
+    @SerializedName("should_delete")
+    val shouldDelete: Boolean,
+    @SerializedName("server_data")
+    val serverData: ProductDto?
 )
 

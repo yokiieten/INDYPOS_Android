@@ -16,6 +16,7 @@ data class AddOnManagementUiState(
     val errorMessage: String? = null,
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,
+    val syncSuccessMessage: String? = null,
     val syncStatistics: AddonSyncStatistics? = null
 )
 

@@ -22,7 +22,7 @@ class AddonRepositoryImpl @Inject constructor(
     private val networkConnectivityChecker: NetworkConnectivityChecker
 ) : AddonRepository {
     
-    private val dateFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).apply {
+    private val dateFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
     

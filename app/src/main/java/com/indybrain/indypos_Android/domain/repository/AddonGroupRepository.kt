@@ -91,5 +91,20 @@ interface AddonGroupRepository {
      * Sync unsynced addon groups with server
      */
     suspend fun syncAddonGroups(): Result<Unit>
+    
+    /**
+     * Get sync statistics
+     */
+    suspend fun getSyncStatistics(): AddonGroupSyncStatistics
 }
+
+/**
+ * Sync statistics for addon groups
+ */
+data class AddonGroupSyncStatistics(
+    val total: Int,
+    val synced: Int,
+    val unsynced: Int,
+    val deleted: Int
+)
 
