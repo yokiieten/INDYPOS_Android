@@ -70,6 +70,45 @@ interface ProductsApi {
     suspend fun getAddonGroups(): ApiResponseDto<List<AddonGroupDto>>
     
     /**
+     * Create addon group endpoint
+     */
+    @POST("protected/indypos/addon-groups")
+    suspend fun createAddonGroup(@Body request: CreateAddonGroupRequestDto): ApiResponseDto<AddonGroupDto>
+    
+    /**
+     * Update addon group endpoint
+     */
+    @PUT("protected/indypos/addon-groups/update")
+    suspend fun updateAddonGroup(@Body request: UpdateAddonGroupRequestDto): ApiResponseDto<AddonGroupDto>
+    
+    /**
+     * Toggle addon group status endpoint
+     */
+    @PATCH("protected/indypos/addon-groups/{addonGroupId}/toggle-status")
+    suspend fun toggleAddonGroupStatus(
+        @Path("addonGroupId") addonGroupId: String,
+        @Body request: ToggleAddonGroupStatusRequestDto
+    ): ApiResponseDto<AddonGroupDto>
+    
+    /**
+     * Delete single addon group endpoint
+     */
+    @DELETE("protected/indypos/addon-groups/{addonGroupId}")
+    suspend fun deleteAddonGroup(@Path("addonGroupId") addonGroupId: String): ApiResponseDto<DeleteAddonGroupResponseDto>
+    
+    /**
+     * Delete multiple addon groups endpoint
+     */
+    @HTTP(method = "DELETE", path = "protected/indypos/addon-groups", hasBody = true)
+    suspend fun deleteMultipleAddonGroups(@Body request: DeleteAddonGroupsRequestDto): ApiResponseDto<DeleteMultipleAddonGroupsResponseDto>
+    
+    /**
+     * Sync addon groups endpoint
+     */
+    @POST("protected/indypos/addon-groups/sync")
+    suspend fun syncAddonGroups(@Body request: SyncAddonGroupsRequestDto): ApiResponseDto<List<SyncAddonGroupResultDto>>
+    
+    /**
      * Get addons endpoint
      */
     @GET("protected/indypos/addons")
@@ -195,5 +234,125 @@ data class CreateProductRequestDto(
     val isActive: Boolean = true,
     @SerializedName("addon_group_ids")
     val addonGroupIds: List<String>? = null
+)
+
+/**
+ * Request DTO for creating an addon group
+ */
+data class CreateAddonGroupRequestDto(
+    val name: String,
+    @SerializedName("is_required")
+    val isRequired: Boolean,
+    @SerializedName("is_single_selection")
+    val isSingleSelection: Boolean,
+    @SerializedName("max_selection")
+    val maxSelection: Int,
+    @SerializedName("min_selection")
+    val minSelection: Int,
+    @SerializedName("sort_order")
+    val sortOrder: Int
+)
+
+/**
+ * Request DTO for updating an addon group
+ */
+data class UpdateAddonGroupRequestDto(
+    val id: String? = null,
+    val name: String? = null,
+    val description: String? = null,
+    @SerializedName("is_required")
+    val isRequired: Boolean? = null,
+    @SerializedName("is_single_selection")
+    val isSingleSelection: Boolean? = null,
+    @SerializedName("max_selection")
+    val maxSelection: Int? = null,
+    @SerializedName("min_selection")
+    val minSelection: Int? = null,
+    @SerializedName("sort_order")
+    val sortOrder: Int? = null,
+    @SerializedName("is_active")
+    val isActive: Boolean? = null
+)
+
+/**
+ * Request DTO for toggling addon group status
+ */
+data class ToggleAddonGroupStatusRequestDto(
+    val status: Boolean
+)
+
+/**
+ * Request DTO for deleting multiple addon groups
+ */
+data class DeleteAddonGroupsRequestDto(
+    @SerializedName("addon_group_ids")
+    val addonGroupIds: List<String>
+)
+
+/**
+ * Request DTO for syncing addon groups
+ */
+data class SyncAddonGroupsRequestDto(
+    @SerializedName("addon_groups")
+    val addonGroups: List<SyncAddonGroupItemDto>
+)
+
+/**
+ * Sync addon group item DTO
+ */
+data class SyncAddonGroupItemDto(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    @SerializedName("is_required")
+    val isRequired: Boolean,
+    @SerializedName("is_single_selection")
+    val isSingleSelection: Boolean,
+    @SerializedName("max_selection")
+    val maxSelection: Int,
+    @SerializedName("min_selection")
+    val minSelection: Int,
+    @SerializedName("sort_order")
+    val sortOrder: Int,
+    @SerializedName("is_active")
+    val isActive: Boolean,
+    @SerializedName("is_synced")
+    val isSynced: Boolean? = null,
+    @SerializedName("is_deleted_locally")
+    val isDeletedLocally: Boolean? = null,
+    @SerializedName("created_at")
+    val createdAt: String,
+    @SerializedName("updated_at")
+    val updatedAt: String
+)
+
+/**
+ * Response DTO for deleting single addon group
+ */
+data class DeleteAddonGroupResponseDto(
+    @SerializedName("deleted_id")
+    val deletedId: String
+)
+
+/**
+ * Response DTO for deleting multiple addon groups
+ */
+data class DeleteMultipleAddonGroupsResponseDto(
+    @SerializedName("deleted_ids")
+    val deletedIds: List<String>,
+    val count: Int
+)
+
+/**
+ * Sync addon group result DTO
+ */
+data class SyncAddonGroupResultDto(
+    val id: String?,
+    val status: String?,
+    val message: String?,
+    @SerializedName("should_delete")
+    val shouldDelete: Boolean,
+    @SerializedName("server_data")
+    val serverData: AddonGroupDto?
 )
 

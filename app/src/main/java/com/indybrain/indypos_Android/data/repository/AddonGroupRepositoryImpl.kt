@@ -1,0 +1,418 @@
+package com.indybrain.indypos_Android.data.repository
+
+import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
+import com.indybrain.indypos_Android.data.mapper.ProductMapper
+import com.indybrain.indypos_Android.data.remote.api.*
+import com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto
+import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
+import kotlinx.coroutines.flow.Flow
+import retrofit2.HttpException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+import java.util.UUID
+import javax.inject.Inject
+
+class AddonGroupRepositoryImpl @Inject constructor(
+    private val productsApi: ProductsApi,
+    private val addonGroupDao: AddonGroupDao,
+    private val networkConnectivityChecker: NetworkConnectivityChecker
+) : AddonGroupRepository {
+    
+    override fun getAllAddonGroupsFlow(): Flow<List<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity>> {
+        return addonGroupDao.getAllAddonGroupsForManagementFlow()
+    }
+    
+    override suspend fun getAddonGroupById(id: String): com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity? {
+        return addonGroupDao.getAddonGroupById(id)
+    }
+    
+    override suspend fun createAddonGroup(
+        name: String,
+        isRequired: Boolean,
+        isSingleSelection: Boolean,
+        maxSelection: Int,
+        minSelection: Int,
+        sortOrder: Int
+    ): Result<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity> {
+        return try {
+            val addonGroupEntity: com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val request = CreateAddonGroupRequestDto(
+                        name = name,
+                        isRequired = isRequired,
+                        isSingleSelection = isSingleSelection,
+                        maxSelection = maxSelection,
+                        minSelection = minSelection,
+                        sortOrder = sortOrder
+                    )
+                    
+                    val response = productsApi.createAddonGroup(request)
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success - convert to entity and save to Room
+                        addonGroupEntity = ProductMapper.toEntity(response.data)
+                        addonGroupDao.insertAddonGroup(addonGroupEntity)
+                        Result.success(addonGroupEntity)
+                    } else {
+                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorMessage = when (e.code()) {
+                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                        else -> e.message() ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - save to Room only (for sync later)
+                addonGroupEntity = com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity(
+                    id = UUID.randomUUID().toString(),
+                    name = name,
+                    isRequired = isRequired,
+                    isSingleSelection = isSingleSelection,
+                    maxSelection = maxSelection,
+                    minSelection = minSelection,
+                    sortOrder = sortOrder,
+                    isActive = true,
+                    isDeletedLocally = false,
+                    isFromServer = false,
+                    isSynced = false,
+                    createdAt = Date(),
+                    updatedAt = Date()
+                )
+                addonGroupDao.insertAddonGroup(addonGroupEntity)
+                Result.success(addonGroupEntity)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"))
+        }
+    }
+    
+    override suspend fun updateAddonGroup(
+        addonGroupId: String,
+        name: String?,
+        isRequired: Boolean?,
+        isSingleSelection: Boolean?,
+        maxSelection: Int?,
+        minSelection: Int?,
+        sortOrder: Int?,
+        isActive: Boolean?
+    ): Result<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity> {
+        return try {
+            val existing = addonGroupDao.getAddonGroupById(addonGroupId)
+                ?: return Result.failure(Exception("ไม่พบกลุ่ม Addon ที่ต้องการแก้ไข"))
+            
+            val addonGroupEntity: com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val request = UpdateAddonGroupRequestDto(
+                        id = addonGroupId,
+                        name = name,
+                        description = null,
+                        isRequired = isRequired,
+                        isSingleSelection = isSingleSelection,
+                        maxSelection = maxSelection,
+                        minSelection = minSelection,
+                        sortOrder = sortOrder,
+                        isActive = isActive
+                    )
+                    
+                    val response = productsApi.updateAddonGroup(request)
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success - convert to entity and save to Room
+                        addonGroupEntity = ProductMapper.toEntity(response.data)
+                        addonGroupDao.updateAddonGroup(addonGroupEntity)
+                        Result.success(addonGroupEntity)
+                    } else {
+                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorMessage = when (e.code()) {
+                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        404 -> "ไม่พบกลุ่ม Addon ที่ต้องการแก้ไข"
+                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                        else -> e.message() ?: "เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon"
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - update in Room only (for sync later)
+                addonGroupEntity = existing.copy(
+                    name = name ?: existing.name,
+                    isRequired = isRequired ?: existing.isRequired,
+                    isSingleSelection = isSingleSelection ?: existing.isSingleSelection,
+                    maxSelection = maxSelection ?: existing.maxSelection,
+                    minSelection = minSelection ?: existing.minSelection,
+                    sortOrder = sortOrder ?: existing.sortOrder,
+                    isActive = isActive ?: existing.isActive,
+                    updatedAt = Date(),
+                    isSynced = false
+                )
+                addonGroupDao.updateAddonGroup(addonGroupEntity)
+                Result.success(addonGroupEntity)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon"))
+        }
+    }
+    
+    override suspend fun toggleAddonGroupStatus(
+        addonGroupId: String,
+        newStatus: Boolean
+    ): Result<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity> {
+        return try {
+            val existing = addonGroupDao.getAddonGroupById(addonGroupId)
+                ?: return Result.failure(Exception("ไม่พบกลุ่ม Addon ที่ต้องการอัปเดต"))
+            
+            val addonGroupEntity: com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val request = ToggleAddonGroupStatusRequestDto(status = newStatus)
+                    val response = productsApi.toggleAddonGroupStatus(addonGroupId, request)
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success - convert to entity and save to Room
+                        addonGroupEntity = ProductMapper.toEntity(response.data)
+                        addonGroupDao.updateAddonGroup(addonGroupEntity)
+                        Result.success(addonGroupEntity)
+                    } else {
+                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะกลุ่ม Addon"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorMessage = when (e.code()) {
+                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        404 -> "ไม่พบกลุ่ม Addon ที่ต้องการอัปเดต"
+                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                        else -> e.message() ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะกลุ่ม Addon"
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - update in Room only (for sync later)
+                addonGroupEntity = existing.copy(
+                    isActive = newStatus,
+                    updatedAt = Date(),
+                    isSynced = false
+                )
+                addonGroupDao.updateAddonGroup(addonGroupEntity)
+                Result.success(addonGroupEntity)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะกลุ่ม Addon"))
+        }
+    }
+    
+    override suspend fun deleteAddonGroup(addonGroupId: String): Result<Unit> {
+        return try {
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val response = productsApi.deleteAddonGroup(addonGroupId)
+                    
+                    if (response.status == 200) {
+                        // API success - permanently delete from Room
+                        addonGroupDao.permanentlyDeleteAddonGroup(addonGroupId)
+                        Result.success(Unit)
+                    } else {
+                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorMessage = when (e.code()) {
+                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        404 -> "ไม่พบกลุ่ม Addon ที่ต้องการลบ"
+                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                        else -> e.message() ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - mark as deleted locally (for sync later)
+                val existing = addonGroupDao.getAddonGroupById(addonGroupId)
+                if (existing == null) {
+                    return Result.failure(Exception("ไม่พบกลุ่ม Addon ที่ต้องการลบ"))
+                }
+                
+                if (!existing.isSynced && !existing.isFromServer) {
+                    // Not synced and not from server - permanently delete
+                    addonGroupDao.permanentlyDeleteAddonGroup(addonGroupId)
+                } else {
+                    // Mark as deleted locally and unsynced for sync later
+                    addonGroupDao.softDeleteAddonGroup(addonGroupId, Date())
+                }
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"))
+        }
+    }
+    
+    override suspend fun deleteMultipleAddonGroups(addonGroupIds: List<String>): Result<Unit> {
+        return try {
+            if (addonGroupIds.isEmpty()) {
+                return Result.failure(Exception("กรุณาเลือกกลุ่ม Addon ที่ต้องการลบ"))
+            }
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val request = DeleteAddonGroupsRequestDto(addonGroupIds = addonGroupIds)
+                    val response = productsApi.deleteMultipleAddonGroups(request)
+                    
+                    if (response.status == 200) {
+                        // API success - permanently delete from Room
+                        val deletedIds = response.data?.deletedIds ?: addonGroupIds
+                        deletedIds.forEach { id ->
+                            addonGroupDao.permanentlyDeleteAddonGroup(id)
+                        }
+                        Result.success(Unit)
+                    } else {
+                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorMessage = when (e.code()) {
+                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                        else -> e.message() ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - mark as deleted locally
+                addonGroupIds.forEach { id ->
+                    val existing = addonGroupDao.getAddonGroupById(id)
+                    if (existing != null) {
+                        if (!existing.isSynced && !existing.isFromServer) {
+                            addonGroupDao.permanentlyDeleteAddonGroup(id)
+                        } else {
+                            addonGroupDao.softDeleteAddonGroup(id, Date())
+                        }
+                    }
+                }
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"))
+        }
+    }
+    
+    override suspend fun fetchAndSyncAddonGroups(): Result<Unit> {
+        return try {
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
+            }
+            
+            val response = productsApi.getAddonGroups()
+            
+            if (response.status == 200 && response.data != null) {
+                // Convert and save addon groups
+                val addonGroups = response.data.map { ProductMapper.toEntity(it) }
+                addonGroupDao.insertAll(addonGroups)
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.message ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"))
+            }
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
+    }
+    
+    override suspend fun syncAddonGroups(): Result<Unit> {
+        return try {
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.success(Unit) // No network, skip sync
+            }
+            
+            // Get all unsynced addon groups
+            val unsynced = addonGroupDao.getUnsyncedAddonGroups()
+            val deletedUnsynced = addonGroupDao.getDeletedUnsyncedAddonGroups()
+            
+            if (unsynced.isEmpty() && deletedUnsynced.isEmpty()) {
+                return Result.success(Unit) // Nothing to sync
+            }
+            
+            // Date formatter for ISO string
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            
+            // Convert to sync items
+            val syncItems = (unsynced + deletedUnsynced).map { entity ->
+                SyncAddonGroupItemDto(
+                    id = entity.id,
+                    name = entity.name,
+                    description = null,
+                    isRequired = entity.isRequired,
+                    isSingleSelection = entity.isSingleSelection,
+                    maxSelection = entity.maxSelection ?: 0,
+                    minSelection = entity.minSelection ?: 0,
+                    sortOrder = entity.sortOrder ?: 0,
+                    isActive = entity.isActive,
+                    isSynced = entity.isSynced,
+                    isDeletedLocally = entity.isDeletedLocally,
+                    createdAt = dateFormat.format(entity.createdAt),
+                    updatedAt = dateFormat.format(entity.updatedAt)
+                )
+            }
+            
+            val request = SyncAddonGroupsRequestDto(addonGroups = syncItems)
+            val response = productsApi.syncAddonGroups(request)
+            
+            // Process sync results
+            response.data?.forEach { result ->
+                when {
+                    result.shouldDelete == true -> {
+                        // Delete locally
+                        result.id?.let { id ->
+                            addonGroupDao.permanentlyDeleteAddonGroup(id)
+                        }
+                    }
+                    result.serverData != null -> {
+                        // Update with server data
+                        val serverEntity = ProductMapper.toEntity(result.serverData)
+                        addonGroupDao.insertAddonGroup(serverEntity)
+                    }
+                    else -> {
+                        // Mark as synced
+                        result.id?.let { id ->
+                            addonGroupDao.markAsSynced(id, Date())
+                        }
+                    }
+                }
+            }
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
+        }
+    }
+}
+
