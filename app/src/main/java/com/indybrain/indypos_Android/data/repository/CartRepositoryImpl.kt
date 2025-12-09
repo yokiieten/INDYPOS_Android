@@ -1,16 +1,25 @@
 package com.indybrain.indypos_Android.data.repository
 
+import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.CartDao
+import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
+import com.indybrain.indypos_Android.data.mapper.CartItemMapper
+import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 
 class CartRepositoryImpl @Inject constructor(
-    private val cartDao: CartDao
+    private val cartDao: CartDao,
+    private val productDao: ProductDao,
+    private val addonDao: AddonDao,
+    private val mapper: CartItemMapper
 ) : CartRepository {
     
     override fun getCartItems(): Flow<List<CartItemEntity>> {
@@ -85,6 +94,107 @@ class CartRepositoryImpl @Inject constructor(
     
     override suspend fun clearCartItemsByProduct(productId: String) {
         cartDao.deleteCartItemsByProductId(productId)
+    }
+    
+    // Product Edit Screen methods
+    override fun getCartItemsByProduct(productId: String): Flow<List<CartItem>> {
+        return cartDao.getCartItemsByProduct(productId)
+            .map { entities ->
+                entities.mapNotNull { entity ->
+                    // Get product
+                    val product = productDao.getProductById(productId) 
+                        ?: return@mapNotNull null
+                    
+                    // Get all addon IDs from selected addons
+                    val addonIds = entity.cartAddons.map { it.addonId }
+                    val addonEntities = addonDao.getAddonsByIds(addonIds)
+                    
+                    // Group addons by groupId
+                    val addonsByGroup = entity.cartAddons
+                        .groupBy { it.addonGroupId }
+                        .mapValues { (_, cartAddons) ->
+                            cartAddons.mapNotNull { cartAddon ->
+                                addonEntities.find { it.id == cartAddon.addonId }
+                            }
+                        }
+                    
+                    mapper.toDomain(entity, product, addonsByGroup)
+                }
+            }
+    }
+    
+    override fun getCartItemsDomain(): Flow<List<CartItem>> {
+        return cartDao.getAllCartItemsWithAddons()
+            .map { entities ->
+                entities.mapNotNull { entity ->
+                    val productId = entity.cartItem.productId ?: return@mapNotNull null
+                    val product = productDao.getProductById(productId) ?: return@mapNotNull null
+                    
+                    // Get all addon IDs from selected addons
+                    val addonIds = entity.cartAddons.map { it.addonId }
+                    val addonEntities = addonDao.getAddonsByIds(addonIds)
+                    
+                    // Group addons by groupId
+                    val addonsByGroup = entity.cartAddons
+                        .groupBy { it.addonGroupId }
+                        .mapValues { (_, cartAddons) ->
+                            cartAddons.mapNotNull { cartAddon ->
+                                addonEntities.find { it.id == cartAddon.addonId }
+                            }
+                        }
+                    
+                    mapper.toDomain(entity, product, addonsByGroup)
+                }
+            }
+    }
+    
+    override suspend fun getCartItemById(cartItemId: String): CartItem? {
+        val entity = cartDao.getCartItemById(cartItemId) ?: return null
+        val productId = entity.cartItem.productId ?: return null
+        val product = productDao.getProductById(productId) ?: return null
+        
+        // Get addons mapping
+        val addonIds = entity.cartAddons.map { it.addonId }
+        val addonEntities = addonDao.getAddonsByIds(addonIds)
+        val addonsByGroup = entity.cartAddons
+            .groupBy { it.addonGroupId }
+            .mapValues { (_, cartAddons) ->
+                cartAddons.mapNotNull { cartAddon ->
+                    addonEntities.find { it.id == cartAddon.addonId }
+                }
+            }
+        
+        return mapper.toDomain(entity, product, addonsByGroup)
+    }
+    
+    override suspend fun updateCartItemQuantity(
+        cartItemId: String, 
+        quantity: Int
+    ): Result<Unit> {
+        return try {
+            cartDao.updateQuantity(cartItemId, quantity)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    override suspend fun deleteCartItems(cartItemIds: List<String>): Result<Unit> {
+        return try {
+            cartDao.deleteCartItemGroup(cartItemIds)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    override suspend fun checkStockAvailability(
+        productId: String, 
+        quantity: Int
+    ): Boolean {
+        val product = productDao.getProductById(productId) ?: return false
+        val availableStock = product.stockQuantity ?: return true // If no stock limit, allow
+        return quantity <= availableStock
     }
 }
 

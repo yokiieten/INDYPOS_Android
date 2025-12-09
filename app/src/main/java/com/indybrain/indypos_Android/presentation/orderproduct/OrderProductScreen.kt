@@ -82,7 +82,7 @@ import kotlin.math.roundToInt
 fun OrderProductScreen(
     onBackClick: () -> Unit = {},
     onAddMenuClick: () -> Unit = {},
-    onEditItemClick: (String) -> Unit = {}, // Changed from Long to String to match CartItemEntity.id
+    onEditItemClick: (productId: String, productName: String) -> Unit = { _, _ -> },
     viewModel: OrderProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -187,7 +187,11 @@ fun OrderProductScreen(
                             CartItemRow(
                                 cartItem = cartItem,
                                 addons = addons,
-                                onEditClick = { onEditItemClick(cartItem.id) },
+                                onEditClick = { 
+                                    val productId = cartItem.productId ?: return@CartItemRow
+                                    val productName = cartItem.productName ?: ""
+                                    onEditItemClick(productId, productName)
+                                },
                                 onDeleteClick = { itemToDelete = cartItem }
                             )
                         }

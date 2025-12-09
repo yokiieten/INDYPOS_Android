@@ -20,6 +20,7 @@ sealed class NavRoutes(val route: String) {
     data object AddonManagement : NavRoutes("addon_management")
     data object AddEditAddon : NavRoutes("add_edit_addon")
     data object AddEditAddonGroup : NavRoutes("add_edit_addon_group")
+    data object ProductEdit : NavRoutes("product_edit")
     
     companion object {
         const val ADD_EDIT_PRODUCT_ROUTE = "add_edit_product/{productId}"
@@ -51,6 +52,10 @@ sealed class NavRoutes(val route: String) {
         } else {
             "add_edit_addon_group/null"
         }
+        
+        const val PRODUCT_EDIT_ROUTE = "product_edit/{productId}/{productName}"
+        fun productEdit(productId: String, productName: String = "") = 
+            "product_edit/$productId/${java.net.URLEncoder.encode(productName, "UTF-8")}"
     }
 }
 

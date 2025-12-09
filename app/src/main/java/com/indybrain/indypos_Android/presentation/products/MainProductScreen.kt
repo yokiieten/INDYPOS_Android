@@ -85,7 +85,7 @@ import java.text.DecimalFormat
 @Composable
 fun MainProductScreen(
     onBackClick: () -> Unit = {},
-    onProductClick: (String) -> Unit = {},
+    onProductClick: (productId: String, productName: String, isInCart: Boolean) -> Unit = { _, _, _ -> },
     onCartClick: () -> Unit = {},
     viewModel: MainProductViewModel = hiltViewModel()
 ) {
@@ -403,7 +403,11 @@ fun MainProductScreen(
                                                 ProductCard(
                                                     product = product,
                                                     cartQuantity = cartQuantity,
-                                                    onClick = { onProductClick(product.id) },
+                                                    onClick = { 
+                                                        // If product is in cart, pass productName for ProductEditScreen
+                                                        // Otherwise, just pass productId for ProductDetailScreen
+                                                        onProductClick(product.id, product.name, cartQuantity > 0)
+                                                    },
                                                     modifier = Modifier
                                                         .weight(1f)
                                                         .fillMaxWidth()

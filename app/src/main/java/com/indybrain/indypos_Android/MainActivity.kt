@@ -34,6 +34,7 @@ import com.indybrain.indypos_Android.presentation.categorymanagement.AddEditCate
 import com.indybrain.indypos_Android.presentation.categorymanagement.CategoryManagementScreen
 import com.indybrain.indypos_Android.presentation.productmanagement.AddEditProductScreen
 import com.indybrain.indypos_Android.presentation.productmanagement.ProductManagementScreen
+import com.indybrain.indypos_Android.presentation.productedit.ProductEditScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsItem
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -136,8 +137,14 @@ class MainActivity : ComponentActivity() {
                                 onBackClick = {
                                     navController.popBackStack()
                                 },
-                                onProductClick = { productId ->
-                                    navController.navigate(NavRoutes.productDetail(productId))
+                                onProductClick = { productId, productName, isInCart ->
+                                    if (isInCart) {
+                                        // Navigate to ProductEditScreen if product is in cart
+                                        navController.navigate(NavRoutes.productEdit(productId, productName))
+                                    } else {
+                                        // Navigate to ProductDetailScreen if product is not in cart
+                                        navController.navigate(NavRoutes.productDetail(productId))
+                                    }
                                 },
                                 onCartClick = {
                                     navController.navigate(NavRoutes.OrderProduct.route)
@@ -168,8 +175,44 @@ class MainActivity : ComponentActivity() {
                                         popUpTo(NavRoutes.OrderProduct.route)
                                     }
                                 },
-                                onEditItemClick = { itemId ->
-                                    // TODO: Navigate to edit item screen or product detail
+                                onEditItemClick = { productId, productName ->
+                                    navController.navigate(NavRoutes.productEdit(productId, productName))
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.PRODUCT_EDIT_ROUTE,
+                            arguments = listOf(
+                                navArgument("productId") {},
+                                navArgument("productName") { 
+                                    nullable = true
+                                    defaultValue = ""
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val productId = backStackEntry.arguments?.getString("productId") ?: ""
+                            val productName = try {
+                                java.net.URLDecoder.decode(
+                                    backStackEntry.arguments?.getString("productName") ?: "",
+                                    "UTF-8"
+                                )
+                            } catch (e: Exception) {
+                                backStackEntry.arguments?.getString("productName") ?: ""
+                            }
+                            ProductEditScreen(
+                                productId = productId,
+                                productName = productName,
+                                onDismiss = {
+                                    navController.popBackStack()
+                                },
+                                onAddAnother = {
+                                    navController.navigate(NavRoutes.productDetail(productId)) {
+                                        popUpTo(NavRoutes.PRODUCT_EDIT_ROUTE)
+                                    }
+                                },
+                                onUpdateBasket = {
+                                    navController.popBackStack()
                                 }
                             )
                         }

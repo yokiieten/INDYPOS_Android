@@ -68,5 +68,8 @@ interface AddonDao {
     
     @Query("DELETE FROM addons")
     suspend fun deleteAll()
+    
+    @Query("SELECT * FROM addons WHERE id IN (:ids)")
+    suspend fun getAddonsByIds(ids: List<String>): List<AddonEntity>
 }
 
