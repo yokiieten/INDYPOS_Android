@@ -34,6 +34,142 @@ class AddonRepositoryImpl @Inject constructor(
         return addonDao.getAddonById(id)
     }
     
+    override suspend fun createAddon(name: String, price: Double): Result<com.indybrain.indypos_Android.data.local.entity.AddonEntity> {
+        return try {
+            val addonEntity: com.indybrain.indypos_Android.data.local.entity.AddonEntity
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val request = CreateAddonRequestDto(
+                        name = name.trim(),
+                        price = price,
+                        sortOrder = 1,
+                        isActive = true
+                    )
+                    
+                    val response = productsApi.createAddon(request)
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success - convert to entity and save to Room
+                        addonEntity = ProductMapper.toEntity(response.data)
+                        addonDao.insert(addonEntity)
+                        Result.success(addonEntity)
+                    } else {
+                        // API returned error status
+                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorMessage = when (e.code()) {
+                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        403 -> {
+                            // Check for free plan limit error
+                            val errorBody = e.response()?.errorBody()?.string()
+                            if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
+                                "free_plan_limit_exceeded"
+                            } else {
+                                e.message() ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
+                            }
+                        }
+                        409 -> {
+                            // Conflict - duplicate name
+                            "ชื่อ Addon นี้มีอยู่แล้ว"
+                        }
+                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                        else -> e.message() ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - create in Room only (for sync later)
+                val now = Date()
+                val localId = UUID.randomUUID().toString()
+                addonEntity = com.indybrain.indypos_Android.data.local.entity.AddonEntity(
+                    id = localId,
+                    name = name.trim(),
+                    price = price,
+                    isActive = true,
+                    isDeletedLocally = false,
+                    isFromServer = false,
+                    isSynced = false,
+                    createdAt = now,
+                    updatedAt = now,
+                    sortOrder = 1
+                )
+                addonDao.insert(addonEntity)
+                Result.success(addonEntity)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการสร้าง Addon"))
+        }
+    }
+    
+    override suspend fun updateAddon(addonId: String, name: String, price: Double): Result<com.indybrain.indypos_Android.data.local.entity.AddonEntity> {
+        return try {
+            val existing = addonDao.getAddonById(addonId)
+                ?: return Result.failure(Exception("ไม่พบ Addon ที่ต้องการแก้ไข"))
+            
+            val addonEntity: com.indybrain.indypos_Android.data.local.entity.AddonEntity
+            
+            // Check if should update via API or locally only
+            val shouldUpdateViaAPI = networkConnectivityChecker.isConnected() && 
+                                    existing.isSynced && 
+                                    existing.isFromServer
+            
+            if (shouldUpdateViaAPI) {
+                // Has network and addon is synced - call API first
+                try {
+                    val request = UpdateAddonRequestDto(
+                        name = name.trim(),
+                        price = price,
+                        sortOrder = existing.sortOrder ?: 1,
+                        isActive = existing.isActive
+                    )
+                    
+                    val response = productsApi.updateAddon(addonId, request)
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success - convert to entity and save to Room
+                        addonEntity = ProductMapper.toEntity(response.data)
+                        addonDao.insert(addonEntity)
+                        Result.success(addonEntity)
+                    } else {
+                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการแก้ไข Addon"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorMessage = when (e.code()) {
+                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        404 -> "ไม่พบ Addon ที่ต้องการแก้ไข"
+                        409 -> {
+                            // Conflict - duplicate name
+                            "ชื่อ Addon นี้มีอยู่แล้ว"
+                        }
+                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                        else -> e.message() ?: "เกิดข้อผิดพลาดในการแก้ไข Addon"
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network or not synced - update in Room only (for sync later)
+                val now = Date()
+                addonEntity = existing.copy(
+                    name = name.trim(),
+                    price = price,
+                    updatedAt = now,
+                    isSynced = false
+                )
+                addonDao.insert(addonEntity)
+                Result.success(addonEntity)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการแก้ไข Addon"))
+        }
+    }
+    
     override suspend fun getDeletedAddons(): List<com.indybrain.indypos_Android.data.local.entity.AddonEntity> {
         return addonDao.getDeletedAddons()
     }

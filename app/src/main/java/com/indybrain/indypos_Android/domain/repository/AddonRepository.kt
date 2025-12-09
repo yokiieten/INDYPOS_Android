@@ -18,6 +18,20 @@ interface AddonRepository {
     suspend fun getAddonById(id: String): AddonEntity?
     
     /**
+     * Create a new addon
+     * If network is available, calls API and saves to Room
+     * If network is not available, saves to Room only (for sync later)
+     */
+    suspend fun createAddon(name: String, price: Double): Result<AddonEntity>
+    
+    /**
+     * Update an existing addon
+     * If network is available and addon is synced, calls API and updates Room
+     * If network is not available or addon is not synced, updates Room only (for sync later)
+     */
+    suspend fun updateAddon(addonId: String, name: String, price: Double): Result<AddonEntity>
+    
+    /**
      * Get deleted addons (soft deleted)
      */
     suspend fun getDeletedAddons(): List<AddonEntity>

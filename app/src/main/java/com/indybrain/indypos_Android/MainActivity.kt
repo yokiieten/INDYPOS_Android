@@ -27,6 +27,7 @@ import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddonGroupManagementScreen
+import com.indybrain.indypos_Android.presentation.addonmanagement.AddEditAddonScreen
 import com.indybrain.indypos_Android.presentation.addonmanagement.AddOnManagementScreen
 import com.indybrain.indypos_Android.presentation.categorymanagement.AddEditCategoryScreen
 import com.indybrain.indypos_Android.presentation.categorymanagement.CategoryManagementScreen
@@ -305,10 +306,27 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onAddAddonClick = {
-                                    // TODO: Navigate to add/edit addon screen
+                                    navController.navigate(NavRoutes.addEditAddon(null))
                                 },
                                 onEditAddonClick = { addonId ->
-                                    // TODO: Navigate to add/edit addon screen
+                                    navController.navigate(NavRoutes.addEditAddon(addonId))
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.ADD_EDIT_ADDON_ROUTE,
+                            arguments = listOf(navArgument("addonId") { nullable = true })
+                        ) { backStackEntry ->
+                            val addonId = backStackEntry.arguments?.getString("addonId")
+                            val actualAddonId = if (addonId == "null") null else addonId
+                            AddEditAddonScreen(
+                                addonId = actualAddonId,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onSaveSuccess = {
+                                    navController.popBackStack()
                                 }
                             )
                         }

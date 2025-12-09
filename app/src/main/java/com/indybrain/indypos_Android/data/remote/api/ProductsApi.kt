@@ -115,6 +115,21 @@ interface ProductsApi {
     suspend fun getAddons(): ApiResponseDto<List<AddonDto>>
     
     /**
+     * Create addon endpoint
+     */
+    @POST("protected/indypos/addons")
+    suspend fun createAddon(@Body request: CreateAddonRequestDto): ApiResponseDto<AddonDto>
+    
+    /**
+     * Update addon endpoint
+     */
+    @PUT("protected/indypos/addons/{addonId}")
+    suspend fun updateAddon(
+        @Path("addonId") addonId: String,
+        @Body request: UpdateAddonRequestDto
+    ): ApiResponseDto<AddonDto>
+    
+    /**
      * Toggle addon status endpoint
      */
     @PATCH("protected/indypos/addons/{addonId}/toggle-status")
@@ -381,6 +396,30 @@ data class SyncAddonGroupResultDto(
     val shouldDelete: Boolean,
     @SerializedName("server_data")
     val serverData: AddonGroupDto?
+)
+
+/**
+ * Request DTO for creating an addon
+ */
+data class CreateAddonRequestDto(
+    val name: String,
+    val price: Double,
+    @SerializedName("sort_order")
+    val sortOrder: Int = 1,
+    @SerializedName("is_active")
+    val isActive: Boolean = true
+)
+
+/**
+ * Request DTO for updating an addon
+ */
+data class UpdateAddonRequestDto(
+    val name: String,
+    val price: Double,
+    @SerializedName("sort_order")
+    val sortOrder: Int = 1,
+    @SerializedName("is_active")
+    val isActive: Boolean
 )
 
 /**

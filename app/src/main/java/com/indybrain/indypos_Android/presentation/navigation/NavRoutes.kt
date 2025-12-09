@@ -18,6 +18,7 @@ sealed class NavRoutes(val route: String) {
     data object AddEditProduct : NavRoutes("add_edit_product")
     data object AddonGroupManagement : NavRoutes("addon_group_management")
     data object AddonManagement : NavRoutes("addon_management")
+    data object AddEditAddon : NavRoutes("add_edit_addon")
     
     companion object {
         const val ADD_EDIT_PRODUCT_ROUTE = "add_edit_product/{productId}"
@@ -34,6 +35,13 @@ sealed class NavRoutes(val route: String) {
             "add_edit_category/$categoryId"
         } else {
             "add_edit_category/null"
+        }
+        
+        const val ADD_EDIT_ADDON_ROUTE = "add_edit_addon/{addonId}"
+        fun addEditAddon(addonId: String?) = if (addonId != null) {
+            "add_edit_addon/$addonId"
+        } else {
+            "add_edit_addon/null"
         }
     }
 }
