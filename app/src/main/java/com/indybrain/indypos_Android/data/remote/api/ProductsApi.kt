@@ -115,6 +115,33 @@ interface ProductsApi {
     suspend fun getAddons(): ApiResponseDto<List<AddonDto>>
     
     /**
+     * Toggle addon status endpoint
+     */
+    @PATCH("protected/indypos/addons/{addonId}/toggle-status")
+    suspend fun toggleAddonStatus(
+        @Path("addonId") addonId: String,
+        @Body request: ToggleAddonStatusRequestDto
+    ): ApiResponseDto<AddonDto>
+    
+    /**
+     * Delete single addon endpoint
+     */
+    @DELETE("protected/indypos/addons/{addonId}")
+    suspend fun deleteAddon(@Path("addonId") addonId: String): ApiResponseDto<DeleteAddonResponseDto>
+    
+    /**
+     * Delete multiple addons endpoint
+     */
+    @HTTP(method = "DELETE", path = "protected/indypos/addons", hasBody = true)
+    suspend fun deleteMultipleAddons(@Body request: DeleteAddonsRequestDto): ApiResponseDto<DeleteMultipleAddonsResponseDto>
+    
+    /**
+     * Sync addons endpoint
+     */
+    @POST("protected/indypos/addons/sync")
+    suspend fun syncAddons(@Body request: SyncAddonsRequestDto): ApiResponseDto<List<SyncAddonResultDto>>
+    
+    /**
      * Delete product endpoint
      */
     @DELETE("protected/indypos/products/{id}")
@@ -354,5 +381,78 @@ data class SyncAddonGroupResultDto(
     val shouldDelete: Boolean,
     @SerializedName("server_data")
     val serverData: AddonGroupDto?
+)
+
+/**
+ * Request DTO for toggling addon status
+ */
+data class ToggleAddonStatusRequestDto(
+    val status: Boolean
+)
+
+/**
+ * Request DTO for deleting multiple addons
+ */
+data class DeleteAddonsRequestDto(
+    @SerializedName("addon_ids")
+    val addonIds: List<String>
+)
+
+/**
+ * Request DTO for syncing addons
+ */
+data class SyncAddonsRequestDto(
+    val addons: List<SyncAddonItemDto>
+)
+
+/**
+ * Sync addon item DTO
+ */
+data class SyncAddonItemDto(
+    val id: String?,
+    val name: String?,
+    val price: Double?,
+    @SerializedName("sort_order")
+    val sortOrder: Int?,
+    @SerializedName("is_active")
+    val isActive: Boolean?,
+    @SerializedName("is_synced")
+    val isSynced: Boolean?,
+    @SerializedName("is_deleted_locally")
+    val isDeletedLocally: Boolean?,
+    @SerializedName("created_at")
+    val createdAt: String?,
+    @SerializedName("updated_at")
+    val updatedAt: String?
+)
+
+/**
+ * Response DTO for deleting single addon
+ */
+data class DeleteAddonResponseDto(
+    @SerializedName("deleted_id")
+    val deletedId: String
+)
+
+/**
+ * Response DTO for deleting multiple addons
+ */
+data class DeleteMultipleAddonsResponseDto(
+    @SerializedName("deleted_ids")
+    val deletedIds: List<String>,
+    val count: Int
+)
+
+/**
+ * Sync addon result DTO
+ */
+data class SyncAddonResultDto(
+    val id: String?,
+    val status: String?,
+    val message: String?,
+    @SerializedName("should_delete")
+    val shouldDelete: Boolean?,
+    @SerializedName("server_data")
+    val serverData: AddonDto?
 )
 

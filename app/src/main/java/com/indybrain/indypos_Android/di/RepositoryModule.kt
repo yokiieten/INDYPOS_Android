@@ -3,11 +3,13 @@ package com.indybrain.indypos_Android.di
 import android.content.Context
 import android.content.SharedPreferences
 import com.indybrain.indypos_Android.data.repository.AddonGroupRepositoryImpl
+import com.indybrain.indypos_Android.data.repository.AddonRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.AuthRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.CartRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.OrderRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.ProductRepositoryImpl
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
+import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
@@ -69,6 +71,14 @@ object RepositoryModule {
         addonGroupRepositoryImpl: AddonGroupRepositoryImpl
     ): AddonGroupRepository {
         return addonGroupRepositoryImpl
+    }
+    
+    @Provides
+    @Singleton
+    fun provideAddonRepository(
+        addonRepositoryImpl: AddonRepositoryImpl
+    ): AddonRepository {
+        return addonRepositoryImpl
     }
 }
 

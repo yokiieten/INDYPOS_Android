@@ -27,6 +27,7 @@ import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddonGroupManagementScreen
+import com.indybrain.indypos_Android.presentation.addonmanagement.AddOnManagementScreen
 import com.indybrain.indypos_Android.presentation.categorymanagement.AddEditCategoryScreen
 import com.indybrain.indypos_Android.presentation.categorymanagement.CategoryManagementScreen
 import com.indybrain.indypos_Android.presentation.productmanagement.AddEditProductScreen
@@ -211,6 +212,9 @@ class MainActivity : ComponentActivity() {
                                         OrderSettingsItem.AddonGroupManagement -> {
                                             navController.navigate(NavRoutes.AddonGroupManagement.route)
                                         }
+                                        OrderSettingsItem.AddonManagement -> {
+                                            navController.navigate(NavRoutes.AddonManagement.route)
+                                        }
                                         else -> {
                                             // TODO: Handle other order settings items
                                         }
@@ -291,6 +295,20 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onEditAddonGroupClick = { addonGroupId ->
                                     // TODO: Navigate to add/edit addon group screen
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.AddonManagement.route) {
+                            AddOnManagementScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onAddAddonClick = {
+                                    // TODO: Navigate to add/edit addon screen
+                                },
+                                onEditAddonClick = { addonId ->
+                                    // TODO: Navigate to add/edit addon screen
                                 }
                             )
                         }
