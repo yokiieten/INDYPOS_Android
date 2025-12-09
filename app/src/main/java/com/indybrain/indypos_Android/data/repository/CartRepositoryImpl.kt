@@ -71,9 +71,17 @@ class CartRepositoryImpl @Inject constructor(
         cartDao.deleteCartItemWithAddons(itemId)
     }
     
+    /**
+     * Clear all cart items and addons
+     * WARNING: This should ONLY be called when user logs out
+     * Cart items are persisted in Room database and should remain
+     * when navigating between screens or reopening the app
+     */
     override suspend fun clearCart() {
+        android.util.Log.d("CartRepository", "clearCart() called - Stack trace: ${Thread.currentThread().stackTrace.joinToString("\n")}")
         cartDao.deleteAllCartItems()
         cartDao.deleteAllCartAddons()
+        android.util.Log.d("CartRepository", "clearCart() completed - Cart has been cleared")
     }
     
     override suspend fun restoreProductIdsForCartItems(products: List<com.indybrain.indypos_Android.data.local.entity.ProductEntity>) {

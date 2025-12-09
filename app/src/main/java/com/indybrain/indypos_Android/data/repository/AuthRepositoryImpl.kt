@@ -91,6 +91,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
     
     override suspend fun logout(): Result<Unit> {
+        android.util.Log.d("AuthRepository", "logout() called - Stack trace: ${Thread.currentThread().stackTrace.joinToString("\n")}")
         return try {
             // Get device UUID for logout request
             val deviceInfo = try {
@@ -115,7 +116,9 @@ class AuthRepositoryImpl @Inject constructor(
             
             // Clear local data regardless of API call result
             localDataSource.clearUser()
-            // Clear cart data as well
+            // Clear cart data as well - ONLY when user logs out
+            // NOTE: Cart should NOT be cleared when opening MainProductScreen
+            // Cart is persisted in Room database and should remain until logout
             try {
                 cartRepository.clearCart()
             } catch (e: Exception) {
@@ -125,7 +128,9 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             // Clear local data even on error
             localDataSource.clearUser()
-            // Clear cart data as well
+            // Clear cart data as well - ONLY when user logs out
+            // NOTE: Cart should NOT be cleared when opening MainProductScreen
+            // Cart is persisted in Room database and should remain until logout
             try {
                 cartRepository.clearCart()
             } catch (cartError: Exception) {

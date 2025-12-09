@@ -14,7 +14,8 @@ import java.util.Date
             entity = ProductEntity::class,
             parentColumns = ["id"],
             childColumns = ["productId"],
-            onDelete = ForeignKey.CASCADE // Changed from SET_NULL to CASCADE per requirements
+            onDelete = ForeignKey.SET_NULL // Use SET_NULL instead of CASCADE to preserve cart items when product is deleted
+            // This ensures cart items are NOT deleted when products are updated or removed from API
         )
     ]
 )

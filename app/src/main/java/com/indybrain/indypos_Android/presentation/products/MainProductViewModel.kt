@@ -35,6 +35,9 @@ class MainProductViewModel @Inject constructor(
         observeCategories()
         observeProducts()
         // Load latest products from API once when ViewModel is created
+        // NOTE: Cart items are automatically observed via cartItems Flow
+        // Cart is persisted in Room database and will NOT be cleared when opening this screen
+        // Cart is only cleared when user logs out (see AuthRepositoryImpl.logout())
         loadProducts()
     }
     
