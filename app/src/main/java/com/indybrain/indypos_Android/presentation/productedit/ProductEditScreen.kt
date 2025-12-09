@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
@@ -60,23 +61,18 @@ fun ProductEditScreen(
     viewModel: ProductEditViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
     onAddAnother: () -> Unit,
-    onUpdateBasket: () -> Unit
+    onUpdateBasket: () -> Unit,
+    onEditClick: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var itemToDelete by remember { mutableStateOf<GroupedCartItem?>(null) }
     
-    LaunchedEffect(productId) {
-        viewModel.init(productId)
+    LaunchedEffect(Unit) {
+        viewModel.init()
     }
     
-    // Get product name from first item if not provided
-    val displayProductName = remember(uiState.groupedItems, productName) {
-        if (productName.isNotBlank()) {
-            productName
-        } else {
-            uiState.groupedItems.firstOrNull()?.items?.firstOrNull()?.product?.name ?: "สินค้า"
-        }
-    }
+    // Show cart title since we're displaying all cart items
+    val displayProductName = stringResource(id = R.string.product_cart)
     
     // Handle events
     LaunchedEffect(Unit) {
@@ -155,6 +151,27 @@ fun ProductEditScreen(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 
+                // Error message
+                uiState.errorMessage?.let { error ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFFEBEE)
+                    ) {
+                        Text(
+                            text = error,
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color(0xFFC62828),
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+                
                 // Cart items - show all items
                 if (uiState.groupedItems.isEmpty()) {
                     Box(
@@ -191,6 +208,12 @@ fun ProductEditScreen(
                                 },
                                 onDelete = { 
                                     itemToDelete = groupedItem
+                                },
+                                onEditClick = {
+                                    val itemProductId = groupedItem.items.firstOrNull()?.product?.id
+                                    if (itemProductId != null) {
+                                        onEditClick(itemProductId)
+                                    }
                                 }
                             )
                         }
@@ -320,7 +343,8 @@ fun CartItemGroupCard(
     groupedItem: GroupedCartItem,
     onIncreaseQuantity: () -> Unit,
     onDecreaseQuantity: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEditClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val firstItem = groupedItem.items.firstOrNull() ?: return
@@ -445,20 +469,41 @@ fun CartItemGroupCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Delete button (red circle with trash icon)
-                        IconButton(
-                            onClick = onDelete,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color.Red)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = "ลบ",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
+                        // Show delete button if quantity == 1, otherwise show decrease button
+                        if (groupedItem.totalQuantity == 1) {
+                            // Delete button (red circle with trash icon)
+                            IconButton(
+                                onClick = onDelete,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Red)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Delete,
+                                    contentDescription = "ลบ",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        } else {
+                            // Decrease button (light gray circle with minus icon)
+                            IconButton(
+                                onClick = onDecreaseQuantity,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF5F5F5))
+                            ) {
+                                Text(
+                                    text = "-",
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Bold,
+                                        size = FontSize.Large
+                                    ),
+                                    color = PrimaryText
+                                )
+                            }
                         }
                         
                         // Quantity display
@@ -504,7 +549,7 @@ fun CartItemGroupCard(
                 
                 // Edit button
                 TextButton(
-                    onClick = { /* TODO: Navigate to edit screen */ },
+                    onClick = onEditClick,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = SecondaryText

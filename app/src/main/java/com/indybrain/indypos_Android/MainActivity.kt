@@ -213,6 +213,11 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onUpdateBasket = {
                                     navController.popBackStack()
+                                },
+                                onEditClick = { editProductId ->
+                                    navController.navigate(NavRoutes.productDetail(editProductId)) {
+                                        popUpTo(NavRoutes.PRODUCT_EDIT_ROUTE)
+                                    }
                                 }
                             )
                         }

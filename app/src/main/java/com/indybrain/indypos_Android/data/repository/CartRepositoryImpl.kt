@@ -201,7 +201,14 @@ class CartRepositoryImpl @Inject constructor(
         quantity: Int
     ): Boolean {
         val product = productDao.getProductById(productId) ?: return false
-        val availableStock = product.stockQuantity ?: return true // If no stock limit, allow
+        
+        // If stock is not enabled, allow any quantity
+        if (product.isStockEnabled != true) {
+            return true
+        }
+        
+        // If stock is enabled, check stock quantity
+        val availableStock = product.stockQuantity ?: return true // If no stock limit set, allow
         return quantity <= availableStock
     }
 }

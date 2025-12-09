@@ -78,9 +78,18 @@ fun ProductDetailScreen(
     viewModel: ProductDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var shouldAddToCart by remember { mutableStateOf(false) }
     
     LaunchedEffect(productId) {
         viewModel.loadProduct(productId)
+    }
+    
+    LaunchedEffect(shouldAddToCart) {
+        if (shouldAddToCart) {
+            viewModel.addToCart()
+            shouldAddToCart = false
+            onBackClick()
+        }
     }
     
     Scaffold(
@@ -150,8 +159,7 @@ fun ProductDetailScreen(
                         viewModel.updateSpecialRequest(request)
                     },
                     onAddToCart = {
-                        viewModel.addToCart()
-                        onBackClick() // Navigate back after adding to cart
+                        shouldAddToCart = true
                     },
                     modifier = Modifier.padding(padding)
                 )

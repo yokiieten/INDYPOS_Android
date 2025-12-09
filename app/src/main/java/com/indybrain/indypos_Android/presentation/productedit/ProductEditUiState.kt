@@ -4,7 +4,8 @@ import com.indybrain.indypos_Android.domain.model.GroupedCartItem
 
 data class ProductEditUiState(
     val groupedItems: List<GroupedCartItem> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null
 )
 
 sealed class ProductEditEvent {

@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -117,6 +118,11 @@ class ProductDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = _uiState.value
             val product = currentState.product ?: return@launch
+            
+            // Get current total quantity of this product in cart
+            val currentCartItems = cartRepository.getCartItemsByProduct(product.id).first()
+            val currentTotalQuantity = currentCartItems.sumOf { it.quantity }
+            val newTotalQuantity = currentTotalQuantity + currentState.quantity
             
             // Calculate addon price
             val addonPrice = currentState.selectedAddons.values.flatten().sumOf { addonId ->
