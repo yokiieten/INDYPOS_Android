@@ -146,6 +146,9 @@ dependencies {
     // Permission handling
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
     
+    // ZXing for QR code generation
+    implementation("com.google.zxing:core:3.5.2")
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

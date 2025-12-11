@@ -111,6 +111,12 @@
     <string name="settings_contact_us">Contact Us</string>
     <string name="settings_logout">Logout</string>
     
+    <!-- Contact Us Screen -->
+    <string name="contact_title">Contact Us</string>
+    <string name="contact_header">Contact us</string>
+    <string name="contact_line_format">LINE: %1$s</string>
+    <string name="contact_time">Mon-Fri 09:30 - 20:00</string>
+    
     <!-- Logout Dialogs -->
     <string name="logout_confirm_title">Confirm Logout</string>
     <string name="logout_confirm_message">Are you sure you want to logout?</string>

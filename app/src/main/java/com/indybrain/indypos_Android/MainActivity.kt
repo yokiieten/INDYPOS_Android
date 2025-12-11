@@ -44,6 +44,7 @@ import com.indybrain.indypos_Android.presentation.productmanagement.AddEditProdu
 import com.indybrain.indypos_Android.presentation.productmanagement.ProductManagementScreen
 import com.indybrain.indypos_Android.presentation.productedit.ProductEditScreen
 import com.indybrain.indypos_Android.presentation.discount.DiscountScreen
+import com.indybrain.indypos_Android.presentation.contactus.ContactUsScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsItem
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -144,6 +145,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToDataManagement = {
                                     navController.navigate(NavRoutes.DataManagement.route)
+                                },
+                                onNavigateToContactUs = {
+                                    navController.navigate(NavRoutes.ContactUs.route)
                                 },
                                 onNavigateToOrderDetail = { orderId ->
                                     navController.navigate(NavRoutes.orderDetail(orderId))
@@ -448,6 +452,14 @@ class MainActivity : ComponentActivity() {
                         
                         composable(NavRoutes.DataManagement.route) {
                             DataManagementScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.ContactUs.route) {
+                            ContactUsScreen(
                                 onBackClick = {
                                     navController.popBackStack()
                                 }
