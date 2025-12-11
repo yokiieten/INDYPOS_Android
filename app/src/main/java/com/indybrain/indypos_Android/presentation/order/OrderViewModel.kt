@@ -37,8 +37,8 @@ class OrderViewModel @Inject constructor(
                         Order(
                             id = entity.id,
                             orderId = entity.orderNumber,
-                            createdAt = entity.orderDate,
-                            cancelledAt = null,
+                            createdAt = entity.createdAt ?: entity.orderDate, // Use createdAt if available, fallback to orderDate
+                            cancelledAt = if (status == OrderStatus.CANCELLED) entity.updatedAt else null, // Use updatedAt for cancelled orders
                             status = status,
                             totalAmount = entity.total
                         )

@@ -39,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -61,9 +63,8 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
-import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
-import java.util.Locale
 import java.util.TimeZone
 
 @Composable
@@ -667,10 +668,43 @@ private fun SummaryCard(
     }
 }
 
+@Composable
 private fun formatDate(date: Date): String {
-    val formatter = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("th", "TH"))
-    formatter.timeZone = TimeZone.getTimeZone("Asia/Bangkok")
-    return formatter.format(date)
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val locale = configuration.locales[0] ?: java.util.Locale.getDefault()
+    val isEnglish = locale.language == "en"
+    
+    // Date object is already a UTC timestamp, we need to convert it to Asia/Bangkok timezone
+    val bangkokTimeZone = TimeZone.getTimeZone("Asia/Bangkok")
+    val calendar = Calendar.getInstance(bangkokTimeZone)
+    calendar.timeInMillis = date.time // Set the UTC timestamp
+    
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val month = calendar.get(Calendar.MONTH)
+    val year = calendar.get(Calendar.YEAR)
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    val minute = calendar.get(Calendar.MINUTE)
+    val amPm = calendar.get(Calendar.AM_PM)
+    
+    return if (isEnglish) {
+        // English format: "Dec 11, 2025 at 11:15 AM"
+        val monthNames = arrayOf(
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        )
+        val amPmString = if (amPm == Calendar.AM) "AM" else "PM"
+        val displayHour = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
+        "${monthNames[month]} $day, $year at ${String.format("%d:%02d", displayHour, minute)} $amPmString"
+    } else {
+        // Thai format: "11 ธ.ค. 25, 11:15"
+        val monthNames = arrayOf(
+            "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+            "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+        )
+        val shortYear = year % 100
+        "$day ${monthNames[month]} $shortYear, ${String.format("%02d:%02d", hour, minute)}"
+    }
 }
 
 private fun formatCurrency(value: Double): String {

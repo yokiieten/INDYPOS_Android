@@ -14,23 +14,46 @@ import java.util.TimeZone
 
 object OrderMapper {
     
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
-    }
+    // Support multiple date formats from API
+    // Note: ISO 8601 formats with 'Z' should use 'X' or 'XXX' for timezone, not quoted 'Z'
+    private val dateFormats = listOf(
+        // ISO 8601 with timezone offset (e.g., "2024-01-01T22:47:00+00:00" or "2024-01-01T22:47:00Z")
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US),
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US),
+        // ISO 8601 with literal Z (UTC indicator)
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        },
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        },
+        // ISO 8601 without timezone (assume UTC)
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        },
+        // Standard format without timezone (assume UTC)
+        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+    )
     
     private val gson = Gson()
     
     fun toEntity(dto: OrderDto): OrderEntity {
+        val orderDate = parseDate(dto.orderDate) ?: Date() // Fallback to current date only if orderDate is invalid
+        val updatedAt = parseDate(dto.updatedAt) ?: orderDate // Fallback to orderDate if updatedAt is invalid
+        val createdAt = parseDate(dto.createdAt) // Can be null
+        
         return OrderEntity(
             id = dto.id,
             orderNumber = dto.orderNumber,
-            orderDate = parseDate(dto.orderDate),
+            orderDate = orderDate,
             subtotal = dto.subtotal,
             discount = dto.discountAmount, // Core Data uses "discount", map from discountAmount
             total = dto.total,
             paymentTypeRaw = dto.paymentType, // Changed from paymentType to paymentTypeRaw
             statusRaw = dto.orderStatus, // Changed from orderStatus to statusRaw
-            updatedAt = parseDate(dto.updatedAt),
+            updatedAt = updatedAt,
             // Extra fields (optional)
             userId = dto.userId,
             customerName = dto.customerName,
@@ -42,7 +65,7 @@ object OrderMapper {
             taxPercentage = dto.taxPercentage,
             paymentStatus = dto.paymentStatus,
             notes = dto.notes,
-            createdAt = parseDate(dto.createdAt)
+            createdAt = createdAt
         )
     }
     
@@ -83,12 +106,27 @@ object OrderMapper {
         )
     }
     
-    private fun parseDate(dateString: String): Date {
-        return try {
-            dateFormat.parse(dateString) ?: Date()
-        } catch (e: Exception) {
-            Date()
+    private fun parseDate(dateString: String?): Date? {
+        if (dateString.isNullOrBlank()) {
+            return null
         }
+        
+        // Try each date format
+        for (format in dateFormats) {
+            try {
+                val parsed = format.parse(dateString)
+                if (parsed != null) {
+                    return parsed
+                }
+            } catch (e: Exception) {
+                // Try next format
+                continue
+            }
+        }
+        
+        // If all formats fail, return null instead of current date
+        // This will help identify parsing issues
+        return null
     }
 }
 
