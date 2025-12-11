@@ -4,6 +4,7 @@ import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.LogoutResponseDto
 import com.google.gson.annotations.SerializedName
 import retrofit2.http.Body
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 
 /**
@@ -27,6 +28,18 @@ interface AuthApi {
      */
     @POST("protected/auth/change-password")
     suspend fun changePassword(@Body request: ChangePasswordRequestDto): ChangePasswordResponseDto
+    
+    /**
+     * Update shop description endpoint
+     */
+    @PATCH("protected/users/shop-description")
+    suspend fun updateShopDescription(@Body request: UpdateShopDescriptionRequestDto): ShopUpdateResponseDto
+    
+    /**
+     * Update shop name endpoint
+     */
+    @PATCH("protected/users/shop-name")
+    suspend fun updateShopName(@Body request: UpdateShopNameRequestDto): ShopUpdateResponseDto
 }
 
 /**
@@ -74,5 +87,41 @@ data class ChangePasswordResponseDto(
     val message: String?,
     val data: Any?,
     val timestamp: String?
+)
+
+/**
+ * Request DTO for updating shop description
+ */
+data class UpdateShopDescriptionRequestDto(
+    @SerializedName("shop_description")
+    val shopDescription: String
+)
+
+/**
+ * Request DTO for updating shop name
+ */
+data class UpdateShopNameRequestDto(
+    @SerializedName("shop_name")
+    val shopName: String
+)
+
+/**
+ * Response DTO for shop update operations
+ */
+data class ShopUpdateResponseDto(
+    val status: Int?,
+    val message: String?,
+    val data: ShopUpdateDataDto?,
+    val timestamp: String?
+)
+
+/**
+ * Data DTO for shop update response
+ */
+data class ShopUpdateDataDto(
+    @SerializedName("shop_name")
+    val shopName: String?,
+    @SerializedName("shop_description")
+    val shopDescription: String?
 )
 

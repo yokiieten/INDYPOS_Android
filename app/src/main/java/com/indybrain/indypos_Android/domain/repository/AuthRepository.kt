@@ -37,5 +37,19 @@ interface AuthRepository {
      * @return Result indicating success or failure
      */
     suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit>
+    
+    /**
+     * Update shop description
+     * @param description New shop description
+     * @return Result containing updated User on success or error message
+     */
+    suspend fun updateShopDescription(description: String): Result<User>
+    
+    /**
+     * Update shop name
+     * @param shopName New shop name
+     * @return Result containing updated User on success or error message
+     */
+    suspend fun updateShopName(shopName: String): Result<User>
 }
 

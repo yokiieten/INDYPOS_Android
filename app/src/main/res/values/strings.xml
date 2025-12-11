@@ -35,6 +35,20 @@
     <string name="home_nav_orders">ออเดอร์</string>
     <string name="home_nav_charts">กราฟ</string>
     <string name="home_nav_settings">ตั้งค่า</string>
+    <string name="home_edit_cover_image">แก้ไขรูปภาพหน้าปก</string>
+    <string name="home_take_photo">ถ่ายรูป</string>
+    <string name="home_choose_from_gallery">เลือกรูปจากแกลเลอรี</string>
+    <string name="home_edit_store_name_title">แก้ไขชื่อร้าน</string>
+    <string name="home_store_name_placeholder">กรอกชื่อร้าน</string>
+    <string name="home_edit_description_title">แก้ไขรายละเอียดร้าน</string>
+    <string name="home_save">บันทึก</string>
+    <string name="home_cancel">ยกเลิก</string>
+    <string name="home_success_title">สำเร็จ</string>
+    <string name="home_store_description_updated">อัปเดตรายละเอียดร้านเรียบร้อย</string>
+    <string name="home_store_name_updated">อัปเดตชื่อร้านเรียบร้อย</string>
+    <string name="home_store_name_empty_error">ชื่อร้านไม่สามารถว่างได้</string>
+    <string name="home_edit_store_name_message">กรุณากรอกชื่อร้านใหม่</string>
+    <string name="home_ok">ตกลง</string>
     
     <!-- Graph Screen -->
     <string name="graph_title">กราฟ</string>

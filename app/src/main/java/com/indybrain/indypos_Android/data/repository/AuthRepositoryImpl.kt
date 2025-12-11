@@ -7,6 +7,8 @@ import com.indybrain.indypos_Android.data.remote.api.AuthApi
 import com.indybrain.indypos_Android.data.remote.api.ChangePasswordRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LoginRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LogoutRequestDto
+import com.indybrain.indypos_Android.data.remote.api.UpdateShopDescriptionRequestDto
+import com.indybrain.indypos_Android.data.remote.api.UpdateShopNameRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.domain.model.LoginRequest
 import com.indybrain.indypos_Android.domain.model.User
@@ -164,6 +166,86 @@ class AuthRepositoryImpl @Inject constructor(
             }
         } catch (e: HttpException) {
             val errorMessage = parseChangePasswordErrorMessage(e.response()?.errorBody())
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
+                e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
+                else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        }
+    }
+    
+    override suspend fun updateShopDescription(description: String): Result<User> {
+        return try {
+            val response = authApi.updateShopDescription(
+                UpdateShopDescriptionRequestDto(shopDescription = description)
+            )
+            
+            if (response.status == 200 || response.status == 201) {
+                // Get current user
+                val currentUser = localDataSource.getUser()
+                if (currentUser != null) {
+                    // Update user with new shop description and shop name from response
+                    val updatedUser = currentUser.copy(
+                        shopDescription = response.data?.shopDescription ?: description,
+                        shopName = response.data?.shopName ?: currentUser.shopName
+                    )
+                    
+                    // Save updated user to local storage
+                    localDataSource.saveUser(updatedUser)
+                    
+                    Result.success(updatedUser)
+                } else {
+                    Result.failure(IllegalStateException("ไม่พบข้อมูลผู้ใช้"))
+                }
+            } else {
+                val errorMessage = response.message ?: "เกิดข้อผิดพลาดในการอัปเดตรายละเอียดร้าน"
+                Result.failure(IllegalStateException(errorMessage))
+            }
+        } catch (e: HttpException) {
+            val errorMessage = parseErrorMessage(e.response()?.errorBody())
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
+                e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
+                else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        }
+    }
+    
+    override suspend fun updateShopName(shopName: String): Result<User> {
+        return try {
+            val response = authApi.updateShopName(
+                UpdateShopNameRequestDto(shopName = shopName)
+            )
+            
+            if (response.status == 200 || response.status == 201) {
+                // Get current user
+                val currentUser = localDataSource.getUser()
+                if (currentUser != null) {
+                    // Update user with new shop name and shop description from response
+                    val updatedUser = currentUser.copy(
+                        shopName = response.data?.shopName ?: shopName,
+                        shopDescription = response.data?.shopDescription ?: currentUser.shopDescription
+                    )
+                    
+                    // Save updated user to local storage
+                    localDataSource.saveUser(updatedUser)
+                    
+                    Result.success(updatedUser)
+                } else {
+                    Result.failure(IllegalStateException("ไม่พบข้อมูลผู้ใช้"))
+                }
+            } else {
+                val errorMessage = response.message ?: "เกิดข้อผิดพลาดในการอัปเดตชื่อร้าน"
+                Result.failure(IllegalStateException(errorMessage))
+            }
+        } catch (e: HttpException) {
+            val errorMessage = parseErrorMessage(e.response()?.errorBody())
             Result.failure(IllegalStateException(errorMessage, e))
         } catch (e: Exception) {
             val errorMessage = when {

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import android.net.Uri
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -112,6 +113,106 @@ class HomeViewModel @Inject constructor(
             topProductQuantity = topProduct?.quantity ?: 0,
             topProductAmount = topProduct?.amount ?: 0.0
         )
+    }
+    
+    fun showImagePicker() {
+        _uiState.update { it.copy(showImagePickerDialog = true) }
+    }
+    
+    fun dismissImagePicker() {
+        _uiState.update { it.copy(showImagePickerDialog = false) }
+    }
+    
+    fun showEditStoreNameDialog() {
+        _uiState.update { it.copy(showEditStoreNameDialog = true) }
+    }
+    
+    fun dismissEditStoreNameDialog() {
+        _uiState.update { it.copy(showEditStoreNameDialog = false) }
+    }
+    
+    fun showEditDescriptionDialog() {
+        _uiState.update { it.copy(showEditDescriptionDialog = true) }
+    }
+    
+    fun dismissEditDescriptionDialog() {
+        _uiState.update { it.copy(showEditDescriptionDialog = false) }
+    }
+    
+    fun updateStoreName(newName: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            authRepository.updateShopName(newName)
+                .onSuccess { updatedUser ->
+                    // Update UI state with new shop name
+                    // The observeUser() flow will also pick up the change automatically
+                    // but we update immediately for better UX
+                    _uiState.update { 
+                        it.copy(
+                            shopName = updatedUser.shopName ?: newName,
+                            shopDescription = updatedUser.shopDescription ?: it.shopDescription,
+                            isLoading = false,
+                            errorMessage = null,
+                            successMessage = "home_store_name_updated"
+                        ) 
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message
+                        ) 
+                    }
+                }
+        }
+    }
+    
+    fun updateShopDescription(newDescription: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            authRepository.updateShopDescription(newDescription)
+                .onSuccess { updatedUser ->
+                    // Update UI state with new description
+                    // The observeUser() flow will also pick up the change automatically
+                    // but we update immediately for better UX
+                    _uiState.update { 
+                        it.copy(
+                            shopDescription = updatedUser.shopDescription.orEmpty(),
+                            shopName = updatedUser.shopName ?: it.shopName,
+                            isLoading = false,
+                            errorMessage = null,
+                            successMessage = "home_store_description_updated"
+                        ) 
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message
+                        ) 
+                    }
+                }
+        }
+    }
+
+    fun clearSuccessMessage() {
+        _uiState.update { it.copy(successMessage = null) }
+    }
+    
+    fun updateShopImage(imageUri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            // TODO: Call API to update shop image
+            // This will need to:
+            // 1. Resize image to 256x144 (16:9 aspect ratio)
+            // 2. Upload image using multipart/form-data PUT request
+            // 3. Update shopImageUrl in state
+            _uiState.update { it.copy(isLoading = false) }
+        }
     }
     
     private data class ProductStats(

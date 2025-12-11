@@ -20,7 +20,11 @@ data class HomeUiState(
     val shopImageUrl: String? = null,
     val statistics: HomeStatistics = HomeStatistics(),
     val shortcuts: List<HomeShortcut> = HomeShortcut.defaults(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val successMessage: String? = null,
+    val showImagePickerDialog: Boolean = false,
+    val showEditStoreNameDialog: Boolean = false,
+    val showEditDescriptionDialog: Boolean = false
 )
 
 data class HomeStatistics(
@@ -46,41 +50,6 @@ data class HomeShortcut(
                 subtitle = "เพิ่มสินค้าเข้าบิล",
                 icon = Icons.Outlined.Add,
                 iconBackground = Color(0xFFEDF5FE)
-            ),
-            HomeShortcut(
-                id = "orders",
-                title = "ออเดอร์",
-                subtitle = "ติดตามทุกสถานะ",
-                icon = Icons.Outlined.ShoppingCart,
-                iconBackground = Color(0xFFFFF3E5)
-            ),
-            HomeShortcut(
-                id = "scan",
-                title = "สแกน",
-                subtitle = "บาร์โค้ดสินค้า",
-                icon = Icons.Outlined.QrCodeScanner,
-                iconBackground = Color(0xFFEFF9F0)
-            ),
-            HomeShortcut(
-                id = "products",
-                title = "สินค้า",
-                subtitle = "จัดการสต็อก",
-                icon = Icons.Outlined.ViewList,
-                iconBackground = Color(0xFFFAF0F2)
-            ),
-            HomeShortcut(
-                id = "dashboard",
-                title = "กราฟ",
-                subtitle = "ยอดขายภาพรวม",
-                icon = Icons.Outlined.Analytics,
-                iconBackground = Color(0xFFE9F3FF)
-            ),
-            HomeShortcut(
-                id = "shop_profile",
-                title = "หน้าร้าน",
-                subtitle = "แก้ไขข้อมูล",
-                icon = Icons.Outlined.Storefront,
-                iconBackground = Color(0xFFF2F2F2)
             )
         )
     }
