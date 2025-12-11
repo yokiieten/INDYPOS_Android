@@ -60,6 +60,7 @@ import coil.request.ImageRequest
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -289,7 +290,7 @@ private fun ProductCard(
                             imageUrl
                         } else {
                             // If relative URL, prepend base URL
-                            "https://indy-pos.com$imageUrl"
+                            AppConfig.buildImageUrl(imageUrl)
                         }
                         
                         AsyncImage(

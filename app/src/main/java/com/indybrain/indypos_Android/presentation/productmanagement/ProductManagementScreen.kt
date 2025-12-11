@@ -71,6 +71,7 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -99,33 +100,7 @@ interface NetworkCheckerEntryPoint {
  */
 @Composable
 private fun buildImageUrl(imagePath: String): String {
-    // Check if it's already an absolute URL
-    if (imagePath.contains("://")) {
-        return imagePath
-    }
-    
-    // Base URL for images (without /api/v1/)
-    val baseURL = "https://stg.indy-pos.com"
-    
-    // Ensure path starts with a single leading slash
-    var path = imagePath
-    if (!path.startsWith("/")) {
-        path = "/$path"
-    }
-    
-    // If path is already under the expected product-images route
-    if (path.startsWith("/api/v1/files/product-images/")) {
-        return "$baseURL$path"
-    }
-    
-    // Treat as a bare filename; place it under the product-images folder
-    val cleanFile = if (path.startsWith("/")) {
-        path.drop(1)
-    } else {
-        path
-    }
-    
-    return "$baseURL/api/v1/files/product-images/$cleanFile"
+    return AppConfig.buildImageUrl(imagePath)
 }
 
 /**

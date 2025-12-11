@@ -21,12 +21,18 @@ android {
     }
 
     buildTypes {
+        debug {
+            isDebuggable = true
+            isMinifyEnabled = false
+        }
         release {
+            isDebuggable = false
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -38,6 +44,40 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    
+    flavorDimensions += "environment"
+    
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            resValue("string", "app_name", "INDYPOS Dev")
+            
+            buildConfigField("String", "BASE_API_URL", "\"https://dev.indy-pos.com/api/v1/\"")
+            buildConfigField("String", "BASE_IMAGE_URL", "\"https://dev.indy-pos.com\"")
+            buildConfigField("String", "ENVIRONMENT_NAME", "\"Development\"")
+        }
+        
+        create("stg") {
+            dimension = "environment"
+            applicationIdSuffix = ".stg"
+            resValue("string", "app_name", "INDYPOS Staging")
+            
+            buildConfigField("String", "BASE_API_URL", "\"https://stg.indy-pos.com/api/v1/\"")
+            buildConfigField("String", "BASE_IMAGE_URL", "\"https://stg.indy-pos.com\"")
+            buildConfigField("String", "ENVIRONMENT_NAME", "\"Staging\"")
+        }
+        
+        create("prod") {
+            dimension = "environment"
+            resValue("string", "app_name", "INDYPOS")
+            
+            buildConfigField("String", "BASE_API_URL", "\"https://indy-pos.com/api/v1/\"")
+            buildConfigField("String", "BASE_IMAGE_URL", "\"https://indy-pos.com\"")
+            buildConfigField("String", "ENVIRONMENT_NAME", "\"Production\"")
+        }
     }
 }
 

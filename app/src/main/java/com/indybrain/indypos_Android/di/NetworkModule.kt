@@ -3,6 +3,7 @@ package com.indybrain.indypos_Android.di
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.indybrain.indypos_Android.BuildConfig
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
@@ -54,7 +55,7 @@ object NetworkModule {
         gson: Gson
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://stg.indy-pos.com/api/v1/")
+            .baseUrl(BuildConfig.BASE_API_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
