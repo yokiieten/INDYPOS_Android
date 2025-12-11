@@ -5,3 +5,4 @@ data class OrderSummaryUiState(
     val isOpenCashDrawerSelected: Boolean = false
 )
 
+

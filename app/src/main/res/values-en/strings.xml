@@ -75,6 +75,29 @@
     <string name="order_loading">Loading...</string>
     <string name="order_empty">No orders</string>
     
+    <!-- Order Detail Screen -->
+    <string name="order_detail_title">Order Details</string>
+    <string name="order_menu">Menu</string>
+    <string name="order_payment_method">Payment Method</string>
+    <string name="order_cancel_date">Cancelled Date</string>
+    <string name="order_subtotal">Subtotal</string>
+    <string name="order_discount">Discount</string>
+    <string name="order_total_net">Net Total</string>
+    <string name="order_cancel">Cancel Order</string>
+    <string name="order_cancel_confirm_title">Confirm Cancel Order</string>
+    <string name="order_cancel_confirm_message">Are you sure you want to cancel this order?</string>
+    <string name="order_cancel_yes">Yes</string>
+    <string name="order_cancel_no">No</string>
+    <string name="order_cancel_success">Order cancelled successfully</string>
+    <string name="order_detail_quantity_unit">{quantity} item(s)</string>
+    <string name="order_detail_note">Note: {note}</string>
+    
+    <!-- Payment Types -->
+    <string name="payment_type_cash">Cash</string>
+    <string name="payment_type_transfer">Transfer</string>
+    <string name="payment_type_card">Card</string>
+    <string name="payment_type_qr_code">QR Code</string>
+    
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
     <string name="settings_account">Account</string>

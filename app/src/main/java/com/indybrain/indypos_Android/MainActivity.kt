@@ -23,6 +23,7 @@ import com.indybrain.indypos_Android.presentation.home.HomeScreen
 import com.indybrain.indypos_Android.presentation.login.LoginScreen
 import com.indybrain.indypos_Android.presentation.navigation.NavRoutes
 import com.indybrain.indypos_Android.presentation.orderproduct.OrderProductScreen
+import com.indybrain.indypos_Android.presentation.orderdetail.OrderDetailScreen
 import com.indybrain.indypos_Android.presentation.products.MainProductScreen
 import com.indybrain.indypos_Android.presentation.products.ProductDetailScreen
 import com.indybrain.indypos_Android.presentation.products.SearchProductScreen
@@ -135,6 +136,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToOrderSettings = {
                                     navController.navigate(NavRoutes.OrderSettings.route)
+                                },
+                                onNavigateToOrderDetail = { orderId ->
+                                    navController.navigate(NavRoutes.orderDetail(orderId))
                                 }
                             )
                         }
@@ -317,6 +321,19 @@ class MainActivity : ComponentActivity() {
                                             inclusive = false
                                         }
                                     }
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.ORDER_DETAIL_ROUTE,
+                            arguments = listOf(navArgument("orderId") {})
+                        ) { backStackEntry ->
+                            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+                            OrderDetailScreen(
+                                orderId = orderId,
+                                onBackClick = {
+                                    navController.popBackStack()
                                 }
                             )
                         }

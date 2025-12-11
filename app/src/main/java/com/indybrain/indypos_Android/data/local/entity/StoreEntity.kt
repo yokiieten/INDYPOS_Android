@@ -23,3 +23,4 @@ data class StoreEntity(
     val updatedAt: Date
 )
 
+

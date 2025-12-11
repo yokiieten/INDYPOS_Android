@@ -30,3 +30,4 @@ data class ReceiptSettingsEntity(
     val updatedAt: Date
 )
 
+

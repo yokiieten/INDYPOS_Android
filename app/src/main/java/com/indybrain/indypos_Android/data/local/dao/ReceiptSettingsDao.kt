@@ -34,3 +34,4 @@ interface ReceiptSettingsDao {
     suspend fun deleteAll()
 }
 
+

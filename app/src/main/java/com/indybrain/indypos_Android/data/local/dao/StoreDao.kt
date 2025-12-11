@@ -40,3 +40,4 @@ interface StoreDao {
     suspend fun deleteAll()
 }
 
+

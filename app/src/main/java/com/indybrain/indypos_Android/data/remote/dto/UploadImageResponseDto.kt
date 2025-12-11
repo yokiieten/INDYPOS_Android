@@ -13,3 +13,4 @@ data class UploadImageResponseDto(
     val fileSize: Long
 )
 
+

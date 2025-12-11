@@ -28,3 +28,4 @@ data class SelectedAddonEntity(
     val groupId: String // Reference to AddonGroupEntity
 )
 
+

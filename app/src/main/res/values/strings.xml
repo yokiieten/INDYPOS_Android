@@ -75,6 +75,29 @@
     <string name="order_loading">กำลังโหลด...</string>
     <string name="order_empty">ไม่มีออเดอร์</string>
     
+    <!-- Order Detail Screen -->
+    <string name="order_detail_title">รายละเอียดออเดอร์</string>
+    <string name="order_menu">เมนู</string>
+    <string name="order_payment_method">วิธีการชำระเงิน</string>
+    <string name="order_cancel_date">วันที่ยกเลิก</string>
+    <string name="order_subtotal">ยอดรวมราคา</string>
+    <string name="order_discount">ส่วนลด</string>
+    <string name="order_total_net">ยอดรวมสุทธิ</string>
+    <string name="order_cancel">ยกเลิกออเดอร์</string>
+    <string name="order_cancel_confirm_title">ยืนยันการยกเลิกออเดอร์</string>
+    <string name="order_cancel_confirm_message">คุณแน่ใจหรือไม่ว่าต้องการยกเลิกออเดอร์นี้?</string>
+    <string name="order_cancel_yes">ใช่</string>
+    <string name="order_cancel_no">ไม่</string>
+    <string name="order_cancel_success">ยกเลิกออเดอร์สำเร็จ</string>
+    <string name="order_detail_quantity_unit">{quantity} รายการ</string>
+    <string name="order_detail_note">หมายเหตุ: {note}</string>
+    
+    <!-- Payment Types -->
+    <string name="payment_type_cash">เงินสด</string>
+    <string name="payment_type_transfer">โอนเงิน</string>
+    <string name="payment_type_card">บัตรเครดิต</string>
+    <string name="payment_type_qr_code">QR Code</string>
+    
     <!-- Settings Screen -->
     <string name="settings_title">ตั้งค่า</string>
     <string name="settings_account">บัญชี</string>

@@ -13,3 +13,4 @@ data class SearchProductUiState(
     val errorMessage: String? = null
 )
 
+

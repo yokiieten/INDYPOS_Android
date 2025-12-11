@@ -9,6 +9,7 @@ import com.indybrain.indypos_Android.data.local.entity.OrderEntity
 import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
 import com.indybrain.indypos_Android.data.mapper.OrderMapper
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
+import com.indybrain.indypos_Android.data.remote.api.UpdateOrderStatusRequestDto
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -76,6 +77,65 @@ class OrderRepositoryImpl @Inject constructor(
     
     override suspend fun getTodayOrderCount(): Int {
         return orderDao.getOrderCount()
+    }
+    
+    override suspend fun getOrderById(orderId: String): OrderEntity? {
+        return orderDao.getOrderById(orderId)
+    }
+    
+    override suspend fun getOrderItems(orderId: String): List<OrderItemEntity> {
+        return orderItemDao.getOrderItemsSync(orderId)
+    }
+    
+    override suspend fun updateOrderStatus(orderId: String, status: Int): Result<OrderEntity> {
+        return try {
+            val existingOrder = orderDao.getOrderById(orderId)
+            if (existingOrder == null) {
+                return Result.failure(Exception("ไม่พบออเดอร์"))
+            }
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val response = ordersApi.updateOrderStatus(orderId, UpdateOrderStatusRequestDto(status))
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success - update local database
+                        val updatedOrder = existingOrder.copy(
+                            statusRaw = status,
+                            updatedAt = java.util.Date(),
+                            isSynced = true
+                        )
+                        orderDao.insertOrder(updatedOrder)
+                        Result.success(updatedOrder)
+                    } else {
+                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะออเดอร์"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: Exception) {
+                    // Network error - update locally and mark as not synced
+                    val updatedOrder = existingOrder.copy(
+                        statusRaw = status,
+                        updatedAt = java.util.Date(),
+                        isSynced = false
+                    )
+                    orderDao.insertOrder(updatedOrder)
+                    Result.success(updatedOrder)
+                }
+            } else {
+                // No network - update locally and mark as not synced
+                val updatedOrder = existingOrder.copy(
+                    statusRaw = status,
+                    updatedAt = java.util.Date(),
+                    isSynced = false
+                )
+                orderDao.insertOrder(updatedOrder)
+                Result.success(updatedOrder)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะออเดอร์"))
+        }
     }
 }
 

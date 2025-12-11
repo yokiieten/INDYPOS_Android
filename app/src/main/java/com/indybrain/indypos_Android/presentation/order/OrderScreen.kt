@@ -69,7 +69,8 @@ import java.text.DecimalFormat
 
 @Composable
 fun OrderScreen(
-    viewModel: OrderViewModel = hiltViewModel()
+    viewModel: OrderViewModel = hiltViewModel(),
+    onOrderClick: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -148,11 +149,13 @@ fun OrderScreen(
                 when (page) {
                     0 -> OrderListContent(
                         orders = uiState.completedOrders,
-                        isLoading = uiState.isLoading
+                        isLoading = uiState.isLoading,
+                        onOrderClick = onOrderClick
                     )
                     1 -> OrderListContent(
                         orders = uiState.cancelledOrders,
-                        isLoading = uiState.isLoading
+                        isLoading = uiState.isLoading,
+                        onOrderClick = onOrderClick
                     )
                 }
             }
@@ -645,7 +648,8 @@ private fun getSortText(sort: OrderSort): String {
 @Composable
 private fun OrderListContent(
     orders: List<Order>,
-    isLoading: Boolean
+    isLoading: Boolean,
+    onOrderClick: (String) -> Unit = {}
 ) {
     if (isLoading) {
         Box(
@@ -682,16 +686,24 @@ private fun OrderListContent(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(orders) { order ->
-                OrderItem(order = order)
+                OrderItem(
+                    order = order,
+                    onClick = { onOrderClick(order.id) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun OrderItem(order: Order) {
+private fun OrderItem(
+    order: Order,
+    onClick: () -> Unit = {}
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)

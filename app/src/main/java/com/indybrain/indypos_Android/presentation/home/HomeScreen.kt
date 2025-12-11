@@ -78,7 +78,8 @@ fun HomeScreen(
     onNavigateToLanguageSettings: () -> Unit = {},
     onNavigateToAccountSettings: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
-    onNavigateToOrderSettings: () -> Unit = {}
+    onNavigateToOrderSettings: () -> Unit = {},
+    onNavigateToOrderDetail: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -118,7 +119,9 @@ fun HomeScreen(
                 GraphScreen()
             }
             HomeBottomDestination.Orders -> {
-                OrderScreen()
+                OrderScreen(
+                    onOrderClick = onNavigateToOrderDetail
+                )
             }
             HomeBottomDestination.Settings -> {
                 SettingsScreen(
