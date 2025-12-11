@@ -51,5 +51,11 @@ interface CategoryDao {
     
     @Query("UPDATE categories SET isSynced = 1 WHERE id = :id")
     suspend fun markAsSynced(id: String)
+    
+    /**
+     * Get unsynced categories count
+     */
+    @Query("SELECT COUNT(*) FROM categories WHERE isSynced = 0 AND isDeletedLocally = 0")
+    suspend fun getUnsyncedCategoriesCount(): Int
 }
 

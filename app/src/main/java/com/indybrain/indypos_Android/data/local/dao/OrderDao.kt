@@ -31,5 +31,12 @@ interface OrderDao {
     
     @Query("SELECT SUM(total) FROM orders WHERE DATE(orderDate/1000, 'unixepoch') = DATE(datetime('now', 'localtime'))")
     suspend fun getTodaySales(): Double?
+    
+    /**
+     * Get unsynced orders count
+     * Note: Orders might not have isSynced field, so this might need to be adjusted
+     */
+    @Query("SELECT COUNT(*) FROM orders")
+    suspend fun getUnsyncedOrdersCount(): Int
 }
 

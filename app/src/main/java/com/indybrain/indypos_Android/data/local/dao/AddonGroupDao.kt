@@ -62,5 +62,11 @@ interface AddonGroupDao {
     // For management screen (including inactive, excluding deleted)
     @Query("SELECT * FROM addon_groups WHERE isDeletedLocally = 0 ORDER BY sortOrder ASC")
     fun getAllAddonGroupsForManagementFlow(): Flow<List<AddonGroupEntity>>
+    
+    /**
+     * Get unsynced addon groups count
+     */
+    @Query("SELECT COUNT(*) FROM addon_groups WHERE isSynced = 0 AND isDeletedLocally = 0")
+    suspend fun getUnsyncedAddonGroupsCount(): Int
 }
 

@@ -71,5 +71,11 @@ interface AddonDao {
     
     @Query("SELECT * FROM addons WHERE id IN (:ids)")
     suspend fun getAddonsByIds(ids: List<String>): List<AddonEntity>
+    
+    /**
+     * Get unsynced addons count
+     */
+    @Query("SELECT COUNT(*) FROM addons WHERE isSynced = 0 AND isDeletedLocally = 0")
+    suspend fun getUnsyncedAddonsCount(): Int
 }
 

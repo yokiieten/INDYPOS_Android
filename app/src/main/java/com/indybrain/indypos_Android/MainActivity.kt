@@ -33,6 +33,7 @@ import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.stockmanagement.StockManagementScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
+import com.indybrain.indypos_Android.presentation.datamanagement.DataManagementScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddonGroupManagementScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddEditAddonGroupScreen
 import com.indybrain.indypos_Android.presentation.addonmanagement.AddEditAddonScreen
@@ -140,6 +141,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToStockManagement = {
                                     navController.navigate(NavRoutes.StockManagement.route)
+                                },
+                                onNavigateToDataManagement = {
+                                    navController.navigate(NavRoutes.DataManagement.route)
                                 },
                                 onNavigateToOrderDetail = { orderId ->
                                     navController.navigate(NavRoutes.orderDetail(orderId))
@@ -436,6 +440,14 @@ class MainActivity : ComponentActivity() {
                         
                         composable(NavRoutes.StockManagement.route) {
                             StockManagementScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.DataManagement.route) {
+                            DataManagementScreen(
                                 onBackClick = {
                                     navController.popBackStack()
                                 }

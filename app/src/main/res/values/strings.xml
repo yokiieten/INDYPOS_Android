@@ -119,6 +119,18 @@
     <string name="settings_contact_us">ติดต่อเรา</string>
     <string name="settings_logout">ออกจากระบบ</string>
     
+    <!-- Data Management Screen -->
+    <string name="data_management_title">จัดการข้อมูล</string>
+    <string name="data_stats_title">สรุปข้อมูลระบบ</string>
+    <string name="data_stats_products">สินค้า</string>
+    <string name="data_stats_categories">หมวดหมู่</string>
+    <string name="data_stats_addons">ตัวเลือกเพิ่มเติม</string>
+    <string name="data_stats_addon_groups">กลุ่มตัวเลือก</string>
+    <string name="data_stats_orders">ประวัติการสั่งซื้อ</string>
+    <string name="data_export_title">ส่งออกข้อมูล</string>
+    <string name="data_export_subtitle">Export ข้อมูลต่างๆ เป็นไฟล์</string>
+    <string name="common_back">กลับ</string>
+    
     <!-- Account Screen -->
     <string name="account_title">บัญชี</string>
     <string name="account_email_label">อีเมล</string>

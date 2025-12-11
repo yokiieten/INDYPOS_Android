@@ -211,6 +211,12 @@ interface ProductsApi {
         @Path("productId") productId: String,
         @Body request: UpdateProductStockRequestDto
     ): ApiResponseDto<UpdateProductStockResponseDto>
+    
+    /**
+     * Get statistics endpoint
+     */
+    @GET("protected/indypos/statistics")
+    suspend fun getStatistics(): ApiResponseDto<StatisticsDataDto>
 }
 
 /**
