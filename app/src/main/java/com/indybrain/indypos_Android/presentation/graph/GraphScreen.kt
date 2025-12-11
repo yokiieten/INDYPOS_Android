@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,8 +55,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
@@ -143,6 +150,27 @@ fun GraphScreen(
             ChartCard(
                 totalSales = uiState.summary.totalSales,
                 chartData = uiState.chartData
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Revenue Comparison section
+            RevenueComparisonCard(
+                revenueComparison = uiState.revenueComparison
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Product Stats section
+            ProductStatsCard(
+                productStats = uiState.productStats
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Best Seller section
+            BestSellerCard(
+                bestSellers = uiState.bestSellers
             )
         }
     }
@@ -561,5 +589,569 @@ private fun HomeBottomBar(
 private fun formatCurrency(value: Double): String {
     val formatter = DecimalFormat("#,##0.00")
     return formatter.format(value)
+}
+
+@Composable
+private fun RevenueComparisonCard(
+    revenueComparison: RevenueComparison
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = stringResource(id = R.string.graph_revenue_comparison_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryText
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            val total = revenueComparison.transferAmount + revenueComparison.cashAmount
+            Text(
+                text = "${formatCurrency(total)} ${stringResource(id = R.string.graph_currency_baht)}",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Donut chart
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (total > 0) {
+                    DonutChart(
+                        transferAmount = revenueComparison.transferAmount,
+                        cashAmount = revenueComparison.cashAmount,
+                        modifier = Modifier.size(120.dp)
+                    )
+                } else {
+                    Text(
+                        text = stringResource(id = R.string.graph_no_data_available),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = PlaceholderText
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // Legend
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                LegendItem(
+                    color = PrimaryButton,
+                    title = stringResource(id = R.string.graph_transfer_payment),
+                    amount = revenueComparison.transferAmount
+                )
+                LegendItem(
+                    color = GreenComplete,
+                    title = stringResource(id = R.string.graph_cash_payment),
+                    amount = revenueComparison.cashAmount
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DonutChart(
+    transferAmount: Double,
+    cashAmount: Double,
+    modifier: Modifier = Modifier
+) {
+    val total = transferAmount + cashAmount
+    if (total <= 0) return
+    
+    val transferAngle = ((transferAmount / total) * 360.0).toFloat()
+    val cashAngle = ((cashAmount / total) * 360.0).toFloat()
+    
+    Canvas(modifier = modifier) {
+        val center = Offset(size.width / 2, size.height / 2)
+        val radius = size.minDimension / 2 - 20.dp.toPx()
+        val strokeWidth = 20.dp.toPx()
+        
+        // Background circle
+        drawCircle(
+            color = Color(0xFFE5E5E5),
+            radius = radius,
+            center = center,
+            style = Stroke(width = strokeWidth)
+        )
+        
+        // Transfer arc (blue)
+        if (transferAmount > 0) {
+            drawArc(
+                color = PrimaryButton,
+                startAngle = -90f,
+                sweepAngle = transferAngle,
+                useCenter = false,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2, radius * 2),
+                style = Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            )
+        }
+        
+        // Cash arc (green)
+        if (cashAmount > 0) {
+            drawArc(
+                color = GreenComplete,
+                startAngle = -90f + transferAngle,
+                sweepAngle = cashAngle,
+                useCenter = false,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2, radius * 2),
+                style = Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LegendItem(
+    color: Color,
+    title: String,
+    amount: Double
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(100.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(60.dp)
+                .background(color, RoundedCornerShape(3.dp))
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = title,
+            style = FontUtils.mainFont(
+                style = AppFontStyle.Medium,
+                size = FontSize.Small
+            ),
+            color = SecondaryText
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "${formatCurrency(amount)} ${stringResource(id = R.string.graph_currency_baht)}",
+            style = FontUtils.mainFont(
+                style = AppFontStyle.Bold,
+                size = FontSize.Medium
+            ),
+            color = PrimaryText
+        )
+    }
+}
+
+@Composable
+private fun ProductStatsCard(
+    productStats: List<ProductStatsData>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = stringResource(id = R.string.graph_product_stats_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryText
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            val totalAmount = productStats.sumOf { it.amount }
+            Text(
+                text = "${formatCurrency(totalAmount)} ${stringResource(id = R.string.graph_currency_baht)}",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            if (productStats.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.graph_no_data_available),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = PlaceholderText
+                    )
+                }
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    // Show top 3 products
+                    productStats.take(3).forEach { product ->
+                        ProductStatItem(product = product)
+                    }
+                    
+                    // Fill remaining slots if less than 3
+                    repeat(3 - productStats.size.coerceAtMost(3)) {
+                        EmptyProductStatItem()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductStatItem(
+    product: ProductStatsData
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = product.name,
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryText,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "${formatCurrency(product.amount)} ${stringResource(id = R.string.graph_currency_baht)}",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Medium,
+                    size = FontSize.Small
+                ),
+                color = SecondaryText
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Progress bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .background(Color(0xFFE5E5E5), RoundedCornerShape(3.dp))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(product.progress.coerceIn(0.1, 1.0).toFloat())
+                    .fillMaxSize()
+                    .background(PrimaryButton, RoundedCornerShape(3.dp))
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyProductStatItem() {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "-",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = PlaceholderText,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "-",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Medium,
+                    size = FontSize.Small
+                ),
+                color = PlaceholderText
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .background(Color(0xFFE5E5E5), RoundedCornerShape(3.dp))
+        )
+    }
+}
+
+@Composable
+private fun BestSellerCard(
+    bestSellers: List<BestSellerData>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = stringResource(id = R.string.graph_bestseller_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryText
+            )
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            if (bestSellers.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.graph_no_bestseller),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = PlaceholderText
+                    )
+                }
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Show top 3 best sellers
+                    bestSellers.take(3).forEach { seller ->
+                        BestSellerItem(seller = seller)
+                    }
+                    
+                    // Fill remaining slots if less than 3
+                    repeat(3 - bestSellers.size.coerceAtMost(3)) {
+                        EmptyBestSellerItem()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BestSellerItem(
+    seller: BestSellerData
+) {
+    val context = LocalContext.current
+    
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Product image
+        Box(
+            modifier = Modifier.size(60.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            val backgroundColor = seller.colorHex?.let {
+                try {
+                    Color(android.graphics.Color.parseColor(it))
+                } catch (e: Exception) {
+                    Color(0xFFE0E0E0)
+                }
+            } ?: Color(0xFFE0E0E0)
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundColor, RoundedCornerShape(8.dp))
+            ) {
+                val imageUrl = seller.imageUrl?.takeIf { it.isNotBlank() }
+                
+                if (!imageUrl.isNullOrBlank()) {
+                    val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+                        imageUrl
+                    } else {
+                        "https://indy-pos.com$imageUrl"
+                    }
+                    
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(fullImageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = seller.productName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        error = painterResource(id = R.drawable.logo_appstore),
+                        placeholder = painterResource(id = R.drawable.logo_appstore)
+                    )
+                } else if (seller.colorHex != null) {
+                    // Just show background color
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_appstore),
+                        contentDescription = seller.productName,
+                        modifier = Modifier.size(40.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+            
+            // Rank badge
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = (-8).dp, y = (-8).dp)
+                    .size(30.dp)
+                    .background(
+                        when (seller.rank) {
+                            1 -> Color(0xFFFFD700) // Gold
+                            2 -> Color(0xFFC0C0C0) // Silver
+                            3 -> Color(0xFFCD7F32) // Bronze
+                            else -> PrimaryButton
+                        },
+                        RoundedCornerShape(15.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${seller.rank}",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Small
+                    ),
+                    color = Color.White
+                )
+            }
+        }
+        
+        // Product info
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = seller.productName,
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryText
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "${formatCurrency(seller.totalSales)} ${stringResource(id = R.string.graph_currency_baht)}",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Medium,
+                    size = FontSize.Small
+                ),
+                color = GreenComplete
+            )
+            
+            Spacer(modifier = Modifier.height(2.dp))
+            
+            Text(
+                text = "${seller.salesCount} ${stringResource(id = R.string.home_orders_unit)}",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Small
+                ),
+                color = SecondaryText
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyBestSellerItem() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .background(Color(0xFFE5E5E5), RoundedCornerShape(8.dp))
+        )
+        
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = "-",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = PlaceholderText
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "-",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Medium,
+                    size = FontSize.Small
+                ),
+                color = PlaceholderText
+            )
+            
+            Spacer(modifier = Modifier.height(2.dp))
+            
+            Text(
+                text = "-",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Small
+                ),
+                color = PlaceholderText
+            )
+        }
+    }
 }
 

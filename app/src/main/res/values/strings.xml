@@ -46,6 +46,14 @@
     <string name="graph_cancelled_orders">ออเดอร์ยกเลิก</string>
     <string name="graph_chart_title">กราฟ</string>
     <string name="graph_total_sales">ผลรวมการขาย</string>
+    <string name="graph_revenue_comparison_title">ยอดแต่ละช่องทาง</string>
+    <string name="graph_transfer_payment">เงินโอน</string>
+    <string name="graph_cash_payment">เงินสด</string>
+    <string name="graph_product_stats_title">สินค้าที่ทำรายได้สูงสุด</string>
+    <string name="graph_bestseller_title">สินค้าขายดี Top 3</string>
+    <string name="graph_no_data_available">ไม่มีข้อมูล</string>
+    <string name="graph_no_bestseller">ไม่มีข้อมูลสินค้าขายดี</string>
+    <string name="graph_currency_baht">บาท</string>
     
     <!-- Order Screen -->
     <string name="order_history_title">ประวัติออเดอร์</string>

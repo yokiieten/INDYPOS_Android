@@ -88,11 +88,134 @@ class GraphViewModel @Inject constructor() : ViewModel() {
                 TimePeriod.Custom -> emptyList()
             }
             
+            // Mock revenue comparison data
+            val mockRevenueComparison = when (period) {
+                TimePeriod.Today -> RevenueComparison(
+                    transferAmount = 1000.0,
+                    cashAmount = 821.0
+                )
+                TimePeriod.Week -> RevenueComparison(
+                    transferAmount = 7000.0,
+                    cashAmount = 5500.0
+                )
+                TimePeriod.Month -> RevenueComparison(
+                    transferAmount = 25000.0,
+                    cashAmount = 20000.0
+                )
+                TimePeriod.Custom -> RevenueComparison()
+            }
+            
+            // Mock product stats data
+            val mockProductStats = when (period) {
+                TimePeriod.Today -> listOf(
+                    ProductStatsData("กาแฟอเมริกัน", 500.0, 1.0),
+                    ProductStatsData("คาปูชิโน", 400.0, 0.8),
+                    ProductStatsData("ลาเต้", 300.0, 0.6)
+                )
+                TimePeriod.Week -> listOf(
+                    ProductStatsData("กาแฟอเมริกัน", 3500.0, 1.0),
+                    ProductStatsData("คาปูชิโน", 2800.0, 0.8),
+                    ProductStatsData("ลาเต้", 2100.0, 0.6)
+                )
+                TimePeriod.Month -> listOf(
+                    ProductStatsData("กาแฟอเมริกัน", 15000.0, 1.0),
+                    ProductStatsData("คาปูชิโน", 12000.0, 0.8),
+                    ProductStatsData("ลาเต้", 9000.0, 0.6)
+                )
+                TimePeriod.Custom -> emptyList()
+            }
+            
+            // Mock best seller data
+            val mockBestSellers = when (period) {
+                TimePeriod.Today -> listOf(
+                    BestSellerData(
+                        productName = "กาแฟอเมริกัน",
+                        totalSales = 500.0,
+                        salesCount = 10,
+                        imageUrl = null,
+                        colorHex = "#8B4513",
+                        rank = 1
+                    ),
+                    BestSellerData(
+                        productName = "คาปูชิโน",
+                        totalSales = 400.0,
+                        salesCount = 8,
+                        imageUrl = null,
+                        colorHex = "#D2691E",
+                        rank = 2
+                    ),
+                    BestSellerData(
+                        productName = "ลาเต้",
+                        totalSales = 300.0,
+                        salesCount = 6,
+                        imageUrl = null,
+                        colorHex = "#F4A460",
+                        rank = 3
+                    )
+                )
+                TimePeriod.Week -> listOf(
+                    BestSellerData(
+                        productName = "กาแฟอเมริกัน",
+                        totalSales = 3500.0,
+                        salesCount = 70,
+                        imageUrl = null,
+                        colorHex = "#8B4513",
+                        rank = 1
+                    ),
+                    BestSellerData(
+                        productName = "คาปูชิโน",
+                        totalSales = 2800.0,
+                        salesCount = 56,
+                        imageUrl = null,
+                        colorHex = "#D2691E",
+                        rank = 2
+                    ),
+                    BestSellerData(
+                        productName = "ลาเต้",
+                        totalSales = 2100.0,
+                        salesCount = 42,
+                        imageUrl = null,
+                        colorHex = "#F4A460",
+                        rank = 3
+                    )
+                )
+                TimePeriod.Month -> listOf(
+                    BestSellerData(
+                        productName = "กาแฟอเมริกัน",
+                        totalSales = 15000.0,
+                        salesCount = 300,
+                        imageUrl = null,
+                        colorHex = "#8B4513",
+                        rank = 1
+                    ),
+                    BestSellerData(
+                        productName = "คาปูชิโน",
+                        totalSales = 12000.0,
+                        salesCount = 240,
+                        imageUrl = null,
+                        colorHex = "#D2691E",
+                        rank = 2
+                    ),
+                    BestSellerData(
+                        productName = "ลาเต้",
+                        totalSales = 9000.0,
+                        salesCount = 180,
+                        imageUrl = null,
+                        colorHex = "#F4A460",
+                        rank = 3
+                    )
+                )
+                TimePeriod.Custom -> emptyList()
+            }
+            
             _uiState.update { current ->
                 current.copy(
                     isLoading = false,
                     summary = mockSummary,
-                    chartData = mockChartData
+                    chartData = mockChartData,
+                    revenueComparison = mockRevenueComparison,
+                    productStats = mockProductStats,
+                    bestSellers = mockBestSellers
                 )
             }
         }

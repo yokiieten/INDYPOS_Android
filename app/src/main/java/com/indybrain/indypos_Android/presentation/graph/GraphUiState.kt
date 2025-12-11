@@ -8,6 +8,9 @@ data class GraphUiState(
     val selectedPeriod: TimePeriod = TimePeriod.Today,
     val summary: GraphSummary = GraphSummary(),
     val chartData: List<ChartDataPoint> = emptyList(),
+    val revenueComparison: RevenueComparison = RevenueComparison(),
+    val productStats: List<ProductStatsData> = emptyList(),
+    val bestSellers: List<BestSellerData> = emptyList(),
     val errorMessage: String? = null
 )
 
@@ -30,4 +33,24 @@ enum class TimePeriod(val displayName: String) {
     Month("1 เดือน"),
     Custom("กำหนดเอง")
 }
+
+data class RevenueComparison(
+    val transferAmount: Double = 0.0,
+    val cashAmount: Double = 0.0
+)
+
+data class ProductStatsData(
+    val name: String,
+    val amount: Double,
+    val progress: Double // 0.0 - 1.0
+)
+
+data class BestSellerData(
+    val productName: String,
+    val totalSales: Double,
+    val salesCount: Int,
+    val imageUrl: String? = null,
+    val colorHex: String? = null,
+    val rank: Int = 1
+)
 
