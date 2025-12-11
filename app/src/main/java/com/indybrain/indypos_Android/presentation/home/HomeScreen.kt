@@ -79,6 +79,7 @@ fun HomeScreen(
     onNavigateToAccountSettings: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToOrderSettings: () -> Unit = {},
+    onNavigateToStockManagement: () -> Unit = {},
     onNavigateToOrderDetail: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -138,6 +139,9 @@ fun HomeScreen(
                             }
                             SettingsItem.SalesSettings -> {
                                 onNavigateToOrderSettings()
+                            }
+                            SettingsItem.ManageStock -> {
+                                onNavigateToStockManagement()
                             }
                             // Handle other settings items here
                             else -> {}

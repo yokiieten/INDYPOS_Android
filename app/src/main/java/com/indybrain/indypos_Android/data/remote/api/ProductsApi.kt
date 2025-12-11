@@ -202,6 +202,15 @@ interface ProductsApi {
      */
     @POST("protected/indypos/products/sync")
     suspend fun syncProducts(@Body request: SyncProductsRequestDto): ApiResponseDto<List<SyncProductResultDto>>
+    
+    /**
+     * Update product stock endpoint (delta update)
+     */
+    @PATCH("protected/indypos/products/{productId}/stock")
+    suspend fun updateProductStock(
+        @Path("productId") productId: String,
+        @Body request: UpdateProductStockRequestDto
+    ): ApiResponseDto<UpdateProductStockResponseDto>
 }
 
 /**
@@ -650,5 +659,21 @@ data class SyncProductResultDto(
     val shouldDelete: Boolean,
     @SerializedName("server_data")
     val serverData: ProductDto?
+)
+
+/**
+ * Request DTO for updating product stock (delta)
+ */
+data class UpdateProductStockRequestDto(
+    val quantity: Int
+)
+
+/**
+ * Response DTO for updating product stock
+ */
+data class UpdateProductStockResponseDto(
+    @SerializedName("product_id")
+    val productId: String?,
+    val delta: Int?
 )
 

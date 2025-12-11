@@ -200,6 +200,13 @@ interface ProductRepository {
      * Clear cart items for a product (when product is deactivated)
      */
     suspend fun clearCartItemsByProduct(productId: String)
+    
+    /**
+     * Update product stock quantity (delta update)
+     * If network is available, calls API and updates Room
+     * If network is not available, updates in Room only (isSynced = false)
+     */
+    suspend fun updateProductStock(productId: String, delta: Int): Result<ProductEntity>
 }
 
 /**

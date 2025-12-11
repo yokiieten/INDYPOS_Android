@@ -1109,6 +1109,61 @@ class ProductRepositoryImpl @Inject constructor(
         )
     }
     
+    override suspend fun updateProductStock(productId: String, delta: Int): Result<ProductEntity> {
+        return try {
+            val existingProduct = productDao.getProductById(productId)
+            if (existingProduct == null) {
+                return Result.failure(Exception("ไม่พบสินค้าที่ต้องการอัปเดต"))
+            }
+            
+            val oldQuantity = existingProduct.stockQuantity ?: 0
+            val newQuantity = oldQuantity + delta
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val response = productsApi.updateProductStock(
+                        productId,
+                        UpdateProductStockRequestDto(delta)
+                    )
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success - update in Room
+                        val updatedProduct = existingProduct.copy(
+                            stockQuantity = newQuantity,
+                            isSynced = true,
+                            updatedAt = Date()
+                        )
+                        productDao.insertAll(listOf(updatedProduct))
+                        
+                        Result.success(updatedProduct)
+                    } else {
+                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                            ?: response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการอัปเดตสต็อก"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - update in Room only (for sync later)
+                val updatedProduct = existingProduct.copy(
+                    stockQuantity = newQuantity,
+                    isSynced = false,
+                    updatedAt = Date()
+                )
+                productDao.insertAll(listOf(updatedProduct))
+                
+                Result.success(updatedProduct)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสต็อก"))
+        }
+    }
+    
     override suspend fun clearCartItemsByProduct(productId: String) {
         cartRepository.clearCartItemsByProduct(productId)
     }

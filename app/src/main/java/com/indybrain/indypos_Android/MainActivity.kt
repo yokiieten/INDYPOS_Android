@@ -31,6 +31,7 @@ import com.indybrain.indypos_Android.presentation.settings.LanguageSettingsScree
 import com.indybrain.indypos_Android.presentation.settings.AccountScreen
 import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
+import com.indybrain.indypos_Android.presentation.stockmanagement.StockManagementScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddonGroupManagementScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddEditAddonGroupScreen
@@ -136,6 +137,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToOrderSettings = {
                                     navController.navigate(NavRoutes.OrderSettings.route)
+                                },
+                                onNavigateToStockManagement = {
+                                    navController.navigate(NavRoutes.StockManagement.route)
                                 },
                                 onNavigateToOrderDetail = { orderId ->
                                     navController.navigate(NavRoutes.orderDetail(orderId))
@@ -426,6 +430,14 @@ class MainActivity : ComponentActivity() {
                                             // TODO: Handle other order settings items
                                         }
                                     }
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.StockManagement.route) {
+                            StockManagementScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
                                 }
                             )
                         }
