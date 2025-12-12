@@ -346,9 +346,9 @@ fun PasswordField(
                     Icon(
                         painter = painterResource(
                             id = if (isPasswordVisible) {
-                                R.drawable.ic_close_eye
-                            } else {
                                 R.drawable.ic_open_eye
+                            } else {
+                                R.drawable.ic_close_eye
                             }
                         ),
                         contentDescription = if (isPasswordVisible) {
