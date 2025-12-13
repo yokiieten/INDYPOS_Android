@@ -2,12 +2,7 @@ package com.indybrain.indypos_Android.core.printer
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Typeface
 import android.content.Context
-import androidx.core.content.res.ResourcesCompat
-import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.ReceiptSettingsEntity
@@ -48,12 +43,6 @@ class PrinterService @Inject constructor(
         private const val TXT_1HEIGHT = POSConst.TXT_1HEIGHT
         private const val TXT_2WIDTH = POSConst.TXT_2WIDTH
         private const val TXT_2HEIGHT = POSConst.TXT_2HEIGHT
-        
-        // Receipt width in pixels (typical 58mm thermal printer = 384 pixels at 203 DPI)
-        private const val RECEIPT_WIDTH = 384
-        private const val FONT_SIZE_NORMAL = 24
-        private const val FONT_SIZE_LARGE = 32
-        private const val FONT_SIZE_HEADER = 40
     }
     
     /**
@@ -102,15 +91,25 @@ class PrinterService @Inject constructor(
         try {
             val posPrinter = POSPrinter(connection)
             
-            // Set character encoding to UTF-8 for Thai language support
+            // Set character encoding for Thai language support
+            // Try different encodings commonly used for Thai printers
             // According to Android POS Program Manual section 2.26
-            try {
-                posPrinter.setCharSet("UTF-8")
-            } catch (e: Exception) {
-                // If setCharSet is not available, try alternative method
-                android.util.Log.w("PrinterService", "setCharSet not available, trying alternative")
-                // Some printers may need UTF-8 encoding set via sendData
-                // We'll use printString/printText which should handle UTF-8 by default
+            var charsetSet = false
+            val charsets = listOf("TIS-620", "Windows-874", "UTF-8", "ISO-8859-11")
+            
+            for (charset in charsets) {
+                try {
+                    posPrinter.setCharSet(charset)
+                    android.util.Log.d("PrinterService", "Successfully set charset to: $charset")
+                    charsetSet = true
+                    break
+                } catch (e: Exception) {
+                    android.util.Log.w("PrinterService", "Failed to set charset $charset: ${e.message}")
+                }
+            }
+            
+            if (!charsetSet) {
+                android.util.Log.w("PrinterService", "Could not set any charset, printer may use default encoding")
             }
             
             // Print shop logo if enabled
@@ -123,42 +122,44 @@ class PrinterService @Inject constructor(
             }
             
             // Print shop name (header) - centered and bold, double size
+            // According to manual section 2.3: When using alignment, data needs to end with "\n"
             if (shopName.isNotEmpty()) {
-                val headerBitmap = createTextBitmap(shopName, FONT_SIZE_HEADER, true, ALIGNMENT_CENTER)
-                if (headerBitmap != null) {
-                    posPrinter.printBitmap(headerBitmap, ALIGNMENT_CENTER, RECEIPT_WIDTH)
-                    posPrinter.feedLine(1)
-                }
+                posPrinter.printText(
+                    "$shopName\n",
+                    ALIGNMENT_CENTER,
+                    FNT_BOLD,
+                    TXT_2WIDTH or TXT_2HEIGHT
+                )
             }
             
             // Print TIN if enabled
             if (receiptSettings?.taxIdentificationNumber == true && !receiptSettings.tinNumber.isNullOrEmpty()) {
-                val tinText = "เลขประจำตัวผู้เสียภาษี: ${receiptSettings.tinNumber}"
-                val tinBitmap = createTextBitmap(tinText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-                if (tinBitmap != null) {
-                    posPrinter.printBitmap(tinBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                    posPrinter.feedLine(1)
-                }
+                posPrinter.printText(
+                    "เลขประจำตัวผู้เสียภาษี: ${receiptSettings.tinNumber}\n",
+                    ALIGNMENT_LEFT,
+                    FNT_DEFAULT,
+                    TXT_1WIDTH or TXT_1HEIGHT
+                )
             }
             
             // Print order number
             if (!orderNumber.isNullOrEmpty()) {
-                val orderText = "เลขที่ออเดอร์: $orderNumber"
-                val orderBitmap = createTextBitmap(orderText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-                if (orderBitmap != null) {
-                    posPrinter.printBitmap(orderBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                    posPrinter.feedLine(1)
-                }
+                posPrinter.printText(
+                    "เลขที่ออเดอร์: $orderNumber\n",
+                    ALIGNMENT_LEFT,
+                    FNT_DEFAULT,
+                    TXT_1WIDTH or TXT_1HEIGHT
+                )
             }
             
             // Print date
             val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-            val dateText = "วันที่: ${dateFormat.format(Date())}"
-            val dateBitmap = createTextBitmap(dateText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-            if (dateBitmap != null) {
-                posPrinter.printBitmap(dateBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                posPrinter.feedLine(1)
-            }
+            posPrinter.printText(
+                "วันที่: ${dateFormat.format(Date())}\n",
+                ALIGNMENT_LEFT,
+                FNT_DEFAULT,
+                TXT_1WIDTH or TXT_1HEIGHT
+            )
             
             // Separator
             posPrinter.printString("----------------------------\n")
@@ -171,20 +172,20 @@ class PrinterService @Inject constructor(
                     addons.sumOf { it.addonPrice } * cartItem.quantity
                 
                 // Print item with quantity
-                val itemText = "${cartItem.quantity} x $itemName"
-                val itemBitmap = createTextBitmap(itemText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-                if (itemBitmap != null) {
-                    posPrinter.printBitmap(itemBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                    posPrinter.feedLine(1)
-                }
+                posPrinter.printText(
+                    "${cartItem.quantity} x $itemName\n",
+                    ALIGNMENT_LEFT,
+                    FNT_DEFAULT,
+                    TXT_1WIDTH or TXT_1HEIGHT
+                )
                 
                 // Print price aligned to right
-                val priceText = formatCurrency(itemPrice)
-                val priceBitmap = createTextBitmap(priceText, FONT_SIZE_NORMAL, false, ALIGNMENT_RIGHT)
-                if (priceBitmap != null) {
-                    posPrinter.printBitmap(priceBitmap, ALIGNMENT_RIGHT, RECEIPT_WIDTH)
-                    posPrinter.feedLine(1)
-                }
+                posPrinter.printText(
+                    "${formatCurrency(itemPrice)}\n",
+                    ALIGNMENT_RIGHT,
+                    FNT_DEFAULT,
+                    TXT_1WIDTH or TXT_1HEIGHT
+                )
                 
                 // Print addons
                 if (addons.isNotEmpty()) {
@@ -197,23 +198,23 @@ class PrinterService @Inject constructor(
                     }
                     
                     if (addonTexts.isNotEmpty()) {
-                        val addonLine = "   ${addonTexts.joinToString(", ")}"
-                        val addonBitmap = createTextBitmap(addonLine, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-                        if (addonBitmap != null) {
-                            posPrinter.printBitmap(addonBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                            posPrinter.feedLine(1)
-                        }
+                        posPrinter.printText(
+                            "   ${addonTexts.joinToString(", ")}\n",
+                            ALIGNMENT_LEFT,
+                            FNT_DEFAULT,
+                            TXT_1WIDTH or TXT_1HEIGHT
+                        )
                     }
                 }
                 
                 // Print special request
                 if (!cartItem.specialRequest.isNullOrEmpty()) {
-                    val requestText = "   หมายเหตุ: ${cartItem.specialRequest}"
-                    val requestBitmap = createTextBitmap(requestText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-                    if (requestBitmap != null) {
-                        posPrinter.printBitmap(requestBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                        posPrinter.feedLine(1)
-                    }
+                    posPrinter.printText(
+                        "   หมายเหตุ: ${cartItem.specialRequest}\n",
+                        ALIGNMENT_LEFT,
+                        FNT_DEFAULT,
+                        TXT_1WIDTH or TXT_1HEIGHT
+                    )
                 }
             }
             
@@ -227,69 +228,70 @@ class PrinterService @Inject constructor(
                 PaymentType.CARD -> "บัตรเครดิต"
                 PaymentType.QR_CODE -> "QR Code"
             }
-            val paymentText = "วิธีการชำระเงิน: $paymentTypeText"
-            val paymentBitmap = createTextBitmap(paymentText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-            if (paymentBitmap != null) {
-                posPrinter.printBitmap(paymentBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                posPrinter.feedLine(1)
-            }
+            posPrinter.printText(
+                "วิธีการชำระเงิน: $paymentTypeText\n",
+                ALIGNMENT_LEFT,
+                FNT_DEFAULT,
+                TXT_1WIDTH or TXT_1HEIGHT
+            )
             
             // Print subtotal
-            val subtotalText = "ยอดรวมราคา: ${formatCurrency(subtotal)}"
-            val subtotalBitmap = createTextBitmap(subtotalText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-            if (subtotalBitmap != null) {
-                posPrinter.printBitmap(subtotalBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                posPrinter.feedLine(1)
-            }
+            posPrinter.printText(
+                "ยอดรวมราคา: ${formatCurrency(subtotal)}\n",
+                ALIGNMENT_LEFT,
+                FNT_DEFAULT,
+                TXT_1WIDTH or TXT_1HEIGHT
+            )
             
             // Print discount
             if (discount > 0) {
-                val discountText = "ส่วนลด: -${formatCurrency(discount)}"
-                val discountBitmap = createTextBitmap(discountText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-                if (discountBitmap != null) {
-                    posPrinter.printBitmap(discountBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                    posPrinter.feedLine(1)
-                }
+                posPrinter.printText(
+                    "ส่วนลด: -${formatCurrency(discount)}\n",
+                    ALIGNMENT_LEFT,
+                    FNT_DEFAULT,
+                    TXT_1WIDTH or TXT_1HEIGHT
+                )
             }
             
             // Print total - bold
-            val totalText = "รวม: ${formatCurrency(total)}"
-            val totalBitmap = createTextBitmap(totalText, FONT_SIZE_NORMAL, true, ALIGNMENT_LEFT)
-            if (totalBitmap != null) {
-                posPrinter.printBitmap(totalBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                posPrinter.feedLine(1)
-            }
+            posPrinter.printText(
+                "รวม: ${formatCurrency(total)}\n",
+                ALIGNMENT_LEFT,
+                FNT_BOLD,
+                TXT_1WIDTH or TXT_1HEIGHT
+            )
             
             // Print cash received and change if payment type is cash
             if (paymentType == PaymentType.CASH) {
                 receivedAmount?.let {
                     if (it > 0) {
-                        val receivedText = "เงินที่รับ: ${formatCurrency(it)}"
-                        val receivedBitmap = createTextBitmap(receivedText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-                        if (receivedBitmap != null) {
-                            posPrinter.printBitmap(receivedBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                            posPrinter.feedLine(1)
-                        }
+                        posPrinter.printText(
+                            "เงินที่รับ: ${formatCurrency(it)}\n",
+                            ALIGNMENT_LEFT,
+                            FNT_DEFAULT,
+                            TXT_1WIDTH or TXT_1HEIGHT
+                        )
                     }
                 }
                 
                 change?.let {
-                    val changeText = "เงินทอน: ${formatCurrency(it)}"
-                    val changeBitmap = createTextBitmap(changeText, FONT_SIZE_NORMAL, false, ALIGNMENT_LEFT)
-                    if (changeBitmap != null) {
-                        posPrinter.printBitmap(changeBitmap, ALIGNMENT_LEFT, RECEIPT_WIDTH)
-                        posPrinter.feedLine(1)
-                    }
+                    posPrinter.printText(
+                        "เงินทอน: ${formatCurrency(it)}\n",
+                        ALIGNMENT_LEFT,
+                        FNT_DEFAULT,
+                        TXT_1WIDTH or TXT_1HEIGHT
+                    )
                 }
             }
             
             // Print footer
             if (!receiptSettings?.footer.isNullOrEmpty()) {
-                val footerBitmap = createTextBitmap(receiptSettings!!.footer, FONT_SIZE_NORMAL, false, ALIGNMENT_CENTER)
-                if (footerBitmap != null) {
-                    posPrinter.printBitmap(footerBitmap, ALIGNMENT_CENTER, RECEIPT_WIDTH)
-                    posPrinter.feedLine(1)
-                }
+                posPrinter.printText(
+                    "${receiptSettings!!.footer}\n",
+                    ALIGNMENT_CENTER,
+                    FNT_DEFAULT,
+                    TXT_1WIDTH or TXT_1HEIGHT
+                )
             }
             
             // Print QR code if enabled and payment is not cash
@@ -326,63 +328,5 @@ class PrinterService @Inject constructor(
     private fun formatCurrency(value: Double): String {
         val formatter = java.text.DecimalFormat("#,##0.00")
         return "฿${formatter.format(value)}"
-    }
-    
-    /**
-     * Create a bitmap from text with Thai language support
-     * This ensures proper rendering of Thai characters before printing
-     */
-    private fun createTextBitmap(
-        text: String,
-        fontSize: Int,
-        isBold: Boolean = false,
-        alignment: Int = ALIGNMENT_LEFT
-    ): Bitmap? {
-        return try {
-            // Load Thai font
-            val typeface = if (isBold) {
-                ResourcesCompat.getFont(context, R.font.anuphan_bold)
-            } else {
-                ResourcesCompat.getFont(context, R.font.anuphan_regular)
-            }
-            
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                this.typeface = typeface
-                this.textSize = fontSize.toFloat()
-                this.color = android.graphics.Color.BLACK
-                this.isFakeBoldText = isBold
-            }
-            
-            // Measure text width
-            val textBounds = android.graphics.Rect()
-            paint.getTextBounds(text, 0, text.length, textBounds)
-            val textWidth = paint.measureText(text).toInt()
-            val textHeight = textBounds.height()
-            
-            // Create bitmap with padding
-            val padding = 10
-            val bitmapWidth = RECEIPT_WIDTH.coerceAtLeast(textWidth + padding * 2)
-            val bitmapHeight = textHeight + padding * 2
-            
-            val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.RGB_565)
-            val canvas = Canvas(bitmap)
-            canvas.drawColor(android.graphics.Color.WHITE)
-            
-            // Calculate x position based on alignment
-            val x = when (alignment) {
-                ALIGNMENT_CENTER -> (bitmapWidth - textWidth) / 2f
-                ALIGNMENT_RIGHT -> (bitmapWidth - textWidth - padding).toFloat()
-                else -> padding.toFloat()
-            }
-            
-            // Draw text (y position accounts for baseline)
-            val y = (bitmapHeight - padding - textBounds.bottom).toFloat()
-            canvas.drawText(text, x, y, paint)
-            
-            bitmap
-        } catch (e: Exception) {
-            android.util.Log.e("PrinterService", "Error creating text bitmap", e)
-            null
-        }
     }
 }
