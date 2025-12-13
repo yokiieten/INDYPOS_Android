@@ -46,6 +46,8 @@ import com.indybrain.indypos_Android.presentation.productedit.ProductEditScreen
 import com.indybrain.indypos_Android.presentation.discount.DiscountScreen
 import com.indybrain.indypos_Android.presentation.contactus.ContactUsScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsItem
+import com.indybrain.indypos_Android.presentation.settings.printer.PrinterSettingsScreen
+import com.indybrain.indypos_Android.presentation.settings.printer.BluetoothPrinterScanScreen
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -151,6 +153,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToReceiptSettings = {
                                     navController.navigate(NavRoutes.ReceiptSettings.route)
+                                },
+                                onNavigateToPrinterSettings = {
+                                    navController.navigate(NavRoutes.PrinterSettings.route)
                                 },
                                 onNavigateToOrderDetail = { orderId ->
                                     navController.navigate(NavRoutes.orderDetail(orderId))
@@ -471,6 +476,25 @@ class MainActivity : ComponentActivity() {
                         
                         composable(NavRoutes.ReceiptSettings.route) {
                             com.indybrain.indypos_Android.presentation.settings.receipt.ReceiptSettingsScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.PrinterSettings.route) {
+                            PrinterSettingsScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onNavigateToBluetoothScan = {
+                                    navController.navigate(NavRoutes.BluetoothPrinterScan.route)
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.BluetoothPrinterScan.route) {
+                            BluetoothPrinterScanScreen(
                                 onBackClick = {
                                     navController.popBackStack()
                                 }

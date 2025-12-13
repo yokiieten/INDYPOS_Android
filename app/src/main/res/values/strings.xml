@@ -277,4 +277,24 @@
     <string name="product_management_sync_success">ซิงค์สำเร็จ</string>
     <string name="product_management_sync_error">เกิดข้อผิดพลาดในการซิงค์</string>
     <string name="product_management_toggle_success_title">สำเร็จ</string>
+    
+    <!-- Printer Settings Screen -->
+    <string name="printer_settings_title">ปรินเตอร์</string>
+    <string name="printer_connection_type">เลือกประเภทการเชื่อมต่อ</string>
+    <string name="printer_bluetooth">Bluetooth</string>
+    <string name="printer_bluetooth_off">Off</string>
+    <string name="printer_bluetooth_on">On</string>
+    <string name="printer_wifi">WiFi</string>
+    <string name="printer_usb">USB</string>
+    <string name="printer_support_message">ตอนนี้รองรับแค่รุ่น XPrinter เท่านั้น</string>
+    <string name="printer_model">X 58 L</string>
+    <string name="printer_select_device">เลือกเครื่องเชื่อมต่อ</string>
+    <string name="printer_label">ปรินเตอร์</string>
+    <string name="printer_available_devices">อุปกรณ์ที่พร้อมใช้งาน</string>
+    <string name="printer_unknown">Unknown</string>
+    <string name="printer_connecting">กำลังเชื่อมต่อ...</string>
+    <string name="printer_connected">เชื่อมต่อแล้ว</string>
+    <string name="printer_disconnected">ไม่เชื่อมต่อ</string>
+    <string name="printer_connection_failed">การเชื่อมต่อล้มเหลว</string>
+    <string name="printer_scanning">กำลังค้นหา...</string>
 </resources>

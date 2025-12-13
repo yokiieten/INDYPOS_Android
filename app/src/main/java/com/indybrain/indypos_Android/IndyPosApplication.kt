@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import dagger.hilt.android.HiltAndroidApp
+import net.posprinter.POSConnect
 
 /**
  * Application class with Hilt setup
@@ -35,6 +36,9 @@ class IndyPosApplication : Application() {
             1054
         }
         LocaleHelper.setLocale(this, localeCode)
+        
+        // Initialize POS Printer SDK
+        POSConnect.init(this)
     }
 }
 

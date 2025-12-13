@@ -107,6 +107,7 @@ fun HomeScreen(
     onNavigateToDataManagement: () -> Unit = {},
     onNavigateToContactUs: () -> Unit = {},
     onNavigateToReceiptSettings: () -> Unit = {},
+    onNavigateToPrinterSettings: () -> Unit = {},
     onNavigateToOrderDetail: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -190,6 +191,9 @@ fun HomeScreen(
                             }
                             SettingsItem.ReceiptSettings -> {
                                 onNavigateToReceiptSettings()
+                            }
+                            SettingsItem.PrinterSettings -> {
+                                onNavigateToPrinterSettings()
                             }
                             // Handle other settings items here
                             else -> {}

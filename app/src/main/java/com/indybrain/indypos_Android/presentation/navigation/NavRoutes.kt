@@ -31,6 +31,8 @@ sealed class NavRoutes(val route: String) {
     data object DataManagement : NavRoutes("data_management")
     data object ContactUs : NavRoutes("contact_us")
     data object ReceiptSettings : NavRoutes("receipt_settings")
+    data object PrinterSettings : NavRoutes("printer_settings")
+    data object BluetoothPrinterScan : NavRoutes("bluetooth_printer_scan")
     
     companion object {
         const val ADD_EDIT_PRODUCT_ROUTE = "add_edit_product/{productId}"
