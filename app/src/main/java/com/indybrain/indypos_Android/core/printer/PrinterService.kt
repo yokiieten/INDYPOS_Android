@@ -7,6 +7,11 @@ import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.ReceiptSettingsEntity
 import com.indybrain.indypos_Android.domain.model.PaymentType
+import com.indybrain.indypos_Android.domain.model.PromptPayType
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import net.posprinter.IDeviceConnection
 import net.posprinter.POSPrinter
@@ -14,6 +19,7 @@ import net.posprinter.POSConst
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Hashtable
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -51,7 +57,6 @@ class PrinterService @Inject constructor(
     fun openCashDrawer() {
         val connection = printerManager.currentConnection
         if (connection?.isConnect != true) {
-            android.util.Log.e("PrinterService", "Printer not connected")
             return
         }
         
@@ -59,9 +64,8 @@ class PrinterService @Inject constructor(
             val posPrinter = POSPrinter(connection)
             // Open cash drawer: pin=0, t1=30ms, t2=255ms
             posPrinter.openCashBox(0, 30, 255)
-            android.util.Log.d("PrinterService", "Cash drawer opened")
         } catch (e: Exception) {
-            android.util.Log.e("PrinterService", "Exception opening cash drawer", e)
+            // Exception opening cash drawer
         }
     }
     
@@ -84,7 +88,6 @@ class PrinterService @Inject constructor(
     ) {
         val connection = printerManager.currentConnection
         if (connection?.isConnect != true) {
-            android.util.Log.e("PrinterService", "Printer not connected")
             return
         }
         
@@ -100,16 +103,11 @@ class PrinterService @Inject constructor(
             for (charset in charsets) {
                 try {
                     posPrinter.setCharSet(charset)
-                    android.util.Log.d("PrinterService", "Successfully set charset to: $charset")
                     charsetSet = true
                     break
                 } catch (e: Exception) {
-                    android.util.Log.w("PrinterService", "Failed to set charset $charset: ${e.message}")
+                    // Failed to set charset, try next one
                 }
-            }
-            
-            if (!charsetSet) {
-                android.util.Log.w("PrinterService", "Could not set any charset, printer may use default encoding")
             }
             
             // Print shop logo if enabled
@@ -171,18 +169,15 @@ class PrinterService @Inject constructor(
                 val itemPrice = (cartItem.unitPrice ?: 0.0) * cartItem.quantity +
                     addons.sumOf { it.addonPrice } * cartItem.quantity
                 
-                // Print item with quantity
-                posPrinter.printText(
-                    "${cartItem.quantity} x $itemName\n",
-                    ALIGNMENT_LEFT,
-                    FNT_DEFAULT,
-                    TXT_1WIDTH or TXT_1HEIGHT
+                // Print item with quantity and price on the same line
+                // Format: "1 x น้ำเปล่า                    10.00"
+                val itemLine = formatItemLine(
+                    label = "${cartItem.quantity} x $itemName",
+                    price = formatCurrencyWithoutSymbol(itemPrice)
                 )
-                
-                // Print price aligned to right
                 posPrinter.printText(
-                    "${formatCurrency(itemPrice)}\n",
-                    ALIGNMENT_RIGHT,
+                    "$itemLine\n",
+                    ALIGNMENT_LEFT,
                     FNT_DEFAULT,
                     TXT_1WIDTH or TXT_1HEIGHT
                 )
@@ -221,23 +216,31 @@ class PrinterService @Inject constructor(
             // Separator
             posPrinter.printString("----------------------------\n")
             
-            // Print payment type
+            // Print payment type (no price, but format for consistency)
             val paymentTypeText = when (paymentType) {
                 PaymentType.CASH -> "เงินสด"
                 PaymentType.TRANSFER -> "โอนเงิน"
                 PaymentType.CARD -> "บัตรเครดิต"
                 PaymentType.QR_CODE -> "QR Code"
             }
+            val paymentLine = formatItemLine(
+                label = "วิธีการชำระเงิน: $paymentTypeText",
+                price = ""
+            )
             posPrinter.printText(
-                "วิธีการชำระเงิน: $paymentTypeText\n",
+                "$paymentLine\n",
                 ALIGNMENT_LEFT,
                 FNT_DEFAULT,
                 TXT_1WIDTH or TXT_1HEIGHT
             )
             
             // Print subtotal
+            val subtotalLine = formatItemLine(
+                label = "ยอดรวมราคา:",
+                price = formatCurrencyWithoutSymbol(subtotal)
+            )
             posPrinter.printText(
-                "ยอดรวมราคา: ${formatCurrency(subtotal)}\n",
+                "$subtotalLine\n",
                 ALIGNMENT_LEFT,
                 FNT_DEFAULT,
                 TXT_1WIDTH or TXT_1HEIGHT
@@ -245,8 +248,12 @@ class PrinterService @Inject constructor(
             
             // Print discount
             if (discount > 0) {
+                val discountLine = formatItemLine(
+                    label = "ส่วนลด:",
+                    price = "-${formatCurrencyWithoutSymbol(discount)}"
+                )
                 posPrinter.printText(
-                    "ส่วนลด: -${formatCurrency(discount)}\n",
+                    "$discountLine\n",
                     ALIGNMENT_LEFT,
                     FNT_DEFAULT,
                     TXT_1WIDTH or TXT_1HEIGHT
@@ -254,8 +261,12 @@ class PrinterService @Inject constructor(
             }
             
             // Print total - bold
+            val totalLine = formatItemLine(
+                label = "รวม:",
+                price = formatCurrencyWithoutSymbol(total)
+            )
             posPrinter.printText(
-                "รวม: ${formatCurrency(total)}\n",
+                "$totalLine\n",
                 ALIGNMENT_LEFT,
                 FNT_BOLD,
                 TXT_1WIDTH or TXT_1HEIGHT
@@ -265,8 +276,12 @@ class PrinterService @Inject constructor(
             if (paymentType == PaymentType.CASH) {
                 receivedAmount?.let {
                     if (it > 0) {
+                        val receivedLine = formatItemLine(
+                            label = "เงินที่รับ:",
+                            price = formatCurrencyWithoutSymbol(it)
+                        )
                         posPrinter.printText(
-                            "เงินที่รับ: ${formatCurrency(it)}\n",
+                            "$receivedLine\n",
                             ALIGNMENT_LEFT,
                             FNT_DEFAULT,
                             TXT_1WIDTH or TXT_1HEIGHT
@@ -275,8 +290,12 @@ class PrinterService @Inject constructor(
                 }
                 
                 change?.let {
+                    val changeLine = formatItemLine(
+                        label = "เงินทอน:",
+                        price = formatCurrencyWithoutSymbol(it)
+                    )
                     posPrinter.printText(
-                        "เงินทอน: ${formatCurrency(it)}\n",
+                        "$changeLine\n",
                         ALIGNMENT_LEFT,
                         FNT_DEFAULT,
                         TXT_1WIDTH or TXT_1HEIGHT
@@ -296,31 +315,48 @@ class PrinterService @Inject constructor(
             
             // Print QR code if enabled and payment is not cash
             if (receiptSettings?.showQRCode == true && paymentType != PaymentType.CASH) {
-                // TODO: Generate PromptPay QR code
-                // posPrinter.printQRCode(qrCodeData, ALIGNMENT_CENTER)
+                val promptPayType = receiptSettings.promptPayType?.let { 
+                    PromptPayType.fromString(it) 
+                }
+                val promptPayIdentifier = receiptSettings.promptPayIdentifier
+                
+                if (promptPayType != null && !promptPayIdentifier.isNullOrEmpty()) {
+                    // Calculate final total to match what's shown on receipt (subtotal - discount)
+                    // This ensures QR code amount matches the displayed total
+                    val finalTotal = (subtotal - discount).coerceAtLeast(0.0)
+                    val qrData = generatePromptPayQRDataWithAmount(
+                        type = promptPayType,
+                        identifier = promptPayIdentifier,
+                        amount = finalTotal
+                    )
+                    val qrBitmap = generateQRCodeBitmap(qrData, 200)
+                    if (qrBitmap != null) {
+                        posPrinter.printBitmap(qrBitmap, ALIGNMENT_CENTER, 200)
+                        posPrinter.feedLine(1)
+                    }
+                }
             }
             
             // Final line feeds
             posPrinter.feedLine(3)
             
-            android.util.Log.d("PrinterService", "Receipt printed successfully")
-            
         } catch (e: Exception) {
-            android.util.Log.e("PrinterService", "Exception printing receipt", e)
+            // Exception printing receipt
         }
     }
     
     private fun loadShopLogo(imagePath: String?): Bitmap? {
         if (imagePath.isNullOrEmpty()) return null
         return try {
-            val file = File(imagePath)
+            // imagePath is a relative path like "shop_logos/shop_logo_xxx.jpg"
+            // Need to combine with context.filesDir
+            val file = File(context.filesDir, imagePath)
             if (file.exists()) {
                 BitmapFactory.decodeFile(file.absolutePath)
             } else {
                 null
             }
         } catch (e: Exception) {
-            android.util.Log.e("PrinterService", "Error loading shop logo", e)
             null
         }
     }
@@ -328,5 +364,227 @@ class PrinterService @Inject constructor(
     private fun formatCurrency(value: Double): String {
         val formatter = java.text.DecimalFormat("#,##0.00")
         return "฿${formatter.format(value)}"
+    }
+    
+    /**
+     * Format currency without symbol (for item prices in receipt)
+     * Always formats with 2 decimal places and thousand separators for consistent alignment
+     */
+    private fun formatCurrencyWithoutSymbol(value: Double): String {
+        val formatter = java.text.DecimalFormat("#,##0.00")
+        return formatter.format(value)
+    }
+    
+    /**
+     * Format price with fixed width for alignment
+     * Ensures all prices have the same display width
+     */
+    private fun formatPriceFixedWidth(value: Double): String {
+        val formatted = formatCurrencyWithoutSymbol(value)
+        // Ensure consistent width by padding if needed (though DecimalFormat should handle this)
+        return formatted
+    }
+    
+    /**
+     * Format item line with label on left and price on right
+     * Matches the format shown in receipt image: "1 x Item Name                    10.00"
+     * - Never truncate item name, always show full name and price
+     * - Use fixed width to align prices to the right edge consistently
+     * - If price is empty, just return label without extra spacing
+     * - Ensures all prices align to the same right edge position
+     */
+    private fun formatItemLine(label: String, price: String): String {
+        // If price is empty, just return label
+        if (price.isEmpty()) {
+            return label
+        }
+        
+        // Receipt width for 58mm paper is typically 32 characters
+        // Use a consistent maxWidth for all items to ensure prices align
+        // This width should match the actual printable width of the receipt
+        // Using 32 characters as standard width for 58mm thermal paper
+        val maxWidth = 32
+        
+        // Calculate string length (Thai characters count as 1 character in monospace fonts)
+        val labelLength = label.length
+        val priceLength = price.length
+        val totalLength = labelLength + priceLength
+        
+        // Always show full label and price, never truncate
+        // Add spaces between label and price to align price to right edge
+        val spaces = if (totalLength < maxWidth) {
+            maxWidth - totalLength
+        } else {
+            // If total length exceeds maxWidth, use minimum spacing (1 space)
+            // This ensures price is always visible even for very long item names
+            1
+        }
+        
+        return "$label${" ".repeat(spaces)}$price"
+    }
+    
+    /**
+     * Generate PromptPay QR Code data with amount (Dynamic QR)
+     * Format: [00]01[01]12[29][30]A000000677010111[01-03][identifier][54][amount][52]0000[53]764[58]TH[63][CRC]
+     */
+    private fun generatePromptPayQRDataWithAmount(
+        type: PromptPayType,
+        identifier: String,
+        amount: Double
+    ): String {
+        // Clean identifier (remove dashes and spaces)
+        var cleanIdentifier = identifier.replace(Regex("[^0-9]"), "")
+        
+        // Format identifier according to PromptPay standard
+        when (type) {
+            PromptPayType.PHONE_NUMBER -> {
+                // Phone number format: 0066[phone without leading 0]
+                if (cleanIdentifier.startsWith("0") && cleanIdentifier.length == 10) {
+                    cleanIdentifier = "0066" + cleanIdentifier.substring(1)
+                } else if (!cleanIdentifier.startsWith("0066")) {
+                    if (cleanIdentifier.startsWith("66")) {
+                        cleanIdentifier = "00$cleanIdentifier"
+                    } else {
+                        cleanIdentifier = "0066$cleanIdentifier"
+                    }
+                }
+                cleanIdentifier = cleanIdentifier.padStart(13, '0').take(13)
+            }
+            PromptPayType.NATIONAL_ID -> {
+                cleanIdentifier = cleanIdentifier.padStart(13, '0').take(13)
+            }
+            PromptPayType.E_WALLET -> {
+                if (cleanIdentifier.length < 13) {
+                    cleanIdentifier = cleanIdentifier.padStart(13, '0')
+                }
+            }
+        }
+        
+        // Format amount: Fix for PromptPay QR Code amount display issue
+        // Problem: When using satang (24300), scanning app shows as 24300 baht instead of 243 baht
+        // Root cause: The scanning app doesn't divide by 100 to convert satang to baht
+        // 
+        // Solution: Use amount in baht as integer (rounded to nearest integer)
+        // This matches what the scanning app expects and displays
+        // Example: 243.00 baht -> "243", 243.50 baht -> "244" (rounded), 243.25 baht -> "243" (rounded)
+        val amountRounded = java.math.BigDecimal(amount).setScale(0, java.math.RoundingMode.HALF_UP).toLong()
+        val amountString = amountRounded.toString()
+        
+        // Build EMV QR Code payload
+        val payload = buildString {
+            // Payload Format Indicator (00)
+            append("00")
+            append("02") // Length
+            append("01") // Value
+            
+            // Point of Initiation Method (01) - 12 = Dynamic (with amount)
+            append("01")
+            append("02") // Length
+            append("12") // Dynamic QR (with amount)
+            
+            // Merchant Account Information (29-51)
+            append("29") // Tag
+            val merchantAccountInfo = buildString {
+                // AID (00)
+                append("00")
+                append("16") // Length
+                append("A000000677010111") // PromptPay AID
+                
+                // Account Identifier (01-03)
+                when (type) {
+                    PromptPayType.PHONE_NUMBER -> append("01")
+                    PromptPayType.NATIONAL_ID -> append("02")
+                    PromptPayType.E_WALLET -> append("03")
+                }
+                val identifierLength = String.format("%02d", cleanIdentifier.length)
+                append(identifierLength)
+                append(cleanIdentifier)
+            }
+            val merchantAccountInfoLength = String.format("%02d", merchantAccountInfo.length)
+            append(merchantAccountInfoLength)
+            append(merchantAccountInfo)
+            
+            // Transaction Amount (54) - only for Dynamic QR
+            append("54")
+            val amountLength = String.format("%02d", amountString.length)
+            append(amountLength)
+            append(amountString)
+            
+            // Merchant Category Code (52)
+            append("52")
+            append("04") // Length
+            append("0000") // General
+            
+            // Transaction Currency (53)
+            append("53")
+            append("03") // Length
+            append("764") // THB (Thai Baht)
+            
+            // Country Code (58)
+            append("58")
+            append("02") // Length
+            append("TH") // Thailand
+        }
+        
+        // Calculate CRC16-CCITT
+        val payloadWithoutCRC = payload.toString()
+        val payloadForCRC = payloadWithoutCRC + "6304"
+        val crc = calculateCRC16(payloadForCRC)
+        val crcHex = String.format("%04X", crc)
+        
+        // Append CRC to complete the payload
+        return payloadWithoutCRC + "63" + "04" + crcHex
+    }
+    
+    /**
+     * Calculate CRC16-CCITT checksum for EMV QR Code
+     * Uses CRC-16-CCITT (polynomial 0x1021, initial value 0xFFFF)
+     */
+    private fun calculateCRC16(data: String): Int {
+        var crc = 0xFFFF
+        val polynomial = 0x1021
+        
+        for (byte in data.toByteArray(Charsets.ISO_8859_1)) {
+            val unsignedByte = byte.toInt() and 0xFF
+            crc = crc xor (unsignedByte shl 8)
+            for (i in 0 until 8) {
+                if ((crc and 0x8000) != 0) {
+                    crc = ((crc shl 1) xor polynomial) and 0xFFFF
+                } else {
+                    crc = (crc shl 1) and 0xFFFF
+                }
+            }
+        }
+        
+        return crc and 0xFFFF
+    }
+    
+    /**
+     * Generate QR code bitmap from text
+     */
+    private fun generateQRCodeBitmap(text: String, size: Int): Bitmap? {
+        return try {
+            val hints = Hashtable<EncodeHintType, Any>()
+            hints[EncodeHintType.ERROR_CORRECTION] = ErrorCorrectionLevel.M
+            hints[EncodeHintType.CHARACTER_SET] = "UTF-8"
+            hints[EncodeHintType.MARGIN] = 1
+
+            val writer = QRCodeWriter()
+            val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, size, size, hints)
+
+            val width = bitMatrix.width
+            val height = bitMatrix.height
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+
+            for (x in 0 until width) {
+                for (y in 0 until height) {
+                    bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                }
+            }
+
+            bitmap
+        } catch (e: Exception) {
+            null
+        }
     }
 }
