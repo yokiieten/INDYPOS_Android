@@ -149,6 +149,9 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToContactUs = {
                                     navController.navigate(NavRoutes.ContactUs.route)
                                 },
+                                onNavigateToReceiptSettings = {
+                                    navController.navigate(NavRoutes.ReceiptSettings.route)
+                                },
                                 onNavigateToOrderDetail = { orderId ->
                                     navController.navigate(NavRoutes.orderDetail(orderId))
                                 }
@@ -460,6 +463,14 @@ class MainActivity : ComponentActivity() {
                         
                         composable(NavRoutes.ContactUs.route) {
                             ContactUsScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.ReceiptSettings.route) {
+                            com.indybrain.indypos_Android.presentation.settings.receipt.ReceiptSettingsScreen(
                                 onBackClick = {
                                     navController.popBackStack()
                                 }

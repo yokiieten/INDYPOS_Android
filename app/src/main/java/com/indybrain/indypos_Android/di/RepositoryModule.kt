@@ -8,12 +8,14 @@ import com.indybrain.indypos_Android.data.repository.AuthRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.CartRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.OrderRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.ProductRepositoryImpl
+import com.indybrain.indypos_Android.data.repository.ReceiptSettingsRepositoryImpl
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
+import com.indybrain.indypos_Android.domain.repository.ReceiptSettingsRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -79,6 +81,14 @@ object RepositoryModule {
         addonRepositoryImpl: AddonRepositoryImpl
     ): AddonRepository {
         return addonRepositoryImpl
+    }
+    
+    @Provides
+    @Singleton
+    fun provideReceiptSettingsRepository(
+        receiptSettingsRepositoryImpl: ReceiptSettingsRepositoryImpl
+    ): ReceiptSettingsRepository {
+        return receiptSettingsRepositoryImpl
     }
 }
 

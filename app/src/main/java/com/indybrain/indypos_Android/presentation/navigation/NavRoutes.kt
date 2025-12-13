@@ -30,6 +30,7 @@ sealed class NavRoutes(val route: String) {
     data object StockManagement : NavRoutes("stock_management")
     data object DataManagement : NavRoutes("data_management")
     data object ContactUs : NavRoutes("contact_us")
+    data object ReceiptSettings : NavRoutes("receipt_settings")
     
     companion object {
         const val ADD_EDIT_PRODUCT_ROUTE = "add_edit_product/{productId}"
