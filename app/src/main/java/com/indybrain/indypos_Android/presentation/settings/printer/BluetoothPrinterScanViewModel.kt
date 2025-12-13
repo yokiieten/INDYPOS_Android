@@ -98,30 +98,29 @@ class BluetoothPrinterScanViewModel @Inject constructor(
         when (code) {
             POSConnect.CONNECT_SUCCESS -> {
                 viewModelScope.launch {
-                    // Connection successful - checkmark is already shown
-                    // Just ensure the state is correct
-                    val macAddress = connInfo?.toString() ?: ""
-                    if (deviceConnectionStates[macAddress] != ConnectionState.Connected) {
-                        deviceConnectionStates[macAddress] = ConnectionState.Connected
+                    // Connection successful - show checkmark
+                    printerManager.currentPrinter?.let { printer ->
+                        deviceConnectionStates[printer.address] = ConnectionState.Connected
                         _connectionStatesFlow.update { deviceConnectionStates.toMap() }
                     }
                 }
             }
             POSConnect.CONNECT_FAIL -> {
                 viewModelScope.launch {
-                    // Connection failed - but keep checkmark shown as user clicked to connect
-                    // User can manually disconnect if needed
-                    val macAddress = connInfo?.toString() ?: ""
-                    // Optionally: keep as Connected or change to Disconnected
-                    // For now, keep it as Connected since user clicked to connect
+                    // Connection failed - change back to disconnected
+                    printerManager.currentPrinter?.let { printer ->
+                        deviceConnectionStates[printer.address] = ConnectionState.Disconnected
+                        _connectionStatesFlow.update { deviceConnectionStates.toMap() }
+                    }
                 }
             }
             POSConnect.CONNECT_INTERRUPT -> {
                 viewModelScope.launch {
                     // Connection interrupted - change to disconnected
-                    val macAddress = connInfo?.toString() ?: ""
-                    deviceConnectionStates[macAddress] = ConnectionState.Disconnected
-                    _connectionStatesFlow.update { deviceConnectionStates.toMap() }
+                    printerManager.currentPrinter?.let { printer ->
+                        deviceConnectionStates[printer.address] = ConnectionState.Disconnected
+                        _connectionStatesFlow.update { deviceConnectionStates.toMap() }
+                    }
                 }
             }
             else -> {}
@@ -231,8 +230,8 @@ class BluetoothPrinterScanViewModel @Inject constructor(
             
             when (currentState) {
                 ConnectionState.Disconnected -> {
-                    // Show checkmark immediately when clicked
-                    deviceConnectionStates[device.address] = ConnectionState.Connected
+                    // Show loading when clicked
+                    deviceConnectionStates[device.address] = ConnectionState.Connecting
                     _connectionStatesFlow.update { deviceConnectionStates.toMap() }
                     // Save to printer manager
                     try {
@@ -303,12 +302,13 @@ class BluetoothPrinterScanViewModel @Inject constructor(
                 // Get BluetoothDevice from address
                 val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
                 bluetoothDevice?.let {
-                    // Connect in background - checkmark is already shown
+                    // Connect in background - loading is already shown
                     printerManager.connectBluetooth(device.address, connectListener)
                 }
             } catch (e: Exception) {
-                // If connection fails, keep the checkmark but log error
-                // User can manually disconnect if needed
+                // If connection fails, change state back to disconnected
+                deviceConnectionStates[device.address] = ConnectionState.Disconnected
+                _connectionStatesFlow.update { deviceConnectionStates.toMap() }
                 e.printStackTrace()
             }
         }
