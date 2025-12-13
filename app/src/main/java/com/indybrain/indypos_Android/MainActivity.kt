@@ -255,6 +255,14 @@ class MainActivity : ComponentActivity() {
                                 onPlaceOrderClick = { totalAmount, subtotal, discount ->
                                     navController.navigate(NavRoutes.cashPayment(totalAmount, subtotal, discount))
                                 },
+                                onOrderSuccess = { totalAmount ->
+                                    // Navigate to order summary on success (for TRANSFER payment)
+                                    navController.navigate(NavRoutes.orderSummary(totalAmount)) {
+                                        popUpTo(NavRoutes.OrderProduct.route) {
+                                            inclusive = true
+                                        }
+                                    }
+                                },
                                 viewModel = orderProductViewModel
                             )
                         }

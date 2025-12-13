@@ -86,10 +86,12 @@ fun OrderProductScreen(
     onEditItemClick: (productId: String, productName: String) -> Unit = { _, _ -> },
     onDiscountClick: () -> Unit = {},
     onPlaceOrderClick: (totalAmount: Double, subtotal: Double, discount: Double) -> Unit = { _, _, _ -> },
+    onOrderSuccess: (totalAmount: Double) -> Unit = { _ -> },
     viewModel: OrderProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var itemToDelete by remember { mutableStateOf<CartItemEntity?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     
     Scaffold(
         containerColor = BaseBackground,
@@ -384,8 +386,16 @@ fun OrderProductScreen(
                         if (uiState.selectedPaymentType == PaymentType.CASH) {
                             onPlaceOrderClick(total, subtotal, discount)
                         } else {
-                            // For other payment types, handle differently
-                            viewModel.placeOrder()
+                            // For TRANSFER payment, place order directly
+                            viewModel.placeOrder(
+                                onSuccess = { orderNumber ->
+                                    // Navigate to order summary on success
+                                    onOrderSuccess(total)
+                                },
+                                onError = { error ->
+                                    errorMessage = error
+                                }
+                            )
                         }
                     },
                     modifier = Modifier
@@ -445,6 +455,45 @@ fun OrderProductScreen(
                             size = FontSize.Medium
                         ),
                         color = SecondaryText
+                    )
+                }
+            }
+        )
+    }
+    
+    // Error dialog
+    if (errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { errorMessage = null },
+            title = {
+                Text(
+                    text = "เกิดข้อผิดพลาด",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryText
+                )
+            },
+            text = {
+                Text(
+                    text = errorMessage ?: "เกิดข้อผิดพลาด",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { errorMessage = null }) {
+                    Text(
+                        text = "ตกลง",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton
                     )
                 }
             }
