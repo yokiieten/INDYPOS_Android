@@ -10,6 +10,7 @@ import com.indybrain.indypos_Android.data.remote.dto.CreateOrderRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.CreateOrderResponseDto
 import com.indybrain.indypos_Android.domain.model.PaymentType
 import com.google.gson.Gson
+import com.indybrain.indypos_Android.core.printer.PrinterService
 import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
 import com.indybrain.indypos_Android.data.local.dao.OrderDao
 import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
@@ -18,9 +19,13 @@ import com.indybrain.indypos_Android.data.local.entity.OrderAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.OrderEntity
 import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
 import com.indybrain.indypos_Android.domain.model.OrderStatus
+import com.indybrain.indypos_Android.domain.model.PaymentType as DomainPaymentType
+import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
+import com.indybrain.indypos_Android.domain.repository.ReceiptSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import java.util.Date
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,7 +45,10 @@ class CashPaymentViewModel @Inject constructor(
     private val productDao: ProductDao,
     private val orderDao: OrderDao,
     private val orderItemDao: OrderItemDao,
-    private val orderAddonDao: OrderAddonDao
+    private val orderAddonDao: OrderAddonDao,
+    private val receiptSettingsRepository: ReceiptSettingsRepository,
+    private val printerService: PrinterService,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(CashPaymentUiState())
@@ -176,10 +184,25 @@ class CashPaymentViewModel @Inject constructor(
                 // Check network connectivity
                 if (!networkConnectivityChecker.isConnected()) {
                     // Offline: Save locally only
-                    val orderId = saveOrderToRoom(cartItems)
-                    if (orderId != null) {
-                        cartRepository.clearCart()
+                    // Get cart addons map before clearing cart
+                    val cartAddonsMap = cartItems.associate { item ->
+                        item.id to cartRepository.getCartAddonsByItemId(item.id)
+                    }
+                    
+                    val orderNumber = saveOrderToRoom(cartItems)
+                    if (orderNumber != null) {
                         val change = _uiState.value.receivedAmount - totalAmount
+                        
+                        // Handle printing after saving to Room
+                        handlePrintingAndCashDrawer(
+                            cartItems = cartItems,
+                            cartAddonsMap = cartAddonsMap,
+                            orderNumber = orderNumber,
+                            receivedAmount = _uiState.value.receivedAmount,
+                            change = change
+                        )
+                        
+                        cartRepository.clearCart()
                         _uiState.update { it.copy(isProcessingOrder = false) }
                         onSuccess(change)
                     } else {
@@ -219,15 +242,30 @@ class CashPaymentViewModel @Inject constructor(
                         }
                         
                         // API Success: Save locally with API response data
-                        val orderId = if (response.data != null) {
+                        // Get cart addons map before clearing cart
+                        val cartAddonsMap = cartItems.associate { item ->
+                            item.id to cartRepository.getCartAddonsByItemId(item.id)
+                        }
+                        
+                        val orderNumber = if (response.data != null) {
                             saveOrderToRoom(cartItems, response.data.orderNumber, response.data.id)
                         } else {
                             saveOrderToRoom(cartItems)
                         }
                         
-                        if (orderId != null) {
-                            cartRepository.clearCart()
+                        if (orderNumber != null) {
                             val change = _uiState.value.receivedAmount - totalAmount
+                            
+                            // Handle printing after API success and saving to Room
+                            handlePrintingAndCashDrawer(
+                                cartItems = cartItems,
+                                cartAddonsMap = cartAddonsMap,
+                                orderNumber = orderNumber,
+                                receivedAmount = _uiState.value.receivedAmount,
+                                change = change
+                            )
+                            
+                            cartRepository.clearCart()
                             _uiState.update { it.copy(isProcessingOrder = false) }
                             onSuccess(change)
                         } else {
@@ -353,7 +391,7 @@ class CashPaymentViewModel @Inject constructor(
                 orderAddonDao.insertOrderAddons(orderAddons)
             }
             
-            orderId
+            orderNumber
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -407,6 +445,54 @@ class CashPaymentViewModel @Inject constructor(
     private fun formatNumberWithCommas(number: Double): String {
         val formatter = java.text.DecimalFormat("#,##0.00")
         return formatter.format(number)
+    }
+    
+    /**
+     * Handle printing receipt and opening cash drawer after order completion
+     */
+    private fun handlePrintingAndCashDrawer(
+        cartItems: List<CartItemEntity>,
+        cartAddonsMap: Map<String, List<CartAddonEntity>>,
+        orderNumber: String,
+        receivedAmount: Double,
+        change: Double
+    ) {
+        viewModelScope.launch {
+            try {
+                val receiptSettings = receiptSettingsRepository.getReceiptSettingsSync()
+                
+                // Get shop name
+                val shopName = authRepository.getCurrentUser().first()?.shopName
+                    ?: "INDYPOS"
+                
+                val paymentType = DomainPaymentType.CASH
+                
+                // Check if cash drawer should be opened
+                if (receiptSettings?.openCashDrawer == true) {
+                    printerService.openCashDrawer()
+                }
+                
+                // Check if receipt should be printed
+                if (receiptSettings?.printAfterFinish == true) {
+                    printerService.printOrderReceipt(
+                        cartItems = cartItems,
+                        cartAddonsMap = cartAddonsMap,
+                        receiptSettings = receiptSettings,
+                        shopName = shopName,
+                        orderNumber = orderNumber,
+                        subtotal = subtotal,
+                        discount = discount,
+                        total = totalAmount,
+                        paymentType = paymentType,
+                        receivedAmount = receivedAmount,
+                        change = change
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Don't fail the order if printing fails
+            }
+        }
     }
 }
 
