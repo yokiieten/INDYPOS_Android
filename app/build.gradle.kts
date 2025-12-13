@@ -149,6 +149,9 @@ dependencies {
     // ZXing for QR code generation
     implementation("com.google.zxing:core:3.5.2")
     
+    // Printer Library
+    implementation(files("libs/printer-lib-3.2.0.aar"))
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
