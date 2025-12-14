@@ -263,15 +263,29 @@ fun OrderProductScreen(
                                 color = PrimaryText
                             )
                             
-                            if (uiState.discountAmount > 0) {
-                                Text(
-                                    text = formatCurrency(uiState.discountAmount),
-                                    style = FontUtils.mainFont(
-                                        style = AppFontStyle.Regular,
-                                        size = FontSize.Medium
-                                    ),
-                                    color = PrimaryButton
-                                )
+                            if (uiState.discountAmount > 0 && uiState.discountType != null) {
+                                val discountText = when (val discountType = uiState.discountType) {
+                                    com.indybrain.indypos_Android.presentation.discount.DiscountType.PERCENTAGE -> {
+                                        "${uiState.discountValue.toInt()}%"
+                                    }
+                                    com.indybrain.indypos_Android.presentation.discount.DiscountType.FIXED_AMOUNT -> {
+                                        formatCurrency(uiState.discountValue)
+                                    }
+                                    null -> "" // This should never happen due to the if condition
+                                }
+                                TextButton(
+                                    onClick = onDiscountClick,
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text(
+                                        text = discountText,
+                                        style = FontUtils.mainFont(
+                                            style = AppFontStyle.Regular,
+                                            size = FontSize.Medium
+                                        ),
+                                        color = PrimaryButton
+                                    )
+                                }
                             } else {
                                 TextButton(onClick = onDiscountClick) {
                                     Text(

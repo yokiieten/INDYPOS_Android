@@ -64,7 +64,10 @@ class OrderProductViewModel @Inject constructor(
     private fun observeCartItems() {
         viewModelScope.launch {
             cartRepository.getCartItems().collect { cartItems ->
-                _uiState.update { it.copy(cartItems = cartItems) }
+                _uiState.update { currentState ->
+                    // Preserve discount information when updating cart items
+                    currentState.copy(cartItems = cartItems)
+                }
                 
                 // Load addons for each cart item
                 val addonsMap = mutableMapOf<String, List<CartAddonEntity>>()
@@ -83,6 +86,24 @@ class OrderProductViewModel @Inject constructor(
     
     fun setDiscountAmount(amount: Double) {
         _uiState.update { it.copy(discountAmount = amount) }
+    }
+    
+    fun setDiscount(discountModel: com.indybrain.indypos_Android.presentation.discount.DiscountModel, subtotal: Double) {
+        val discountAmount = when (discountModel.type) {
+            com.indybrain.indypos_Android.presentation.discount.DiscountType.PERCENTAGE -> {
+                (subtotal * discountModel.value / 100.0).coerceAtMost(subtotal)
+            }
+            com.indybrain.indypos_Android.presentation.discount.DiscountType.FIXED_AMOUNT -> {
+                discountModel.value.coerceAtMost(subtotal)
+            }
+        }
+        _uiState.update { 
+            it.copy(
+                discountAmount = discountAmount,
+                discountType = discountModel.type,
+                discountValue = discountModel.value
+            ) 
+        }
     }
     
     fun getCartAddons(itemId: String): List<CartAddonEntity> {
@@ -183,7 +204,9 @@ class OrderProductViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                discountAmount = 0.0
+                                discountAmount = 0.0,
+                                discountType = null,
+                                discountValue = 0.0
                             ) 
                         }
                         onSuccess(orderNumber)
@@ -252,7 +275,9 @@ class OrderProductViewModel @Inject constructor(
                             _uiState.update { 
                                 it.copy(
                                     isLoading = false,
-                                    discountAmount = 0.0
+                                    discountAmount = 0.0,
+                                    discountType = null,
+                                    discountValue = 0.0
                                 ) 
                             }
                             onSuccess(orderNumber)

@@ -273,7 +273,14 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             val subtotalString = backStackEntry.arguments?.getString("subtotal") ?: "0.0"
                             val subtotal = subtotalString.toDoubleOrNull() ?: 0.0
-                            val orderProductViewModel = androidx.hilt.navigation.compose.hiltViewModel<com.indybrain.indypos_Android.presentation.orderproduct.OrderProductViewModel>()
+                            // Get the same ViewModel instance from the parent route (OrderProduct)
+                            // Use the parent backStackEntry to get the same ViewModel instance
+                            val parentEntry = androidx.compose.runtime.remember(backStackEntry) {
+                                navController.getBackStackEntry(NavRoutes.OrderProduct.route)
+                            }
+                            val orderProductViewModel = androidx.hilt.navigation.compose.hiltViewModel<com.indybrain.indypos_Android.presentation.orderproduct.OrderProductViewModel>(
+                                parentEntry
+                            )
                             
                             DiscountScreen(
                                 subtotal = subtotal,
@@ -284,15 +291,7 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onDiscountSelected = { discount ->
-                                    val discountAmount = when (discount.type) {
-                                        com.indybrain.indypos_Android.presentation.discount.DiscountType.PERCENTAGE -> {
-                                            (subtotal * discount.value / 100.0).coerceAtMost(subtotal)
-                                        }
-                                        com.indybrain.indypos_Android.presentation.discount.DiscountType.FIXED_AMOUNT -> {
-                                            discount.value.coerceAtMost(subtotal)
-                                        }
-                                    }
-                                    orderProductViewModel.setDiscountAmount(discountAmount)
+                                    orderProductViewModel.setDiscount(discount, subtotal)
                                     navController.popBackStack()
                                 }
                             )
