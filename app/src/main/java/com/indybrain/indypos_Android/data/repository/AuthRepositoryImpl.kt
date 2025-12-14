@@ -12,6 +12,7 @@ import com.indybrain.indypos_Android.data.remote.api.UpdateShopNameRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.domain.model.LoginRequest
 import com.indybrain.indypos_Android.domain.model.User
+import com.indybrain.indypos_Android.data.local.database.IndyPosDatabase
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val localDataSource: AuthLocalDataSource,
     private val deviceInfoProvider: DeviceInfoProvider,
     private val cartRepository: CartRepository,
+    private val database: IndyPosDatabase,
     private val gson: Gson
 ) : AuthRepository {
     
@@ -99,8 +101,14 @@ class AuthRepositoryImpl @Inject constructor(
             val deviceInfo = try {
                 deviceInfoProvider.getDeviceInfo()
             } catch (e: Exception) {
-                // If we can't get device info, still clear local data
+                // If we can't get device info, still clear local data and database
                 localDataSource.clearUser()
+                try {
+                    database.clearAllData()
+                    android.util.Log.d("AuthRepository", "All Room database data cleared successfully (device info error)")
+                } catch (dbError: Exception) {
+                    android.util.Log.e("AuthRepository", "Error clearing Room database: ${dbError.message}", dbError)
+                }
                 return Result.failure(IllegalStateException("ไม่สามารถอ่านข้อมูลอุปกรณ์ได้: ${e.message}", e))
             }
             
@@ -118,25 +126,27 @@ class AuthRepositoryImpl @Inject constructor(
             
             // Clear local data regardless of API call result
             localDataSource.clearUser()
-            // Clear cart data as well - ONLY when user logs out
-            // NOTE: Cart should NOT be cleared when opening MainProductScreen
-            // Cart is persisted in Room database and should remain until logout
+            // Clear all Room database data when user logs out
+            // This ensures no user-specific data persists after logout
             try {
-                cartRepository.clearCart()
+                database.clearAllData()
+                android.util.Log.d("AuthRepository", "All Room database data cleared successfully")
             } catch (e: Exception) {
-                // Log error but don't fail logout if cart clear fails
+                // Log error but don't fail logout if database clear fails
+                android.util.Log.e("AuthRepository", "Error clearing Room database: ${e.message}", e)
             }
             Result.success(Unit)
         } catch (e: Exception) {
             // Clear local data even on error
             localDataSource.clearUser()
-            // Clear cart data as well - ONLY when user logs out
-            // NOTE: Cart should NOT be cleared when opening MainProductScreen
-            // Cart is persisted in Room database and should remain until logout
+            // Clear all Room database data when user logs out
+            // This ensures no user-specific data persists after logout
             try {
-                cartRepository.clearCart()
-            } catch (cartError: Exception) {
-                // Log error but don't fail logout if cart clear fails
+                database.clearAllData()
+                android.util.Log.d("AuthRepository", "All Room database data cleared successfully (on error)")
+            } catch (dbError: Exception) {
+                // Log error but don't fail logout if database clear fails
+                android.util.Log.e("AuthRepository", "Error clearing Room database: ${dbError.message}", dbError)
             }
             Result.failure(IllegalStateException("เกิดข้อผิดพลาดในการออกจากระบบ: ${e.message}", e))
         }

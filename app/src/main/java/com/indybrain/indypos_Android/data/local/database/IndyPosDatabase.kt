@@ -3,6 +3,7 @@ package com.indybrain.indypos_Android.data.local.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.Transaction
 import com.indybrain.indypos_Android.data.local.converter.DateConverter
 import com.indybrain.indypos_Android.data.local.dao.*
 import com.indybrain.indypos_Android.data.local.entity.*
@@ -56,5 +57,37 @@ abstract class IndyPosDatabase : RoomDatabase() {
     // Store and Settings DAOs
     abstract fun storeDao(): StoreDao
     abstract fun receiptSettingsDao(): ReceiptSettingsDao
+    
+    /**
+     * Clear all data from Room database
+     * This should be called when user logs out to ensure no data persists
+     */
+    @Transaction
+    suspend fun clearAllData() {
+        // Clear Cart data
+        cartDao().deleteAllCartItems()
+        cartDao().deleteAllCartAddons()
+        selectedAddonDao().deleteAll()
+        selectedAddonJunctionDao().deleteAll()
+        
+        // Clear Order data
+        orderAddonDao().deleteAllOrderAddons()
+        orderItemDao().deleteAllOrderItems()
+        orderDao().deleteAllOrders()
+        
+        // Clear Product and Category data
+        productAddonGroupJunctionDao().deleteAll()
+        productDao().deleteAll()
+        categoryDao().deleteAll()
+        
+        // Clear Addon data
+        addonGroupAddonJunctionDao().deleteAll()
+        addonDao().deleteAll()
+        addonGroupDao().deleteAll()
+        
+        // Clear Store and Settings data
+        storeDao().deleteAll()
+        receiptSettingsDao().deleteAll()
+    }
 }
 
