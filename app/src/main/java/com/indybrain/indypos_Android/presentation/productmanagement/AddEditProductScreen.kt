@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.presentation.productmanagement
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -521,12 +523,25 @@ fun AddEditProductScreen(
                     if (uiState.hasAdditionalOptions) {
                         Spacer(modifier = Modifier.height(16.dp))
                         FormFieldLabel("เลือก AddOn Groups", required = false)
-                        Text(
-                            text = "ไม่มี AddOn Groups ที่สามารถเลือกได้",
-                            style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Small),
-                            color = SecondaryText,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
+                        
+                        if (uiState.availableAddonGroups.isEmpty()) {
+                            Text(
+                                text = "ไม่มี AddOn Groups ที่สามารถเลือกได้",
+                                style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Small),
+                                color = SecondaryText,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            uiState.availableAddonGroups.forEach { addonGroup ->
+                                AddonGroupSelectionItem(
+                                    addonGroup = addonGroup,
+                                    isSelected = uiState.addonGroupIds.contains(addonGroup.id),
+                                    onToggle = { viewModel.toggleAddonGroupSelection(addonGroup.id) }
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
                     }
                     
                     Spacer(modifier = Modifier.height(80.dp)) // Space for save button
@@ -1169,6 +1184,67 @@ private fun FormFieldLabel(
         modifier = modifier.padding(bottom = 8.dp),
         color = PrimaryText
     )
+}
+
+/**
+ * AddOn Group Selection Item Component
+ */
+@Composable
+private fun AddonGroupSelectionItem(
+    addonGroup: com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity,
+    isSelected: Boolean,
+    onToggle: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle),
+        color = Color.White,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = addonGroup.name,
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryText,
+                modifier = Modifier.weight(1f)
+            )
+            
+            // Checkbox Icon
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(if (isSelected) PrimaryButton else Color.Transparent)
+                    .then(
+                        if (!isSelected) {
+                            Modifier.border(2.dp, Color(0xFFE0E0E0), RoundedCornerShape(4.dp))
+                        } else {
+                            Modifier
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = "เลือก",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

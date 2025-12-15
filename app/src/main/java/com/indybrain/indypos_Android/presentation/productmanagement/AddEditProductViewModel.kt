@@ -4,7 +4,9 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
+import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.presentation.productmanagement.ProductConstants.SELECTED_UNIT_COLOR
 import com.indybrain.indypos_Android.presentation.productmanagement.ProductConstants.SELECTED_UNIT_IMAGE
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 /**
@@ -22,6 +25,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AddEditProductViewModel @Inject constructor(
     private val productRepository: ProductRepository,
+    private val addonGroupRepository: AddonGroupRepository,
+    private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
     private val networkConnectivityChecker: NetworkConnectivityChecker
 ) : ViewModel() {
     
@@ -35,6 +40,7 @@ class AddEditProductViewModel @Inject constructor(
     
     init {
         loadCategories()
+        loadAddonGroups()
     }
     
     /**
@@ -49,6 +55,17 @@ class AddEditProductViewModel @Inject constructor(
     }
     
     /**
+     * Load addon groups
+     */
+    private fun loadAddonGroups() {
+        viewModelScope.launch {
+            addonGroupRepository.getAllAddonGroupsFlow().collect { addonGroups ->
+                _uiState.update { it.copy(availableAddonGroups = addonGroups.sortedBy { it.sortOrder ?: 0 }) }
+            }
+        }
+    }
+    
+    /**
      * Load product data for editing
      */
     fun loadProduct(productId: String) {
@@ -57,6 +74,9 @@ class AddEditProductViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val product = productRepository.getProductById(productId)
             if (product != null) {
+                // Load selected addon group IDs
+                val selectedAddonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
+                
                 _uiState.update { 
                     it.copy(
                         productName = product.name,
@@ -73,6 +93,7 @@ class AddEditProductViewModel @Inject constructor(
                         isStockEnabled = product.isStockEnabled ?: false,
                         stockQuantity = product.stockQuantity?.toString() ?: "",
                         hasAdditionalOptions = product.hasAdditionalOptions ?: false,
+                        addonGroupIds = selectedAddonGroupIds,
                         isLoading = false
                     )
                 }
@@ -161,7 +182,27 @@ class AddEditProductViewModel @Inject constructor(
      * Update additional options enabled
      */
     fun updateAdditionalOptionsEnabled(enabled: Boolean) {
-        _uiState.update { it.copy(hasAdditionalOptions = enabled, errorMessage = null) }
+        _uiState.update { 
+            it.copy(
+                hasAdditionalOptions = enabled, 
+                errorMessage = null,
+                // Clear selected addon groups if disabled
+                addonGroupIds = if (!enabled) emptyList() else it.addonGroupIds
+            ) 
+        }
+    }
+    
+    /**
+     * Toggle addon group selection
+     */
+    fun toggleAddonGroupSelection(addonGroupId: String) {
+        val currentIds = _uiState.value.addonGroupIds
+        val newIds = if (currentIds.contains(addonGroupId)) {
+            currentIds.filter { it != addonGroupId }
+        } else {
+            currentIds + addonGroupId
+        }
+        _uiState.update { it.copy(addonGroupIds = newIds, errorMessage = null) }
     }
     
     /**
@@ -413,6 +454,14 @@ class AddEditProductViewModel @Inject constructor(
         if (!state.isImageSelected && state.selectedColorHex == null) {
             _uiState.update { 
                 it.copy(errorMessage = "กรุณาเลือกสี")
+            }
+            return
+        }
+        
+        // Validate AddOn Groups if hasAdditionalOptions is enabled
+        if (state.hasAdditionalOptions && state.addonGroupIds.isEmpty()) {
+            _uiState.update { 
+                it.copy(errorMessage = "กรุณาเลือก AddOn Groups อย่างน้อย 1 รายการ")
             }
             return
         }

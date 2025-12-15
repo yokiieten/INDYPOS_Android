@@ -1,5 +1,7 @@
 package com.indybrain.indypos_Android.presentation.productmanagement
 
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
+
 /**
  * UI state for Add/Edit Product screen
  */
@@ -19,6 +21,7 @@ data class AddEditProductUiState(
     val stockQuantity: String = "",
     val hasAdditionalOptions: Boolean = false,
     val addonGroupIds: List<String> = emptyList(),
+    val availableAddonGroups: List<AddonGroupEntity> = emptyList(), // All available addon groups
     val isLoading: Boolean = false,
     val loadingMessage: String? = null, // Custom loading message
     val errorMessage: String? = null,
