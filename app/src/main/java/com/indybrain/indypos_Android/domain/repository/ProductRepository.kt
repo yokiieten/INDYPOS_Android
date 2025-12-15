@@ -180,6 +180,29 @@ interface ProductRepository {
     ): Result<ProductEntity>
     
     /**
+     * Update an existing product
+     * If network is available, calls API and saves to Room
+     * If network is not available, updates in Room only (isSynced = false)
+     */
+    suspend fun updateProduct(
+        productId: String,
+        name: String,
+        productCode: String?,
+        price: Double,
+        costPrice: Double? = null,
+        unit: String? = null,
+        imageUrl: String? = null,
+        selectedColorHex: String? = null,
+        categoryId: String? = null,
+        skuCode: String? = null,
+        stockQuantity: Int? = null,
+        isSkuEnabled: Boolean? = null,
+        isStockEnabled: Boolean? = null,
+        hasAdditionalOptions: Boolean? = null,
+        addonGroupIds: List<String>? = null
+    ): Result<ProductEntity>
+    
+    /**
      * Get sync statistics
      */
     suspend fun getSyncStatistics(): ProductSyncStatistics

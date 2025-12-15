@@ -124,6 +124,19 @@ class ProductRepositoryImpl @Inject constructor(
             // This preserves any local changes or offline-created addons.
             addonDao.insertAll(addons)
             
+            // Save product-addon group junctions
+            productsResponse.data.forEach { productDto ->
+                val productId = productDto.id
+                productDto.addonGroups?.forEach { addonGroupDto ->
+                    productAddonGroupJunctionDao.insert(
+                        com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
+                            productId = productId,
+                            addonGroupId = addonGroupDto.id
+                        )
+                    )
+                }
+            }
+            
             Result.success(Unit)
         } catch (e: HttpException) {
             val errorMessage = when (e.code()) {
@@ -209,6 +222,19 @@ class ProductRepositoryImpl @Inject constructor(
             // which makes quantities disappear in the product list after refresh.
             // Using REPLACE keeps existing rows (and cart relations) while updating data.
             productDao.insertAll(products)
+            
+            // Save product-addon group junctions
+            productsResponse.data.forEach { productDto ->
+                val productId = productDto.id
+                productDto.addonGroups?.forEach { addonGroupDto ->
+                    productAddonGroupJunctionDao.insert(
+                        com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
+                            productId = productId,
+                            addonGroupId = addonGroupDto.id
+                        )
+                    )
+                }
+            }
             
             Result.success(Unit)
         } catch (e: HttpException) {
@@ -1022,6 +1048,17 @@ class ProductRepositoryImpl @Inject constructor(
                         val productDto = response.data.product
                         productEntity = ProductMapper.toEntity(productDto)
                         productDao.insertAll(listOf(productEntity))
+                        
+                        // Save addon group relationships from response
+                        productDto.addonGroups?.forEach { addonGroupDto ->
+                            productAddonGroupJunctionDao.insert(
+                                com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
+                                    productId = productEntity.id,
+                                    addonGroupId = addonGroupDto.id
+                                )
+                            )
+                        }
+                        
                         Result.success(productEntity)
                     } else {
                         // API returned error status
@@ -1095,10 +1132,136 @@ class ProductRepositoryImpl @Inject constructor(
                     isSynced = false
                 )
                 productDao.insertAll(listOf(productEntity))
+                
+                // Save addon group relationships locally
+                addonGroupIds?.forEach { addonGroupId ->
+                    productAddonGroupJunctionDao.insert(
+                        com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
+                            productId = productEntity.id,
+                            addonGroupId = addonGroupId
+                        )
+                    )
+                }
                 Result.success(productEntity)
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการสร้างสินค้า"))
+        }
+    }
+    
+    override suspend fun updateProduct(
+        productId: String,
+        name: String,
+        productCode: String?,
+        price: Double,
+        costPrice: Double?,
+        unit: String?,
+        imageUrl: String?,
+        selectedColorHex: String?,
+        categoryId: String?,
+        skuCode: String?,
+        stockQuantity: Int?,
+        isSkuEnabled: Boolean?,
+        isStockEnabled: Boolean?,
+        hasAdditionalOptions: Boolean?,
+        addonGroupIds: List<String>?
+    ): Result<ProductEntity> {
+        return try {
+            val existingProduct = productDao.getProductById(productId)
+                ?: return Result.failure(Exception("ไม่พบสินค้าที่ต้องการอัปเดต"))
+            
+            if (networkConnectivityChecker.isConnected()) {
+                // Has network - call API first
+                try {
+                    val request = UpdateProductRequestDto(
+                        name = name,
+                        description = existingProduct.description,
+                        price = price,
+                        costPrice = costPrice,
+                        imageUrl = imageUrl,
+                        categoryId = categoryId,
+                        popularityRank = existingProduct.popularityRank,
+                        productCode = productCode,
+                        unit = unit,
+                        skuCode = skuCode,
+                        stockQuantity = stockQuantity,
+                        minStockQuantity = existingProduct.minStockQuantity,
+                        selectedUnit = existingProduct.selectedUnit,
+                        selectedColorHex = selectedColorHex,
+                        isSkuEnabled = isSkuEnabled,
+                        isStockEnabled = isStockEnabled,
+                        hasAdditionalOptions = hasAdditionalOptions,
+                        isActive = existingProduct.isActive,
+                        addonGroupIds = addonGroupIds
+                    )
+                    
+                    val response = productsApi.updateProduct(productId, request)
+                    
+                    if (response.status == 200 && response.data != null) {
+                        // API success - convert to entity and save to Room
+                        val productEntity = ProductMapper.toEntity(response.data)
+                        productDao.insertAll(listOf(productEntity))
+                        
+                        // Refresh addon group relationships
+                        productAddonGroupJunctionDao.deleteByProductId(productId)
+                        response.data.addonGroups?.forEach { addonGroupDto ->
+                            productAddonGroupJunctionDao.insert(
+                                com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
+                                    productId = productId,
+                                    addonGroupId = addonGroupDto.id
+                                )
+                            )
+                        }
+                        
+                        Result.success(productEntity)
+                    } else {
+                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                            ?: response.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการอัปเดตสินค้า"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                // No network - update in Room only (for sync later)
+                val updatedProduct = existingProduct.copy(
+                    name = name,
+                    productCode = productCode,
+                    price = price,
+                    costPrice = costPrice,
+                    unit = unit,
+                    imageUrl = imageUrl,
+                    selectedColorHex = selectedColorHex,
+                    categoryId = categoryId,
+                    skuCode = skuCode,
+                    stockQuantity = stockQuantity,
+                    isSkuEnabled = isSkuEnabled,
+                    isStockEnabled = isStockEnabled,
+                    hasAdditionalOptions = hasAdditionalOptions,
+                    isSynced = false,
+                    updatedAt = Date()
+                )
+                
+                productDao.insertAll(listOf(updatedProduct))
+                
+                // Refresh addon group relationships locally
+                productAddonGroupJunctionDao.deleteByProductId(productId)
+                addonGroupIds?.forEach { addonGroupId ->
+                    productAddonGroupJunctionDao.insert(
+                        com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
+                            productId = productId,
+                            addonGroupId = addonGroupId
+                        )
+                    )
+                }
+                
+                Result.success(updatedProduct)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสินค้า"))
         }
     }
     

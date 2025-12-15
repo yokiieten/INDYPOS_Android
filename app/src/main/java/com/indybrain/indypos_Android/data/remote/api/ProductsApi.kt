@@ -191,6 +191,15 @@ interface ProductsApi {
     suspend fun createProduct(@Body request: CreateProductRequestDto): ApiResponseDto<CreateProductResponseDto>
     
     /**
+     * Update product endpoint
+     */
+    @PUT("protected/indypos/products/{id}")
+    suspend fun updateProduct(
+        @Path("id") id: String,
+        @Body request: UpdateProductRequestDto
+    ): ApiResponseDto<ProductDto>
+    
+    /**
      * Upload product image endpoint
      */
     @Multipart
@@ -301,6 +310,46 @@ data class CreateProductRequestDto(
     val hasAdditionalOptions: Boolean? = null,
     @SerializedName("is_active")
     val isActive: Boolean = true,
+    @SerializedName("addon_group_ids")
+    val addonGroupIds: List<String>? = null
+)
+
+/**
+ * Request DTO for updating a product
+ */
+data class UpdateProductRequestDto(
+    val name: String,
+    val description: String? = null,
+    val price: Double,
+    @SerializedName("cost_price")
+    val costPrice: Double? = null,
+    @SerializedName("image_url")
+    val imageUrl: String? = null,
+    @SerializedName("category_id")
+    val categoryId: String? = null,
+    @SerializedName("popularity_rank")
+    val popularityRank: Int? = null,
+    @SerializedName("product_code")
+    val productCode: String? = null,
+    val unit: String? = null,
+    @SerializedName("sku_code")
+    val skuCode: String? = null,
+    @SerializedName("stock_quantity")
+    val stockQuantity: Int? = null,
+    @SerializedName("min_stock_quantity")
+    val minStockQuantity: Int? = null,
+    @SerializedName("selected_unit")
+    val selectedUnit: String? = null,
+    @SerializedName("selected_color_hex")
+    val selectedColorHex: String? = null,
+    @SerializedName("is_sku_enabled")
+    val isSkuEnabled: Boolean? = null,
+    @SerializedName("is_stock_enabled")
+    val isStockEnabled: Boolean? = null,
+    @SerializedName("has_additional_options")
+    val hasAdditionalOptions: Boolean? = null,
+    @SerializedName("is_active")
+    val isActive: Boolean? = null,
     @SerializedName("addon_group_ids")
     val addonGroupIds: List<String>? = null
 )

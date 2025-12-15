@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
+import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.presentation.productmanagement.ProductConstants.SELECTED_UNIT_COLOR
@@ -37,6 +38,7 @@ class AddEditProductViewModel @Inject constructor(
     val categories: StateFlow<List<CategoryEntity>> = _categories.asStateFlow()
     
     private var productId: String? = null
+    private var loadedProduct: ProductEntity? = null
     
     init {
         loadCategories()
@@ -74,6 +76,7 @@ class AddEditProductViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val product = productRepository.getProductById(productId)
             if (product != null) {
+                loadedProduct = product
                 // Load selected addon group IDs
                 val selectedAddonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
                 
@@ -92,8 +95,9 @@ class AddEditProductViewModel @Inject constructor(
                         skuCode = product.skuCode ?: "",
                         isStockEnabled = product.isStockEnabled ?: false,
                         stockQuantity = product.stockQuantity?.toString() ?: "",
-                        hasAdditionalOptions = product.hasAdditionalOptions ?: false,
                         addonGroupIds = selectedAddonGroupIds,
+                        // If addon groups exist but hasAdditionalOptions is false, turn it on to reflect selection
+                        hasAdditionalOptions = (product.hasAdditionalOptions ?: false) || selectedAddonGroupIds.isNotEmpty(),
                         isLoading = false
                     )
                 }
@@ -621,11 +625,116 @@ class AddEditProductViewModel @Inject constructor(
                 }
             } else {
                 // Edit mode - to be implemented later
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = "การแก้ไขสินค้ายังไม่พร้อมใช้งาน"
-                    )
+                var finalImageUrl = state.imageUrl
+                
+                // If has network and image is selected, upload image first
+                if (hasNetwork && state.isImageSelected && state.imageUrl != null) {
+                    val isLocalUri = state.imageUrl.startsWith("content://") || state.imageUrl.startsWith("file://")
+                    if (isLocalUri) {
+                        _uiState.update { 
+                            it.copy(loadingMessage = "กำลังอัปโหลดรูปภาพ...")
+                        }
+                        
+                        try {
+                            val uri = android.net.Uri.parse(state.imageUrl)
+                            val uploadResult = productRepository.uploadProductImage(uri)
+                            uploadResult.onSuccess { uploadedUrl ->
+                                finalImageUrl = uploadedUrl
+                                _uiState.update { 
+                                    it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                                }
+                            }.onFailure { error ->
+                                _uiState.update { 
+                                    it.copy(
+                                        isLoading = false,
+                                        loadingMessage = null,
+                                        showImageUploadErrorDialog = true,
+                                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
+                                    )
+                                }
+                                return@launch
+                            }
+                        } catch (e: Exception) {
+                            _uiState.update { 
+                                it.copy(
+                                    isLoading = false,
+                                    loadingMessage = null,
+                                    showImageUploadErrorDialog = true,
+                                    errorMessage = "ไม่สามารถอัปโหลดรูปภาพได้: ${e.message}"
+                                )
+                            }
+                            return@launch
+                        }
+                    } else {
+                        _uiState.update { 
+                            it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                        }
+                    }
+                } else {
+                    if (hasNetwork) {
+                        _uiState.update { 
+                            it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                        }
+                    }
+                }
+                
+                val costPrice = try {
+                    state.costPrice.trim().toDoubleOrNull()
+                } catch (e: Exception) {
+                    null
+                }
+                
+                val stockQuantity = if (state.isStockEnabled) {
+                    try {
+                        state.stockQuantity.trim().toIntOrNull()
+                    } catch (e: Exception) {
+                        null
+                    }
+                } else {
+                    null
+                }
+                
+                val addonGroupIds = if (state.hasAdditionalOptions && state.addonGroupIds.isNotEmpty()) {
+                    state.addonGroupIds
+                } else {
+                    null
+                }
+                
+                val result = productRepository.updateProduct(
+                    productId = productId ?: return@launch,
+                    name = state.productName.trim(),
+                    productCode = state.productCode.trim(),
+                    price = sellingPrice,
+                    costPrice = costPrice,
+                    unit = state.unit.trim(),
+                    imageUrl = if (state.isImageSelected) finalImageUrl else null,
+                    selectedColorHex = if (!state.isImageSelected) state.selectedColorHex else null,
+                    categoryId = state.categoryId,
+                    skuCode = if (state.isSkuEnabled) state.skuCode.trim().takeIf { it.isNotBlank() } else null,
+                    stockQuantity = stockQuantity,
+                    isSkuEnabled = state.isSkuEnabled,
+                    isStockEnabled = state.isStockEnabled,
+                    hasAdditionalOptions = state.hasAdditionalOptions,
+                    addonGroupIds = addonGroupIds
+                )
+                
+                result.onSuccess { updated ->
+                    loadedProduct = updated
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            isSuccess = true,
+                            loadingMessage = null
+                        )
+                    }
+                }.onFailure { error ->
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            loadingMessage = null,
+                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการบันทึก"
+                        )
+                    }
                 }
             }
         }
