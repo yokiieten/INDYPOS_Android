@@ -102,27 +102,26 @@ class LoginViewModel @Inject constructor(
                 val request = LoginRequest(email = email, password = password)
                 loginUseCase(request)
                     .onSuccess { user ->
-                        // Fetch all data after successful login
-                        fetchAllDataAfterLogin { hasError ->
-                            if (hasError) {
-                                // Some data fetching failed, but continue with login
-                                val errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูลบางส่วน แต่สามารถเข้าสู่ระบบได้"
+                        // Fetch all data after successful login - wait for all 4 APIs to succeed
+                        fetchAllDataAfterLogin { errorMessage ->
+                            if (errorMessage != null) {
+                                // Some data fetching failed - show error and don't navigate
                                 _uiState.update {
                                     it.copy(
                                         isLoading = false,
-                                        isLoginSuccess = true,
+                                        isLoginSuccess = false, // Don't navigate if error
                                         successMessage = null,
                                         user = user,
                                         errorMessage = errorMessage
                                     )
                                 }
-                                _state.value = LoginState.Success(user)
+                                _state.value = LoginState.Error(errorMessage)
                             } else {
-                                // All data fetched successfully
+                                // All 4 APIs fetched successfully - now navigate to home
                                 _uiState.update {
                                     it.copy(
                                         isLoading = false,
-                                        isLoginSuccess = true,
+                                        isLoginSuccess = true, // Navigate only when all succeed
                                         successMessage = null,
                                         user = user,
                                         errorMessage = null
@@ -170,12 +169,12 @@ class LoginViewModel @Inject constructor(
     
     /**
      * Fetch all data after login (Categories, Products, Addon Groups, Addons)
-     * Similar to DispatchGroup pattern in iOS - waits for all requests to complete
+     * Waits for all 4 APIs to succeed before allowing navigation to home
      */
-    private suspend fun fetchAllDataAfterLogin(completion: (hasError: Boolean) -> Unit) {
+    private suspend fun fetchAllDataAfterLogin(completion: (errorMessage: String?) -> Unit) {
         println("🔄 Starting to fetch all data after login...")
         
-        var hasError = false
+        val errorMessages = mutableListOf<String>()
         
         // Fetch all APIs in parallel using async/awaitAll within coroutineScope
         coroutineScope {
@@ -184,14 +183,16 @@ class LoginViewModel @Inject constructor(
                     val result = productRepository.fetchAndSyncCategories()
                     if (result.isSuccess) {
                         println("✅ Categories fetched successfully")
-                        false // no error
+                        null // no error
                     } else {
-                        println("❌ Failed to fetch categories: ${result.exceptionOrNull()?.message}")
-                        true // has error
+                        val error = "ไม่สามารถโหลดหมวดหมู่ได้: ${result.exceptionOrNull()?.message ?: "Unknown error"}"
+                        println("❌ Failed to fetch categories: $error")
+                        error
                     }
                 } catch (e: Exception) {
-                    println("❌ Failed to fetch categories: ${e.message}")
-                    true // has error
+                    val error = "ไม่สามารถโหลดหมวดหมู่ได้: ${e.message ?: "Unknown error"}"
+                    println("❌ Failed to fetch categories: $error")
+                    error
                 }
             }
             
@@ -200,14 +201,16 @@ class LoginViewModel @Inject constructor(
                     val result = productRepository.fetchAndSaveProducts()
                     if (result.isSuccess) {
                         println("✅ Products fetched successfully")
-                        false // no error
+                        null // no error
                     } else {
-                        println("❌ Failed to fetch products: ${result.exceptionOrNull()?.message}")
-                        true // has error
+                        val error = "ไม่สามารถโหลดสินค้าได้: ${result.exceptionOrNull()?.message ?: "Unknown error"}"
+                        println("❌ Failed to fetch products: $error")
+                        error
                     }
                 } catch (e: Exception) {
-                    println("❌ Failed to fetch products: ${e.message}")
-                    true // has error
+                    val error = "ไม่สามารถโหลดสินค้าได้: ${e.message ?: "Unknown error"}"
+                    println("❌ Failed to fetch products: $error")
+                    error
                 }
             }
             
@@ -216,14 +219,16 @@ class LoginViewModel @Inject constructor(
                     val result = addonGroupRepository.fetchAndSyncAddonGroups()
                     if (result.isSuccess) {
                         println("✅ Addon Groups fetched successfully")
-                        false // no error
+                        null // no error
                     } else {
-                        println("❌ Failed to fetch addon groups: ${result.exceptionOrNull()?.message}")
-                        true // has error
+                        val error = "ไม่สามารถโหลด AddOn Groups ได้: ${result.exceptionOrNull()?.message ?: "Unknown error"}"
+                        println("❌ Failed to fetch addon groups: $error")
+                        error
                     }
                 } catch (e: Exception) {
-                    println("❌ Failed to fetch addon groups: ${e.message}")
-                    true // has error
+                    val error = "ไม่สามารถโหลด AddOn Groups ได้: ${e.message ?: "Unknown error"}"
+                    println("❌ Failed to fetch addon groups: $error")
+                    error
                 }
             }
             
@@ -232,14 +237,16 @@ class LoginViewModel @Inject constructor(
                     val result = addonRepository.fetchAndSyncAddons()
                     if (result.isSuccess) {
                         println("✅ Addons fetched successfully")
-                        false // no error
+                        null // no error
                     } else {
-                        println("❌ Failed to fetch addons: ${result.exceptionOrNull()?.message}")
-                        true // has error
+                        val error = "ไม่สามารถโหลด AddOns ได้: ${result.exceptionOrNull()?.message ?: "Unknown error"}"
+                        println("❌ Failed to fetch addons: $error")
+                        error
                     }
                 } catch (e: Exception) {
-                    println("❌ Failed to fetch addons: ${e.message}")
-                    true // has error
+                    val error = "ไม่สามารถโหลด AddOns ได้: ${e.message ?: "Unknown error"}"
+                    println("❌ Failed to fetch addons: $error")
+                    error
                 }
             }
             
@@ -251,17 +258,22 @@ class LoginViewModel @Inject constructor(
                 addonsDeferred
             )
             
-            // Check if any request failed
-            hasError = results.any { it }
+            // Collect all error messages
+            results.forEach { error ->
+                if (error != null) {
+                    errorMessages.add(error)
+                }
+            }
         }
         
-        if (hasError) {
-            println("⚠️ Some data fetching failed, but continuing with login...")
+        if (errorMessages.isNotEmpty()) {
+            val combinedError = "ไม่สามารถโหลดข้อมูลบางส่วนได้:\n${errorMessages.joinToString("\n")}\n\nกรุณาลองใหม่อีกครั้ง"
+            println("❌ Some data fetching failed: $combinedError")
+            completion(combinedError)
         } else {
-            println("✅ All data fetched successfully")
+            println("✅ All 4 APIs fetched successfully - ready to navigate to home")
+            completion(null) // All succeeded
         }
-        
-        completion(hasError)
     }
 }
 
