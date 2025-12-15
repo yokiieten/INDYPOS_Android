@@ -197,7 +197,7 @@ interface ProductsApi {
     suspend fun updateProduct(
         @Path("id") id: String,
         @Body request: UpdateProductRequestDto
-    ): ApiResponseDto<ProductDto>
+    ): ApiResponseDto<UpdateProductResponseDto>
     
     /**
      * Upload product image endpoint

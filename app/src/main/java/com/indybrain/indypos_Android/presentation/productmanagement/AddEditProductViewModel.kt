@@ -96,8 +96,8 @@ class AddEditProductViewModel @Inject constructor(
                         isStockEnabled = product.isStockEnabled ?: false,
                         stockQuantity = product.stockQuantity?.toString() ?: "",
                         addonGroupIds = selectedAddonGroupIds,
-                        // If addon groups exist but hasAdditionalOptions is false, turn it on to reflect selection
-                        hasAdditionalOptions = (product.hasAdditionalOptions ?: false) || selectedAddonGroupIds.isNotEmpty(),
+                        // ใช้ค่า product.hasAdditionalOptions เป็นหลักในการเปิด/ปิด Switch
+                        hasAdditionalOptions = product.hasAdditionalOptions ?: false,
                         isLoading = false
                     )
                 }

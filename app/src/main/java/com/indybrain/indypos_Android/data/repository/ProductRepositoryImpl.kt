@@ -1198,17 +1198,18 @@ class ProductRepositoryImpl @Inject constructor(
                     val response = productsApi.updateProduct(productId, request)
                     
                     if (response.status == 200 && response.data != null) {
-                        // API success - convert to entity and save to Room
-                        val productEntity = ProductMapper.toEntity(response.data)
+                        // API success - response has nested structure: data.product
+                        val productDto = response.data.product
+                        val productEntity = ProductMapper.toEntity(productDto)
                         productDao.insertAll(listOf(productEntity))
                         
-                        // Refresh addon group relationships
+                        // Refresh addon group relationships using addon_group_ids from response
                         productAddonGroupJunctionDao.deleteByProductId(productId)
-                        response.data.addonGroups?.forEach { addonGroupDto ->
+                        response.data.addonGroupIds?.forEach { addonGroupId ->
                             productAddonGroupJunctionDao.insert(
                                 com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
                                     productId = productId,
-                                    addonGroupId = addonGroupDto.id
+                                    addonGroupId = addonGroupId
                                 )
                             )
                         }
