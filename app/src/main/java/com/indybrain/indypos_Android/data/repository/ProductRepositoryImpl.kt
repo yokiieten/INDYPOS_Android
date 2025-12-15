@@ -78,7 +78,9 @@ class ProductRepositoryImpl @Inject constructor(
             
             // Convert and save categories
             val categories = allCategoriesMap.values.map { ProductMapper.toEntity(it) }
-            categoryDao.deleteAll()
+            // Important: do NOT call deleteAll() here.
+            // Using REPLACE strategy keeps existing rows while updating data.
+            // This preserves any local changes or offline-created categories.
             categoryDao.insertAll(categories)
             
             // Extract addon groups and addons from products
@@ -108,14 +110,18 @@ class ProductRepositoryImpl @Inject constructor(
             
             // Convert and save addon groups
             val addonGroups = addonGroupsMap.values.map { ProductMapper.toEntity(it) }
-            addonGroupDao.deleteAll()
+            // Important: do NOT call deleteAll() here.
+            // Using REPLACE strategy keeps existing rows while updating data.
+            // This preserves any local changes or offline-created addon groups.
             addonGroupDao.insertAll(addonGroups)
             
             // Convert and save addons
             val addons = addonsMap.values.map { (addonDto, groupId) ->
                 ProductMapper.toEntity(addonDto, groupId)
             }
-            addonDao.deleteAll()
+            // Important: do NOT call deleteAll() here.
+            // Using REPLACE strategy keeps existing rows while updating data.
+            // This preserves any local changes or offline-created addons.
             addonDao.insertAll(addons)
             
             Result.success(Unit)
