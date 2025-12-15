@@ -77,6 +77,12 @@ class AddEditProductViewModel @Inject constructor(
             val product = productRepository.getProductById(productId)
             if (product != null) {
                 loadedProduct = product
+                // Normalize imageUrl: treat blank string as null
+                val normalizedImageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
+                // Decide initial mode: image vs color
+                val isColorMode = (product.selectedUnit == SELECTED_UNIT_COLOR) ||
+                    (normalizedImageUrl == null && !product.selectedColorHex.isNullOrBlank())
+                val isImageMode = !isColorMode
                 // Load selected addon group IDs
                 val selectedAddonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
                 
@@ -87,9 +93,9 @@ class AddEditProductViewModel @Inject constructor(
                         sellingPrice = product.price.toString(),
                         costPrice = product.costPrice?.toString() ?: "",
                         unit = product.unit ?: "",
-                        imageUrl = product.imageUrl,
+                        imageUrl = normalizedImageUrl,
                         selectedColorHex = product.selectedColorHex,
-                        isImageSelected = product.imageUrl != null,
+                        isImageSelected = isImageMode,
                         categoryId = product.categoryId,
                         isSkuEnabled = product.isSkuEnabled ?: false,
                         skuCode = product.skuCode ?: "",
