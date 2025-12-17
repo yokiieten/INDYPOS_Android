@@ -7,10 +7,19 @@ import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
 import com.indybrain.indypos_Android.data.local.dao.CategoryDao
+import com.indybrain.indypos_Android.data.export.ExportDataType
+import com.indybrain.indypos_Android.data.export.ExportFormat
+import com.indybrain.indypos_Android.data.export.ExportService
 import com.indybrain.indypos_Android.data.local.dao.OrderDao
+import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
 import dagger.hilt.android.lifecycle.HiltViewModel
+import android.content.Context
+import android.net.Uri
+import androidx.core.content.FileProvider
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,8 +34,11 @@ class DataManagementViewModel @Inject constructor(
     private val addonDao: AddonDao,
     private val addonGroupDao: AddonGroupDao,
     private val orderDao: OrderDao,
+    private val orderItemDao: OrderItemDao,
     private val productsApi: ProductsApi,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val exportService: ExportService,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(DataManagementUiState())
@@ -124,6 +136,68 @@ class DataManagementViewModel @Inject constructor(
                     errorMessage = e.message
                 )
             }
+        }
+    }
+    
+    fun exportData(dataType: ExportDataType, format: ExportFormat) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExporting = true, exportError = null, exportSuccess = false) }
+            
+            try {
+                val result = exportService.exportDataByType(dataType, format)
+                
+                result.fold(
+                    onSuccess = { files ->
+                        val uris = files.mapNotNull { file ->
+                            getUriForFile(file)
+                        }
+                        _uiState.update { 
+                            it.copy(
+                                isExporting = false,
+                                exportSuccess = true,
+                                exportedFiles = uris
+                            )
+                        }
+                    },
+                    onFailure = { error ->
+                        _uiState.update { 
+                            it.copy(
+                                isExporting = false,
+                                exportError = error.message ?: "Export failed"
+                            )
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isExporting = false,
+                        exportError = e.message ?: "Export failed"
+                    )
+                }
+            }
+        }
+    }
+    
+    fun clearExportState() {
+        _uiState.update { 
+            it.copy(
+                exportSuccess = false,
+                exportError = null,
+                exportedFiles = null
+            )
+        }
+    }
+    
+    private fun getUriForFile(file: File): Uri? {
+        return try {
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+        } catch (e: Exception) {
+            null
         }
     }
 }

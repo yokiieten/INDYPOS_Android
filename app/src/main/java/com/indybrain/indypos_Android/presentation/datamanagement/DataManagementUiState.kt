@@ -7,6 +7,10 @@ data class DataManagementUiState(
     val addonCount: Int = 0,
     val addonGroupCount: Int = 0,
     val orderCount: Int = 0,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isExporting: Boolean = false,
+    val exportSuccess: Boolean = false,
+    val exportError: String? = null,
+    val exportedFiles: List<android.net.Uri>? = null
 )
 

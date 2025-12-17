@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.indybrain.indypos_Android"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -151,6 +151,13 @@ dependencies {
     
     // Printer Library
     implementation(files("libs/printer-lib-3.2.0.aar"))
+    
+    // CSV Export
+    implementation("com.opencsv:opencsv:5.9")
+    
+    // Excel Export
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+    implementation("org.apache.poi:poi:5.2.5")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

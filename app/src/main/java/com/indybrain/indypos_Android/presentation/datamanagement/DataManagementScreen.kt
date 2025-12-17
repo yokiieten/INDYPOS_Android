@@ -30,9 +30,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.indybrain.indypos_Android.data.export.ExportFormat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +51,7 @@ import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
+import com.indybrain.indypos_Android.data.export.ExportDataType
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
@@ -57,10 +64,31 @@ fun DataManagementScreen(
     onBackClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var showDataTypeDialog by remember { mutableStateOf(false) }
+    var showFormatDialog by remember { mutableStateOf(false) }
+    var selectedDataType by remember { mutableStateOf<ExportDataType?>(null) }
     
     // Refresh data when screen appears
     LaunchedEffect(Unit) {
         viewModel.refreshDataStats()
+    }
+    
+    // Handle export success - share files
+    LaunchedEffect(uiState.exportSuccess, uiState.exportedFiles) {
+        val exportedFiles = uiState.exportedFiles
+        if (uiState.exportSuccess && exportedFiles != null && exportedFiles.isNotEmpty()) {
+            shareFiles(context, exportedFiles)
+            viewModel.clearExportState()
+        }
+    }
+    
+    // Handle export error
+    LaunchedEffect(uiState.exportError) {
+        if (uiState.exportError != null) {
+            // Error handling can be added here (e.g., show snackbar)
+            viewModel.clearExportState()
+        }
     }
     
     Scaffold(
@@ -71,31 +99,74 @@ fun DataManagementScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 24.dp)
-        ) {
-            // Stats Section
-            DataStatsSection(
-                productCount = uiState.productCount,
-                categoryCount = uiState.categoryCount,
-                addonCount = uiState.addonCount,
-                addonGroupCount = uiState.addonGroupCount,
-                orderCount = uiState.orderCount
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
+            ) {
+                // Stats Section
+                DataStatsSection(
+                    productCount = uiState.productCount,
+                    categoryCount = uiState.categoryCount,
+                    addonCount = uiState.addonCount,
+                    addonGroupCount = uiState.addonGroupCount,
+                    orderCount = uiState.orderCount
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Export Section
+                DataExportSection(
+                    onClick = {
+                        showDataTypeDialog = true
+                    },
+                    isExporting = uiState.isExporting
+                )
+            }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            // Export Data Type Dialog
+            if (showDataTypeDialog) {
+                ExportDataTypeDialog(
+                    onDismiss = { showDataTypeDialog = false },
+                    onDataTypeSelected = { dataType ->
+                        selectedDataType = dataType
+                        showFormatDialog = true
+                    }
+                )
+            }
             
-            // Export Section
-            DataExportSection(
-                onClick = {
-                    // TODO: Handle export action
-                }
-            )
+            // Export Format Dialog
+            if (showFormatDialog && selectedDataType != null) {
+                ExportFormatDialog(
+                    onDismiss = { 
+                        showFormatDialog = false
+                        selectedDataType = null
+                    },
+                    onFormatSelected = { format ->
+                        selectedDataType?.let { dataType ->
+                            viewModel.exportData(dataType, format)
+                        }
+                        selectedDataType = null
+                    }
+                )
+            }
         }
+    }
+}
+
+private fun shareFiles(context: android.content.Context, uris: List<android.net.Uri>) {
+    try {
+        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "*/*"
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share exported files"))
+    } catch (e: Exception) {
+        // Handle error
     }
 }
 
@@ -272,12 +343,13 @@ private fun DataStatItem(
 
 @Composable
 private fun DataExportSection(
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isExporting: Boolean = false
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(enabled = !isExporting, onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         shape = RoundedCornerShape(12.dp)

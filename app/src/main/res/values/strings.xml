@@ -149,6 +149,18 @@
     <string name="data_stats_orders">ประวัติการสั่งซื้อ</string>
     <string name="data_export_title">ส่งออกข้อมูล</string>
     <string name="data_export_subtitle">Export ข้อมูลต่างๆ เป็นไฟล์</string>
+    <string name="export_data_type_dialog_title">เลือกประเภทข้อมูลที่ต้องการส่งออก</string>
+    <string name="export_format_dialog_title">เลือกรูปแบบไฟล์</string>
+    <string name="export_format_dialog_subtitle">เลือกรูปแบบไฟล์ที่ต้องการส่งออก</string>
+    <string name="export_format_excel">Excel (.xlsx)</string>
+    <string name="export_format_csv">CSV (.csv)</string>
+    <string name="export_data_type_categories">หมวดหมู่สินค้า</string>
+    <string name="export_data_type_products">สินค้า</string>
+    <string name="export_data_type_addon_groups">กลุ่มตัวเลือกเพิ่มเติม</string>
+    <string name="export_data_type_addons">ตัวเลือกเพิ่มเติม</string>
+    <string name="export_data_type_orders">ประวัติการสั่งซื้อ</string>
+    <string name="export_data_type_sales_report">รายงานยอดขาย</string>
+    <string name="export_data_type_stock_report">รายงานสต็อก</string>
     <string name="common_back">กลับ</string>
     
     <!-- Account Screen -->
