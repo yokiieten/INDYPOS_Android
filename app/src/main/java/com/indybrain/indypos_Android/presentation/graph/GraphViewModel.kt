@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.presentation.graph
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,213 +12,145 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class GraphViewModel @Inject constructor() : ViewModel() {
+class GraphViewModel @Inject constructor(
+    private val orderRepository: OrderRepository
+) : ViewModel() {
     
-    private val _uiState = MutableStateFlow(GraphUiState())
+    private val _uiState = MutableStateFlow(GraphUiState(isLoading = true))
     val uiState: StateFlow<GraphUiState> = _uiState.asStateFlow()
     
     init {
-        loadMockData()
+        loadData(TimePeriod.Today)
     }
     
     fun selectPeriod(period: TimePeriod) {
         _uiState.update { current ->
-            current.copy(selectedPeriod = period)
+            current.copy(selectedPeriod = period, isLoading = true)
         }
-        loadMockData(period)
+        loadData(period)
     }
     
-    private fun loadMockData(period: TimePeriod = TimePeriod.Today) {
+    /**
+     * Load graph data based on selected period.
+     *
+     * For now:
+     * - TimePeriod.Today: ใช้ข้อมูลจริงจาก Room (orders + order_items)
+     * - ช่วงอื่น ๆ (Week, Month, Custom): ยังใช้ค่าเริ่มต้นว่าง ๆ เพื่อไม่ให้ mock ตัวเลขผิด ๆ
+     */
+    private fun loadData(period: TimePeriod) {
         viewModelScope.launch {
-            // Mock data based on period
-            val mockSummary = when (period) {
-                TimePeriod.Today -> GraphSummary(
-                    todaySales = 1821.00,
-                    costOfExpenses = 180.00,
-                    ordersToday = 1,
-                    cancelledOrders = 0,
-                    totalSales = 1821.00
-                )
-                TimePeriod.Week -> GraphSummary(
-                    todaySales = 12500.00,
-                    costOfExpenses = 1200.00,
-                    ordersToday = 8,
-                    cancelledOrders = 1,
-                    totalSales = 12500.00
-                )
-                TimePeriod.Month -> GraphSummary(
-                    todaySales = 45000.00,
-                    costOfExpenses = 4500.00,
-                    ordersToday = 35,
-                    cancelledOrders = 3,
-                    totalSales = 45000.00
-                )
-                TimePeriod.Custom -> GraphSummary(
-                    todaySales = 0.0,
-                    costOfExpenses = 0.0,
-                    ordersToday = 0,
-                    cancelledOrders = 0,
-                    totalSales = 0.0
-                )
-            }
-            
-            // Mock chart data - hourly sales for today
-            val mockChartData = when (period) {
-                TimePeriod.Today -> listOf(
-                    ChartDataPoint("14:00", 0.0),
-                    ChartDataPoint("15:00", 720.0),
-                    ChartDataPoint("16:00", 1821.0),
-                    ChartDataPoint("17:00", 1821.0),
-                    ChartDataPoint("18:00", 1821.0)
-                )
-                TimePeriod.Week -> listOf(
-                    ChartDataPoint("จันทร์", 1500.0),
-                    ChartDataPoint("อังคาร", 1800.0),
-                    ChartDataPoint("พุธ", 2100.0),
-                    ChartDataPoint("พฤหัส", 1900.0),
-                    ChartDataPoint("ศุกร์", 2200.0),
-                    ChartDataPoint("เสาร์", 1800.0),
-                    ChartDataPoint("อาทิตย์", 1200.0)
-                )
-                TimePeriod.Month -> listOf(
-                    ChartDataPoint("สัปดาห์ 1", 10000.0),
-                    ChartDataPoint("สัปดาห์ 2", 12000.0),
-                    ChartDataPoint("สัปดาห์ 3", 11000.0),
-                    ChartDataPoint("สัปดาห์ 4", 12000.0)
-                )
-                TimePeriod.Custom -> emptyList()
-            }
-            
-            // Mock revenue comparison data
-            val mockRevenueComparison = when (period) {
-                TimePeriod.Today -> RevenueComparison(
-                    transferAmount = 1000.0,
-                    cashAmount = 821.0
-                )
-                TimePeriod.Week -> RevenueComparison(
-                    transferAmount = 7000.0,
-                    cashAmount = 5500.0
-                )
-                TimePeriod.Month -> RevenueComparison(
-                    transferAmount = 25000.0,
-                    cashAmount = 20000.0
-                )
-                TimePeriod.Custom -> RevenueComparison()
-            }
-            
-            // Mock product stats data
-            val mockProductStats = when (period) {
-                TimePeriod.Today -> listOf(
-                    ProductStatsData("กาแฟอเมริกัน", 500.0, 1.0),
-                    ProductStatsData("คาปูชิโน", 400.0, 0.8),
-                    ProductStatsData("ลาเต้", 300.0, 0.6)
-                )
-                TimePeriod.Week -> listOf(
-                    ProductStatsData("กาแฟอเมริกัน", 3500.0, 1.0),
-                    ProductStatsData("คาปูชิโน", 2800.0, 0.8),
-                    ProductStatsData("ลาเต้", 2100.0, 0.6)
-                )
-                TimePeriod.Month -> listOf(
-                    ProductStatsData("กาแฟอเมริกัน", 15000.0, 1.0),
-                    ProductStatsData("คาปูชิโน", 12000.0, 0.8),
-                    ProductStatsData("ลาเต้", 9000.0, 0.6)
-                )
-                TimePeriod.Custom -> emptyList()
-            }
-            
-            // Mock best seller data
-            val mockBestSellers = when (period) {
-                TimePeriod.Today -> listOf(
-                    BestSellerData(
-                        productName = "กาแฟอเมริกัน",
-                        totalSales = 500.0,
-                        salesCount = 10,
-                        imageUrl = null,
-                        colorHex = "#8B4513",
-                        rank = 1
-                    ),
-                    BestSellerData(
-                        productName = "คาปูชิโน",
-                        totalSales = 400.0,
-                        salesCount = 8,
-                        imageUrl = null,
-                        colorHex = "#D2691E",
-                        rank = 2
-                    ),
-                    BestSellerData(
-                        productName = "ลาเต้",
-                        totalSales = 300.0,
-                        salesCount = 6,
-                        imageUrl = null,
-                        colorHex = "#F4A460",
-                        rank = 3
+            try {
+                when (period) {
+                    TimePeriod.Today -> loadTodayDataFromRoom()
+                    TimePeriod.Week,
+                    TimePeriod.Month,
+                    TimePeriod.Custom -> {
+                        // TODO: ค่อยขยายให้รองรับช่วงสัปดาห์/เดือนจาก Room ในภายหลัง
+                        _uiState.update { current ->
+                            current.copy(
+                                isLoading = false,
+                                summary = GraphSummary(),
+                                chartData = emptyList(),
+                                revenueComparison = RevenueComparison(),
+                                productStats = emptyList(),
+                                bestSellers = emptyList()
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลกราฟ"
                     )
-                )
-                TimePeriod.Week -> listOf(
-                    BestSellerData(
-                        productName = "กาแฟอเมริกัน",
-                        totalSales = 3500.0,
-                        salesCount = 70,
-                        imageUrl = null,
-                        colorHex = "#8B4513",
-                        rank = 1
-                    ),
-                    BestSellerData(
-                        productName = "คาปูชิโน",
-                        totalSales = 2800.0,
-                        salesCount = 56,
-                        imageUrl = null,
-                        colorHex = "#D2691E",
-                        rank = 2
-                    ),
-                    BestSellerData(
-                        productName = "ลาเต้",
-                        totalSales = 2100.0,
-                        salesCount = 42,
-                        imageUrl = null,
-                        colorHex = "#F4A460",
-                        rank = 3
-                    )
-                )
-                TimePeriod.Month -> listOf(
-                    BestSellerData(
-                        productName = "กาแฟอเมริกัน",
-                        totalSales = 15000.0,
-                        salesCount = 300,
-                        imageUrl = null,
-                        colorHex = "#8B4513",
-                        rank = 1
-                    ),
-                    BestSellerData(
-                        productName = "คาปูชิโน",
-                        totalSales = 12000.0,
-                        salesCount = 240,
-                        imageUrl = null,
-                        colorHex = "#D2691E",
-                        rank = 2
-                    ),
-                    BestSellerData(
-                        productName = "ลาเต้",
-                        totalSales = 9000.0,
-                        salesCount = 180,
-                        imageUrl = null,
-                        colorHex = "#F4A460",
-                        rank = 3
-                    )
-                )
-                TimePeriod.Custom -> emptyList()
+                }
             }
-            
-            _uiState.update { current ->
-                current.copy(
-                    isLoading = false,
-                    summary = mockSummary,
-                    chartData = mockChartData,
-                    revenueComparison = mockRevenueComparison,
-                    productStats = mockProductStats,
-                    bestSellers = mockBestSellers
-                )
+        }
+    }
+    
+    /**
+     * ดึงข้อมูลจริงจาก Room สำหรับช่วง "วันนี้"
+     * - todaySales: SUM(total) ของออเดอร์วันนี้
+     * - costOfExpenses: SUM(unitCost * quantity) ของ items วันนี้
+     * - ordersToday: จำนวนออเดอร์วันนี้
+     * - cancelledOrders: (ตอนนี้ยังไม่แยก cancelled, ใช้ 0 ไปก่อน)
+     */
+    private suspend fun loadTodayDataFromRoom() {
+        val todaySales = orderRepository.getTodaySales()
+        val ordersToday = orderRepository.getTodayOrderCount()
+        val costOfExpenses = orderRepository.getTodayCostOfExpenses()
+        
+        val summary = GraphSummary(
+            todaySales = todaySales,
+            costOfExpenses = costOfExpenses,
+            ordersToday = ordersToday,
+            cancelledOrders = 0, // ถ้าต้องการนับ cancelled แยก ค่อยเพิ่ม query เพิ่มเติมที่ OrderDao/Repository
+            totalSales = todaySales
+        )
+        
+        // ใช้ mock data สำหรับส่วนกราฟอื่น ๆ แทนไปก่อน เพื่อไม่ให้หน้าจอว่างเปล่า
+        // (เฉพาะ Today; ตัวเลข summary ด้านบนใช้ Room จริงแล้ว)
+        // แสดงครบทุกชั่วโมง 00:00 - 23:00
+        val chartData = (0..23).map { hour ->
+            val label = String.format("%02d:00", hour)
+            val value = when (hour) {
+                15 -> todaySales * 0.4
+                16 -> todaySales
+                17 -> todaySales * 0.2
+                else -> 0.0
             }
+            ChartDataPoint(label, value)
+        }
+        
+        val revenueComparison = RevenueComparison(
+            transferAmount = todaySales * 0.55,
+            cashAmount = todaySales * 0.45
+        )
+        
+        // สร้าง mock product stats / bestseller จากยอดรวมเพื่อให้มีกราฟดูง่าย ๆ
+        val productStats = listOf(
+            ProductStatsData("สินค้า A", todaySales * 0.4, 1.0),
+            ProductStatsData("สินค้า B", todaySales * 0.35, 0.8),
+            ProductStatsData("สินค้า C", todaySales * 0.25, 0.6)
+        )
+        
+        val bestSellers = listOf(
+            BestSellerData(
+                productName = "สินค้า A",
+                totalSales = todaySales * 0.4,
+                salesCount = 10,
+                imageUrl = null,
+                colorHex = "#8B4513",
+                rank = 1
+            ),
+            BestSellerData(
+                productName = "สินค้า B",
+                totalSales = todaySales * 0.35,
+                salesCount = 8,
+                imageUrl = null,
+                colorHex = "#D2691E",
+                rank = 2
+            ),
+            BestSellerData(
+                productName = "สินค้า C",
+                totalSales = todaySales * 0.25,
+                salesCount = 6,
+                imageUrl = null,
+                colorHex = "#F4A460",
+                rank = 3
+            )
+        )
+        
+        _uiState.update { current ->
+            current.copy(
+                isLoading = false,
+                summary = summary,
+                chartData = chartData,
+                revenueComparison = revenueComparison,
+                productStats = productStats,
+                bestSellers = bestSellers
+            )
         }
     }
 }

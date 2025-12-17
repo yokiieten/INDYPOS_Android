@@ -16,6 +16,21 @@ interface OrderItemDao {
     @Query("SELECT * FROM order_items WHERE orderId = :orderId")
     suspend fun getOrderItemsSync(orderId: String): List<OrderItemEntity>
     
+    /**
+     * Sum of today's cost of goods sold (COGS) based on unitCost * quantity
+     * for all order items whose parent order is created "today" (local time).
+     */
+    @Query(
+        """
+        SELECT 
+            SUM(IFNULL(oi.unitCost, 0) * oi.quantity) 
+        FROM order_items AS oi
+        INNER JOIN orders AS o ON o.id = oi.orderId
+        WHERE DATE(o.orderDate/1000, 'unixepoch') = DATE(datetime('now', 'localtime'))
+        """
+    )
+    suspend fun getTodayCostOfExpenses(): Double?
+    
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrderItem(item: OrderItemEntity)
     

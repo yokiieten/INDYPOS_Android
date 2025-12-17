@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Home
@@ -57,9 +59,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -390,12 +394,24 @@ private fun ChartCard(
             Spacer(modifier = Modifier.height(24.dp))
             
             if (chartData.isNotEmpty()) {
-                LineChart(
-                    data = chartData,
+                val scrollState = rememberScrollState()
+                val configuration = LocalConfiguration.current
+                val screenWidth = configuration.screenWidthDp.dp
+                val contentWidth = maxOf(40.dp * 24, screenWidth)
+                
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
-                )
+                        .horizontalScroll(scrollState)
+                ) {
+                    LineChart(
+                        data = chartData,
+                        modifier = Modifier
+                            .height(200.dp)
+                            .width(contentWidth)
+                    )
+                }
             } else {
                 Box(
                     modifier = Modifier
@@ -432,7 +448,40 @@ private fun LineChart(
     val chartColor = PrimaryButton
     val gridColor = Color(0xFFE5E5E5)
     
-    Canvas(modifier = modifier) {
+    var selectedIndex by remember { mutableStateOf<Int?>(null) }
+    
+    Canvas(
+        modifier = modifier
+            .pointerInput(data) {
+                if (data.isEmpty()) return@pointerInput
+                detectTapGestures { tapOffset ->
+                    // คำนวณจุดในกราฟเพื่อหา point ที่ใกล้กับตำแหน่งที่แตะที่สุด
+                    val width = size.width
+                    val height = size.height
+                    val paddingPx = padding.toPx()
+                    val chartWidth = width - paddingPx * 2
+                    val chartHeight = height - paddingPx * 2
+                    val startX = paddingPx
+                    val startY = paddingPx
+                    val endY = startY + chartHeight
+                    
+                    val points = data.mapIndexed { index, point ->
+                        val x = startX + (chartWidth / (data.size - 1).coerceAtLeast(1)) * index
+                        val normalizedValue = ((point.value - minValue) / valueRange).coerceIn(0.0, 1.0)
+                        val y = endY - (chartHeight * normalizedValue.toFloat())
+                        Offset(x, y)
+                    }
+                    
+                    // หา point ที่ใกล้ตำแหน่งที่แตะที่สุด
+                    val nearestIndex = points.indices.minByOrNull { i ->
+                        val dx = points[i].x - tapOffset.x
+                        val dy = points[i].y - tapOffset.y
+                        dx * dx + dy * dy
+                    }
+                    selectedIndex = nearestIndex
+                }
+            }
+    ) {
         val width = size.width
         val height = size.height
         val chartWidth = width - padding.toPx() * 2
@@ -518,17 +567,66 @@ private fun LineChart(
         }
         
         // Draw points
-        points.forEach { point ->
+        points.forEachIndexed { index, point ->
+            val isSelected = selectedIndex == index
+            val radiusOuter = if (isSelected) 8.dp.toPx() else 6.dp.toPx()
+            val radiusInner = if (isSelected) 4.dp.toPx() else 3.dp.toPx()
+            
             drawCircle(
                 color = chartColor,
-                radius = 6.dp.toPx(),
+                radius = radiusOuter,
                 center = point
             )
             drawCircle(
                 color = Color.White,
-                radius = 3.dp.toPx(),
+                radius = radiusInner,
                 center = point
             )
+        }
+        
+        // Draw tooltip for selected point
+        selectedIndex?.let { index ->
+            if (index in points.indices) {
+                val point = points[index]
+                val value = data[index].value
+                val label = "฿${formatCurrency(value)}"
+                
+                drawContext.canvas.nativeCanvas.apply {
+                    val textPaint = android.graphics.Paint().apply {
+                        color = android.graphics.Color.WHITE
+                        textSize = 12.dp.toPx()
+                        isAntiAlias = true
+                    }
+                    val bgPaint = android.graphics.Paint().apply {
+                        color = android.graphics.Color.BLACK
+                        isAntiAlias = true
+                    }
+                    
+                    val textWidth = textPaint.measureText(label)
+                    val textHeight = textPaint.fontMetrics.run { bottom - top }
+                    val paddingPx = 8.dp.toPx()
+                    
+                    val rectLeft = point.x - textWidth / 2f - paddingPx
+                    val rectTop = point.y - 32.dp.toPx() - textHeight - paddingPx * 2
+                    val rectRight = rectLeft + textWidth + paddingPx * 2
+                    val rectBottom = rectTop + textHeight + paddingPx * 2
+                    
+                    val rect = android.graphics.RectF(
+                        rectLeft,
+                        rectTop,
+                        rectRight,
+                        rectBottom
+                    )
+                    
+                    drawRoundRect(rect, 16f, 16f, bgPaint)
+                    drawText(
+                        label,
+                        rect.left + paddingPx,
+                        rect.bottom - paddingPx,
+                        textPaint
+                    )
+                }
+            }
         }
         
         // Draw X-axis labels

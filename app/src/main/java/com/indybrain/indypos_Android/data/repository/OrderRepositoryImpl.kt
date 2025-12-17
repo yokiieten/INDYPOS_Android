@@ -76,7 +76,11 @@ class OrderRepositoryImpl @Inject constructor(
     }
     
     override suspend fun getTodayOrderCount(): Int {
-        return orderDao.getOrderCount()
+        return orderDao.getTodayOrderCount()
+    }
+    
+    override suspend fun getTodayCostOfExpenses(): Double {
+        return orderItemDao.getTodayCostOfExpenses() ?: 0.0
     }
     
     override suspend fun getOrderById(orderId: String): OrderEntity? {

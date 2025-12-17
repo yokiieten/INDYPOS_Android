@@ -7,8 +7,22 @@ import kotlinx.coroutines.flow.Flow
 interface OrderRepository {
     fun getOrders(): Flow<Result<List<OrderEntity>>>
     suspend fun refreshOrders()
+    
+    /**
+     * Total sales amount for today's orders (local time).
+     */
     suspend fun getTodaySales(): Double
+    
+    /**
+     * Total number of orders created today (local time).
+     */
     suspend fun getTodayOrderCount(): Int
+    
+    /**
+     * Total cost of goods sold for today's orders, based on unitCost * quantity.
+     */
+    suspend fun getTodayCostOfExpenses(): Double
+    
     suspend fun getOrderById(orderId: String): OrderEntity?
     suspend fun getOrderItems(orderId: String): List<OrderItemEntity>
     suspend fun updateOrderStatus(orderId: String, status: Int): Result<OrderEntity>
