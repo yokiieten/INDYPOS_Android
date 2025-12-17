@@ -1,8 +1,13 @@
 package com.indybrain.indypos_Android.data.repository
 
+import android.content.Context
+import android.net.Uri
 import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.device.DeviceInfoProvider
+import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.core.utils.ImageUtils
 import com.indybrain.indypos_Android.data.local.AuthLocalDataSource
+import com.indybrain.indypos_Android.data.local.database.IndyPosDatabase
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
 import com.indybrain.indypos_Android.data.remote.api.ChangePasswordRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LoginRequestDto
@@ -12,13 +17,17 @@ import com.indybrain.indypos_Android.data.remote.api.UpdateShopNameRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.domain.model.LoginRequest
 import com.indybrain.indypos_Android.domain.model.User
-import com.indybrain.indypos_Android.data.local.database.IndyPosDatabase
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
 import retrofit2.HttpException
+import java.io.File
 import javax.inject.Inject
 
 /**
@@ -30,7 +39,9 @@ class AuthRepositoryImpl @Inject constructor(
     private val deviceInfoProvider: DeviceInfoProvider,
     private val cartRepository: CartRepository,
     private val database: IndyPosDatabase,
-    private val gson: Gson
+    private val gson: Gson,
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    @ApplicationContext private val context: Context
 ) : AuthRepository {
     
     override suspend fun login(request: LoginRequest): Result<User> {
@@ -262,6 +273,74 @@ class AuthRepositoryImpl @Inject constructor(
                 e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
                 e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
                 else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        }
+    }
+
+    override suspend fun updateShopImage(imageUri: Uri): Result<User> {
+        return try {
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(IllegalStateException("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
+            }
+
+            // Resize image to 256x144 before upload (16:9)
+            val resizedBitmap = ImageUtils.resizeImage(
+                imageUri = imageUri,
+                targetWidth = 256,
+                targetHeight = 144,
+                context = context
+            ) ?: return Result.failure(IllegalStateException("ไม่สามารถประมวลผลรูปภาพได้"))
+
+            // Save resized bitmap to temporary file
+            val tempFile = File(context.cacheDir, "shop_image_${System.currentTimeMillis()}.jpg")
+            val saved = ImageUtils.saveBitmapToFile(
+                bitmap = resizedBitmap,
+                file = tempFile,
+                quality = 85
+            )
+
+            if (!saved) {
+                resizedBitmap.recycle()
+                return Result.failure(IllegalStateException("ไม่สามารถบันทึกไฟล์รูปภาพได้"))
+            }
+
+            val mediaType = "image/jpeg".toMediaTypeOrNull()
+            val requestFile = tempFile.asRequestBody(mediaType)
+            val body = MultipartBody.Part.createFormData("image", tempFile.name, requestFile)
+
+            // Upload image
+            val response = authApi.uploadShopImage(body)
+
+            // Clean up
+            resizedBitmap.recycle()
+            tempFile.delete()
+
+            val imageUrl = response.file.url
+
+            // Update local user with new shopImageUrl
+            val currentUser = localDataSource.getUser()
+                ?: return Result.failure(IllegalStateException("ไม่พบข้อมูลผู้ใช้"))
+
+            val updatedUser = currentUser.copy(
+                shopImageUrl = imageUrl
+            )
+
+            localDataSource.saveUser(updatedUser)
+
+            Result.success(updatedUser)
+        } catch (e: HttpException) {
+            val errorMessage = parseErrorMessage(e.response()?.errorBody())
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true ->
+                    "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
+
+                e.message?.contains("timeout", ignoreCase = true) == true ->
+                    "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
+
+                else -> e.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
             }
             Result.failure(IllegalStateException(errorMessage, e))
         }

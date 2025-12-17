@@ -2,10 +2,15 @@ package com.indybrain.indypos_Android.data.remote.api
 
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.LogoutResponseDto
+import com.indybrain.indypos_Android.data.remote.dto.UploadShopImageResponseDto
 import com.google.gson.annotations.SerializedName
+import okhttp3.MultipartBody
 import retrofit2.http.Body
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Part
+import retrofit2.http.PUT
 
 /**
  * Retrofit API interface for authentication endpoints
@@ -40,6 +45,16 @@ interface AuthApi {
      */
     @PATCH("protected/users/shop-name")
     suspend fun updateShopName(@Body request: UpdateShopNameRequestDto): ShopUpdateResponseDto
+
+    /**
+     * Upload / update shop image endpoint
+     * PUT /protected/upload/shop-image (base URL already contains /api/v1)
+     */
+    @Multipart
+    @PUT("protected/upload/shop-image")
+    suspend fun uploadShopImage(
+        @Part image: MultipartBody.Part
+    ): UploadShopImageResponseDto
 }
 
 /**

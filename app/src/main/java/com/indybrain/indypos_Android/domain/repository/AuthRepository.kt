@@ -51,5 +51,12 @@ interface AuthRepository {
      * @return Result containing updated User on success or error message
      */
     suspend fun updateShopName(shopName: String): Result<User>
+
+    /**
+     * Update shop image
+     * @param imageUri URI of the image file to upload
+     * @return Result containing updated User with new shopImageUrl
+     */
+    suspend fun updateShopImage(imageUri: android.net.Uri): Result<User>
 }
 

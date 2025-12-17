@@ -21,8 +21,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Analytics
@@ -55,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -113,6 +117,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     var selectedDestination by rememberSaveable { mutableStateOf(HomeBottomDestination.Home) }
+    var isImageViewerVisible by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -141,7 +146,10 @@ fun HomeScreen(
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
-            if (selectedDestination != HomeBottomDestination.Charts && selectedDestination != HomeBottomDestination.Orders) {
+            if (!isImageViewerVisible &&
+                selectedDestination != HomeBottomDestination.Charts &&
+                selectedDestination != HomeBottomDestination.Orders
+            ) {
                 ShopTopAppBar(
                     shopName = uiState.shopName,
                     onEditClick = { viewModel.showEditStoreNameDialog() }
@@ -149,94 +157,108 @@ fun HomeScreen(
             }
         },
         bottomBar = {
-            HomeBottomBar(
-                selected = selectedDestination,
-                onSelected = { selectedDestination = it }
-            )
+            if (!isImageViewerVisible) {
+                HomeBottomBar(
+                    selected = selectedDestination,
+                    onSelected = { selectedDestination = it }
+                )
+            }
         }
     ) { padding ->
-        when (selectedDestination) {
-            HomeBottomDestination.Charts -> {
-                GraphScreen()
-            }
-            HomeBottomDestination.Orders -> {
-                OrderScreen(
-                    onOrderClick = onNavigateToOrderDetail
-                )
-            }
-            HomeBottomDestination.Settings -> {
-                SettingsScreen(
-                    onSettingsItemClick = { item ->
-                        when (item) {
-                            SettingsItem.Account -> {
-                                onNavigateToAccountSettings()
-                            }
-                            SettingsItem.Language -> {
-                                onNavigateToLanguageSettings()
-                            }
-                            SettingsItem.ChangePassword -> {
-                                onNavigateToChangePassword()
-                            }
-                            SettingsItem.SalesSettings -> {
-                                onNavigateToOrderSettings()
-                            }
-                            SettingsItem.ManageStock -> {
-                                onNavigateToStockManagement()
-                            }
-                            SettingsItem.ManageData -> {
-                                onNavigateToDataManagement()
-                            }
-                            SettingsItem.ContactUs -> {
-                                onNavigateToContactUs()
-                            }
-                            SettingsItem.ReceiptSettings -> {
-                                onNavigateToReceiptSettings()
-                            }
-                            SettingsItem.PrinterSettings -> {
-                                onNavigateToPrinterSettings()
-                            }
-                            // Handle other settings items here
-                            else -> {}
-                        }
-                    },
-                    onLogoutSuccess = onLogoutSuccess
-                )
-            }
-            else -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 20.dp, vertical = 24.dp)
-                ) {
-                    ShopCoverCard(
-                        shopImageUrl = uiState.shopImageUrl,
-                        description = uiState.shopDescription,
-                        onImageClick = { /* TODO: Show fullscreen image */ },
-                        onChangeImageClick = { viewModel.showImagePicker() },
-                        onDescriptionClick = { viewModel.showEditDescriptionDialog() }
+        if (isImageViewerVisible && !uiState.shopImageUrl.isNullOrBlank()) {
+            // Fullscreen image viewer: ใช้ทั้งหน้าจอ ไม่รับ padding จาก Scaffold
+            FullscreenShopImageViewer(
+                imageUrl = buildShopImageUrl(uiState.shopImageUrl!!),
+                onDismiss = { isImageViewerVisible = false }
+            )
+        } else {
+            when (selectedDestination) {
+                HomeBottomDestination.Charts -> {
+                    GraphScreen()
+                }
+                HomeBottomDestination.Orders -> {
+                    OrderScreen(
+                        onOrderClick = onNavigateToOrderDetail
                     )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    DailyOverviewSection(statistics = uiState.statistics)
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    TopProductSection(statistics = uiState.statistics)
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
-                    
-                    ShortcutsSection(
-                        shortcuts = uiState.shortcuts,
-                        onShortcutClick = { shortcutId ->
-                            when (shortcutId) {
-                                "start_order" -> onNavigateToMainProduct()
-                                // Add other shortcut handlers here
+                }
+                HomeBottomDestination.Settings -> {
+                    SettingsScreen(
+                        onSettingsItemClick = { item ->
+                            when (item) {
+                                SettingsItem.Account -> {
+                                    onNavigateToAccountSettings()
+                                }
+                                SettingsItem.Language -> {
+                                    onNavigateToLanguageSettings()
+                                }
+                                SettingsItem.ChangePassword -> {
+                                    onNavigateToChangePassword()
+                                }
+                                SettingsItem.SalesSettings -> {
+                                    onNavigateToOrderSettings()
+                                }
+                                SettingsItem.ManageStock -> {
+                                    onNavigateToStockManagement()
+                                }
+                                SettingsItem.ManageData -> {
+                                    onNavigateToDataManagement()
+                                }
+                                SettingsItem.ContactUs -> {
+                                    onNavigateToContactUs()
+                                }
+                                SettingsItem.ReceiptSettings -> {
+                                    onNavigateToReceiptSettings()
+                                }
+                                SettingsItem.PrinterSettings -> {
+                                    onNavigateToPrinterSettings()
+                                }
+                                // Handle other settings items here
+                                else -> {}
                             }
-                        }
+                        },
+                        onLogoutSuccess = onLogoutSuccess
                     )
+                }
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 20.dp, vertical = 24.dp)
+                    ) {
+                        ShopCoverCard(
+                            shopImageUrl = uiState.shopImageUrl,
+                            description = uiState.shopDescription,
+                            onImageClick = {
+                                if (!uiState.shopImageUrl.isNullOrBlank()) {
+                                    isImageViewerVisible = true
+                                }
+                            },
+                            onChangeImageClick = { viewModel.showImagePicker() },
+                            onDescriptionClick = { viewModel.showEditDescriptionDialog() }
+                        )
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        DailyOverviewSection(statistics = uiState.statistics)
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        TopProductSection(statistics = uiState.statistics)
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
+                        
+                        ShortcutsSection(
+                            shortcuts = uiState.shortcuts,
+                            onShortcutClick = { shortcutId ->
+                                when (shortcutId) {
+                                    "start_order" -> onNavigateToMainProduct()
+                                    // Add other shortcut handlers here
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -342,6 +364,14 @@ fun HomeScreen(
                 }
             )
         }
+
+        // Fullscreen image viewer (hide top bar & bottom bar visually by overlaying)
+        if (isImageViewerVisible && !uiState.shopImageUrl.isNullOrBlank()) {
+            FullscreenShopImageViewer(
+                imageUrl = buildShopImageUrl(uiState.shopImageUrl!!),
+                onDismiss = { isImageViewerVisible = false }
+            )
+        }
     }
 }
 
@@ -367,25 +397,7 @@ private fun ShopCoverCard(
         ) {
             val imageUrl = shopImageUrl?.takeIf { it.isNotBlank() }
             if (!imageUrl.isNullOrBlank()) {
-                val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-                    imageUrl
-                } else {
-                    // Build shop image URL (similar to product images but for shop-images)
-                    if (imageUrl.contains("://")) {
-                        imageUrl
-                    } else {
-                        var path = imageUrl
-                        if (!path.startsWith("/")) {
-                            path = "/$path"
-                        }
-                        if (path.startsWith("/api/v1/files/shop-images/")) {
-                            "${AppConfig.baseImageUrl}$path"
-                        } else {
-                            val cleanFile = if (path.startsWith("/")) path.drop(1) else path
-                            "${AppConfig.baseImageUrl}/api/v1/files/shop-images/$cleanFile"
-                        }
-                    }
-                }
+                val fullImageUrl = buildShopImageUrl(imageUrl)
                 
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -477,6 +489,93 @@ private fun ShopCoverCard(
                     tint = PlaceholderText,
                     modifier = Modifier.size(20.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullscreenShopImageViewer(
+    imageUrl: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+
+    var scale by remember { mutableStateOf(1f) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        scale = (scale * zoomChange).coerceIn(1f, 4f)
+        if (scale > 1f) {
+            offsetX += panChange.x
+            offsetY += panChange.y
+        } else {
+            offsetX = 0f
+            offsetY = 0f
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(imageUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offsetX,
+                    translationY = offsetY
+                )
+                .transformable(transformState),
+            contentScale = ContentScale.Fit,
+            error = painterResource(id = R.drawable.logo_appstore),
+            placeholder = painterResource(id = R.drawable.logo_appstore)
+        )
+
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(id = R.string.home_cancel),
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Helper to build full shop image URL from backend path or absolute URL
+ */
+private fun buildShopImageUrl(imageUrl: String): String {
+    return if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+        imageUrl
+    } else {
+        if (imageUrl.contains("://")) {
+            imageUrl
+        } else {
+            var path = imageUrl
+            if (!path.startsWith("/")) {
+                path = "/$path"
+            }
+            if (path.startsWith("/api/v1/files/shop-images/")) {
+                "${AppConfig.baseImageUrl}$path"
+            } else {
+                val cleanFile = if (path.startsWith("/")) path.drop(1) else path
+                "${AppConfig.baseImageUrl}/api/v1/files/shop-images/$cleanFile"
             }
         }
     }

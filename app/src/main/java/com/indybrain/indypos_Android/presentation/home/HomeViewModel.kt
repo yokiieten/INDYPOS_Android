@@ -205,13 +205,28 @@ class HomeViewModel @Inject constructor(
     
     fun updateShopImage(imageUri: Uri) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            // TODO: Call API to update shop image
-            // This will need to:
-            // 1. Resize image to 256x144 (16:9 aspect ratio)
-            // 2. Upload image using multipart/form-data PUT request
-            // 3. Update shopImageUrl in state
-            _uiState.update { it.copy(isLoading = false) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+            val result = authRepository.updateShopImage(imageUri)
+            result
+                .onSuccess { updatedUser ->
+                    _uiState.update {
+                        it.copy(
+                            shopImageUrl = updatedUser.shopImageUrl,
+                            isLoading = false,
+                            errorMessage = null,
+                            successMessage = "home_store_image_updated"
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: "ไม่สามารถอัปเดตรูปหน้าร้านได้"
+                        )
+                    }
+                }
         }
     }
     
