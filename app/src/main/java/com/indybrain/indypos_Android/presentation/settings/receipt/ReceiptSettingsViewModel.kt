@@ -27,6 +27,10 @@ class ReceiptSettingsViewModel @Inject constructor(
     // Temporary state for unsaved changes
     private var tempState = ReceiptSettingsUiState()
     
+    // Pending shop logo changes (not yet saved to database)
+    private var pendingShopLogoUri: Uri? = null
+    private var removeShopLogo: Boolean = false
+    
     // Flag to prevent Flow from overriding data after save
     private var isSavingInProgress = false
     
@@ -73,6 +77,10 @@ class ReceiptSettingsViewModel @Inject constructor(
                             promptPayIdentifier = settings.promptPayIdentifier ?: "",
                             tinNumber = settings.tinNumber ?: ""
                         )
+                        
+                        // Reset pending logo operations
+                        pendingShopLogoUri = null
+                        removeShopLogo = false
                         
                         _uiState.update { 
                             it.copy(
@@ -168,18 +176,25 @@ class ReceiptSettingsViewModel @Inject constructor(
     
     fun updateShopLogoImage(imageUri: Uri?) {
         viewModelScope.launch {
-            val result = receiptSettingsRepository.updateShopLogoImage(imageUri)
-            result.onSuccess { path ->
-                val bitmap = if (path != null) {
-                    receiptSettingsRepository.getShopLogoBitmap()
-                } else {
-                    null
-                }
-                tempState = tempState.copy(shopLogoBitmap = bitmap)
+            if (imageUri == null) {
+                // User chose to remove current logo (but don't persist yet)
+                pendingShopLogoUri = null
+                removeShopLogo = true
+                tempState = tempState.copy(shopLogoBitmap = null)
                 checkForChanges()
-            }.onFailure { e ->
-                _uiState.update { 
-                    it.copy(errorMessage = "ไม่สามารถบันทึกรูปภาพได้: ${e.message}")
+            } else {
+                // User selected a new logo; generate preview only
+                removeShopLogo = false
+                pendingShopLogoUri = imageUri
+                
+                val result = receiptSettingsRepository.generateShopLogoPreview(imageUri)
+                result.onSuccess { bitmap ->
+                    tempState = tempState.copy(shopLogoBitmap = bitmap)
+                    checkForChanges()
+                }.onFailure { e ->
+                    _uiState.update {
+                        it.copy(errorMessage = "ไม่สามารถประมวลผลรูปภาพได้: ${e.message}")
+                    }
                 }
             }
         }
@@ -304,6 +319,13 @@ class ReceiptSettingsViewModel @Inject constructor(
                 receiptSettingsRepository.updatePromptPayIdentifier(tempState.promptPayIdentifier)
                 receiptSettingsRepository.updateTINNumber(tempState.tinNumber)
                 
+                // Save shop logo (add / change / remove) only when user confirms saving
+                if (removeShopLogo) {
+                    receiptSettingsRepository.updateShopLogoImage(null)
+                } else if (pendingShopLogoUri != null) {
+                    receiptSettingsRepository.updateShopLogoImage(pendingShopLogoUri)
+                }
+                
                 // Reload settings to sync state
                 val settings = receiptSettingsRepository.getReceiptSettingsSync()
                 if (settings != null) {
@@ -341,6 +363,10 @@ class ReceiptSettingsViewModel @Inject constructor(
                         promptPayIdentifier = settings.promptPayIdentifier ?: "",
                         tinNumber = settings.tinNumber ?: ""
                     )
+                    
+                    // Clear pending logo operations after successful save
+                    pendingShopLogoUri = null
+                    removeShopLogo = false
                     
                     // Reset saving flag after a short delay to allow Flow to catch up
                     kotlinx.coroutines.delay(200)
@@ -415,6 +441,10 @@ class ReceiptSettingsViewModel @Inject constructor(
                     promptPayIdentifier = settings.promptPayIdentifier ?: "",
                     tinNumber = settings.tinNumber ?: ""
                 )
+                
+                // Reset pending logo operations
+                pendingShopLogoUri = null
+                removeShopLogo = false
                 
                 _uiState.update {
                     it.copy(

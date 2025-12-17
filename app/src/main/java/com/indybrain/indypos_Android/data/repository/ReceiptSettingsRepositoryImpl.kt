@@ -141,6 +141,21 @@ class ReceiptSettingsRepositoryImpl @Inject constructor(
         }
     }
     
+    override suspend fun generateShopLogoPreview(imageUri: Uri): Result<Bitmap> {
+        return try {
+            val resizedBitmap = ImageUtils.resizeImage(
+                imageUri = imageUri,
+                targetWidth = 200,
+                targetHeight = 200,
+                context = context
+            ) ?: return Result.failure(Exception("ไม่สามารถประมวลผลรูปภาพได้"))
+            
+            Result.success(resizedBitmap)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
     override suspend fun updatePromptPayType(type: PromptPayType): Result<Unit> {
         return updateSetting { it.copy(promptPayType = type.value) }
     }

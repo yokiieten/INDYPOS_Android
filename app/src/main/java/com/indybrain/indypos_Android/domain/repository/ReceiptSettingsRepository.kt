@@ -55,6 +55,11 @@ interface ReceiptSettingsRepository {
     suspend fun updateShopLogoImage(imageUri: Uri?): Result<String?> // Returns image path
     
     /**
+     * Generate preview bitmap for shop logo without saving it to settings
+     */
+    suspend fun generateShopLogoPreview(imageUri: Uri): Result<Bitmap>
+    
+    /**
      * Get shop logo bitmap
      */
     suspend fun getShopLogoBitmap(): Bitmap?

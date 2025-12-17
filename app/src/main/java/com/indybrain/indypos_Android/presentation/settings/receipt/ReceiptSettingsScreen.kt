@@ -395,7 +395,10 @@ fun ReceiptSettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.clearSuccessMessage() }) {
+                TextButton(onClick = { 
+                    viewModel.clearSuccessMessage()
+                    onBackClick()
+                }) {
                     Text(
                         text = "ตกลง",
                         style = FontUtils.mainFont(
