@@ -34,6 +34,36 @@ class GraphViewModel @Inject constructor(
         }
         loadData(period)
     }
+
+    /**
+     * ตั้งค่าช่วงวันที่แบบกำหนดเอง และโหลดข้อมูลสำหรับช่วงนั้น
+     */
+    fun setCustomRange(startMillis: Long, endMillis: Long) {
+        val normalizedStart = minOf(startMillis, endMillis)
+        val normalizedEnd = maxOf(startMillis, endMillis)
+        
+        _uiState.update { current ->
+            current.copy(
+                selectedPeriod = TimePeriod.Custom,
+                isLoading = true,
+                customStartDateMillis = normalizedStart,
+                customEndDateMillis = normalizedEnd
+            )
+        }
+        
+        viewModelScope.launch {
+            try {
+                loadCustomRangeData(normalizedStart, normalizedEnd)
+            } catch (e: Exception) {
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลกราฟ"
+                    )
+                }
+            }
+        }
+    }
     
     /**
      * Load graph data based on selected period.
@@ -50,16 +80,21 @@ class GraphViewModel @Inject constructor(
                     TimePeriod.Week -> loadWeekDataFromRoom()
                     TimePeriod.Month -> loadMonthDataFromRoom()
                     TimePeriod.Custom -> {
-                        // TODO: รองรับช่วงกำหนดเองจาก Room ในภายหลัง
-                        _uiState.update { current ->
-                            current.copy(
-                                isLoading = false,
-                                summary = GraphSummary(),
-                                chartData = emptyList(),
-                                revenueComparison = RevenueComparison(),
-                                productStats = emptyList(),
-                                bestSellers = emptyList()
-                            )
+                        val start = _uiState.value.customStartDateMillis
+                        val end = _uiState.value.customEndDateMillis
+                        if (start != null && end != null) {
+                            loadCustomRangeData(start, end)
+                        } else {
+                            _uiState.update { current ->
+                                current.copy(
+                                    isLoading = false,
+                                    summary = GraphSummary(),
+                                    chartData = emptyList(),
+                                    revenueComparison = RevenueComparison(),
+                                    productStats = emptyList(),
+                                    bestSellers = emptyList()
+                                )
+                            }
                         }
                     }
                 }
@@ -444,6 +479,176 @@ class GraphViewModel @Inject constructor(
                 val key = item.productId ?: item.productName
                 val agg = productMap.getOrPut(key) {
                     ProductAggMonth(
+                        name = item.productName,
+                        amount = 0.0,
+                        quantity = 0,
+                        productId = item.productId
+                    )
+                }
+                agg.amount += item.totalPrice
+                agg.quantity += item.quantity
+            }
+        }
+        
+        val topProducts = productMap
+            .entries
+            .sortedByDescending { it.value.amount }
+            .take(3)
+        
+        val maxAmount = topProducts.maxOfOrNull { it.value.amount } ?: 1.0
+        val productStats = topProducts.map { (_, agg) ->
+            ProductStatsData(
+                name = agg.name,
+                amount = agg.amount,
+                progress = (agg.amount / maxAmount).coerceIn(0.0, 1.0)
+            )
+        }
+        
+        val bestSellers = topProducts.mapIndexed { index, (_, agg) ->
+            val product = agg.productId?.let { productDao.getProductById(it) }
+            BestSellerData(
+                productName = agg.name,
+                totalSales = agg.amount,
+                salesCount = agg.quantity,
+                imageUrl = product?.imageUrl,
+                colorHex = product?.selectedColorHex,
+                rank = index + 1
+            )
+        }
+        
+        _uiState.update { current ->
+            current.copy(
+                isLoading = false,
+                summary = summary,
+                chartData = chartData,
+                revenueComparison = revenueComparison,
+                productStats = productStats,
+                bestSellers = bestSellers
+            )
+        }
+    }
+
+    /**
+     * โหลดข้อมูลสำหรับช่วงวันที่กำหนดเอง (Custom)
+     * - ใช้ startMillis / endMillis เป็นกรอบเวลา
+     * - กราฟผลรวมยอดขาย แบ่งเป็นบัคเก็ตสัปดาห์ละ 7 วันจากวันเริ่มต้น
+     */
+    private suspend fun loadCustomRangeData(startMillis: Long, endMillis: Long) {
+        val ordersResult = orderRepository.getOrders().first()
+        val orders = ordersResult.getOrElse { emptyList() }
+        if (orders.isEmpty()) {
+            _uiState.update { current ->
+                current.copy(
+                    isLoading = false,
+                    summary = GraphSummary(),
+                    chartData = emptyList(),
+                    revenueComparison = RevenueComparison(),
+                    productStats = emptyList(),
+                    bestSellers = emptyList()
+                )
+            }
+            return
+        }
+        
+        val startDate = java.util.Date(startMillis)
+        val endDate = java.util.Date(endMillis)
+        
+        val rangeOrders = orders.filter { order ->
+            order.orderDate >= startDate && order.orderDate <= endDate
+        }
+        
+        if (rangeOrders.isEmpty()) {
+            _uiState.update { current ->
+                current.copy(
+                    isLoading = false,
+                    summary = GraphSummary(),
+                    chartData = emptyList(),
+                    revenueComparison = RevenueComparison(),
+                    productStats = emptyList(),
+                    bestSellers = emptyList()
+                )
+            }
+            return
+        }
+        
+        // Summary
+        val totalSales = rangeOrders.sumOf { it.total }
+        val orderCount = rangeOrders.size
+        val cancelledCount = rangeOrders.count { it.statusRaw == 5 }
+        
+        var totalCost = 0.0
+        for (order in rangeOrders) {
+            val items = orderRepository.getOrderItems(order.id)
+            totalCost += items.sumOf { (it.unitCost ?: 0.0) * it.quantity }
+        }
+        
+        val summary = GraphSummary(
+            todaySales = totalSales,
+            costOfExpenses = totalCost,
+            ordersToday = orderCount,
+            cancelledOrders = cancelledCount,
+            totalSales = totalSales
+        )
+        
+        // กราฟเป็นช่วงสัปดาห์ (W-like) โดยใช้วันที่เริ่มต้นเป็นจุดอ้างอิง
+        val calendar = Calendar.getInstance()
+        calendar.time = startDate
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val bucketStart = calendar.time
+        
+        val buckets = mutableListOf<Pair<java.util.Date, java.util.Date>>()
+        var currentStart = bucketStart
+        while (currentStart <= endDate) {
+            val cal = Calendar.getInstance().apply { time = currentStart }
+            cal.add(Calendar.DAY_OF_YEAR, 6)
+            var currentEnd = cal.time
+            if (currentEnd > endDate) currentEnd = endDate
+            buckets.add(currentStart to currentEnd)
+            
+            cal.time = currentEnd
+            cal.add(Calendar.DAY_OF_YEAR, 1)
+            currentStart = cal.time
+        }
+        
+        val chartData = buckets.map { (bStart, bEnd) ->
+            val bucketSales = rangeOrders.filter { order ->
+                order.orderDate >= bStart && order.orderDate <= bEnd
+            }.sumOf { it.total }
+            
+            val labelFormat = java.text.SimpleDateFormat("dd/MM", Locale.getDefault())
+            ChartDataPoint(labelFormat.format(bStart), bucketSales)
+        }
+        
+        // ช่องทางชำระเงินทั้งช่วง
+        val transferAmount = rangeOrders
+            .filter { it.paymentTypeRaw == 1 }
+            .sumOf { it.total }
+        val cashAmount = rangeOrders
+            .filter { it.paymentTypeRaw == 0 }
+            .sumOf { it.total }
+        val revenueComparison = RevenueComparison(
+            transferAmount = transferAmount,
+            cashAmount = cashAmount
+        )
+        
+        // Top products ในช่วง custom (เหมือน month)
+        data class ProductAggCustom(
+            var name: String,
+            var amount: Double,
+            var quantity: Int,
+            var productId: String?
+        )
+        
+        val productMap = mutableMapOf<String, ProductAggCustom>()
+        for (order in rangeOrders) {
+            val items = orderRepository.getOrderItems(order.id)
+            items.forEach { item ->
+                val key = item.productId ?: item.productName
+                val agg = productMap.getOrPut(key) {
+                    ProductAggCustom(
                         name = item.productName,
                         amount = 0.0,
                         quantity = 0,

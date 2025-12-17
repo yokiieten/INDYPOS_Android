@@ -11,6 +11,8 @@ data class GraphUiState(
     val revenueComparison: RevenueComparison = RevenueComparison(),
     val productStats: List<ProductStatsData> = emptyList(),
     val bestSellers: List<BestSellerData> = emptyList(),
+    val customStartDateMillis: Long? = null,
+    val customEndDateMillis: Long? = null,
     val errorMessage: String? = null
 )
 

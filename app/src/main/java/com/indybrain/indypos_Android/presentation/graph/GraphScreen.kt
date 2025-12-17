@@ -42,6 +42,9 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,7 +85,12 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import android.app.DatePickerDialog
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GraphScreen(
     viewModel: GraphViewModel = hiltViewModel()
@@ -90,6 +98,9 @@ fun GraphScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     var selectedDestination by rememberSaveable { mutableStateOf(HomeBottomDestination.Charts) }
+    var showCustomRangeSheet by rememberSaveable { mutableStateOf(false) }
+    var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     
     Scaffold(
         containerColor = BaseBackground,
@@ -121,7 +132,26 @@ fun GraphScreen(
             // Date selector
             TimePeriodSelector(
                 selectedPeriod = uiState.selectedPeriod,
-                onPeriodSelected = { viewModel.selectPeriod(it) }
+                customRangeLabel = if (
+                    uiState.selectedPeriod == TimePeriod.Custom &&
+                    uiState.customStartDateMillis != null &&
+                    uiState.customEndDateMillis != null
+                ) {
+                    formatCustomRange(
+                        uiState.customStartDateMillis,
+                        uiState.customEndDateMillis
+                    )
+                } else null,
+                onPeriodSelected = { period ->
+                    if (period == TimePeriod.Custom) {
+                        // preload current range from uiState หากมี
+                        customStartDateMillis = uiState.customStartDateMillis
+                        customEndDateMillis = uiState.customEndDateMillis
+                        showCustomRangeSheet = true
+                    } else {
+                        viewModel.selectPeriod(period)
+                    }
+                }
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -179,11 +209,172 @@ fun GraphScreen(
             )
         }
     }
+    
+    if (showCustomRangeSheet) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val context = LocalContext.current
+        
+        fun openDatePicker(isStart: Boolean) {
+            val calendar = Calendar.getInstance()
+            val currentMillis = if (isStart) customStartDateMillis else customEndDateMillis
+            if (currentMillis != null) {
+                calendar.timeInMillis = currentMillis
+            }
+            val year = calendar.get(Calendar.YEAR)
+            val month = calendar.get(Calendar.MONTH)
+            val day = calendar.get(Calendar.DAY_OF_MONTH)
+            
+            DatePickerDialog(
+                context,
+                { _, y, m, d ->
+                    val cal = Calendar.getInstance().apply {
+                        set(y, m, d, 0, 0, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    if (isStart) {
+                        customStartDateMillis = cal.timeInMillis
+                    } else {
+                        customEndDateMillis = cal.timeInMillis
+                    }
+                },
+                year,
+                month,
+                day
+            ).show()
+        }
+        
+        ModalBottomSheet(
+            onDismissRequest = { showCustomRangeSheet = false },
+            sheetState = sheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "ยกเลิก",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton,
+                        modifier = Modifier.clickable {
+                            showCustomRangeSheet = false
+                        }
+                    )
+                    Text(
+                        text = "เลือกช่วงวันที่",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                    Text(
+                        text = "เสร็จสิ้น",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton,
+                        modifier = Modifier.clickable {
+                            if (customStartDateMillis != null && customEndDateMillis != null) {
+                                showCustomRangeSheet = false
+                                viewModel.setCustomRange(
+                                    customStartDateMillis!!,
+                                    customEndDateMillis!!
+                                )
+                            }
+                        }
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "หมายเหตุ: การเลือกช่วงเวลาเกิน 1 ปี อาจทำให้แอปโหลดช้า",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Small
+                    ),
+                    color = Color(0xFFFF9500),
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+                
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "วันที่เริ่มต้น:",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .background(Color(0xFFF2F2F7), RoundedCornerShape(10.dp))
+                            .clickable { openDatePicker(isStart = true) }
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = formatCustomDate(customStartDateMillis),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                    }
+                    
+                    Text(
+                        text = "วันที่สิ้นสุด:",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .background(Color(0xFFF2F2F7), RoundedCornerShape(10.dp))
+                            .clickable { openDatePicker(isStart = false) }
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = formatCustomDate(customEndDateMillis),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
 }
 
 @Composable
 private fun TimePeriodSelector(
     selectedPeriod: TimePeriod,
+    customRangeLabel: String? = null,
     onPeriodSelected: (TimePeriod) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -203,7 +394,11 @@ private fun TimePeriodSelector(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = selectedPeriod.displayName,
+                    text = if (selectedPeriod == TimePeriod.Custom && !customRangeLabel.isNullOrBlank()) {
+                        customRangeLabel
+                    } else {
+                        selectedPeriod.displayName
+                    },
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Small
@@ -263,6 +458,26 @@ private fun TimePeriodSelector(
             }
         }
     }
+}
+
+private fun formatCustomDate(millis: Long?): String {
+    if (millis == null) return ""
+    val calendar = Calendar.getInstance().apply {
+        timeInMillis = millis
+    }
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val monthFormat = SimpleDateFormat("MMM", Locale.ENGLISH)
+    val monthStr = monthFormat.format(calendar.time)
+    val yearBE = calendar.get(Calendar.YEAR) + 543
+    return String.format("%02d %s BE %d", day, monthStr, yearBE)
+}
+
+private fun formatCustomRange(startMillis: Long?, endMillis: Long?): String {
+    if (startMillis == null || endMillis == null) return TimePeriod.Custom.displayName
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val start = java.util.Date(minOf(startMillis, endMillis))
+    val end = java.util.Date(maxOf(startMillis, endMillis))
+    return "${sdf.format(start)} - ${sdf.format(end)}"
 }
 
 @Composable
