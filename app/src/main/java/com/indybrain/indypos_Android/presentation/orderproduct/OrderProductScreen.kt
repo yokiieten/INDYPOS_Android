@@ -70,6 +70,7 @@ import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
+import com.indybrain.indypos_Android.domain.model.GroupedCartItem
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
@@ -90,7 +91,7 @@ fun OrderProductScreen(
     viewModel: OrderProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var itemToDelete by remember { mutableStateOf<CartItemEntity?>(null) }
+    var itemToDelete by remember { mutableStateOf<GroupedCartItem?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
     Scaffold(
@@ -158,7 +159,7 @@ fun OrderProductScreen(
             }
             
             // Cart items list
-            if (uiState.cartItems.isEmpty()) {
+            if (uiState.groupedItems.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -181,23 +182,22 @@ fun OrderProductScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(
-                        items = uiState.cartItems,
-                        key = { it.id }
-                    ) { cartItem ->
-                        val addons = viewModel.getCartAddons(cartItem.id)
-
+                        items = uiState.groupedItems,
+                        key = { it.key }
+                    ) { groupedItem ->
                         SwipeToDeleteCartItem(
-                            onDelete = { itemToDelete = cartItem }
+                            onDelete = { itemToDelete = groupedItem }
                         ) {
-                            CartItemRow(
-                                cartItem = cartItem,
-                                addons = addons,
+                            GroupedCartItemRow(
+                                groupedItem = groupedItem,
                                 onEditClick = { 
-                                    val productId = cartItem.productId ?: return@CartItemRow
-                                    val productName = cartItem.productName ?: ""
-                                    onEditItemClick(productId, productName)
+                                    val productId = groupedItem.items.firstOrNull()?.product?.id
+                                    val productName = groupedItem.items.firstOrNull()?.product?.name ?: ""
+                                    if (productId != null) {
+                                        onEditItemClick(productId, productName)
+                                    }
                                 },
-                                onDeleteClick = { itemToDelete = cartItem }
+                                onDeleteClick = { itemToDelete = groupedItem }
                             )
                         }
                     }
@@ -387,9 +387,10 @@ fun OrderProductScreen(
             }
             
             // Order button (fixed at bottom)
-            if (uiState.cartItems.isNotEmpty()) {
+            if (uiState.groupedItems.isNotEmpty()) {
+                val totalItemCount = uiState.groupedItems.sumOf { it.totalQuantity }
                 OrderButton(
-                    itemCount = uiState.cartItems.size,
+                    itemCount = totalItemCount,
                     totalAmount = viewModel.calculateTotal(),
                     onClick = {
                         val total = viewModel.calculateTotal()
@@ -446,7 +447,12 @@ fun OrderProductScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        itemToDelete?.let { viewModel.deleteCartItem(it.id) }
+                        itemToDelete?.let { group ->
+                            // Delete all items in the group
+                            group.items.forEach { item ->
+                                viewModel.deleteCartItem(item.id)
+                            }
+                        }
                         itemToDelete = null
                     }
                 ) {
@@ -601,14 +607,20 @@ private fun SwipeToDeleteCartItem(
 }
 
 @Composable
-private fun CartItemRow(
-    cartItem: CartItemEntity,
-    addons: List<CartAddonEntity>,
+private fun GroupedCartItemRow(
+    groupedItem: GroupedCartItem,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val backgroundColor = cartItem.productColorHex?.let {
+    val firstItem = groupedItem.items.firstOrNull() ?: return
+    val product = firstItem.product
+    
+    // Calculate total price for the grouped item
+    val totalPrice = calculateGroupedItemPrice(firstItem, groupedItem.totalQuantity)
+    
+    // Get product color for background
+    val backgroundColor = product.selectedColorHex?.let {
         try {
             Color(android.graphics.Color.parseColor(it))
         } catch (e: Exception) {
@@ -628,7 +640,7 @@ private fun CartItemRow(
                     .clip(RoundedCornerShape(8.dp))
                     .background(backgroundColor)
             ) {
-                val imageUrl = cartItem.productImageUrl?.takeIf { it.isNotBlank() }
+                val imageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
                 
                 if (!imageUrl.isNullOrBlank()) {
                     val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
@@ -642,7 +654,7 @@ private fun CartItemRow(
                             .data(fullImageUrl)
                             .crossfade(true)
                             .build(),
-                        contentDescription = cartItem.productName ?: "",
+                        contentDescription = product.name,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                         error = painterResource(id = R.drawable.logo_appstore),
@@ -651,14 +663,14 @@ private fun CartItemRow(
                 } else {
                     Image(
                         painter = painterResource(id = R.drawable.logo_appstore),
-                        contentDescription = cartItem.productName ?: "",
+                        contentDescription = product.name,
                         modifier = Modifier.size(40.dp),
                         contentScale = ContentScale.Fit
                     )
                 }
             }
             
-            // Quantity badge
+            // Quantity badge showing total quantity
             Box(
                 modifier = Modifier
                     .size(24.dp)
@@ -667,7 +679,7 @@ private fun CartItemRow(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = cartItem.quantity.toString(),
+                    text = groupedItem.totalQuantity.toString(),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Small
@@ -682,7 +694,7 @@ private fun CartItemRow(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = cartItem.productName ?: "",
+                text = product.name,
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Medium
@@ -693,8 +705,10 @@ private fun CartItemRow(
             Spacer(modifier = Modifier.height(4.dp))
             
             // Addons (customizations)
-            if (addons.isNotEmpty()) {
-                val addonNames = addons.map { it.addonName }
+            if (firstItem.selectedAddons.isNotEmpty()) {
+                val addonNames = firstItem.selectedAddons.values
+                    .flatten()
+                    .map { it.name }
                 Text(
                     text = addonNames.joinToString(", "),
                     style = FontUtils.mainFont(
@@ -703,6 +717,21 @@ private fun CartItemRow(
                     ),
                     color = SecondaryText,
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
+            // Special request
+            if (!firstItem.specialRequest.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "หมายเหตุ: ${firstItem.specialRequest}",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = SecondaryText,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -737,10 +766,7 @@ private fun CartItemRow(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = formatCurrency(
-                    (cartItem.unitPrice ?: 0.0) * cartItem.quantity +
-                        addons.sumOf { it.addonPrice } * cartItem.quantity
-                ),
+                text = formatCurrency(totalPrice),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Medium
@@ -772,6 +798,14 @@ private fun CartItemRow(
             }
         }
     }
+}
+
+private fun calculateGroupedItemPrice(item: com.indybrain.indypos_Android.domain.model.CartItem, quantity: Int): Double {
+    val productPrice = item.product.price * quantity
+    val addonsPrice = item.selectedAddons.values
+        .flatten()
+        .sumOf { it.price } * quantity
+    return productPrice + addonsPrice
 }
 
 @Composable

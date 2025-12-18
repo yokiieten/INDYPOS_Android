@@ -22,6 +22,7 @@ import com.indybrain.indypos_Android.domain.model.PaymentType as DomainPaymentTy
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ReceiptSettingsRepository
+import com.indybrain.indypos_Android.domain.usecase.GetGroupedCartItemsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,7 +50,8 @@ class OrderProductViewModel @Inject constructor(
     private val receiptSettingsDao: ReceiptSettingsDao,
     private val receiptSettingsRepository: ReceiptSettingsRepository,
     private val printerService: PrinterService,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(OrderProductUiState())
@@ -63,6 +65,17 @@ class OrderProductViewModel @Inject constructor(
     
     private fun observeCartItems() {
         viewModelScope.launch {
+            // Observe grouped items for UI display
+            getGroupedCartItemsUseCase().collect { groupedItems ->
+                _uiState.update { currentState ->
+                    // Preserve discount information when updating grouped items
+                    currentState.copy(groupedItems = groupedItems)
+                }
+            }
+        }
+        
+        viewModelScope.launch {
+            // Also observe cart items for order creation and addons mapping
             cartRepository.getCartItems().collect { cartItems ->
                 _uiState.update { currentState ->
                     // Preserve discount information when updating cart items
@@ -111,11 +124,14 @@ class OrderProductViewModel @Inject constructor(
     }
     
     fun calculateSubtotal(): Double {
-        return _uiState.value.cartItems.sumOf { item ->
-            val itemPrice = (item.unitPrice ?: 0.0) * item.quantity
-            val addonsPrice = (_cartAddonsMap.value[item.id] ?: emptyList())
-                .sumOf { it.addonPrice } * item.quantity
-            itemPrice + addonsPrice
+        // Use grouped items for calculation to match ProductEditScreen
+        return _uiState.value.groupedItems.sumOf { groupedItem ->
+            val firstItem = groupedItem.items.firstOrNull() ?: return@sumOf 0.0
+            val productPrice = firstItem.product.price * groupedItem.totalQuantity
+            val addonsPrice = firstItem.selectedAddons.values
+                .flatten()
+                .sumOf { it.price } * groupedItem.totalQuantity
+            productPrice + addonsPrice
         }
     }
     
