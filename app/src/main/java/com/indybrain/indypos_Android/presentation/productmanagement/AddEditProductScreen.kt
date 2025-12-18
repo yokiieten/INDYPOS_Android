@@ -95,6 +95,8 @@ fun AddEditProductScreen(
     productId: String? = null,
     onBackClick: () -> Unit = {},
     onSaveSuccess: () -> Unit = {},
+    onBarcodeScannerClick: () -> Unit = {},
+    scannedBarcode: String? = null,
     viewModel: AddEditProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -103,6 +105,38 @@ fun AddEditProductScreen(
     val context = LocalContext.current
     var showImagePickerDialog by remember { mutableStateOf(false) }
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    var processedBarcode by remember { mutableStateOf<String?>(null) }
+    
+    // Load product data if in edit mode
+    LaunchedEffect(productId) {
+        if (productId != null) {
+            viewModel.loadProduct(productId)
+        }
+    }
+    
+    // Handle scanned barcode
+    // Wait for loading to complete in edit mode, then update productCode
+    LaunchedEffect(scannedBarcode, uiState.isLoading) {
+        scannedBarcode?.let { barcode ->
+            // Only process if not already processed
+            if (barcode != processedBarcode) {
+                // In edit mode, wait for loading to complete before updating
+                if (isEditMode) {
+                    // Wait for loadProduct to finish (isLoading becomes false)
+                    if (uiState.isLoading) {
+                        return@LaunchedEffect
+                    }
+                    // Small delay to ensure state is stable
+                    kotlinx.coroutines.delay(100)
+                }
+                processedBarcode = barcode
+                viewModel.updateProductCode(barcode)
+            }
+        } ?: run {
+            // Clear processedBarcode when scannedBarcode is null
+            processedBarcode = null
+        }
+    }
     
     // Image picker launcher (Gallery)
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -123,13 +157,6 @@ fun AddEditProductScreen(
             cameraImageUri?.let { uri ->
                 viewModel.updateImageUrl(uri.toString())
             }
-        }
-    }
-    
-    // Load product data if in edit mode
-    LaunchedEffect(productId) {
-        if (productId != null) {
-            viewModel.loadProduct(productId)
         }
     }
     
@@ -216,7 +243,7 @@ fun AddEditProductScreen(
                         placeholder = { Text("กรุณากรอกรหัสสินค้า", color = PlaceholderText) },
                         singleLine = true,
                         trailingIcon = {
-                            IconButton(onClick = { /* TODO: Open barcode scanner */ }) {
+                            IconButton(onClick = onBarcodeScannerClick) {
                                 Icon(
                                     imageVector = Icons.Filled.QrCodeScanner,
                                     contentDescription = "สแกนบาร์โค้ด",

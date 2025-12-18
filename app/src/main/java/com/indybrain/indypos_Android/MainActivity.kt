@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
                     var scannedBarcode by remember { mutableStateOf<String?>(null) }
+                    var scannedBarcodeForProduct by remember { mutableStateOf<String?>(null) }
                     
                     NavHost(
                         navController = navController,
@@ -171,12 +173,17 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onProductClick = { productId, productName, isInCart ->
+                                    // Clear scannedBarcode before navigation to prevent re-trigger
+                                    scannedBarcode = null
                                     if (isInCart) {
                                         // Navigate to ProductEditScreen if product is in cart
                                         navController.navigate(NavRoutes.productEdit(productId, productName))
                                     } else {
                                         // Navigate to ProductDetailScreen if product is not in cart
-                                        navController.navigate(NavRoutes.productDetail(productId))
+                                        navController.navigate(NavRoutes.productDetail(productId)) {
+                                            // Ensure we can navigate back to MainProduct
+                                            launchSingleTop = true
+                                        }
                                     }
                                 },
                                 onCartClick = {
@@ -211,13 +218,24 @@ class MainActivity : ComponentActivity() {
                         }
                         
                         composable(NavRoutes.BarcodeScanner.route) {
+                            var sourceScreen by remember { mutableStateOf<String?>(null) }
+                            
+                            // Determine which screen we came from by checking the back stack
+                            LaunchedEffect(Unit) {
+                                sourceScreen = navController.previousBackStackEntry?.destination?.route
+                            }
+                            
                             com.indybrain.indypos_Android.presentation.barcodescanner.BarcodeScannerScreen(
                                 onBackClick = {
                                     navController.popBackStack()
                                 },
                                 onBarcodeScanned = { barcode ->
-                                    // Set scanned barcode and navigate back to MainProduct
-                                    scannedBarcode = barcode
+                                    // Set scanned barcode based on source screen
+                                    if (sourceScreen?.contains("add_edit_product") == true) {
+                                        scannedBarcodeForProduct = barcode
+                                    } else {
+                                        scannedBarcode = barcode
+                                    }
                                     navController.popBackStack()
                                 }
                             )
@@ -228,10 +246,23 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(navArgument("productId") {})
                         ) { backStackEntry ->
                             val productId = backStackEntry.arguments?.getString("productId") ?: ""
+                            // Clear scannedBarcode when entering ProductDetailScreen to prevent re-trigger
+                            LaunchedEffect(Unit) {
+                                scannedBarcode = null
+                            }
                             ProductDetailScreen(
                                 productId = productId,
                                 onBackClick = {
-                                    navController.popBackStack()
+                                    // Clear scannedBarcode before going back
+                                    scannedBarcode = null
+                                    // Check if we can pop back, otherwise navigate to MainProduct
+                                    if (!navController.popBackStack()) {
+                                        navController.navigate(NavRoutes.MainProduct.route) {
+                                            popUpTo(NavRoutes.Home.route) {
+                                                inclusive = false
+                                            }
+                                        }
+                                    }
                                 }
                             )
                         }
@@ -550,11 +581,18 @@ class MainActivity : ComponentActivity() {
                             AddEditProductScreen(
                                 productId = actualProductId,
                                 onBackClick = {
+                                    scannedBarcodeForProduct = null // Clear barcode when leaving
                                     navController.popBackStack()
                                 },
                                 onSaveSuccess = {
+                                    scannedBarcodeForProduct = null // Clear barcode after save
                                     navController.popBackStack()
-                                }
+                                },
+                                onBarcodeScannerClick = {
+                                    scannedBarcodeForProduct = null // Clear previous barcode
+                                    navController.navigate(NavRoutes.BarcodeScanner.route)
+                                },
+                                scannedBarcode = scannedBarcodeForProduct
                             )
                         }
                         

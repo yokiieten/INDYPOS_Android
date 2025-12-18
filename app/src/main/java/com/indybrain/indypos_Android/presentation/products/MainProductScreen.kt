@@ -109,6 +109,8 @@ fun MainProductScreen(
             // Only process if not already processed
             if (barcode != processedBarcode) {
                 processedBarcode = barcode
+                // Add small delay to ensure state is stable
+                kotlinx.coroutines.delay(100)
                 val product: ProductEntity? = viewModel.findProductByCode(barcode)
                 product?.let { foundProduct ->
                     // Product found - navigate to detail
@@ -116,12 +118,19 @@ fun MainProductScreen(
                     val cartQuantity = currentCartItems
                         .filter { it.productId == foundProduct.id }
                         .sumOf { it.quantity }
+                    // Clear processedBarcode before navigation to prevent re-trigger
+                    processedBarcode = null
                     onProductClick(foundProduct.id, foundProduct.name, cartQuantity > 0)
                 } ?: run {
                     // Product not found - show dialog
                     showProductNotFoundDialog = true
+                    // Clear processedBarcode after showing dialog
+                    processedBarcode = null
                 }
             }
+        } ?: run {
+            // Clear processedBarcode when scannedBarcode is null
+            processedBarcode = null
         }
     }
     
