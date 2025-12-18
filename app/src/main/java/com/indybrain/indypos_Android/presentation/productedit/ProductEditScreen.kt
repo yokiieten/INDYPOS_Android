@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.presentation.productedit
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -40,6 +42,7 @@ import coil.request.ImageRequest
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
@@ -68,6 +71,17 @@ fun ProductEditScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var itemToDelete by remember { mutableStateOf<GroupedCartItem?>(null) }
     
+    // Flag to prevent multiple dismiss calls
+    var isDismissing by remember { mutableStateOf(false) }
+    
+    // Safe dismiss function with debounce
+    val safeDismiss: () -> Unit = {
+        if (!isDismissing && itemToDelete == null) {
+            isDismissing = true
+            onDismiss()
+        }
+    }
+    
     LaunchedEffect(Unit) {
         viewModel.init()
     }
@@ -85,9 +99,10 @@ fun ProductEditScreen(
                 is ProductEditEvent.ItemDeleted -> {
                     // Check if no items left after deletion
                     // Wait a bit for state to update
-                    kotlinx.coroutines.delay(100)
+                    delay(100)
                     val currentState = viewModel.uiState.value
-                    if (currentState.groupedItems.isEmpty()) {
+                    if (currentState.groupedItems.isEmpty() && !isDismissing) {
+                        isDismissing = true
                         onDismiss()
                     }
                 }
@@ -102,8 +117,9 @@ fun ProductEditScreen(
     var hasInitialized by remember { mutableStateOf(false) }
     
     LaunchedEffect(uiState.groupedItems) {
-        if (hasInitialized && uiState.groupedItems.isEmpty() && itemToDelete == null) {
+        if (hasInitialized && uiState.groupedItems.isEmpty() && itemToDelete == null && !isDismissing) {
             // Only dismiss if we've initialized and items become empty
+            isDismissing = true
             onDismiss()
         }
         if (uiState.groupedItems.isNotEmpty()) {
@@ -117,11 +133,14 @@ fun ProductEditScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.5f))
-            .clickable(
-                onClick = onDismiss,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            )
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    // Only dismiss if not already dismissing and no dialog is showing
+                    if (!isDismissing && itemToDelete == null) {
+                        safeDismiss()
+                    }
+                }
+            }
     ) {
         Surface(
             modifier = Modifier
