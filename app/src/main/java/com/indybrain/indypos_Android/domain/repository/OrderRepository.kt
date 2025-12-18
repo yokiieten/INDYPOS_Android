@@ -19,6 +19,11 @@ interface OrderRepository {
     suspend fun getTodayOrderCount(): Int
     
     /**
+     * Number of cancelled orders created today (local time).
+     */
+    suspend fun getTodayCancelledOrderCount(): Int
+    
+    /**
      * Total cost of goods sold for today's orders, based on unitCost * quantity.
      */
     suspend fun getTodayCostOfExpenses(): Double

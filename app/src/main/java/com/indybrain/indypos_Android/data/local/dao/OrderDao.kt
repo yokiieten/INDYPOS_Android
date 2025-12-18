@@ -34,19 +34,30 @@ interface OrderDao {
     
     /**
      * Total sales for orders created "today" (local time).
+     * Excludes cancelled orders (statusRaw != 5).
      */
     @Query(
-        "SELECT SUM(total) FROM orders WHERE DATE(orderDate/1000, 'unixepoch') = DATE(datetime('now', 'localtime'))"
+        "SELECT SUM(total) FROM orders WHERE DATE(orderDate/1000, 'unixepoch') = DATE(datetime('now', 'localtime')) AND statusRaw != 5"
     )
     suspend fun getTodaySales(): Double?
     
     /**
      * Number of orders created "today" (local time).
+     * Excludes cancelled orders (statusRaw != 5).
      */
     @Query(
-        "SELECT COUNT(*) FROM orders WHERE DATE(orderDate/1000, 'unixepoch') = DATE(datetime('now', 'localtime'))"
+        "SELECT COUNT(*) FROM orders WHERE DATE(orderDate/1000, 'unixepoch') = DATE(datetime('now', 'localtime')) AND statusRaw != 5"
     )
     suspend fun getTodayOrderCount(): Int
+    
+    /**
+     * Number of cancelled orders created "today" (local time).
+     * Only includes cancelled orders (statusRaw == 5).
+     */
+    @Query(
+        "SELECT COUNT(*) FROM orders WHERE DATE(orderDate/1000, 'unixepoch') = DATE(datetime('now', 'localtime')) AND statusRaw == 5"
+    )
+    suspend fun getTodayCancelledOrderCount(): Int
     
     /**
      * Get unsynced orders count

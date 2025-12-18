@@ -85,13 +85,14 @@ class HomeViewModel @Inject constructor(
         val today = calendar.get(Calendar.DAY_OF_YEAR)
         val year = calendar.get(Calendar.YEAR)
         
-        // Filter today's orders
+        // Filter today's orders (exclude cancelled orders - statusRaw == 5)
         val todayOrders = orders.filter { order ->
             val orderCalendar = Calendar.getInstance().apply {
                 time = order.orderDate
             }
             orderCalendar.get(Calendar.DAY_OF_YEAR) == today &&
-            orderCalendar.get(Calendar.YEAR) == year
+            orderCalendar.get(Calendar.YEAR) == year &&
+            order.statusRaw != 5 // Exclude cancelled orders
         }
         
         val todaysSales = todayOrders.sumOf { it.total }

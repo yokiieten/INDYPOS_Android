@@ -111,21 +111,22 @@ class GraphViewModel @Inject constructor(
     
     /**
      * ดึงข้อมูลจริงจาก Room สำหรับช่วง "วันนี้"
-     * - todaySales: SUM(total) ของออเดอร์วันนี้
+     * - todaySales: SUM(total) ของออเดอร์วันนี้ (ไม่รวม cancelled)
      * - costOfExpenses: SUM(unitCost * quantity) ของ items วันนี้
-     * - ordersToday: จำนวนออเดอร์วันนี้
-     * - cancelledOrders: (ตอนนี้ยังไม่แยก cancelled, ใช้ 0 ไปก่อน)
+     * - ordersToday: จำนวนออเดอร์วันนี้ (ไม่รวม cancelled)
+     * - cancelledOrders: จำนวนออเดอร์ที่ยกเลิกวันนี้
      */
     private suspend fun loadTodayDataFromRoom() {
         val todaySales = orderRepository.getTodaySales()
         val ordersToday = orderRepository.getTodayOrderCount()
+        val cancelledOrders = orderRepository.getTodayCancelledOrderCount()
         val costOfExpenses = orderRepository.getTodayCostOfExpenses()
         
         val summary = GraphSummary(
             todaySales = todaySales,
             costOfExpenses = costOfExpenses,
             ordersToday = ordersToday,
-            cancelledOrders = 0, // ถ้าต้องการนับ cancelled แยก ค่อยเพิ่ม query เพิ่มเติมที่ OrderDao/Repository
+            cancelledOrders = cancelledOrders,
             totalSales = todaySales
         )
         
@@ -251,10 +252,13 @@ class GraphViewModel @Inject constructor(
             return
         }
         
-        // Summary
-        val totalSales = weekOrders.sumOf { it.total }
-        val orderCount = weekOrders.size
+        // Filter out cancelled orders for sales calculation
+        val activeWeekOrders = weekOrders.filter { it.statusRaw != 5 }
         val cancelledCount = weekOrders.count { it.statusRaw == 5 }
+        
+        // Summary (exclude cancelled orders from sales)
+        val totalSales = activeWeekOrders.sumOf { it.total }
+        val orderCount = activeWeekOrders.size
         
         // คำนวณต้นทุนจาก order items (unitCost * quantity)
         var totalCost = 0.0
@@ -271,9 +275,9 @@ class GraphViewModel @Inject constructor(
             totalSales = totalSales
         )
         
-        // กราฟผลรวมยอดขายรายวันในสัปดาห์
+        // กราฟผลรวมยอดขายรายวันในสัปดาห์ (exclude cancelled)
         val dayKeyFormatter = java.text.SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-        val salesByDayKey = weekOrders.groupBy { order ->
+        val salesByDayKey = activeWeekOrders.groupBy { order ->
             dayKeyFormatter.format(order.orderDate)
         }.mapValues { (_, dayOrders) ->
             dayOrders.sumOf { it.total }
@@ -291,11 +295,11 @@ class GraphViewModel @Inject constructor(
             calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
         
-        // ยอดตามช่องทาง (โอน / เงินสด) ในช่วง 1 สัปดาห์
-        val transferAmount = weekOrders
+        // ยอดตามช่องทาง (โอน / เงินสด) ในช่วง 1 สัปดาห์ (exclude cancelled)
+        val transferAmount = activeWeekOrders
             .filter { it.paymentTypeRaw == 1 } // 1 = transfer
             .sumOf { it.total }
-        val cashAmount = weekOrders
+        val cashAmount = activeWeekOrders
             .filter { it.paymentTypeRaw == 0 } // 0 = cash
             .sumOf { it.total }
         val revenueComparison = RevenueComparison(
@@ -312,7 +316,7 @@ class GraphViewModel @Inject constructor(
         )
         
         val productMap = mutableMapOf<String, ProductAgg>()
-        for (order in weekOrders) {
+        for (order in activeWeekOrders) {
             val items = orderRepository.getOrderItems(order.id)
             items.forEach { item ->
                 val key = item.productId ?: item.productName
@@ -415,13 +419,16 @@ class GraphViewModel @Inject constructor(
             return
         }
         
-        // Summary
-        val totalSales = monthOrders.sumOf { it.total }
-        val orderCount = monthOrders.size
+        // Filter out cancelled orders for sales calculation
+        val activeMonthOrders = monthOrders.filter { it.statusRaw != 5 }
         val cancelledCount = monthOrders.count { it.statusRaw == 5 }
         
+        // Summary (exclude cancelled orders from sales)
+        val totalSales = activeMonthOrders.sumOf { it.total }
+        val orderCount = activeMonthOrders.size
+        
         var totalCost = 0.0
-        for (order in monthOrders) {
+        for (order in activeMonthOrders) {
             val items = orderRepository.getOrderItems(order.id)
             totalCost += items.sumOf { (it.unitCost ?: 0.0) * it.quantity }
         }
@@ -434,15 +441,17 @@ class GraphViewModel @Inject constructor(
             totalSales = totalSales
         )
         
-        // กราฟ W1-W4 แบ่งตามวันที่ภายในเดือน
+        // กราฟ W1-W4 แบ่งตามวันที่ภายในเดือน (exclude cancelled)
         val salesByWeekIndex = DoubleArray(4) { 0.0 }
-        calendar.time = monthOrders.first().orderDate
-        monthOrders.forEach { order ->
-            calendar.time = order.orderDate
-            val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
-            var weekIndex = (dayOfMonth - 1) / 7 // 0-based
-            if (weekIndex > 3) weekIndex = 3
-            salesByWeekIndex[weekIndex] += order.total
+        if (activeMonthOrders.isNotEmpty()) {
+            calendar.time = activeMonthOrders.first().orderDate
+            activeMonthOrders.forEach { order ->
+                calendar.time = order.orderDate
+                val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+                var weekIndex = (dayOfMonth - 1) / 7 // 0-based
+                if (weekIndex > 3) weekIndex = 3
+                salesByWeekIndex[weekIndex] += order.total
+            }
         }
         
         val chartData = listOf(
@@ -452,11 +461,11 @@ class GraphViewModel @Inject constructor(
             ChartDataPoint("W4", salesByWeekIndex[3])
         )
         
-        // ยอดตามช่องทางของทั้งเดือน
-        val transferAmount = monthOrders
+        // ยอดตามช่องทางของทั้งเดือน (exclude cancelled)
+        val transferAmount = activeMonthOrders
             .filter { it.paymentTypeRaw == 1 }
             .sumOf { it.total }
-        val cashAmount = monthOrders
+        val cashAmount = activeMonthOrders
             .filter { it.paymentTypeRaw == 0 }
             .sumOf { it.total }
         val revenueComparison = RevenueComparison(
@@ -473,7 +482,7 @@ class GraphViewModel @Inject constructor(
         )
         
         val productMap = mutableMapOf<String, ProductAggMonth>()
-        for (order in monthOrders) {
+        for (order in activeMonthOrders) {
             val items = orderRepository.getOrderItems(order.id)
             items.forEach { item ->
                 val key = item.productId ?: item.productName
@@ -571,13 +580,16 @@ class GraphViewModel @Inject constructor(
             return
         }
         
-        // Summary
-        val totalSales = rangeOrders.sumOf { it.total }
-        val orderCount = rangeOrders.size
+        // Filter out cancelled orders for sales calculation
+        val activeRangeOrders = rangeOrders.filter { it.statusRaw != 5 }
         val cancelledCount = rangeOrders.count { it.statusRaw == 5 }
         
+        // Summary (exclude cancelled orders from sales)
+        val totalSales = activeRangeOrders.sumOf { it.total }
+        val orderCount = activeRangeOrders.size
+        
         var totalCost = 0.0
-        for (order in rangeOrders) {
+        for (order in activeRangeOrders) {
             val items = orderRepository.getOrderItems(order.id)
             totalCost += items.sumOf { (it.unitCost ?: 0.0) * it.quantity }
         }
@@ -590,7 +602,7 @@ class GraphViewModel @Inject constructor(
             totalSales = totalSales
         )
         
-        // กราฟเป็นช่วงสัปดาห์ (W-like) โดยใช้วันที่เริ่มต้นเป็นจุดอ้างอิง
+        // กราฟเป็นช่วงสัปดาห์ (W-like) โดยใช้วันที่เริ่มต้นเป็นจุดอ้างอิง (exclude cancelled)
         val calendar = Calendar.getInstance()
         calendar.time = startDate
         calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -614,7 +626,7 @@ class GraphViewModel @Inject constructor(
         }
         
         val chartData = buckets.map { (bStart, bEnd) ->
-            val bucketSales = rangeOrders.filter { order ->
+            val bucketSales = activeRangeOrders.filter { order ->
                 order.orderDate >= bStart && order.orderDate <= bEnd
             }.sumOf { it.total }
             
@@ -622,11 +634,11 @@ class GraphViewModel @Inject constructor(
             ChartDataPoint(labelFormat.format(bStart), bucketSales)
         }
         
-        // ช่องทางชำระเงินทั้งช่วง
-        val transferAmount = rangeOrders
+        // ช่องทางชำระเงินทั้งช่วง (exclude cancelled)
+        val transferAmount = activeRangeOrders
             .filter { it.paymentTypeRaw == 1 }
             .sumOf { it.total }
-        val cashAmount = rangeOrders
+        val cashAmount = activeRangeOrders
             .filter { it.paymentTypeRaw == 0 }
             .sumOf { it.total }
         val revenueComparison = RevenueComparison(
@@ -643,7 +655,7 @@ class GraphViewModel @Inject constructor(
         )
         
         val productMap = mutableMapOf<String, ProductAggCustom>()
-        for (order in rangeOrders) {
+        for (order in activeRangeOrders) {
             val items = orderRepository.getOrderItems(order.id)
             items.forEach { item ->
                 val key = item.productId ?: item.productName
