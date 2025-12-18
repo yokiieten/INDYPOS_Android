@@ -141,51 +141,77 @@ class ProductDetailViewModel @Inject constructor(
             // Get existing cart items for this product
             val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
             
-            // If editing (cart items exist), delete them first
-            if (existingCartItems.isNotEmpty()) {
-                existingCartItems.forEach { cartItem ->
-                    cartRepository.deleteCartItem(cartItem.id)
+            // Create key for current selection (same logic as GetGroupedCartItemsUseCase)
+            val currentSpecialRequest = currentState.specialRequest ?: ""
+            val sortedGroups = currentState.selectedAddons.keys.sorted()
+            val addonsKey = sortedGroups.joinToString("|") { groupId ->
+                val addonIds = currentState.selectedAddons[groupId]
+                    ?.sorted()
+                    ?.joinToString(",") ?: ""
+                "$groupId:$addonIds"
+            }
+            val currentKey = "${product.id}|$currentSpecialRequest|$addonsKey"
+            
+            // Find matching cart item (same product, addons, and special request)
+            val matchingCartItem = existingCartItems.find { cartItem ->
+                val itemSpecialRequest = cartItem.specialRequest ?: ""
+                val itemSortedGroups = cartItem.selectedAddons.keys.sorted()
+                val itemAddonsKey = itemSortedGroups.joinToString("|") { groupId ->
+                    val addonIds = cartItem.selectedAddons[groupId]
+                        ?.map { it.id }
+                        ?.sorted()
+                        ?.joinToString(",") ?: ""
+                    "$groupId:$addonIds"
                 }
+                val itemKey = "${cartItem.product.id}|$itemSpecialRequest|$itemAddonsKey"
+                itemKey == currentKey
             }
             
-            // Calculate addon price
-            val addonPrice = currentState.selectedAddons.values.flatten().sumOf { addonId ->
-                currentState.addonsByGroup.values.flatten().find { it.id == addonId }?.price ?: 0.0
-            }
-            val unitPrice = product.price + addonPrice
-            
-            // Prepare addons
-            val cartAddons = mutableListOf<CartAddonEntity>()
-            currentState.selectedAddons.forEach { (groupId, addonIds) ->
-                val addonGroup = currentState.addonGroups.find { it.id == groupId }
-                addonIds.forEach { addonId ->
-                    val addon = currentState.addonsByGroup[groupId]?.find { it.id == addonId }
-                    if (addon != null && addonGroup != null) {
-                        cartAddons.add(
-                            CartAddonEntity(
-                                cartItemId = "", // Will be set by repository (temporary empty string)
-                                addonId = addon.id,
-                                addonName = addon.name,
-                                addonPrice = addon.price,
-                                addonGroupId = addonGroup.id,
-                                addonGroupName = addonGroup.name
+            if (matchingCartItem != null) {
+                // If matching item exists, increase quantity instead of adding new item
+                val newQuantity = matchingCartItem.quantity + currentState.quantity
+                cartRepository.updateCartItemQuantity(matchingCartItem.id, newQuantity)
+            } else {
+                // No matching item found, add new item to cart
+                // Calculate addon price
+                val addonPrice = currentState.selectedAddons.values.flatten().sumOf { addonId ->
+                    currentState.addonsByGroup.values.flatten().find { it.id == addonId }?.price ?: 0.0
+                }
+                val unitPrice = product.price + addonPrice
+                
+                // Prepare addons
+                val cartAddons = mutableListOf<CartAddonEntity>()
+                currentState.selectedAddons.forEach { (groupId, addonIds) ->
+                    val addonGroup = currentState.addonGroups.find { it.id == groupId }
+                    addonIds.forEach { addonId ->
+                        val addon = currentState.addonsByGroup[groupId]?.find { it.id == addonId }
+                        if (addon != null && addonGroup != null) {
+                            cartAddons.add(
+                                CartAddonEntity(
+                                    cartItemId = "", // Will be set by repository (temporary empty string)
+                                    addonId = addon.id,
+                                    addonName = addon.name,
+                                    addonPrice = addon.price,
+                                    addonGroupId = addonGroup.id,
+                                    addonGroupName = addonGroup.name
+                                )
                             )
-                        )
+                        }
                     }
                 }
+                
+                // Add to cart
+                cartRepository.addToCart(
+                    productId = product.id,
+                    productName = product.name,
+                    productImageUrl = product.imageUrl,
+                    productColorHex = product.selectedColorHex,
+                    unitPrice = unitPrice,
+                    quantity = currentState.quantity,
+                    specialRequest = currentState.specialRequest.takeIf { it.isNotBlank() },
+                    addons = cartAddons
+                )
             }
-            
-            // Add to cart (this will be a new item or replace the deleted ones)
-            cartRepository.addToCart(
-                productId = product.id,
-                productName = product.name,
-                productImageUrl = product.imageUrl,
-                productColorHex = product.selectedColorHex,
-                unitPrice = unitPrice,
-                quantity = currentState.quantity,
-                specialRequest = currentState.specialRequest.takeIf { it.isNotBlank() },
-                addons = cartAddons
-            )
         }
     }
 }

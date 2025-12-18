@@ -186,6 +186,14 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 },
+                                onProductClickFromScan = { productId, productName ->
+                                    // Always navigate to ProductDetailScreen when scanned (even if in cart)
+                                    scannedBarcode = null
+                                    navController.navigate(NavRoutes.productDetail(productId)) {
+                                        // Ensure we can navigate back to MainProduct
+                                        launchSingleTop = true
+                                    }
+                                },
                                 onCartClick = {
                                     navController.navigate(NavRoutes.OrderProduct.route)
                                 },

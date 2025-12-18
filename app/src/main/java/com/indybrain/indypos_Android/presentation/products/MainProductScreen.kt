@@ -91,6 +91,7 @@ import java.text.DecimalFormat
 fun MainProductScreen(
     onBackClick: () -> Unit = {},
     onProductClick: (productId: String, productName: String, isInCart: Boolean) -> Unit = { _, _, _ -> },
+    onProductClickFromScan: (productId: String, productName: String) -> Unit = { _, _ -> },
     onCartClick: () -> Unit = {},
     onBarcodeScannerClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
@@ -113,14 +114,10 @@ fun MainProductScreen(
                 kotlinx.coroutines.delay(100)
                 val product: ProductEntity? = viewModel.findProductByCode(barcode)
                 product?.let { foundProduct ->
-                    // Product found - navigate to detail
-                    val currentCartItems = cartItems
-                    val cartQuantity = currentCartItems
-                        .filter { it.productId == foundProduct.id }
-                        .sumOf { it.quantity }
+                    // Product found - navigate to detail (always go to ProductDetailScreen when scanned)
                     // Clear processedBarcode before navigation to prevent re-trigger
                     processedBarcode = null
-                    onProductClick(foundProduct.id, foundProduct.name, cartQuantity > 0)
+                    onProductClickFromScan(foundProduct.id, foundProduct.name)
                 } ?: run {
                     // Product not found - show dialog
                     showProductNotFoundDialog = true
