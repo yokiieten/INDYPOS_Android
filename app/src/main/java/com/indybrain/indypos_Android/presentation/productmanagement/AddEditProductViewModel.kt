@@ -530,22 +530,24 @@ class AddEditProductViewModel @Inject constructor(
                         try {
                             val uri = android.net.Uri.parse(state.imageUrl)
                             val uploadResult = productRepository.uploadProductImage(uri)
-                            uploadResult.onSuccess { uploadedUrl ->
-                                finalImageUrl = uploadedUrl
-                                // Change loading message to saving product
-                                _uiState.update { 
-                                    it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
-                                }
-                            }.onFailure { error ->
+                            // Handle the result - uploadProductImage is suspend so it's already awaited
+                            val uploadedUrl = uploadResult.getOrNull()
+                            if (uploadedUrl == null) {
+                                val error = uploadResult.exceptionOrNull()
                                 _uiState.update { 
                                     it.copy(
                                         isLoading = false,
                                         loadingMessage = null,
                                         showImageUploadErrorDialog = true,
-                                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
+                                        errorMessage = error?.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
                                     )
                                 }
                                 return@launch
+                            }
+                            finalImageUrl = uploadedUrl
+                            // Change loading message to saving product
+                            _uiState.update { 
+                                it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
                             }
                         } catch (e: Exception) {
                             _uiState.update { 
@@ -644,21 +646,23 @@ class AddEditProductViewModel @Inject constructor(
                         try {
                             val uri = android.net.Uri.parse(state.imageUrl)
                             val uploadResult = productRepository.uploadProductImage(uri)
-                            uploadResult.onSuccess { uploadedUrl ->
-                                finalImageUrl = uploadedUrl
-                                _uiState.update { 
-                                    it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
-                                }
-                            }.onFailure { error ->
+                            // Handle the result - uploadProductImage is suspend so it's already awaited
+                            val uploadedUrl = uploadResult.getOrNull()
+                            if (uploadedUrl == null) {
+                                val error = uploadResult.exceptionOrNull()
                                 _uiState.update { 
                                     it.copy(
                                         isLoading = false,
                                         loadingMessage = null,
                                         showImageUploadErrorDialog = true,
-                                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
+                                        errorMessage = error?.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
                                     )
                                 }
                                 return@launch
+                            }
+                            finalImageUrl = uploadedUrl
+                            _uiState.update { 
+                                it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
                             }
                         } catch (e: Exception) {
                             _uiState.update { 

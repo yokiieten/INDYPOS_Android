@@ -84,6 +84,7 @@ import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
+import com.indybrain.indypos_Android.core.config.AppConfig
 
 /**
  * Add/Edit Product Screen
@@ -155,8 +156,27 @@ fun AddEditProductScreen(
         if (success && cameraImageUri != null) {
             // Image captured successfully
             cameraImageUri?.let { uri ->
-                viewModel.updateImageUrl(uri.toString())
+                // Verify the URI is accessible before updating
+                try {
+                    val uriString = uri.toString()
+                    // For FileProvider URIs (content://), check if we can read it
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    if (inputStream != null) {
+                        inputStream.close()
+                        // URI is accessible, update image URL
+                        viewModel.updateImageUrl(uriString)
+                    } else {
+                        android.util.Log.e("AddEditProduct", "Cannot read image from URI: $uriString")
+                    }
+                } catch (e: Exception) {
+                    // Handle error - log it but still try to update
+                    android.util.Log.e("AddEditProduct", "Error handling camera image: ${e.message}")
+                    // Still try to update the URI - might work for display
+                    viewModel.updateImageUrl(uri.toString())
+                }
             }
+        } else {
+            android.util.Log.d("AddEditProduct", "Camera capture failed or URI is null. success=$success, uri=$cameraImageUri")
         }
     }
     
@@ -384,15 +404,29 @@ fun AddEditProductScreen(
                             ) {
                                 val imageUrl = uiState.imageUrl?.takeIf { it.isNotBlank() }
                                 if (!imageUrl.isNullOrBlank()) {
+                                    // Determine if it's a local URI or a server URL
+                                    val imageData = if (imageUrl.startsWith("content://") || imageUrl.startsWith("file://")) {
+                                        // Local URI - use Uri object directly
+                                        Uri.parse(imageUrl)
+                                    } else if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+                                        // Already a full URL
+                                        imageUrl
+                                    } else {
+                                        // Relative path - build full URL
+                                        AppConfig.buildImageUrl(imageUrl)
+                                    }
+                                    
                                     // Show selected image
                                     AsyncImage(
                                         model = ImageRequest.Builder(context)
-                                            .data(imageUrl)
+                                            .data(imageData)
                                             .crossfade(true)
                                             .build(),
                                         contentDescription = "รูปภาพสินค้า",
                                         modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
+                                        contentScale = ContentScale.Crop,
+                                        error = painterResource(id = R.drawable.logo_appstore),
+                                        placeholder = painterResource(id = R.drawable.logo_appstore)
                                     )
                                 } else {
                                     // Show placeholder text
@@ -868,21 +902,28 @@ fun AddEditProductScreen(
                     showImagePickerDialog = false
                     // Open camera
                     try {
-                        val photoFile = File(context.cacheDir, "temp_photo.jpg")
+                        // Create unique filename to avoid conflicts
+                        val timestamp = System.currentTimeMillis()
+                        val photoFile = File(context.cacheDir, "temp_photo_$timestamp.jpg")
+                        // Ensure parent directory exists
+                        photoFile.parentFile?.mkdirs()
+                        
                         val photoUri = FileProvider.getUriForFile(
                             context,
                             "${context.packageName}.fileprovider",
                             photoFile
                         )
                         cameraImageUri = photoUri
+                        android.util.Log.d("AddEditProduct", "Opening camera with URI: $photoUri, File: ${photoFile.absolutePath}")
                         cameraLauncher.launch(photoUri)
                     } catch (e: Exception) {
-                        // Fallback to simple camera intent
+                        android.util.Log.e("AddEditProduct", "Error opening camera: ${e.message}", e)
+                        // Fallback to simple camera intent (won't work for getting result)
                         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
                         try {
                             context.startActivity(intent)
-                        } catch (e: Exception) {
-                            // Handle error - show message to user
+                        } catch (e2: Exception) {
+                            android.util.Log.e("AddEditProduct", "Error starting camera intent: ${e2.message}", e2)
                         }
                     }
                 },

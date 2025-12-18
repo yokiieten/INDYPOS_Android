@@ -931,6 +931,17 @@ class ProductRepositoryImpl @Inject constructor(
                 return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
             }
             
+            // Verify URI is accessible
+            try {
+                val inputStream = context.contentResolver.openInputStream(imageUri)
+                if (inputStream == null) {
+                    return Result.failure(Exception("ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาลองใหม่อีกครั้ง"))
+                }
+                inputStream.close()
+            } catch (e: Exception) {
+                return Result.failure(Exception("ไม่สามารถเข้าถึงไฟล์รูปภาพได้: ${e.message}"))
+            }
+            
             // Resize image to 100x100 before upload
             val resizedBitmap = com.indybrain.indypos_Android.core.utils.ImageUtils.resizeImage(
                 imageUri = imageUri,
@@ -940,7 +951,7 @@ class ProductRepositoryImpl @Inject constructor(
             )
             
             if (resizedBitmap == null) {
-                return Result.failure(Exception("ไม่สามารถประมวลผลรูปภาพได้"))
+                return Result.failure(Exception("ไม่สามารถประมวลผลรูปภาพได้ กรุณาตรวจสอบว่าไฟล์รูปภาพถูกต้อง"))
             }
             
             // Save resized bitmap to temporary file
