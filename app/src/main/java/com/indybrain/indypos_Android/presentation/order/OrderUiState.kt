@@ -7,8 +7,11 @@ import com.indybrain.indypos_Android.domain.model.Order
  */
 data class OrderUiState(
     val isLoading: Boolean = false,
+    val allOrders: List<Order> = emptyList(),
     val completedOrders: List<Order> = emptyList(),
     val cancelledOrders: List<Order> = emptyList(),
+    val customStartDateMillis: Long? = null,
+    val customEndDateMillis: Long? = null,
     val selectedTab: OrderTab = OrderTab.COMPLETED,
     val filterOption: OrderFilter = OrderFilter.ALL,
     val sortOption: OrderSort = OrderSort.LATEST,

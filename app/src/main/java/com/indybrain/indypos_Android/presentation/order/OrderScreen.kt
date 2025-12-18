@@ -35,6 +35,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,12 +66,18 @@ import com.indybrain.indypos_Android.domain.model.Order
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.GreenComplete
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
+import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import android.app.DatePickerDialog
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderScreen(
     viewModel: OrderViewModel = hiltViewModel(),
@@ -77,6 +86,9 @@ fun OrderScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
+    var showCustomRangeSheet by rememberSaveable { mutableStateOf(false) }
+    var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     
     // Sync pager state with selected tab
     LaunchedEffect(uiState.selectedTab) {
@@ -138,7 +150,12 @@ fun OrderScreen(
                 filterOption = uiState.filterOption,
                 sortOption = uiState.sortOption,
                 onFilterSelected = { viewModel.selectFilter(it) },
-                onSortSelected = { viewModel.selectSort(it) }
+                onSortSelected = { viewModel.selectSort(it) },
+                onSelectDateRangeClick = {
+                    customStartDateMillis = uiState.customStartDateMillis
+                    customEndDateMillis = uiState.customEndDateMillis
+                    showCustomRangeSheet = true
+                }
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -158,6 +175,157 @@ fun OrderScreen(
                         orders = uiState.cancelledOrders,
                         isLoading = uiState.isLoading,
                         onOrderClick = onOrderClick
+                    )
+                }
+            }
+        }
+    }
+
+    if (showCustomRangeSheet) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val context = LocalContext.current
+
+        fun openDatePicker(isStart: Boolean) {
+            val calendar = Calendar.getInstance()
+            val currentMillis = if (isStart) customStartDateMillis else customEndDateMillis
+            if (currentMillis != null) {
+                calendar.timeInMillis = currentMillis
+            }
+            val year = calendar.get(Calendar.YEAR)
+            val month = calendar.get(Calendar.MONTH)
+            val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+            DatePickerDialog(
+                context,
+                { _, y, m, d ->
+                    val cal = Calendar.getInstance().apply {
+                        set(y, m, d, 0, 0, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    if (isStart) {
+                        customStartDateMillis = cal.timeInMillis
+                    } else {
+                        customEndDateMillis = cal.timeInMillis
+                    }
+                },
+                year,
+                month,
+                day
+            ).show()
+        }
+
+        ModalBottomSheet(
+            onDismissRequest = { showCustomRangeSheet = false },
+            sheetState = sheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Text(
+                    text = "เลือกช่วงวันที่",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryText,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                )
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "วันที่เริ่มต้น:",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .background(Color(0xFFF2F2F7), RoundedCornerShape(10.dp))
+                            .clickable { openDatePicker(isStart = true) }
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = formatOrderCustomDate(customStartDateMillis),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                    }
+
+                    Text(
+                        text = "วันที่สิ้นสุด:",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .background(Color(0xFFF2F2F7), RoundedCornerShape(10.dp))
+                            .clickable { openDatePicker(isStart = false) }
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = formatOrderCustomDate(customEndDateMillis),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "ยกเลิก",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton,
+                        modifier = Modifier.clickable {
+                            showCustomRangeSheet = false
+                        }
+                    )
+                    Text(
+                        text = "ตกลง",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton,
+                        modifier = Modifier.clickable {
+                            if (customStartDateMillis != null && customEndDateMillis != null) {
+                                viewModel.setCustomRange(
+                                    customStartDateMillis!!,
+                                    customEndDateMillis!!
+                                )
+                                showCustomRangeSheet = false
+                            }
+                        }
                     )
                 }
             }
@@ -266,7 +434,8 @@ private fun OrderFilterButton(
     filterOption: OrderFilter,
     sortOption: OrderSort,
     onFilterSelected: (OrderFilter) -> Unit,
-    onSortSelected: (OrderSort) -> Unit
+    onSortSelected: (OrderSort) -> Unit,
+    onSelectDateRangeClick: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     
@@ -471,8 +640,8 @@ private fun OrderFilterButton(
                     }
                 },
                 onClick = {
-                    onFilterSelected(OrderFilter.SELECT_DATE)
                     expanded = false
+                    onSelectDateRangeClick()
                 }
             )
             
@@ -645,6 +814,18 @@ private fun getSortText(sort: OrderSort): String {
         OrderSort.OLDEST -> "เก่าสุด"
         OrderSort.HIGHEST_AMOUNT -> "ยอดสูงสุด"
     }
+}
+
+private fun formatOrderCustomDate(millis: Long?): String {
+    if (millis == null) return ""
+    val calendar = Calendar.getInstance().apply {
+        timeInMillis = millis
+    }
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val monthFormat = SimpleDateFormat("MMM", Locale.ENGLISH)
+    val monthStr = monthFormat.format(calendar.time)
+    val yearBE = calendar.get(Calendar.YEAR) + 543
+    return String.format("%02d %s BE %d", day, monthStr, yearBE)
 }
 
 @Composable

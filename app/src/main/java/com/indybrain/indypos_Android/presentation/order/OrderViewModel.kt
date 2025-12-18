@@ -28,6 +28,10 @@ class OrderViewModel @Inject constructor(
         refreshOrders()
     }
     
+    /**
+     * Observe all orders from repository and keep an in-memory list.
+     * Filtering / sorting is done in-memory based on [OrderUiState.filterOption] and [OrderUiState.sortOption].
+     */
     private fun observeOrders() {
         viewModelScope.launch {
             orderRepository.getOrders().collect { result ->
@@ -44,16 +48,19 @@ class OrderViewModel @Inject constructor(
                         )
                     }
                     
-                    // แท็บ "เสร็จสิ้น" แสดงทุกสถานะที่ไม่ใช่ยกเลิก
-                    val completedOrders = orders.filter { it.status != OrderStatus.CANCELLED }
-                    // แท็บ "ยกเลิก" แสดงเฉพาะสถานะยกเลิก (code = 5)
-                    val cancelledOrders = orders.filter { it.status == OrderStatus.CANCELLED }
-                    
                     _uiState.update { current ->
+                        val (completed, cancelled) = filterAndSortOrders(
+                            orders = orders,
+                            filter = current.filterOption,
+                            sort = current.sortOption,
+                            customStartMillis = current.customStartDateMillis,
+                            customEndMillis = current.customEndDateMillis
+                        )
                         current.copy(
                             isLoading = false,
-                            completedOrders = completedOrders,
-                            cancelledOrders = cancelledOrders
+                            allOrders = orders,
+                            completedOrders = completed,
+                            cancelledOrders = cancelled
                         )
                     }
                 }.onFailure {
@@ -70,11 +77,37 @@ class OrderViewModel @Inject constructor(
     }
     
     fun selectFilter(filter: OrderFilter) {
-        _uiState.update { it.copy(filterOption = filter) }
+        _uiState.update { current ->
+            val (completed, cancelled) = filterAndSortOrders(
+                orders = current.allOrders,
+                filter = filter,
+                sort = current.sortOption,
+                customStartMillis = current.customStartDateMillis,
+                customEndMillis = current.customEndDateMillis
+            )
+            current.copy(
+                filterOption = filter,
+                completedOrders = completed,
+                cancelledOrders = cancelled
+            )
+        }
     }
     
     fun selectSort(sort: OrderSort) {
-        _uiState.update { it.copy(sortOption = sort) }
+        _uiState.update { current ->
+            val (completed, cancelled) = filterAndSortOrders(
+                orders = current.allOrders,
+                filter = current.filterOption,
+                sort = sort,
+                customStartMillis = current.customStartDateMillis,
+                customEndMillis = current.customEndDateMillis
+            )
+            current.copy(
+                sortOption = sort,
+                completedOrders = completed,
+                cancelledOrders = cancelled
+            )
+        }
     }
     
     fun refreshOrders() {
@@ -83,7 +116,133 @@ class OrderViewModel @Inject constructor(
             orderRepository.refreshOrders()
         }
     }
-    
+
+    /**
+     * ตั้งค่าช่วงวันที่แบบกำหนดเอง (ใช้กับ filter SELECT_DATE)
+     */
+    fun setCustomRange(startMillis: Long, endMillis: Long) {
+        val normalizedStart = minOf(startMillis, endMillis)
+        val normalizedEnd = maxOf(startMillis, endMillis)
+
+        _uiState.update { current ->
+            val (completed, cancelled) = filterAndSortOrders(
+                orders = current.allOrders,
+                filter = OrderFilter.SELECT_DATE,
+                sort = current.sortOption,
+                customStartMillis = normalizedStart,
+                customEndMillis = normalizedEnd
+            )
+            current.copy(
+                filterOption = OrderFilter.SELECT_DATE,
+                customStartDateMillis = normalizedStart,
+                customEndDateMillis = normalizedEnd,
+                completedOrders = completed,
+                cancelledOrders = cancelled
+            )
+        }
+    }
+
+    /**
+     * Apply date filter + sorting on the given order list.
+     * Date ranges are calculated in Asia/Bangkok timezone to match UI expectations.
+     */
+    private fun filterAndSortOrders(
+        orders: List<Order>,
+        filter: OrderFilter,
+        sort: OrderSort,
+        customStartMillis: Long? = null,
+        customEndMillis: Long? = null
+    ): Pair<List<Order>, List<Order>> {
+        if (orders.isEmpty()) {
+            return emptyList<Order>() to emptyList()
+        }
+
+        val timeZone = java.util.TimeZone.getTimeZone("Asia/Bangkok")
+        val calendar = Calendar.getInstance(timeZone)
+
+        val filtered = when (filter) {
+            OrderFilter.ALL -> orders
+
+            OrderFilter.SELECT_DATE -> {
+                if (customStartMillis == null || customEndMillis == null) {
+                    orders
+                } else {
+                    calendar.timeInMillis = customStartMillis
+                    setToStartOfDay(calendar)
+                    val start = calendar.timeInMillis
+
+                    calendar.timeInMillis = customEndMillis
+                    setToEndOfDay(calendar)
+                    val end = calendar.timeInMillis
+
+                    orders.filter { it.createdAt.time in start..end }
+                }
+            }
+
+            OrderFilter.TODAY -> {
+                calendar.timeInMillis = System.currentTimeMillis()
+                setToStartOfDay(calendar)
+                val start = calendar.timeInMillis
+                setToEndOfDay(calendar)
+                val end = calendar.timeInMillis
+                orders.filter { it.createdAt.time in start..end }
+            }
+
+            OrderFilter.THIS_WEEK -> {
+                calendar.timeInMillis = System.currentTimeMillis()
+                calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek) // start of week
+                setToStartOfDay(calendar)
+                val start = calendar.timeInMillis
+
+                calendar.add(Calendar.WEEK_OF_YEAR, 1)
+                calendar.add(Calendar.MILLISECOND, -1)
+                val end = calendar.timeInMillis
+
+                orders.filter { it.createdAt.time in start..end }
+            }
+
+            OrderFilter.THIS_MONTH -> {
+                calendar.timeInMillis = System.currentTimeMillis()
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                setToStartOfDay(calendar)
+                val start = calendar.timeInMillis
+
+                calendar.add(Calendar.MONTH, 1)
+                calendar.add(Calendar.MILLISECOND, -1)
+                val end = calendar.timeInMillis
+
+                orders.filter { it.createdAt.time in start..end }
+            }
+        }
+
+        val sorted = when (sort) {
+            OrderSort.LATEST -> filtered.sortedByDescending { it.createdAt.time }
+            OrderSort.OLDEST -> filtered.sortedBy { it.createdAt.time }
+            OrderSort.HIGHEST_AMOUNT -> filtered.sortedByDescending { it.totalAmount }
+        }
+
+        // แท็บ "เสร็จสิ้น" แสดงทุกสถานะที่ไม่ใช่ยกเลิก
+        val completedOrders = sorted.filter { it.status != OrderStatus.CANCELLED }
+        // แท็บ "ยกเลิก" แสดงเฉพาะสถานะยกเลิก (code = 5)
+        val cancelledOrders = sorted.filter { it.status == OrderStatus.CANCELLED }
+
+        return completedOrders to cancelledOrders
+    }
+
+    private fun setToStartOfDay(calendar: Calendar) {
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+    }
+
+    private fun setToEndOfDay(calendar: Calendar) {
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+    }
+
     private fun createDate(year: Int, month: Int, day: Int, hour: Int, minute: Int): Date {
         val calendar = Calendar.getInstance()
         calendar.set(year, month - 1, day, hour, minute, 0)
