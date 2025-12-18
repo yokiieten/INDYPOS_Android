@@ -16,9 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -80,6 +84,8 @@ fun ProductDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var shouldAddToCart by remember { mutableStateOf(false) }
+    var isImageViewerVisible by remember { mutableStateOf(false) }
+    var isExiting by remember { mutableStateOf(false) }
     
     LaunchedEffect(productId) {
         viewModel.loadProduct(productId)
@@ -99,16 +105,28 @@ fun ProductDetailScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(16.dp)
             ) {
                 IconButton(
-                    onClick = onBackClick,
+                    onClick = {
+                        // ถ้ามี image viewer ให้ปิดแค่ viewer ก่อน
+                        if (isImageViewerVisible) {
+                            isImageViewerVisible = false
+                            return@IconButton
+                        }
+                        // กันกดรัวๆ เด้งย้อนหลายหน้า
+                        if (!isExiting) {
+                            isExiting = true
+                            onBackClick()
+                        }
+                    },
                     modifier = Modifier.align(Alignment.CenterStart)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Close,
                         contentDescription = "ปิด",
-                        tint = PrimaryText
+                        tint = if (isImageViewerVisible) Color.White else PrimaryText
                     )
                 }
             }
@@ -143,27 +161,62 @@ fun ProductDetailScreen(
                 }
             }
             else -> {
-                ProductDetailContent(
-                    product = uiState.product!!,
-                    addonGroups = uiState.addonGroups,
-                    addonsByGroup = uiState.addonsByGroup,
-                    selectedAddons = uiState.selectedAddons,
-                    quantity = uiState.quantity,
-                    specialRequest = uiState.specialRequest,
-                    onAddonToggle = { addonGroupId, addonId ->
-                        viewModel.toggleAddon(addonGroupId, addonId)
-                    },
-                    onQuantityChange = { newQuantity ->
-                        viewModel.updateQuantity(newQuantity)
-                    },
-                    onSpecialRequestChange = { request ->
-                        viewModel.updateSpecialRequest(request)
-                    },
-                    onAddToCart = {
-                        shouldAddToCart = true
-                    },
-                    modifier = Modifier.padding(padding)
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    ProductDetailContent(
+                        product = uiState.product!!,
+                        addonGroups = uiState.addonGroups,
+                        addonsByGroup = uiState.addonsByGroup,
+                        selectedAddons = uiState.selectedAddons,
+                        quantity = uiState.quantity,
+                        specialRequest = uiState.specialRequest,
+                        onAddonToggle = { addonGroupId, addonId ->
+                            viewModel.toggleAddon(addonGroupId, addonId)
+                        },
+                        onQuantityChange = { newQuantity ->
+                            viewModel.updateQuantity(newQuantity)
+                        },
+                        onSpecialRequestChange = { request ->
+                            viewModel.updateSpecialRequest(request)
+                        },
+                        onAddToCart = {
+                            shouldAddToCart = true
+                        },
+                        onImageClick = {
+                            // เปิด viewer ได้ทั้งกรณีมีรูปและมีแค่สี
+                            isImageViewerVisible = true
+                        },
+                        modifier = Modifier.padding(padding)
+                    )
+                    
+                    // Fullscreen Image Viewer
+                    if (isImageViewerVisible) {
+                        val product = uiState.product!!
+                        val rawImageUrl = product.imageUrl
+                        val fullImageUrl = if (!rawImageUrl.isNullOrBlank()) {
+                            if (rawImageUrl.startsWith("http://") || rawImageUrl.startsWith("https://")) {
+                                rawImageUrl
+                            } else {
+                                AppConfig.buildImageUrl(rawImageUrl)
+                            }
+                        } else {
+                            null
+                        }
+
+                        val bgColor = product.selectedColorHex?.let {
+                            try {
+                                Color(android.graphics.Color.parseColor(it))
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        
+                        FullscreenProductImageViewer(
+                            imageUrl = fullImageUrl,
+                            backgroundColor = bgColor,
+                            onDismiss = { isImageViewerVisible = false }
+                        )
+                    }
+                }
             }
         }
     }
@@ -181,6 +234,7 @@ private fun ProductDetailContent(
     onQuantityChange: (Int) -> Unit,
     onSpecialRequestChange: (String) -> Unit,
     onAddToCart: () -> Unit,
+    onImageClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -205,13 +259,14 @@ private fun ProductDetailContent(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-        // Product Image
+        // Product Image / Color (clickable)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-                .background(backgroundColor),
+                .background(backgroundColor)
+                .clickable { onImageClick() },
             contentAlignment = Alignment.Center
         ) {
             val imageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
@@ -591,6 +646,73 @@ private fun SpecialRequestSection(
                 ),
                 singleLine = false,
                 maxLines = 3
+            )
+        }
+    }
+}
+
+@Composable
+private fun FullscreenProductImageViewer(
+    imageUrl: String?,
+    backgroundColor: Color?,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+
+    var scale by remember { mutableStateOf(1f) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        scale = (scale * zoomChange).coerceIn(1f, 4f)
+        if (scale > 1f) {
+            offsetX += panChange.x
+            offsetY += panChange.y
+        } else {
+            offsetX = 0f
+            offsetY = 0f
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundColor ?: Color.Black)
+    ) {
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    )
+                    .transformable(transformState),
+                contentScale = ContentScale.Fit,
+                error = painterResource(id = R.drawable.logo_appstore),
+                placeholder = painterResource(id = R.drawable.logo_appstore)
+            )
+        }
+
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = "ปิด",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
