@@ -53,15 +53,34 @@ class ProductDetailViewModel @Inject constructor(
                     group.id to addonDao.getAddonsByGroup(group.id)
                 }
                 
+                // Check if product is already in cart and load existing data
+                val existingCartItems = cartRepository.getCartItemsByProduct(productId).first()
+                val existingCartItem = existingCartItems.firstOrNull()
+                
+                // Load existing cart data if available
+                val existingQuantity = existingCartItem?.quantity ?: 1
+                val existingSpecialRequest = existingCartItem?.specialRequest ?: ""
+                
+                // Load existing addons from cart
+                val existingSelectedAddons = if (existingCartItem != null) {
+                    val cartAddons = cartRepository.getCartAddonsByItemId(existingCartItem.id)
+                    cartAddons.groupBy { it.addonGroupId }
+                        .mapValues { (_, addons) ->
+                            addons.map { it.addonId }.toSet()
+                        }
+                } else {
+                    emptyMap()
+                }
+                
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         product = product,
                         addonGroups = addonGroups,
                         addonsByGroup = addonsByGroup,
-                        selectedAddons = emptyMap(),
-                        quantity = 1,
-                        specialRequest = ""
+                        selectedAddons = existingSelectedAddons,
+                        quantity = existingQuantity,
+                        specialRequest = existingSpecialRequest
                     )
                 }
             } catch (e: Exception) {
@@ -119,10 +138,15 @@ class ProductDetailViewModel @Inject constructor(
             val currentState = _uiState.value
             val product = currentState.product ?: return@launch
             
-            // Get current total quantity of this product in cart
-            val currentCartItems = cartRepository.getCartItemsByProduct(product.id).first()
-            val currentTotalQuantity = currentCartItems.sumOf { it.quantity }
-            val newTotalQuantity = currentTotalQuantity + currentState.quantity
+            // Get existing cart items for this product
+            val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
+            
+            // If editing (cart items exist), delete them first
+            if (existingCartItems.isNotEmpty()) {
+                existingCartItems.forEach { cartItem ->
+                    cartRepository.deleteCartItem(cartItem.id)
+                }
+            }
             
             // Calculate addon price
             val addonPrice = currentState.selectedAddons.values.flatten().sumOf { addonId ->
@@ -151,7 +175,7 @@ class ProductDetailViewModel @Inject constructor(
                 }
             }
             
-            // Add to cart
+            // Add to cart (this will be a new item or replace the deleted ones)
             cartRepository.addToCart(
                 productId = product.id,
                 productName = product.name,

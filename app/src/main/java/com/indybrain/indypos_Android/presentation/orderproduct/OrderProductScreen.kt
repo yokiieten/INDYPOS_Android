@@ -84,7 +84,7 @@ import kotlin.math.roundToInt
 fun OrderProductScreen(
     onBackClick: () -> Unit = {},
     onAddMenuClick: () -> Unit = {},
-    onEditItemClick: (productId: String, productName: String) -> Unit = { _, _ -> },
+    onEditItemClick: (productId: String, productName: String, cartItemIds: List<String>) -> Unit = { _, _, _ -> },
     onDiscountClick: () -> Unit = {},
     onPlaceOrderClick: (totalAmount: Double, subtotal: Double, discount: Double) -> Unit = { _, _, _ -> },
     onOrderSuccess: (totalAmount: Double) -> Unit = { _ -> },
@@ -194,7 +194,9 @@ fun OrderProductScreen(
                                     val productId = groupedItem.items.firstOrNull()?.product?.id
                                     val productName = groupedItem.items.firstOrNull()?.product?.name ?: ""
                                     if (productId != null) {
-                                        onEditItemClick(productId, productName)
+                                        // Get all cart item IDs in this group to delete when editing
+                                        val cartItemIds = groupedItem.items.map { it.id }
+                                        onEditItemClick(productId, productName, cartItemIds)
                                     }
                                 },
                                 onDeleteClick = { itemToDelete = groupedItem }

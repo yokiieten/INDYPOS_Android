@@ -11,9 +11,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
+import kotlinx.coroutines.launch
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
@@ -236,6 +238,7 @@ class MainActivity : ComponentActivity() {
                         
                         composable(NavRoutes.OrderProduct.route) {
                             val orderProductViewModel = androidx.hilt.navigation.compose.hiltViewModel<com.indybrain.indypos_Android.presentation.orderproduct.OrderProductViewModel>()
+                            val coroutineScope = rememberCoroutineScope()
                             OrderProductScreen(
                                 onBackClick = {
                                     navController.popBackStack()
@@ -245,8 +248,10 @@ class MainActivity : ComponentActivity() {
                                         popUpTo(NavRoutes.OrderProduct.route)
                                     }
                                 },
-                                onEditItemClick = { productId, productName ->
-                                    navController.navigate(NavRoutes.productEdit(productId, productName))
+                                onEditItemClick = { productId, productName, cartItemIds ->
+                                    // Navigate to ProductDetailScreen for editing
+                                    // ViewModel will automatically load existing cart data
+                                    navController.navigate(NavRoutes.productDetail(productId))
                                 },
                                 onDiscountClick = {
                                     val subtotal = orderProductViewModel.calculateSubtotal()
