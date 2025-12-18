@@ -74,11 +74,22 @@ fun ProductEditScreen(
     // Flag to prevent multiple dismiss calls
     var isDismissing by remember { mutableStateOf(false) }
     
+    // Flag to prevent multiple update basket calls
+    var isUpdatingBasket by remember { mutableStateOf(false) }
+    
     // Safe dismiss function with debounce
     val safeDismiss: () -> Unit = {
         if (!isDismissing && itemToDelete == null) {
             isDismissing = true
             onDismiss()
+        }
+    }
+    
+    // Safe update basket function with debounce
+    val safeUpdateBasket: () -> Unit = {
+        if (!isUpdatingBasket && !isDismissing && itemToDelete == null) {
+            isUpdatingBasket = true
+            onUpdateBasket()
         }
     }
     
@@ -272,10 +283,12 @@ fun ProductEditScreen(
                     }
                     
                     Button(
-                        onClick = onUpdateBasket,
+                        onClick = safeUpdateBasket,
                         modifier = Modifier.weight(1f),
+                        enabled = !isUpdatingBasket && !isDismissing && itemToDelete == null,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = PrimaryButton
+                            containerColor = PrimaryButton,
+                            disabledContainerColor = PrimaryButton.copy(alpha = 0.6f)
                         ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
