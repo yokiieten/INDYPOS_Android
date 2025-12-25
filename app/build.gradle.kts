@@ -1,9 +1,18 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.kapt)
+}
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("/Users/sahassawat/Documents/Android/KeyStore/key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -14,10 +23,19 @@ android {
         applicationId = "com.indybrain.indypos_Android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = 3
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storePassword = keystoreProperties["storePassword"] as String?
+        }
     }
 
     buildTypes {
@@ -27,12 +45,13 @@ android {
         }
         release {
             isDebuggable = false
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -52,7 +71,7 @@ android {
     productFlavors {
         create("dev") {
             dimension = "environment"
-            applicationIdSuffix = ".dev"
+//            applicationIdSuffix = ".dev"
             resValue("string", "app_name", "INDYPOS Dev")
             
             buildConfigField("String", "BASE_API_URL", "\"https://dev.indy-pos.com/api/v1/\"")
@@ -62,7 +81,7 @@ android {
         
         create("stg") {
             dimension = "environment"
-            applicationIdSuffix = ".stg"
+//            applicationIdSuffix = ".stg"
             resValue("string", "app_name", "INDYPOS Staging")
             
             buildConfigField("String", "BASE_API_URL", "\"https://stg.indy-pos.com/api/v1/\"")
