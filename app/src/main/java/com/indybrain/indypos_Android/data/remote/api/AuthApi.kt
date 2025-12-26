@@ -23,6 +23,12 @@ interface AuthApi {
     suspend fun login(@Body request: LoginRequestDto): LoginResponseDto
     
     /**
+     * Register endpoint
+     */
+    @POST("auth/register")
+    suspend fun register(@Body request: RegisterRequestDto): RegisterResponseDto
+    
+    /**
      * Logout endpoint
      */
     @POST("protected/auth/logout")
@@ -138,5 +144,76 @@ data class ShopUpdateDataDto(
     val shopName: String?,
     @SerializedName("shop_description")
     val shopDescription: String?
+)
+
+/**
+ * Request DTO for register
+ */
+data class RegisterRequestDto(
+    val username: String,
+    @SerializedName("first_name")
+    val firstName: String,
+    @SerializedName("last_name")
+    val lastName: String,
+    val email: String,
+    val phone: String,
+    val password: String,
+    @SerializedName("shop_name")
+    val shopName: String,
+    @SerializedName("shop_description")
+    val shopDescription: String? = null,
+    @SerializedName("shop_image_url")
+    val shopImageUrl: String? = null,
+    @SerializedName("birth_date")
+    val birthDate: String? = null,
+    @SerializedName("term_of_use")
+    val termOfUse: Boolean,
+    @SerializedName("privacy_policy")
+    val privacyPolicy: Boolean,
+    @SerializedName("device_uuid")
+    val deviceUuid: String,
+    @SerializedName("device_name")
+    val deviceName: String,
+    @SerializedName("device_type")
+    val deviceType: String,
+    val platform: String,
+    val model: String,
+    val version: String,
+    @SerializedName("app_version")
+    val appVersion: String
+)
+
+/**
+ * Response DTO for register
+ */
+data class RegisterResponseDto(
+    @SerializedName("is_success")
+    val isSuccess: Boolean? = null,
+    val user: RegisterUserDto? = null,
+    val token: String? = null,
+    @SerializedName("refresh_token")
+    val refreshToken: String? = null,
+    val error: String? = null,
+    val message: String? = null
+)
+
+/**
+ * User DTO for register response
+ */
+data class RegisterUserDto(
+    val id: Int,
+    val username: String? = null,
+    @SerializedName("first_name")
+    val firstName: String? = null,
+    @SerializedName("last_name")
+    val lastName: String? = null,
+    val email: String? = null,
+    val phone: String? = null,
+    @SerializedName("shop_name")
+    val shopName: String? = null,
+    @SerializedName("shop_description")
+    val shopDescription: String? = null,
+    @SerializedName("shop_image_url")
+    val shopImageUrl: String? = null
 )
 

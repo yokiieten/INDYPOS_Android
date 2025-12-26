@@ -12,10 +12,13 @@ import com.indybrain.indypos_Android.data.remote.api.AuthApi
 import com.indybrain.indypos_Android.data.remote.api.ChangePasswordRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LoginRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LogoutRequestDto
+import com.indybrain.indypos_Android.data.remote.api.RegisterRequestDto
+import com.indybrain.indypos_Android.data.remote.api.RegisterResponseDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateShopDescriptionRequestDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateShopNameRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.domain.model.LoginRequest
+import com.indybrain.indypos_Android.domain.model.RegisterRequest
 import com.indybrain.indypos_Android.domain.model.User
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
@@ -86,6 +89,87 @@ class AuthRepositoryImpl @Inject constructor(
             Result.success(user)
         } catch (e: HttpException) {
             val errorMessage = parseErrorMessage(e.response()?.errorBody())
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            // Handle any other exceptions (network, parsing, etc.)
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
+                e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
+                e.message?.contains("No address associated with hostname", ignoreCase = true) == true -> "ไม่พบเซิร์ฟเวอร์ กรุณาตรวจสอบการเชื่อมต่อ"
+                e.message?.contains("Connection refused", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้"
+                e.message?.contains("Network is unreachable", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่ออินเทอร์เน็ตได้"
+                else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        }
+    }
+    
+    override suspend fun register(request: RegisterRequest): Result<User> {
+        return try {
+            // Get device info with error handling
+            val deviceInfo = try {
+                deviceInfoProvider.getDeviceInfo()
+            } catch (e: Exception) {
+                return Result.failure(IllegalStateException("ไม่สามารถอ่านข้อมูลอุปกรณ์ได้: ${e.message}", e))
+            }
+            
+            // Remove dashes from phone number
+            val cleanPhoneNumber = request.phone.replace("-", "")
+            
+            // Call remote API
+            val response = authApi.register(
+                RegisterRequestDto(
+                    username = request.username,
+                    firstName = request.firstName,
+                    lastName = request.lastName,
+                    email = request.email,
+                    phone = cleanPhoneNumber,
+                    password = request.password,
+                    shopName = request.shopName,
+                    shopDescription = request.shopDescription,
+                    shopImageUrl = request.shopImageUrl,
+                    birthDate = request.birthDate,
+                    termOfUse = request.termOfUse,
+                    privacyPolicy = request.privacyPolicy,
+                    deviceUuid = deviceInfo.deviceUuid,
+                    deviceName = deviceInfo.deviceName,
+                    deviceType = deviceInfo.deviceType,
+                    platform = deviceInfo.platform,
+                    model = deviceInfo.model,
+                    version = deviceInfo.version,
+                    appVersion = deviceInfo.appVersion
+                )
+            )
+            
+            // Check if registration was successful
+            if (response.isSuccess != true || response.user == null || response.token == null) {
+                val errorMessage = getLocalizedRegisterErrorMessage(
+                    errorText = response.error ?: response.message,
+                    statusCode = null
+                ) ?: "เกิดข้อผิดพลาดในการสมัครสมาชิก"
+                return Result.failure(IllegalStateException(errorMessage))
+            }
+            
+            // Map DTO to domain model
+            val user = try {
+                response.toDomainModel()
+            } catch (e: Exception) {
+                return Result.failure(IllegalStateException("ไม่สามารถแปลงข้อมูลผู้ใช้ได้: ${e.message}", e))
+            }
+            
+            // Save to local storage
+            try {
+                localDataSource.saveUser(user)
+            } catch (e: Exception) {
+                // Log error but don't fail registration if save fails
+            }
+            
+            Result.success(user)
+        } catch (e: HttpException) {
+            val errorMessage = getLocalizedRegisterErrorMessage(
+                errorText = parseErrorMessage(e.response()?.errorBody()),
+                statusCode = e.code()
+            ) ?: parseErrorMessage(e.response()?.errorBody())
             Result.failure(IllegalStateException(errorMessage, e))
         } catch (e: Exception) {
             // Handle any other exceptions (network, parsing, etc.)
@@ -395,6 +479,91 @@ class AuthRepositoryImpl @Inject constructor(
             getLocalizedChangePasswordErrorMessage(errorMessage) ?: errorMessage
         } catch (e: Exception) {
             "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+        }
+    }
+    
+    /**
+     * Get localized error message for register errors
+     * Similar to iOS implementation
+     */
+    private fun getLocalizedRegisterErrorMessage(
+        errorText: String?,
+        statusCode: Int? = null
+    ): String? {
+        val error = errorText?.lowercase() ?: return null
+        
+        // Check for "email already exists" pattern
+        if (error.contains("email") && 
+            (error.contains("already exists") || error.contains("already registered") || 
+             error.contains("already in use"))) {
+            return "อีเมลนี้ถูกใช้งานแล้ว"
+        }
+        
+        // Check for "phone number already exists" pattern
+        if ((error.contains("phone") || error.contains("phone number")) && 
+            (error.contains("already exists") || error.contains("already registered") || 
+             error.contains("already in use"))) {
+            return "เบอร์โทรศัพท์นี้ถูกใช้งานแล้ว"
+        }
+        
+        // Check for "username already exists" pattern
+        if (error.contains("username") && 
+            (error.contains("already exists") || error.contains("already taken") || 
+             error.contains("already in use"))) {
+            return "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว"
+        }
+        
+        // Check for duplicate patterns
+        if (error.contains("duplicate")) {
+            if (error.contains("email")) {
+                return "อีเมลนี้ถูกใช้งานแล้ว"
+            }
+            if (error.contains("phone")) {
+                return "เบอร์โทรศัพท์นี้ถูกใช้งานแล้ว"
+            }
+            if (error.contains("username")) {
+                return "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว"
+            }
+        }
+        
+        return null
+    }
+    
+    /**
+     * Extension function to map RegisterResponseDto to domain model
+     */
+    private fun RegisterResponseDto.toDomainModel(): User {
+        return try {
+            val userDto = this.user ?: throw IllegalStateException("User data is null")
+            User(
+                id = userDto.id,
+                username = userDto.username,
+                firstName = userDto.firstName,
+                lastName = userDto.lastName,
+                email = userDto.email ?: "",
+                phone = userDto.phone,
+                role = null,
+                shopName = userDto.shopName,
+                shopDescription = userDto.shopDescription,
+                shopImageUrl = userDto.shopImageUrl,
+                subscriptionPlan = null,
+                subscriptionExpiresAt = null,
+                maxDevices = null,
+                currentDeviceUuid = null,
+                isActivated = null,
+                termOfUse = null,
+                privacyPolicy = null,
+                marketingConsent = null,
+                birthDate = null,
+                createdAt = null,
+                updatedAt = null,
+                orderCount = null,
+                token = this.token?.takeIf { it.isNotBlank() },
+                refreshToken = this.refreshToken?.takeIf { it.isNotBlank() },
+                expiresIn = null
+            )
+        } catch (e: Exception) {
+            throw IllegalStateException("ไม่สามารถแปลงข้อมูลผู้ใช้ได้: ${e.message}", e)
         }
     }
     

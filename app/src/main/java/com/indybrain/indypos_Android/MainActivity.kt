@@ -24,6 +24,7 @@ import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.presentation.home.HomeScreen
 import com.indybrain.indypos_Android.presentation.login.LoginScreen
+import com.indybrain.indypos_Android.presentation.register.RegisterScreen
 import com.indybrain.indypos_Android.presentation.navigation.NavRoutes
 import com.indybrain.indypos_Android.presentation.orderproduct.OrderProductScreen
 import com.indybrain.indypos_Android.presentation.orderdetail.OrderDetailScreen
@@ -117,6 +118,26 @@ class MainActivity : ComponentActivity() {
                                             inclusive = true
                                         }
                                     }
+                                },
+                                onCreateAccountClick = {
+                                    // Navigate to register screen
+                                    navController.navigate(NavRoutes.Register.route)
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.Register.route) {
+                            RegisterScreen(
+                                onRegistrationSuccess = {
+                                    // Navigate to home screen after successful registration
+                                    navController.navigate(NavRoutes.Home.route) {
+                                        popUpTo(NavRoutes.Register.route) {
+                                            inclusive = true
+                                        }
+                                    }
+                                },
+                                onBackClick = {
+                                    navController.popBackStack()
                                 }
                             )
                         }

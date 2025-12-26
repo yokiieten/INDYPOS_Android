@@ -6,6 +6,7 @@ package com.indybrain.indypos_Android.presentation.navigation
 sealed class NavRoutes(val route: String) {
     data object Splash : NavRoutes("splash")
     data object Login : NavRoutes("login")
+    data object Register : NavRoutes("register")
     data object Home : NavRoutes("home")
     data object MainProduct : NavRoutes("main_product")
     data object OrderProduct : NavRoutes("order_product")

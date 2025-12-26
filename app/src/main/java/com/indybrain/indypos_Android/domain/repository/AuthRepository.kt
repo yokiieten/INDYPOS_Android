@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.domain.repository
 
 import com.indybrain.indypos_Android.domain.model.LoginRequest
+import com.indybrain.indypos_Android.domain.model.RegisterRequest
 import com.indybrain.indypos_Android.domain.model.User
 import kotlinx.coroutines.flow.Flow
 
@@ -13,6 +14,12 @@ interface AuthRepository {
      * @return Result containing User on success or error message
      */
     suspend fun login(request: LoginRequest): Result<User>
+    
+    /**
+     * Register new user
+     * @return Result containing User on success or error message
+     */
+    suspend fun register(request: RegisterRequest): Result<User>
     
     /**
      * Get current logged in user
