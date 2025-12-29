@@ -460,10 +460,14 @@ class AddonGroupRepositoryImpl @Inject constructor(
             
             val response = productsApi.getAddonGroups()
             
-            if (response.status == 200 && response.data != null) {
+            if (response.status == 200) {
+                // If status is 200, treat as success even if data is null or empty (new user might have no data)
+                val addonGroupsList = response.data ?: emptyList()
                 // Convert and save addon groups
-                val addonGroups = response.data.map { ProductMapper.toEntity(it) }
-                addonGroupDao.insertAll(addonGroups)
+                if (addonGroupsList.isNotEmpty()) {
+                    val addonGroups = addonGroupsList.map { ProductMapper.toEntity(it) }
+                    addonGroupDao.insertAll(addonGroups)
+                }
                 Result.success(Unit)
             } else {
                 Result.failure(Exception(response.message ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"))

@@ -166,13 +166,16 @@ class ProductRepositoryImpl @Inject constructor(
         return try {
             // Fetch products from API (includes category and addon groups/addons)
             val productsResponse = productsApi.getMyProductsAll()
-            if (productsResponse.status != 200 || productsResponse.data == null) {
+            if (productsResponse.status != 200) {
                 return Result.failure(Exception(productsResponse.message ?: "Failed to fetch products"))
             }
             
+            // If status is 200, treat as success even if data is null or empty (new user might have no data)
+            val productsList = productsResponse.data ?: emptyList()
+            
             // Extract categories from products and save them
             val categoriesMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.CategoryDto>()
-            productsResponse.data.forEach { productDto ->
+            productsList.forEach { productDto ->
                 productDto.category?.let { categoryDto ->
                     categoriesMap[categoryDto.id] = categoryDto
                 }
@@ -188,7 +191,7 @@ class ProductRepositoryImpl @Inject constructor(
             val addonGroupsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto>()
             val addonsMap = mutableMapOf<String, Pair<com.indybrain.indypos_Android.data.remote.dto.AddonDto, String?>>()
             
-            productsResponse.data.forEach { productDto ->
+            productsList.forEach { productDto ->
                 productDto.addonGroups?.forEach { addonGroupDto ->
                     // Add addon group
                     addonGroupsMap[addonGroupDto.id] = addonGroupDto
@@ -215,16 +218,18 @@ class ProductRepositoryImpl @Inject constructor(
             }
             
             // Convert and save products
-            val products = productsResponse.data.map { ProductMapper.toEntity(it) }
+            val products = productsList.map { ProductMapper.toEntity(it) }
             // Important: do NOT call deleteAll() here.
             // Deleting all products would trigger the foreign key on cart_items
             // (onDelete = SET_NULL) and clear productId on existing cart items,
             // which makes quantities disappear in the product list after refresh.
             // Using REPLACE keeps existing rows (and cart relations) while updating data.
-            productDao.insertAll(products)
+            if (products.isNotEmpty()) {
+                productDao.insertAll(products)
+            }
             
             // Save product-addon group junctions
-            productsResponse.data.forEach { productDto ->
+            productsList.forEach { productDto ->
                 val productId = productDto.id
                 productDto.addonGroups?.forEach { addonGroupDto ->
                     productAddonGroupJunctionDao.insert(
@@ -253,16 +258,19 @@ class ProductRepositoryImpl @Inject constructor(
         return try {
             // Fetch categories from API
             val categoriesResponse = productsApi.getCategories()
-            if (categoriesResponse.status != 200 || categoriesResponse.data == null) {
+            if (categoriesResponse.status != 200) {
                 return Result.failure(Exception(categoriesResponse.message ?: "Failed to fetch categories"))
             }
+            
+            // If status is 200, treat as success even if data is null or empty (new user might have no data)
+            val categoriesList = categoriesResponse.data ?: emptyList()
             
             // Get existing categories from Room
             val existingCategories = categoryDao.getAllCategories()
             val existingCategoryIds = existingCategories.map { it.id }.toSet()
             
             // Convert API categories to entities
-            val apiCategories = categoriesResponse.data.map { ProductMapper.toEntity(it) }
+            val apiCategories = categoriesList.map { ProductMapper.toEntity(it) }
             
             // Find new categories that don't exist in Room
             val newCategories = apiCategories.filter { it.id !in existingCategoryIds }
@@ -274,7 +282,9 @@ class ProductRepositoryImpl @Inject constructor(
             
             // Also update existing categories if they have changed (using REPLACE strategy)
             // This ensures data stays in sync
-            categoryDao.insertAll(apiCategories)
+            if (apiCategories.isNotEmpty()) {
+                categoryDao.insertAll(apiCategories)
+            }
             
             Result.success(Unit)
         } catch (e: HttpException) {

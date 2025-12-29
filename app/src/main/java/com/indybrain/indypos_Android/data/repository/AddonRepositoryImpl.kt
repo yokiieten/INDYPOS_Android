@@ -195,14 +195,18 @@ class AddonRepositoryImpl @Inject constructor(
             }
             
             val response = productsApi.getAddons()
-            if (response.status != 200 || response.data == null) {
+            if (response.status != 200) {
                 return Result.failure(Exception(response.message ?: "Failed to fetch addons"))
             }
             
+            // If status is 200, treat as success even if data is null or empty (new user might have no data)
+            val addonsList = response.data ?: emptyList()
             // Convert and save addons
-            val addons = response.data.map { ProductMapper.toEntity(it) }
-            // Use REPLACE strategy to update existing addons
-            addonDao.insertAll(addons)
+            if (addonsList.isNotEmpty()) {
+                val addons = addonsList.map { ProductMapper.toEntity(it) }
+                // Use REPLACE strategy to update existing addons
+                addonDao.insertAll(addons)
+            }
             
             Result.success(Unit)
         } catch (e: HttpException) {
