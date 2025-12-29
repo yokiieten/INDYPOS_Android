@@ -3,13 +3,17 @@ package com.indybrain.indypos_Android.presentation.register
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -774,7 +778,6 @@ private fun BirthDateFormField(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var showDatePicker by remember { mutableStateOf(false) }
     
     Column(modifier = modifier) {
         if (isRequired) {
@@ -805,84 +808,99 @@ private fun BirthDateFormField(
             )
         }
         
-        OutlinedTextField(
-            value = if (value.isNotEmpty()) formatBirthDateForDisplay(value) else "",
-            onValueChange = { },
-            placeholder = {
-                Text(
-                    text = placeholder,
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Medium
-                    ),
-                    color = PlaceholderText
-                )
-            },
-            readOnly = true,
-            enabled = enabled,
-            trailingIcon = {
-                Icon(
-                    painter = painterResource(android.R.drawable.ic_menu_revert),
-                    contentDescription = "Select date",
-                    tint = PrimaryText
-                )
-            },
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(enabled = enabled) {
-                    showDatePicker = true
+                    if (enabled) {
+                        showNativeDatePicker(
+                            context = context,
+                            currentValue = value,
+                            onDateSelected = { year, month, dayOfMonth ->
+                                val dateString = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
+                                onValueChange(dateString)
+                            }
+                        )
+                    }
                 },
-            shape = RoundedCornerShape(8.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = PrimaryText,
-                unfocusedTextColor = PrimaryText,
-                focusedBorderColor = PrimaryButton,
-                unfocusedBorderColor = Color(0xFFE0E0E0),
-                focusedLabelColor = PrimaryText,
-                unfocusedLabelColor = PrimaryText
-            ),
-            textStyle = FontUtils.mainFont(
-                style = AppFontStyle.Regular,
-                size = FontSize.Medium
-            )
-        )
-        
-        if (showDatePicker) {
-            val calendar = Calendar.getInstance()
-            val maxDate = Calendar.getInstance().apply {
-                add(Calendar.YEAR, -16)
-            }
-            val minDate = Calendar.getInstance().apply {
-                add(Calendar.YEAR, -120)
-            }
-            
-            DatePickerDialog(
-                context = context,
-                onDateSelected = { year, month, dayOfMonth ->
-                    val dateString = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
-                    onValueChange(dateString)
-                    showDatePicker = false
+            color = Color.Transparent
+        ) {
+            OutlinedTextField(
+                value = if (value.isNotEmpty()) formatBirthDateForDisplay(value) else "",
+                onValueChange = { },
+                placeholder = {
+                    Text(
+                        text = placeholder,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = PlaceholderText
+                    )
                 },
-                initialYear = calendar.get(Calendar.YEAR),
-                initialMonth = calendar.get(Calendar.MONTH),
-                initialDayOfMonth = calendar.get(Calendar.DAY_OF_MONTH),
-                maxDate = maxDate.timeInMillis,
-                minDate = minDate.timeInMillis
+                readOnly = true,
+                enabled = false,
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.CalendarToday,
+                        contentDescription = "Select date",
+                        tint = PrimaryText
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = PrimaryText,
+                    unfocusedTextColor = PrimaryText,
+                    focusedBorderColor = PrimaryButton,
+                    unfocusedBorderColor = Color(0xFFE0E0E0),
+                    focusedLabelColor = PrimaryText,
+                    unfocusedLabelColor = PrimaryText,
+                    disabledTextColor = PrimaryText,
+                    disabledBorderColor = Color(0xFFE0E0E0),
+                    disabledPlaceholderColor = PlaceholderText
+                ),
+                textStyle = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                )
             )
         }
     }
 }
 
-@Composable
-private fun DatePickerDialog(
+private fun showNativeDatePicker(
     context: android.content.Context,
-    onDateSelected: (Int, Int, Int) -> Unit,
-    initialYear: Int,
-    initialMonth: Int,
-    initialDayOfMonth: Int,
-    maxDate: Long,
-    minDate: Long
+    currentValue: String,
+    onDateSelected: (Int, Int, Int) -> Unit
 ) {
+    val calendar = Calendar.getInstance()
+    
+    // Parse current value if exists, otherwise use current date
+    if (currentValue.isNotEmpty()) {
+        try {
+            val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val date = formatter.parse(currentValue)
+            if (date != null) {
+                calendar.time = date
+            }
+        } catch (e: Exception) {
+            // If parsing fails, use current date
+        }
+    }
+    
+    val initialYear = calendar.get(Calendar.YEAR)
+    val initialMonth = calendar.get(Calendar.MONTH)
+    val initialDayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+    
+    // Calculate max and min dates (16 years old minimum, 120 years old maximum)
+    val maxDate = Calendar.getInstance().apply {
+        add(Calendar.YEAR, -16)
+    }
+    val minDate = Calendar.getInstance().apply {
+        add(Calendar.YEAR, -120)
+    }
+    
     val datePickerDialog = android.app.DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
@@ -893,13 +911,12 @@ private fun DatePickerDialog(
         initialDayOfMonth
     )
     
-    datePickerDialog.datePicker.maxDate = maxDate
-    datePickerDialog.datePicker.minDate = minDate
+    datePickerDialog.datePicker.maxDate = maxDate.timeInMillis
+    datePickerDialog.datePicker.minDate = minDate.timeInMillis
     
-    LaunchedEffect(Unit) {
-        datePickerDialog.show()
-    }
+    datePickerDialog.show()
 }
+
 
 private fun formatBirthDateForDisplay(isoDate: String): String {
     return try {
