@@ -445,7 +445,8 @@ class AuthRepositoryImpl @Inject constructor(
                 ForgotPasswordRequestDto(email = email.trim())
             )
             
-            if (response.isSuccess == true) {
+            // Check if status is 200 (success)
+            if (response.status == 200) {
                 Result.success(Unit)
             } else {
                 val errorMessage = response.error ?: response.message ?: "เกิดข้อผิดพลาดในการส่งลิงก์รีเซ็ตรหัสผ่าน"

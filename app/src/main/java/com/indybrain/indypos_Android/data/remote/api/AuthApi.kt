@@ -238,9 +238,10 @@ data class ForgotPasswordRequestDto(
  * Response DTO for forgot password
  */
 data class ForgotPasswordResponseDto(
-    @SerializedName("is_success")
-    val isSuccess: Boolean? = null,
+    val status: Int? = null,
     val message: String? = null,
+    val data: Any? = null,
+    val timestamp: String? = null,
     val error: String? = null
 )
 
