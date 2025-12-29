@@ -23,9 +23,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
@@ -622,13 +624,65 @@ private fun PhoneFormField(
             )
         }
         
-        var formattedValue by remember(value) { mutableStateOf(formatPhoneNumber(value)) }
+        var textFieldValue by remember { 
+            mutableStateOf(TextFieldValue(formatPhoneNumber(value), selection = TextRange(formatPhoneNumber(value).length)))
+        }
+        
+        // Sync textFieldValue when value changes from outside (e.g., reset, load from state)
+        LaunchedEffect(value) {
+            val digitsOnly = value.filter { it.isDigit() }
+            val currentDigitsOnly = textFieldValue.text.replace("-", "").filter { it.isDigit() }
+            // Only update if the digits actually changed (avoid resetting during typing)
+            if (digitsOnly != currentDigitsOnly) {
+                val formatted = formatPhoneNumber(value)
+                textFieldValue = TextFieldValue(formatted, selection = TextRange(formatted.length))
+            }
+        }
         
         OutlinedTextField(
-            value = formattedValue,
+            value = textFieldValue,
             onValueChange = { newValue ->
-                formattedValue = formatPhoneNumber(newValue)
-                onValueChange(formattedValue.replace("-", ""))
+                val oldDigits = textFieldValue.text.replace("-", "").filter { it.isDigit() }
+                val newDigits = newValue.text.replace("-", "").filter { it.isDigit() }
+                
+                // Format the new value
+                val formatted = formatPhoneNumber(newValue.text)
+                
+                // Determine if user is typing (adding) or deleting
+                val isAdding = newDigits.length > oldDigits.length
+                
+                // Calculate cursor position
+                val newCursorPosition = if (isAdding) {
+                    // When adding, always move cursor to the end
+                    formatted.length
+                } else {
+                    // When deleting, try to maintain relative position
+                    val digitsBeforeCursor = newValue.text.substring(0, newValue.selection.start.coerceAtMost(newValue.text.length)).filter { it.isDigit() }.length
+                    var cursorPos = formatted.length
+                    var digitCount = 0
+                    for (i in formatted.indices) {
+                        if (formatted[i].isDigit()) {
+                            digitCount++
+                            if (digitCount >= digitsBeforeCursor) {
+                                cursorPos = i + 1
+                                // Skip hyphen if present
+                                if (i + 1 < formatted.length && formatted[i + 1] == '-') {
+                                    cursorPos = i + 2
+                                }
+                                break
+                            }
+                        }
+                    }
+                    cursorPos.coerceAtMost(formatted.length)
+                }
+                
+                textFieldValue = TextFieldValue(
+                    text = formatted,
+                    selection = TextRange(newCursorPosition)
+                )
+                
+                val digitsOnly = formatted.replace("-", "").filter { it.isDigit() }
+                onValueChange(digitsOnly)
             },
             placeholder = {
                 Text(

@@ -31,6 +31,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.io.File
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -116,6 +117,11 @@ class AuthRepositoryImpl @Inject constructor(
             // Remove dashes from phone number
             val cleanPhoneNumber = request.phone.replace("-", "")
             
+            // Get locale for birth_date_locale (only if birth_date is provided)
+            val birthDateLocale = request.birthDate?.takeIf { it.isNotBlank() }?.let {
+                Locale.getDefault().toLanguageTag()
+            }
+            
             // Call remote API
             val response = authApi.register(
                 RegisterRequestDto(
@@ -126,11 +132,13 @@ class AuthRepositoryImpl @Inject constructor(
                     phone = cleanPhoneNumber,
                     password = request.password,
                     shopName = request.shopName,
-                    shopDescription = request.shopDescription,
-                    shopImageUrl = request.shopImageUrl,
+                    shopDescription = request.shopDescription ?: "", // Send empty string if null (matching iOS)
+                    shopImageUrl = request.shopImageUrl ?: "", // Send empty string if null (matching iOS)
                     birthDate = request.birthDate,
+                    birthDateLocale = birthDateLocale,
                     termOfUse = request.termOfUse,
                     privacyPolicy = request.privacyPolicy,
+                    marketingConsent = false, // Always false (matching iOS)
                     deviceUuid = deviceInfo.deviceUuid,
                     deviceName = deviceInfo.deviceName,
                     deviceType = deviceInfo.deviceType,
@@ -142,7 +150,7 @@ class AuthRepositoryImpl @Inject constructor(
             )
             
             // Check if registration was successful
-            if (response.isSuccess != true || response.user == null || response.token == null) {
+            if (response.user == null || response.token == null ) {
                 val errorMessage = getLocalizedRegisterErrorMessage(
                     errorText = response.error ?: response.message,
                     statusCode = null
@@ -260,7 +268,7 @@ class AuthRepositoryImpl @Inject constructor(
                 )
             )
             
-            if (response.status == 200) {
+            if (response.status == 200 || response.status == 201) {
                 Result.success(Unit)
             } else {
                 val errorMessage = getLocalizedChangePasswordErrorMessage(

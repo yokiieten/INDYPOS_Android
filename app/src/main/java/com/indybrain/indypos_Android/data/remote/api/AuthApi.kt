@@ -166,10 +166,14 @@ data class RegisterRequestDto(
     val shopImageUrl: String? = null,
     @SerializedName("birth_date")
     val birthDate: String? = null,
+    @SerializedName("birth_date_locale")
+    val birthDateLocale: String? = null,
     @SerializedName("term_of_use")
     val termOfUse: Boolean,
     @SerializedName("privacy_policy")
     val privacyPolicy: Boolean,
+    @SerializedName("marketing_consent")
+    val marketingConsent: Boolean = false,
     @SerializedName("device_uuid")
     val deviceUuid: String,
     @SerializedName("device_name")
