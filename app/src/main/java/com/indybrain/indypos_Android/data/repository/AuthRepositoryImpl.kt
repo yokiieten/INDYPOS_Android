@@ -10,6 +10,7 @@ import com.indybrain.indypos_Android.data.local.AuthLocalDataSource
 import com.indybrain.indypos_Android.data.local.database.IndyPosDatabase
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
 import com.indybrain.indypos_Android.data.remote.api.ChangePasswordRequestDto
+import com.indybrain.indypos_Android.data.remote.api.ForgotPasswordRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LoginRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LogoutRequestDto
 import com.indybrain.indypos_Android.data.remote.api.RegisterRequestDto
@@ -433,6 +434,34 @@ class AuthRepositoryImpl @Inject constructor(
                     "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
 
                 else -> e.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        }
+    }
+    
+    override suspend fun forgotPassword(email: String): Result<Unit> {
+        return try {
+            val response = authApi.forgotPassword(
+                ForgotPasswordRequestDto(email = email.trim())
+            )
+            
+            if (response.isSuccess == true) {
+                Result.success(Unit)
+            } else {
+                val errorMessage = response.error ?: response.message ?: "เกิดข้อผิดพลาดในการส่งลิงก์รีเซ็ตรหัสผ่าน"
+                Result.failure(IllegalStateException(errorMessage))
+            }
+        } catch (e: HttpException) {
+            val errorMessage = parseErrorMessage(e.response()?.errorBody())
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
+                e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
+                e.message?.contains("No address associated with hostname", ignoreCase = true) == true -> "ไม่พบเซิร์ฟเวอร์ กรุณาตรวจสอบการเชื่อมต่อ"
+                e.message?.contains("Connection refused", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้"
+                e.message?.contains("Network is unreachable", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่ออินเทอร์เน็ตได้"
+                else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
             }
             Result.failure(IllegalStateException(errorMessage, e))
         }

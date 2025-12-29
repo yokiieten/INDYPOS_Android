@@ -9,6 +9,16 @@
     <string name="password_placeholder">กรอกรหัสผ่านของคุณ</string>
     <string name="login_button">เข้าสู่ระบบ</string>
     <string name="forgot_password">ลืมรหัสผ่าน?</string>
+    <string name="forgot_password_title">ลืมรหัสผ่าน</string>
+    <string name="forgot_password_description">กรอกอีเมลของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน</string>
+    <string name="forgot_password_email_label">อีเมล</string>
+    <string name="forgot_password_email_placeholder">กรอกอีเมลของคุณ</string>
+    <string name="forgot_password_submit_button">ส่งลิงก์รีเซ็ตรหัสผ่าน</string>
+    <string name="forgot_password_back_to_login">กลับไปหน้าเข้าสู่ระบบ</string>
+    <string name="forgot_password_success_message">ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว</string>
+    <string name="forgot_password_error_email_required">กรุณากรอกอีเมล</string>
+    <string name="forgot_password_error_email_invalid">รูปแบบอีเมลไม่ถูกต้อง</string>
+    <string name="forgot_password_error_generic">เกิดข้อผิดพลาดในการส่งลิงก์รีเซ็ตรหัสผ่าน</string>
     <string name="no_account">ยังไม่มีบัญชี?</string>
     <string name="create_account">สร้างบัญชี</string>
     <string name="app_logo_text">ANDY POS</string>

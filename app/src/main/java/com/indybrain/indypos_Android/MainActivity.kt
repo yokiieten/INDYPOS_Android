@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
+import com.indybrain.indypos_Android.presentation.forgotpassword.ForgotPasswordScreen
 import com.indybrain.indypos_Android.presentation.home.HomeScreen
 import com.indybrain.indypos_Android.presentation.login.LoginScreen
 import com.indybrain.indypos_Android.presentation.register.RegisterScreen
@@ -119,9 +120,24 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 },
+                                onForgotPasswordClick = {
+                                    // Navigate to forgot password screen
+                                    navController.navigate(NavRoutes.ForgotPassword.route)
+                                },
                                 onCreateAccountClick = {
                                     // Navigate to register screen
                                     navController.navigate(NavRoutes.Register.route)
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.ForgotPassword.route) {
+                            ForgotPasswordScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onSuccess = {
+                                    navController.popBackStack()
                                 }
                             )
                         }

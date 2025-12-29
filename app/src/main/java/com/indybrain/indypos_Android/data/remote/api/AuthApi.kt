@@ -61,6 +61,12 @@ interface AuthApi {
     suspend fun uploadShopImage(
         @Part image: MultipartBody.Part
     ): UploadShopImageResponseDto
+    
+    /**
+     * Forgot password endpoint
+     */
+    @POST("auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequestDto): ForgotPasswordResponseDto
 }
 
 /**
@@ -219,5 +225,22 @@ data class RegisterUserDto(
     val shopDescription: String? = null,
     @SerializedName("shop_image_url")
     val shopImageUrl: String? = null
+)
+
+/**
+ * Request DTO for forgot password
+ */
+data class ForgotPasswordRequestDto(
+    val email: String
+)
+
+/**
+ * Response DTO for forgot password
+ */
+data class ForgotPasswordResponseDto(
+    @SerializedName("is_success")
+    val isSuccess: Boolean? = null,
+    val message: String? = null,
+    val error: String? = null
 )
 

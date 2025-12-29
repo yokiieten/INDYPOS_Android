@@ -65,5 +65,12 @@ interface AuthRepository {
      * @return Result containing updated User with new shopImageUrl
      */
     suspend fun updateShopImage(imageUri: android.net.Uri): Result<User>
+    
+    /**
+     * Request password reset
+     * @param email User email address
+     * @return Result indicating success or failure
+     */
+    suspend fun forgotPassword(email: String): Result<Unit>
 }
 
