@@ -14,11 +14,139 @@
 
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+-keepattributes SourceFile,LineNumberTable
 
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# ============================================
+# R8 Optimization Control
+# ============================================
+# Don't optimize and obfuscate DTO classes
+-optimizations !class/merging/*,!code/simplification/*,!field/*,!method/*
+-dontobfuscate
+
+# ============================================
+# Retrofit & OkHttp
+# ============================================
+-keepattributes Signature
+-keepattributes Exceptions
+-keepattributes *Annotation*
+-keepattributes RuntimeVisibleAnnotations
+-keepattributes RuntimeInvisibleAnnotations
+-keepattributes RuntimeVisibleParameterAnnotations
+-keepattributes RuntimeInvisibleParameterAnnotations
+-keepattributes EnclosingMethod
+
+# Retrofit interfaces
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
+
+# Keep API interfaces and their methods
+-keep interface com.indybrain.indypos_Android.data.remote.api.** { *; }
+-keepclassmembers interface com.indybrain.indypos_Android.data.remote.api.** { *; }
+
+# Keep API request/response DTOs defined in API files
+-keep class com.indybrain.indypos_Android.data.remote.api.*$* { *; }
+
+# OkHttp
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+
+# ============================================
+# Gson - CRITICAL FOR API CALLS
+# ============================================
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses
+-dontwarn sun.misc.**
+
+# CRITICAL: Keep ALL DTO classes and prevent field name obfuscation
+-keep class com.indybrain.indypos_Android.data.remote.dto.** { *; }
+-keep class com.indybrain.indypos_Android.data.remote.api.**$* { *; }
+-keep class com.indybrain.indypos_Android.domain.model.** { *; }
+-keep class com.indybrain.indypos_Android.data.local.entity.** { *; }
+
+# Prevent obfuscation of field names in these packages
+-keepclassmembers class com.indybrain.indypos_Android.data.remote.dto.** {
+    <fields>;
+    <init>(...);
+}
+-keepclassmembers class com.indybrain.indypos_Android.data.remote.api.**$* {
+    <fields>;
+    <init>(...);
+}
+
+# Keep Gson specific classes
+-keep class com.google.gson.** { *; }
+-keep class com.google.gson.stream.** { *; }
+-keep interface com.google.gson.** { *; }
+
+# Keep generic signature of Gson classes
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+
+# Keep data classes used with Gson
+-keep class * extends com.google.gson.TypeAdapter
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# Application classes that will be serialized/deserialized over Gson
+-keep class * implements java.io.Serializable { *; }
+
+# Retain declared checked exceptions for proper API responses
+-keepattributes Exceptions
+
+# ============================================
+# Kotlin Coroutines
+# ============================================
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembers class kotlinx.** {
+    volatile <fields>;
+}
+
+# ============================================
+# Hilt
+# ============================================
+-keep class dagger.hilt.** { *; }
+-keep class javax.inject.** { *; }
+-keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
+-keepclassmembers class * {
+    @javax.inject.Inject <init>(...);
+}
+
+# ============================================
+# Room
+# ============================================
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-keepclassmembers class * extends androidx.room.RoomDatabase {
+    public static ** getInstance(...);
+}
+
+# ============================================
+# Keep data classes used in the app
+# ============================================
+-keep class com.indybrain.indypos_Android.data.local.entity.** { *; }
+
+# Keep all data classes with @SerializedName
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# ============================================
+# Keep Parcelable implementations
+# ============================================
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
 
 # Apache POI - Ignore missing classes that are not available on Android
 # Java AWT classes (not available on Android)
@@ -26,6 +154,50 @@
 -dontwarn java.awt.color.**
 -dontwarn java.awt.geom.**
 -dontwarn java.awt.image.**
+
+# Java Beans classes (not available on Android)
+-dontwarn java.beans.BeanInfo
+-dontwarn java.beans.IndexedPropertyDescriptor
+-dontwarn java.beans.IntrospectionException
+-dontwarn java.beans.Introspector
+-dontwarn java.beans.PropertyDescriptor
+
+# Apache Log and Log4j classes (optional dependencies)
+-dontwarn org.apache.log.Hierarchy
+-dontwarn org.apache.log.Logger
+-dontwarn org.apache.log4j.Level
+-dontwarn org.apache.log4j.Logger
+-dontwarn org.apache.log4j.Priority
+
+# FindBugs annotations (optional dependency)
+-dontwarn edu.umd.cs.findbugs.annotations.SuppressFBWarnings
+
+# ETSI XML signatures (optional dependency for digital signatures)
+-dontwarn org.etsi.uri.x01903.v13.CertifiedRolesListType
+-dontwarn org.etsi.uri.x01903.v13.CounterSignatureType
+-dontwarn org.etsi.uri.x01903.v13.DocumentationReferencesType
+-dontwarn org.etsi.uri.x01903.v13.IncludeType
+-dontwarn org.etsi.uri.x01903.v13.OtherCertStatusRefsType
+-dontwarn org.etsi.uri.x01903.v13.OtherCertStatusValuesType
+-dontwarn org.etsi.uri.x01903.v13.QualifierType
+-dontwarn org.etsi.uri.x01903.v13.ReferenceInfoType
+-dontwarn org.etsi.uri.x01903.v13.SignatureProductionPlaceType
+-dontwarn org.etsi.uri.x01903.v13.UnsignedDataObjectPropertiesType
+
+# W3C XML digital signature classes (optional dependency)
+-dontwarn org.w3.x2000.x09.xmldsig.KeyInfoType
+-dontwarn org.w3.x2000.x09.xmldsig.SignatureMethodType
+-dontwarn org.w3.x2000.x09.xmldsig.TransformsType
+
+# XZ compression classes (optional dependency for POI)
+-dontwarn org.tukaani.xz.ARMOptions
+-dontwarn org.tukaani.xz.ARMThumbOptions
+-dontwarn org.tukaani.xz.FilterOptions
+-dontwarn org.tukaani.xz.IA64Options
+-dontwarn org.tukaani.xz.LZMA2Options
+-dontwarn org.tukaani.xz.PowerPCOptions
+-dontwarn org.tukaani.xz.SPARCOptions
+-dontwarn org.tukaani.xz.X86Options
 
 # Saxon XPath classes (optional dependency for POI)
 -dontwarn net.sf.saxon.**
