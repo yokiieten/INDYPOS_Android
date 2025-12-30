@@ -55,13 +55,16 @@ class ProductRepositoryImpl @Inject constructor(
             
             // Fetch products with nested category and addon groups/addons
             val productsResponse = productsApi.getMyProductsAll()
-            if (productsResponse.status != 200 || productsResponse.data == null) {
+            if (productsResponse.status != 200) {
                 return Result.failure(Exception(productsResponse.message ?: "Failed to fetch products"))
             }
             
+            // Handle null data as empty list (valid for users with no products)
+            val productsList = productsResponse.data ?: emptyList()
+            
             // Extract categories from products (in case there are categories not in categories endpoint)
             val categoriesFromProductsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.CategoryDto>()
-            productsResponse.data.forEach { productDto ->
+            productsList.forEach { productDto ->
                 productDto.category?.let { categoryDto ->
                     categoriesFromProductsMap[categoryDto.id] = categoryDto
                 }
@@ -87,7 +90,7 @@ class ProductRepositoryImpl @Inject constructor(
             val addonGroupsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto>()
             val addonsMap = mutableMapOf<String, Pair<com.indybrain.indypos_Android.data.remote.dto.AddonDto, String?>>()
             
-            productsResponse.data.forEach { productDto ->
+            productsList.forEach { productDto ->
                 productDto.addonGroups?.forEach { addonGroupDto ->
                     // Add addon group
                     addonGroupsMap[addonGroupDto.id] = addonGroupDto
@@ -100,7 +103,7 @@ class ProductRepositoryImpl @Inject constructor(
             }
             
             // Convert and save products
-            val products = productsResponse.data.map { ProductMapper.toEntity(it) }
+            val products = productsList.map { ProductMapper.toEntity(it) }
             // Important: do NOT call deleteAll() here.
             // Deleting all products would trigger the foreign key on cart_items
             // (onDelete = SET_NULL) and clear productId on existing cart items,
@@ -125,7 +128,7 @@ class ProductRepositoryImpl @Inject constructor(
             addonDao.insertAll(addons)
             
             // Save product-addon group junctions
-            productsResponse.data.forEach { productDto ->
+            productsList.forEach { productDto ->
                 val productId = productDto.id
                 productDto.addonGroups?.forEach { addonGroupDto ->
                     productAddonGroupJunctionDao.insert(
