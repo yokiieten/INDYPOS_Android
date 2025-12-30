@@ -402,12 +402,12 @@ class AddonRepositoryImpl @Inject constructor(
             val request = SyncAddonsRequestDto(addons = syncItems)
             val response = productsApi.syncAddons(request)
             
-            if (response.status != 200 || response.data == null) {
+            if (response.status != 200) {
                 return Result.failure(Exception(response.message ?: "เกิดข้อผิดพลาดในการ sync"))
             }
             
-            // Process sync results
-            val results = response.data
+            // Process sync results - handle null data as empty list
+            val results = response.data ?: emptyList()
             val serverSideAddons = results.mapNotNull { it.serverData }
             
             // Save server data to Room

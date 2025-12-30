@@ -49,9 +49,12 @@ class ProductRepositoryImpl @Inject constructor(
         return try {
             // Fetch categories (to get all categories, not just those in products)
             val categoriesResponse = productsApi.getCategories()
-            if (categoriesResponse.status != 200 || categoriesResponse.data == null) {
+            if (categoriesResponse.status != 200) {
                 return Result.failure(Exception(categoriesResponse.message ?: "Failed to fetch categories"))
             }
+            
+            // Handle null data as empty list (valid for users with no categories)
+            val categoriesList = categoriesResponse.data ?: emptyList()
             
             // Fetch products with nested category and addon groups/addons
             val productsResponse = productsApi.getMyProductsAll()
@@ -72,7 +75,7 @@ class ProductRepositoryImpl @Inject constructor(
             
             // Merge categories: use categories from categories endpoint, but also include any from products
             val allCategoriesMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.CategoryDto>()
-            categoriesResponse.data.forEach { categoryDto ->
+            categoriesList.forEach { categoryDto ->
                 allCategoriesMap[categoryDto.id] = categoryDto
             }
             categoriesFromProductsMap.forEach { (id, categoryDto) ->
@@ -1321,8 +1324,9 @@ class ProductRepositoryImpl @Inject constructor(
                         UpdateProductStockRequestDto(delta)
                     )
                     
-                    if (response.status == 200 && response.data != null) {
+                    if (response.status == 200) {
                         // API success - update in Room
+                        // Even if data is null, status 200 means success
                         val updatedProduct = existingProduct.copy(
                             stockQuantity = newQuantity,
                             isSynced = true,
