@@ -25,7 +25,8 @@
 # ============================================
 # Don't optimize and obfuscate DTO classes
 -optimizations !class/merging/*,!code/simplification/*,!field/*,!method/*
--dontobfuscate
+# Note: -dontobfuscate is too broad, we use specific keep rules instead
+# -dontobfuscate
 
 # ============================================
 # Retrofit & OkHttp
@@ -44,12 +45,35 @@
 -keep,allowobfuscation,allowshrinking class retrofit2.Response
 -keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
 
-# Keep API interfaces and their methods
+# Retrofit suspend function support (CRITICAL for API calls)
+-keepclassmembers class kotlin.coroutines.jvm.internal.BaseContinuationImpl {
+    <methods>;
+}
+-keep class kotlin.coroutines.** { *; }
+-keepclassmembers class * extends kotlin.coroutines.jvm.internal.BaseContinuationImpl {
+    <methods>;
+}
+
+# Keep Retrofit service interfaces and suspend functions
 -keep interface com.indybrain.indypos_Android.data.remote.api.** { *; }
 -keepclassmembers interface com.indybrain.indypos_Android.data.remote.api.** { *; }
 
 # Keep API request/response DTOs defined in API files
+# Keep inner classes (nested classes)
 -keep class com.indybrain.indypos_Android.data.remote.api.*$* { *; }
+# Keep top-level DTO classes in API files (CRITICAL - these are not inner classes!)
+-keep class com.indybrain.indypos_Android.data.remote.api.*RequestDto { *; }
+-keep class com.indybrain.indypos_Android.data.remote.api.*ResponseDto { *; }
+-keep class com.indybrain.indypos_Android.data.remote.api.*Dto { *; }
+
+# Keep Retrofit call adapters for suspend functions
+-keep class retrofit2.KotlinExtensions { *; }
+-keep class retrofit2.KotlinExtensions$* { *; }
+
+# Keep Retrofit converters
+-keep class retrofit2.converter.gson.** { *; }
+-keep class retrofit2.Converter$* { *; }
+-keep class retrofit2.CallAdapter$* { *; }
 
 # OkHttp
 -dontwarn okhttp3.**
@@ -69,6 +93,10 @@
 # CRITICAL: Keep ALL DTO classes and prevent field name obfuscation
 -keep class com.indybrain.indypos_Android.data.remote.dto.** { *; }
 -keep class com.indybrain.indypos_Android.data.remote.api.**$* { *; }
+# Keep top-level DTO classes in API files (CRITICAL - these are not inner classes!)
+-keep class com.indybrain.indypos_Android.data.remote.api.*RequestDto { *; }
+-keep class com.indybrain.indypos_Android.data.remote.api.*ResponseDto { *; }
+-keep class com.indybrain.indypos_Android.data.remote.api.*Dto { *; }
 -keep class com.indybrain.indypos_Android.domain.model.** { *; }
 -keep class com.indybrain.indypos_Android.data.local.entity.** { *; }
 
@@ -78,6 +106,19 @@
     <init>(...);
 }
 -keepclassmembers class com.indybrain.indypos_Android.data.remote.api.**$* {
+    <fields>;
+    <init>(...);
+}
+# Prevent obfuscation of field names in top-level DTO classes in API files
+-keepclassmembers class com.indybrain.indypos_Android.data.remote.api.*RequestDto {
+    <fields>;
+    <init>(...);
+}
+-keepclassmembers class com.indybrain.indypos_Android.data.remote.api.*ResponseDto {
+    <fields>;
+    <init>(...);
+}
+-keepclassmembers class com.indybrain.indypos_Android.data.remote.api.*Dto {
     <fields>;
     <init>(...);
 }
@@ -112,6 +153,10 @@
     volatile <fields>;
 }
 
+# Keep coroutines for Retrofit suspend functions
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn kotlinx.coroutines.**
+
 # ============================================
 # Hilt
 # ============================================
@@ -139,6 +184,47 @@
 # Keep all data classes with @SerializedName
 -keepclassmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# CRITICAL: Keep all data classes in API package (for Gson serialization)
+# This ensures all DTO classes in API files are preserved with their fields
+-keepclassmembers class com.indybrain.indypos_Android.data.remote.api.** {
+    <fields>;
+    <init>(...);
+}
+
+# ============================================
+# Error Response DTOs (CRITICAL for error handling)
+# ============================================
+# Keep error response classes used for parsing API errors
+-keep class com.indybrain.indypos_Android.data.repository.*ErrorResponse { *; }
+-keep class com.indybrain.indypos_Android.data.repository.*Error { *; }
+-keepclassmembers class com.indybrain.indypos_Android.data.repository.*ErrorResponse {
+    <fields>;
+    <init>(...);
+}
+-keepclassmembers class com.indybrain.indypos_Android.data.repository.*Error {
+    <fields>;
+    <init>(...);
+}
+
+# ============================================
+# Generic API Response Wrapper (CRITICAL)
+# ============================================
+# Keep ApiResponseDto and all its generic type parameters
+-keep class com.indybrain.indypos_Android.data.remote.dto.ApiResponseDto { *; }
+-keepclassmembers class com.indybrain.indypos_Android.data.remote.dto.ApiResponseDto {
+    <fields>;
+    <init>(...);
+}
+
+# Keep all DTO classes that might be used as generic type parameters
+-keep class com.indybrain.indypos_Android.data.remote.dto.** { *; }
+
+# CRITICAL: Keep all data classes in API package (for Gson serialization)
+-keepclassmembers class com.indybrain.indypos_Android.data.remote.api.** {
+    <fields>;
+    <init>(...);
 }
 
 # ============================================
