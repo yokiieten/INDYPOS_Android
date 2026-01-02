@@ -152,10 +152,11 @@ class AuthRepositoryImpl @Inject constructor(
             
             // Check if registration was successful
             if (response.user == null || response.token == null ) {
+                val errorText = response.error ?: response.message
                 val errorMessage = getLocalizedRegisterErrorMessage(
-                    errorText = response.error ?: response.message,
+                    errorText = errorText,
                     statusCode = null
-                ) ?: "เกิดข้อผิดพลาดในการสมัครสมาชิก"
+                ) ?: errorText ?: "เกิดข้อผิดพลาดในการสมัครสมาชิก"
                 return Result.failure(IllegalStateException(errorMessage))
             }
             
@@ -175,20 +176,27 @@ class AuthRepositoryImpl @Inject constructor(
             
             Result.success(user)
         } catch (e: HttpException) {
+            val errorText = parseErrorMessage(e.response()?.errorBody())
             val errorMessage = getLocalizedRegisterErrorMessage(
-                errorText = parseErrorMessage(e.response()?.errorBody()),
+                errorText = errorText,
                 statusCode = e.code()
-            ) ?: parseErrorMessage(e.response()?.errorBody())
+            ) ?: errorText ?: "เกิดข้อผิดพลาดในการสมัครสมาชิก"
             Result.failure(IllegalStateException(errorMessage, e))
         } catch (e: Exception) {
             // Handle any other exceptions (network, parsing, etc.)
-            val errorMessage = when {
+            // First try to get localized error message from exception message
+            val localizedError = getLocalizedRegisterErrorMessage(
+                errorText = e.message,
+                statusCode = null
+            )
+            
+            val errorMessage = localizedError ?: when {
                 e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
                 e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
                 e.message?.contains("No address associated with hostname", ignoreCase = true) == true -> "ไม่พบเซิร์ฟเวอร์ กรุณาตรวจสอบการเชื่อมต่อ"
                 e.message?.contains("Connection refused", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้"
                 e.message?.contains("Network is unreachable", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่ออินเทอร์เน็ตได้"
-                else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+                else -> e.message ?: "เกิดข้อผิดพลาดในการสมัครสมาชิก"
             }
             Result.failure(IllegalStateException(errorMessage, e))
         }

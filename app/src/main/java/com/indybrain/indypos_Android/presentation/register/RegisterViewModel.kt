@@ -168,11 +168,11 @@ class RegisterViewModel @Inject constructor(
                         }
                     }
                     .onFailure { exception ->
-                        val errorMessage = when {
-                            exception.message != null -> exception.message!!
-                            exception.cause?.message != null -> exception.cause!!.message!!
-                            else -> "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
-                        }
+                        // Repository already provides localized error messages
+                        // Use exception.message which contains the localized error from repository
+                        val errorMessage = exception.message 
+                            ?: exception.cause?.message 
+                            ?: "เกิดข้อผิดพลาดในการสมัครสมาชิก"
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -184,11 +184,10 @@ class RegisterViewModel @Inject constructor(
                         _state.value = RegisterState.Error(errorMessage)
                     }
             } catch (e: Exception) {
-                val errorMessage = when {
-                    e.message != null -> e.message!!
-                    e.cause?.message != null -> e.cause!!.message!!
-                    else -> "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง"
-                }
+                // Handle unexpected exceptions (shouldn't happen if repository handles properly)
+                val errorMessage = e.message 
+                    ?: e.cause?.message 
+                    ?: "เกิดข้อผิดพลาดในการสมัครสมาชิก"
                 _uiState.update {
                     it.copy(
                         isLoading = false,
