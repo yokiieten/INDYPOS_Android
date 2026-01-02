@@ -377,20 +377,20 @@ class AuthRepositoryImpl @Inject constructor(
                 return Result.failure(IllegalStateException("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
             }
 
-            // Resize image to 256x144 before upload (16:9)
+            // Resize image to 384x216 before upload (16:9, balanced size for clarity and file size)
             val resizedBitmap = ImageUtils.resizeImage(
                 imageUri = imageUri,
-                targetWidth = 256,
-                targetHeight = 144,
+                targetWidth = 384,
+                targetHeight = 216,
                 context = context
             ) ?: return Result.failure(IllegalStateException("ไม่สามารถประมวลผลรูปภาพได้"))
 
-            // Save resized bitmap to temporary file
+            // Save resized bitmap to temporary file using JPEG with high quality
             val tempFile = File(context.cacheDir, "shop_image_${System.currentTimeMillis()}.jpg")
             val saved = ImageUtils.saveBitmapToFile(
                 bitmap = resizedBitmap,
                 file = tempFile,
-                quality = 85
+                quality = 95  // High quality JPEG (95-100) for good balance
             )
 
             if (!saved) {

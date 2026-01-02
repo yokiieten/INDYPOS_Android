@@ -3,9 +3,14 @@ package com.indybrain.indypos_Android.core.utils
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Matrix
+import android.graphics.Paint
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
+import coil.request.ImageRequest
+import coil.request.CachePolicy
+import coil.size.Precision
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -44,9 +49,12 @@ object ImageUtils {
             // Calculate sample size
             val sampleSize = calculateInSampleSize(options, targetWidth, targetHeight)
             
-            // Decode bitmap with sample size
+            // Decode bitmap with sample size and high quality settings
             val decodeOptions = BitmapFactory.Options().apply {
                 inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888  // Use highest quality color format
+                inDither = false  // Disable dithering for better quality
+                inScaled = false  // Don't scale automatically
             }
             val inputStream2 = context.contentResolver.openInputStream(imageUri)
             val bitmap = BitmapFactory.decodeStream(inputStream2, null, decodeOptions)
@@ -57,20 +65,40 @@ object ImageUtils {
             // Handle orientation
             val orientedBitmap = handleOrientation(bitmap, imageUri, context)
             
-            // Resize to exact dimensions
-            Bitmap.createScaledBitmap(orientedBitmap, targetWidth, targetHeight, true)
+            // Resize to exact dimensions using Matrix with high quality settings
+            val scaleX = targetWidth.toFloat() / orientedBitmap.width
+            val scaleY = targetHeight.toFloat() / orientedBitmap.height
+            val matrix = Matrix().apply {
+                setScale(scaleX, scaleY)
+            }
+            // Use ARGB_8888 config for maximum quality
+            val resizedBitmap = Bitmap.createBitmap(
+                targetWidth,
+                targetHeight,
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(resizedBitmap)
+            val paint = Paint().apply {
+                isAntiAlias = true  // Enable anti-aliasing
+                isFilterBitmap = true  // Enable filtering for smoother scaling
+                isDither = false  // Disable dithering for better quality
+            }
+            canvas.drawBitmap(orientedBitmap, matrix, paint)
+            resizedBitmap
         } catch (e: Exception) {
             null
         }
     }
     
     /**
-     * Save bitmap to file
+     * Save bitmap to file using JPEG format with high quality (95-100)
+     * Provides excellent quality with smaller file size than PNG
      */
-    fun saveBitmapToFile(bitmap: Bitmap, file: File, quality: Int = 85): Boolean {
+    fun saveBitmapToFile(bitmap: Bitmap, file: File, quality: Int = 95): Boolean {
         return try {
             FileOutputStream(file).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+                // Use JPEG with high quality (95-100) for good balance between quality and file size
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality.coerceIn(1, 100), out)
             }
             true
         } catch (e: Exception) {
@@ -133,6 +161,26 @@ object ImageUtils {
         } catch (e: Exception) {
             bitmap
         }
+    }
+    
+    /**
+     * Create a high-quality ImageRequest for Coil with optimized settings
+     * This ensures images are loaded with maximum quality and clarity
+     */
+    fun createHighQualityImageRequest(
+        context: Context,
+        data: Any,
+        crossfade: Boolean = true
+    ): ImageRequest {
+        return ImageRequest.Builder(context)
+            .data(data)
+            .crossfade(crossfade)
+            .precision(Precision.EXACT)  // Load exact size for better quality
+            .allowHardware(false)  // Use software rendering for better quality
+            .allowRgb565(false)  // Force ARGB_8888 for better color quality
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .build()
     }
 }
 

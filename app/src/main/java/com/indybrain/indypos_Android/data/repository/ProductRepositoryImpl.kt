@@ -958,11 +958,11 @@ class ProductRepositoryImpl @Inject constructor(
                 return Result.failure(Exception("ไม่สามารถเข้าถึงไฟล์รูปภาพได้: ${e.message}"))
             }
             
-            // Resize image to 100x100 before upload
+            // Resize image to 150x150 before upload (balanced size for clarity and file size)
             val resizedBitmap = com.indybrain.indypos_Android.core.utils.ImageUtils.resizeImage(
                 imageUri = imageUri,
-                targetWidth = 100,
-                targetHeight = 100,
+                targetWidth = 150,
+                targetHeight = 150,
                 context = context
             )
             
@@ -970,12 +970,12 @@ class ProductRepositoryImpl @Inject constructor(
                 return Result.failure(Exception("ไม่สามารถประมวลผลรูปภาพได้ กรุณาตรวจสอบว่าไฟล์รูปภาพถูกต้อง"))
             }
             
-            // Save resized bitmap to temporary file
+            // Save resized bitmap to temporary file using JPEG with high quality
             val tempFile = File(context.cacheDir, "upload_resized_${System.currentTimeMillis()}.jpg")
             val saved = com.indybrain.indypos_Android.core.utils.ImageUtils.saveBitmapToFile(
                 bitmap = resizedBitmap,
                 file = tempFile,
-                quality = 85
+                quality = 95  // High quality JPEG (95-100) for good balance
             )
             
             if (!saved) {
@@ -983,7 +983,7 @@ class ProductRepositoryImpl @Inject constructor(
                 return Result.failure(Exception("ไม่สามารถบันทึกไฟล์รูปภาพได้"))
             }
             
-            // Get MIME type
+            // Get MIME type for JPEG
             val mimeType = "image/jpeg"
             val mediaType = mimeType.toMediaTypeOrNull() ?: "image/jpeg".toMediaTypeOrNull()
             
