@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.data.export
 
 import android.content.Context
+import android.util.Log
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
 import com.indybrain.indypos_Android.data.local.dao.CategoryDao
@@ -542,6 +543,8 @@ class ExportService @Inject constructor(
             
             file
         } catch (e: Exception) {
+            Log.e("ExportService", "Error creating file: ${e.message}", e)
+            e.printStackTrace()
             null
         }
     }
@@ -551,33 +554,39 @@ class ExportService @Inject constructor(
         headers: Array<String>,
         rows: List<Array<String>>
     ) {
-        val headerStyle = sheet.workbook.createCellStyle().apply {
-            fillForegroundColor = IndexedColors.GREY_25_PERCENT.index
-            fillPattern = FillPatternType.SOLID_FOREGROUND
-            val font = sheet.workbook.createFont()
-            font.bold = true
-            setFont(font)
-        }
-        
-        // Create header row
-        val headerRow = sheet.createRow(0)
-        headers.forEachIndexed { index, header ->
-            val cell = headerRow.createCell(index)
-            cell.setCellValue(header)
-            cell.cellStyle = headerStyle
-        }
-        
-        // Create data rows
-        rows.forEachIndexed { rowIndex, rowData ->
-            val row = sheet.createRow(rowIndex + 1)
-            rowData.forEachIndexed { colIndex, value ->
-                val cell = row.createCell(colIndex)
-                cell.setCellValue(value)
+        try {
+            val headerStyle = sheet.workbook.createCellStyle().apply {
+                fillForegroundColor = IndexedColors.GREY_25_PERCENT.index
+                fillPattern = FillPatternType.SOLID_FOREGROUND
+                val font = sheet.workbook.createFont()
+                font.bold = true
+                setFont(font)
             }
+            
+            // Create header row
+            val headerRow = sheet.createRow(0)
+            headers.forEachIndexed { index, header ->
+                val cell = headerRow.createCell(index)
+                cell.setCellValue(header)
+                cell.cellStyle = headerStyle
+            }
+            
+            // Create data rows
+            rows.forEachIndexed { rowIndex, rowData ->
+                val row = sheet.createRow(rowIndex + 1)
+                rowData.forEachIndexed { colIndex, value ->
+                    val cell = row.createCell(colIndex)
+                    cell.setCellValue(value)
+                }
+            }
+            
+            // Note: autoSizeColumn() is not available on Android due to AWT dependencies
+            // Columns will use default width, which is usually sufficient
+        } catch (e: Exception) {
+            Log.e("ExportService", "Error creating Excel sheet: ${e.message}", e)
+            e.printStackTrace()
+            throw e
         }
-        
-        // Note: autoSizeColumn() is not available on Android due to AWT dependencies
-        // Columns will use default width, which is usually sufficient
     }
     
     private fun getPaymentTypeText(paymentTypeRaw: Int): String {

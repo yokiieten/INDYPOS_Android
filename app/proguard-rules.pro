@@ -16,6 +16,14 @@
 # debugging stack traces.
 -keepattributes SourceFile,LineNumberTable
 
+# Keep attributes needed for Apache POI reflection and enum access
+-keepattributes Signature
+-keepattributes Exceptions
+-keepattributes *Annotation*
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses
+-keepattributes Enum
+
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
@@ -39,6 +47,8 @@
 -keepattributes RuntimeVisibleParameterAnnotations
 -keepattributes RuntimeInvisibleParameterAnnotations
 -keepattributes EnclosingMethod
+-keepattributes InnerClasses
+-keepattributes Enum
 
 # Retrofit interfaces
 -keep,allowobfuscation,allowshrinking interface retrofit2.Call
@@ -276,14 +286,8 @@
 -dontwarn org.w3.x2000.x09.xmldsig.TransformsType
 
 # XZ compression classes (optional dependency for POI)
--dontwarn org.tukaani.xz.ARMOptions
--dontwarn org.tukaani.xz.ARMThumbOptions
--dontwarn org.tukaani.xz.FilterOptions
--dontwarn org.tukaani.xz.IA64Options
--dontwarn org.tukaani.xz.LZMA2Options
--dontwarn org.tukaani.xz.PowerPCOptions
--dontwarn org.tukaani.xz.SPARCOptions
--dontwarn org.tukaani.xz.X86Options
+# Use wildcard to cover all XZ classes
+-dontwarn org.tukaani.xz.**
 
 # Saxon XPath classes (optional dependency for POI)
 -dontwarn net.sf.saxon.**
@@ -301,12 +305,211 @@
 -dontwarn javax.xml.stream.**
 
 # Keep Apache POI classes that we actually use
+# CRITICAL: Do NOT allow obfuscation for POI - it uses reflection and dynamic class loading
 -keep class org.apache.poi.** { *; }
 -keep class org.apache.xmlbeans.** { *; }
+
+# Keep names of POI classes (prevent name obfuscation)
+-keepnames class org.apache.poi.** { *; }
+-keepnames class org.apache.xmlbeans.** { *; }
+
+# Keep anonymous classes and lambda expressions used by POI
+-keep class org.apache.poi.**$$* { *; }
+-keepclassmembers class org.apache.poi.** {
+    ** lambda$*(...);
+    ** $*(...);
+}
+
+# Keep POI inner classes and nested classes (CRITICAL for Excel export)
+-keep class org.apache.poi.**$* { *; }
+
+# Keep POI enums (CRITICAL - IndexedColors, FillPatternType, etc.)
+-keep enum org.apache.poi.ss.usermodel.IndexedColors {
+    <fields>;
+    <methods>;
+    public static ** valueOf(...);
+    public static **[] values();
+}
+-keep enum org.apache.poi.ss.usermodel.FillPatternType {
+    <fields>;
+    <methods>;
+    public static ** valueOf(...);
+    public static **[] values();
+}
+-keep enum org.apache.poi.ss.usermodel.** {
+    <fields>;
+    <methods>;
+    public static ** valueOf(...);
+    public static **[] values();
+}
+
+# Keep POI interfaces and their implementations
+-keep interface org.apache.poi.ss.usermodel.** { *; }
+-keep class * implements org.apache.poi.ss.usermodel.** { *; }
+
+# Keep POI XSSF classes (Excel XLSX format) - CRITICAL
+-keep class org.apache.poi.xssf.** { *; }
+-keep class org.apache.poi.xssf.usermodel.** { *; }
+-keepclassmembers class org.apache.poi.xssf.** { *; }
+
+# Keep XSSFWorkbook specifically (used in ExportService)
+-keep class org.apache.poi.xssf.usermodel.XSSFWorkbook {
+    <init>();
+    <fields>;
+    <methods>;
+}
+
+# Keep XMLBeans classes and their generated code
+-keep class org.apache.xmlbeans.** { *; }
+-keepclassmembers class org.apache.xmlbeans.** { *; }
 
 # Keep classes used by POI
 -keep class org.openxmlformats.schemas.** { *; }
 -keep class com.microsoft.schemas.** { *; }
+-keepnames class org.openxmlformats.schemas.** { *; }
+-keepnames class com.microsoft.schemas.** { *; }
+
+# Keep POI serialization/deserialization classes (only OOXML, not OLE2)
+-keep class org.apache.poi.ooxml.** { *; }
+-keepclassmembers class org.apache.poi.ooxml.** { *; }
+-keepnames class org.apache.poi.ooxml.** { *; }
+
+# Keep POI openxml4j classes (used by OOXML)
+-keep class org.apache.poi.openxml4j.** { *; }
+-keepclassmembers class org.apache.poi.openxml4j.** { *; }
+-keepnames class org.apache.poi.openxml4j.** { *; }
+
+# Keep POI factory classes and reflection-based class loading
+-keep class org.apache.poi.ss.usermodel.WorkbookFactory { *; }
+-keep enum org.apache.poi.ss.usermodel.CellType { *; }
+-keepclassmembers class org.apache.poi.** {
+    public static ** valueOf(...);
+    public static **[] values();
+}
+
+# Keep POI constructors and methods that may be called via reflection
+-keepclassmembers class org.apache.poi.ss.usermodel.** {
+    <init>(...);
+    <methods>;
+    <fields>;
+}
+
+# Keep all POI constructors (may be called via reflection)
+-keepclassmembers class org.apache.poi.** {
+    <init>(...);
+}
+
+# Keep POI classes that implement Serializable (for serialization)
+-keep class org.apache.poi.** implements java.io.Serializable { *; }
+
+# Keep POI methods used in ExportService
+-keepclassmembers class org.apache.poi.xssf.usermodel.XSSFWorkbook {
+    public <init>();
+    public org.apache.poi.ss.usermodel.Sheet createSheet(java.lang.String);
+    public void write(java.io.OutputStream);
+    public void close();
+}
+
+-keepclassmembers class org.apache.poi.ss.usermodel.Sheet {
+    public org.apache.poi.ss.usermodel.Row createRow(int);
+    public org.apache.poi.ss.usermodel.Workbook getWorkbook();
+}
+
+-keepclassmembers class org.apache.poi.ss.usermodel.Workbook {
+    public org.apache.poi.ss.usermodel.CellStyle createCellStyle();
+    public org.apache.poi.ss.usermodel.Font createFont();
+}
+
+-keepclassmembers class org.apache.poi.ss.usermodel.Row {
+    public org.apache.poi.ss.usermodel.Cell createCell(int);
+}
+
+-keepclassmembers class org.apache.poi.ss.usermodel.Cell {
+    public void setCellValue(java.lang.String);
+    public void setCellStyle(org.apache.poi.ss.usermodel.CellStyle);
+}
+
+-keepclassmembers class org.apache.poi.ss.usermodel.CellStyle {
+    public void setFillForegroundColor(short);
+    public void setFillPattern(org.apache.poi.ss.usermodel.FillPatternType);
+    public void setFont(org.apache.poi.ss.usermodel.Font);
+}
+
+-keepclassmembers class org.apache.poi.ss.usermodel.Font {
+    public void setBold(boolean);
+}
+
+# Keep IndexedColors enum values (used in ExportService.createExcelSheet)
+-keepclassmembers enum org.apache.poi.ss.usermodel.IndexedColors {
+    public static org.apache.poi.ss.usermodel.IndexedColors GREY_25_PERCENT;
+    public static org.apache.poi.ss.usermodel.IndexedColors *;
+    public short index;
+}
+
+# ============================================
+# Apache Commons Compress - CRITICAL FOR POI
+# ============================================
+# POI uses Apache Commons Compress for ZIP file handling
+# CRITICAL: Must keep all classes and constructors
+-keep class org.apache.commons.compress.** { *; }
+-keepnames class org.apache.commons.compress.** { *; }
+-keepclassmembers class org.apache.commons.compress.** {
+    <init>(...);
+    <methods>;
+    <fields>;
+}
+
+# Keep Apache Commons Compress archivers (especially ZIP)
+-keep class org.apache.commons.compress.archivers.** { *; }
+-keep class org.apache.commons.compress.archivers.zip.** { *; }
+-keepclassmembers class org.apache.commons.compress.archivers.** {
+    <init>(...);
+    <init>();
+    <methods>;
+    <fields>;
+}
+
+# Keep classes that may be loaded dynamically via Class.forName() or reflection
+-keep class org.apache.poi.xssf.model.** { *; }
+-keep class org.apache.poi.xssf.streaming.** { *; }
+-keep class org.apache.poi.xssf.eventusermodel.** { *; }
+
+# Keep POI utility classes
+-keep class org.apache.poi.util.** { *; }
+-keepclassmembers class org.apache.poi.util.** { *; }
+
+# ============================================
+# Optional Compression Libraries - DontWarn
+# ============================================
+# These are optional dependencies for Apache Commons Compress
+# They are not needed on Android but may be referenced
+
+# Zstd compression (optional) - use wildcard to cover all classes
+-dontwarn com.github.luben.zstd.**
+
+# Brotli compression (optional) - use wildcard to cover all classes
+-dontwarn org.brotli.**
+
+# ASM bytecode manipulation (optional, used at build time) - use wildcard to cover all classes
+-dontwarn org.objectweb.asm.**
+
+# ============================================
+# OpenCSV - CRITICAL FOR CSV EXPORT
+# ============================================
+# Keep OpenCSV classes that we use for CSV export
+-keep class com.opencsv.** { *; }
+-keep interface com.opencsv.** { *; }
+-keepclassmembers class com.opencsv.** { *; }
+
+# ============================================
+# Export Service - CRITICAL FOR EXPORT FUNCTIONALITY
+# ============================================
+# Keep ExportService and related classes
+-keep class com.indybrain.indypos_Android.data.export.** { *; }
+-keepclassmembers class com.indybrain.indypos_Android.data.export.** { *; }
+# Keep ExportFormat enum
+-keep enum com.indybrain.indypos_Android.data.export.ExportFormat { *; }
+-keep enum com.indybrain.indypos_Android.data.export.ExportDataType { *; }
 
 # JavaParser classes (optional dependency for XMLBeans code generation)
 -dontwarn com.github.javaparser.**
