@@ -480,7 +480,7 @@ private fun StockUpdateDialog(
                     },
                     label = {
                         Text(
-                            text = "จำนวนที่ต้องการเพิ่ม/ลด (เช่น +10 หรือ -5)",
+                            text = "จำนวนที่ต้องการเพิ่ม/ลด (เช่น +10)",
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Small
