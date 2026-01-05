@@ -19,6 +19,26 @@
     <string name="forgot_password_error_email_required">กรุณากรอกอีเมล</string>
     <string name="forgot_password_error_email_invalid">รูปแบบอีเมลไม่ถูกต้อง</string>
     <string name="forgot_password_error_generic">เกิดข้อผิดพลาดในการส่งลิงก์รีเซ็ตรหัสผ่าน</string>
+    
+    <!-- Reset Password Screen -->
+    <string name="reset_password_title">รีเซ็ตรหัสผ่าน</string>
+    <string name="reset_password_description">กรอกรหัสผ่านใหม่ของคุณ</string>
+    <string name="reset_password_verifying_token">กำลังตรวจสอบ Token...</string>
+    <string name="reset_password_new_password_label">รหัสผ่านใหม่</string>
+    <string name="reset_password_confirm_password_label">ยืนยันรหัสผ่าน</string>
+    <string name="reset_password_password_placeholder">กรอกรหัสผ่านของคุณ</string>
+    <string name="reset_password_submit_button">รีเซ็ตรหัสผ่าน</string>
+    <string name="reset_password_back_to_login">กลับไปหน้าเข้าสู่ระบบ</string>
+    <string name="reset_password_success_message">รีเซ็ตรหัสผ่านสำเร็จ</string>
+    <string name="reset_password_error_password_required">กรุณากรอกรหัสผ่านใหม่</string>
+    <string name="reset_password_error_password_too_short">รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร</string>
+    <string name="reset_password_error_confirm_password_required">กรุณายืนยันรหัสผ่าน</string>
+    <string name="reset_password_error_passwords_not_match">รหัสผ่านไม่ตรงกัน</string>
+    <string name="reset_password_error_token_missing">ไม่พบโทเค็น</string>
+    <string name="reset_password_error_token_expired">Token ไม่ถูกต้องหรือหมดอายุ</string>
+    <string name="reset_password_error_token_not_verified">โทเค็นยังไม่ได้รับการตรวจสอบ</string>
+    <string name="reset_password_error_generic">เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน</string>
+    
     <string name="no_account">ยังไม่มีบัญชี?</string>
     <string name="create_account">สร้างบัญชี</string>
     <string name="app_logo_text">ANDY POS</string>

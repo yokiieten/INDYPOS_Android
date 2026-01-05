@@ -72,5 +72,20 @@ interface AuthRepository {
      * @return Result indicating success or failure
      */
     suspend fun forgotPassword(email: String): Result<Unit>
+    
+    /**
+     * Verify reset password token
+     * @param token Reset token from email link
+     * @return Result containing userId if token is valid
+     */
+    suspend fun verifyResetPasswordToken(token: String): Result<Int?>
+    
+    /**
+     * Reset password with token
+     * @param token Reset token from email link
+     * @param newPassword New password
+     * @return Result indicating success or failure
+     */
+    suspend fun resetPassword(token: String, newPassword: String): Result<Unit>
 }
 

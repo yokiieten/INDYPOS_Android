@@ -67,6 +67,18 @@ interface AuthApi {
      */
     @POST("auth/forgot-password")
     suspend fun forgotPassword(@Body request: ForgotPasswordRequestDto): ForgotPasswordResponseDto
+    
+    /**
+     * Verify reset password token endpoint
+     */
+    @POST("auth/reset-password/verify")
+    suspend fun verifyResetPasswordToken(@Body request: VerifyResetPasswordTokenRequestDto): VerifyResetPasswordTokenResponseDto
+    
+    /**
+     * Reset password endpoint
+     */
+    @POST("auth/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordRequestDto): ResetPasswordResponseDto
 }
 
 /**
@@ -238,6 +250,53 @@ data class ForgotPasswordRequestDto(
  * Response DTO for forgot password
  */
 data class ForgotPasswordResponseDto(
+    val status: Int? = null,
+    val message: String? = null,
+    val data: Any? = null,
+    val timestamp: String? = null,
+    val error: String? = null
+)
+
+/**
+ * Request DTO for verify reset password token
+ */
+data class VerifyResetPasswordTokenRequestDto(
+    val token: String
+)
+
+/**
+ * Response DTO for verify reset password token
+ */
+data class VerifyResetPasswordTokenResponseDto(
+    val status: Int? = null,
+    val message: String? = null,
+    val data: VerifyResetPasswordTokenDataDto? = null,
+    val timestamp: String? = null,
+    val error: String? = null
+)
+
+/**
+ * Data DTO for verify reset password token response
+ */
+data class VerifyResetPasswordTokenDataDto(
+    val valid: Boolean? = null,
+    @SerializedName("userId")
+    val userId: Int? = null
+)
+
+/**
+ * Request DTO for reset password
+ */
+data class ResetPasswordRequestDto(
+    val token: String,
+    @SerializedName("new_password")
+    val newPassword: String
+)
+
+/**
+ * Response DTO for reset password
+ */
+data class ResetPasswordResponseDto(
     val status: Int? = null,
     val message: String? = null,
     val data: Any? = null,

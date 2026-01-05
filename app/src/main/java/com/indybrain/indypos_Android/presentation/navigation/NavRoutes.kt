@@ -8,6 +8,7 @@ sealed class NavRoutes(val route: String) {
     data object Login : NavRoutes("login")
     data object Register : NavRoutes("register")
     data object ForgotPassword : NavRoutes("forgot_password")
+    data object ResetPassword : NavRoutes("reset_password")
     data object Home : NavRoutes("home")
     data object MainProduct : NavRoutes("main_product")
     data object OrderProduct : NavRoutes("order_product")
@@ -83,6 +84,9 @@ sealed class NavRoutes(val route: String) {
         
         const val ORDER_DETAIL_ROUTE = "order_detail/{orderId}"
         fun orderDetail(orderId: String) = "order_detail/$orderId"
+        
+        const val RESET_PASSWORD_ROUTE = "reset_password/{token}"
+        fun resetPassword(token: String) = "reset_password/$token"
     }
 }
 

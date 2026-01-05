@@ -1,6 +1,8 @@
 package com.indybrain.indypos_Android
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +25,7 @@ import androidx.navigation.navArgument
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.presentation.forgotpassword.ForgotPasswordScreen
+import com.indybrain.indypos_Android.presentation.resetpassword.ResetPasswordScreen
 import com.indybrain.indypos_Android.presentation.home.HomeScreen
 import com.indybrain.indypos_Android.presentation.login.LoginScreen
 import com.indybrain.indypos_Android.presentation.register.RegisterScreen
@@ -84,8 +87,14 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
+                    val coroutineScope = rememberCoroutineScope()
                     var scannedBarcode by remember { mutableStateOf<String?>(null) }
                     var scannedBarcodeForProduct by remember { mutableStateOf<String?>(null) }
+                    
+                    // Handle deep link when launching from a cold start
+                    LaunchedEffect(Unit) {
+                        handleDeepLink(intent, navController, coroutineScope)
+                    }
                     
                     NavHost(
                         navController = navController,
@@ -138,6 +147,27 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onSuccess = {
                                     navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.RESET_PASSWORD_ROUTE,
+                            arguments = listOf(navArgument("token") {})
+                        ) { backStackEntry ->
+                            val token = backStackEntry.arguments?.getString("token") ?: ""
+                            ResetPasswordScreen(
+                                token = token,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onSuccess = {
+                                    // Navigate to login screen after successful password reset
+                                    navController.navigate(NavRoutes.Login.route) {
+                                        popUpTo(NavRoutes.Splash.route) {
+                                            inclusive = true
+                                        }
+                                    }
                                 }
                             )
                         }
@@ -718,6 +748,43 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 }
                             )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleDeepLink(
+        intent: Intent?, 
+        navController: androidx.navigation.NavController,
+        coroutineScope: kotlinx.coroutines.CoroutineScope
+    ) {
+        val data: Uri? = intent?.data
+        if (data != null) {
+            val scheme = data.scheme
+            val host = data.host
+            val path = data.path
+            
+            // Handle reset password deep link
+            // Format: https://indy-pos.com/reset-password?token=xxx
+            // or: https://dev.indy-pos.com/reset-password?token=xxx
+            // or: https://stg.indy-pos.com/reset-password?token=xxx
+            if (scheme == "https" && 
+                (host == "indy-pos.com" || host == "dev.indy-pos.com" || host == "stg.indy-pos.com") &&
+                path?.contains("reset-password") == true) {
+                
+                val token = data.getQueryParameter("token")
+                if (token != null && token.isNotEmpty()) {
+                    // Navigate to reset password screen with token
+                    // Use a small delay to ensure UI is ready
+                    coroutineScope.launch {
+                        kotlinx.coroutines.delay(500)
+                        navController.navigate(NavRoutes.resetPassword(token)) {
+                            // Clear back stack to prevent going back to splash
+                            popUpTo(NavRoutes.Splash.route) {
+                                inclusive = true
+                            }
                         }
                     }
                 }

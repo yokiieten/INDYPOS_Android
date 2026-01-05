@@ -19,6 +19,26 @@
     <string name="forgot_password_error_email_required">Please enter your email</string>
     <string name="forgot_password_error_email_invalid">Invalid email format</string>
     <string name="forgot_password_error_generic">Failed to send password reset link</string>
+    
+    <!-- Reset Password Screen -->
+    <string name="reset_password_title">Reset Password</string>
+    <string name="reset_password_description">Enter your new password</string>
+    <string name="reset_password_verifying_token">Verifying reset token...</string>
+    <string name="reset_password_new_password_label">New Password</string>
+    <string name="reset_password_confirm_password_label">Confirm Password</string>
+    <string name="reset_password_password_placeholder">Enter your password</string>
+    <string name="reset_password_submit_button">Reset Password</string>
+    <string name="reset_password_back_to_login">Back to Login</string>
+    <string name="reset_password_success_message">Password reset successfully</string>
+    <string name="reset_password_error_password_required">Please enter new password</string>
+    <string name="reset_password_error_password_too_short">Password must be at least 6 characters</string>
+    <string name="reset_password_error_confirm_password_required">Please confirm password</string>
+    <string name="reset_password_error_passwords_not_match">Passwords do not match</string>
+    <string name="reset_password_error_token_missing">Token not found</string>
+    <string name="reset_password_error_token_expired">Invalid or expired token</string>
+    <string name="reset_password_error_token_not_verified">Token not verified</string>
+    <string name="reset_password_error_generic">An error occurred. Please try again</string>
+    
     <string name="no_account">Don\'t have an account?</string>
     <string name="create_account">Create Account</string>
     <string name="app_logo_text">ANDY POS</string>
