@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.NavHost
 import kotlinx.coroutines.launch
 import androidx.navigation.compose.composable
@@ -91,9 +95,40 @@ class MainActivity : ComponentActivity() {
                     var scannedBarcode by remember { mutableStateOf<String?>(null) }
                     var scannedBarcodeForProduct by remember { mutableStateOf<String?>(null) }
                     
-                    // Handle deep link when launching from a cold start
-                    LaunchedEffect(Unit) {
-                        handleDeepLink(intent, navController, coroutineScope)
+                    // Store current intent URI and timestamp to force updates
+                    var currentIntentUri by remember { mutableStateOf(intent?.data?.toString()) }
+                    var lastIntentTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+                    
+                    // Watch lifecycle to handle new intents from onNewIntent
+                    val lifecycleOwner = LocalLifecycleOwner.current
+                    DisposableEffect(lifecycleOwner) {
+                        val observer = LifecycleEventObserver { _, event ->
+                            if (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START) {
+                                // Check if intent has changed (from onNewIntent)
+                                // Use a small delay to ensure intent is updated
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(100)
+                                    val newIntentUri = this@MainActivity.intent?.data?.toString()
+                                    if (newIntentUri != null) {
+                                        // Always update timestamp to force LaunchedEffect to trigger
+                                        // This allows handling the same link clicked again
+                                        currentIntentUri = newIntentUri
+                                        lastIntentTimestamp = System.currentTimeMillis()
+                                    }
+                                }
+                            }
+                        }
+                        lifecycleOwner.lifecycle.addObserver(observer)
+                        onDispose {
+                            lifecycleOwner.lifecycle.removeObserver(observer)
+                        }
+                    }
+                    
+                    // Handle deep link when intent URI or timestamp changes (both onCreate and onNewIntent)
+                    LaunchedEffect(currentIntentUri, lastIntentTimestamp) {
+                        if (currentIntentUri != null) {
+                            handleDeepLink(this@MainActivity.intent, navController, coroutineScope)
+                        }
                     }
                     
                     NavHost(
@@ -758,10 +793,8 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        // Handle deep link when app is already running
-        // Since we can't access navController here, we recreate the activity
-        // This will trigger the LaunchedEffect in onCreate with the new intent
-        recreate()
+        // Clear intent data after setting to allow handling same link again
+        // We'll use a flag or counter in Compose state instead
     }
 
     private fun handleDeepLink(
@@ -789,11 +822,26 @@ class MainActivity : ComponentActivity() {
                     // Use a small delay to ensure UI is ready
                     coroutineScope.launch {
                         kotlinx.coroutines.delay(500)
-                        navController.navigate(NavRoutes.resetPassword(token)) {
-                            // Clear back stack to prevent going back to splash
-                            popUpTo(NavRoutes.Splash.route) {
-                                inclusive = true
+                        // Always navigate to reset password screen, even if already there
+                        // This allows handling the same link clicked again
+                        val resetPasswordRoute = NavRoutes.resetPassword(token)
+                        
+                        // Navigate to reset password screen
+                        // Clear back stack to Login so user can go back to login
+                        navController.navigate(resetPasswordRoute) {
+                            // Pop to Login if it exists, otherwise clear all
+                            val loginRoute = NavRoutes.Login.route
+                            if (navController.graph.findNode(loginRoute) != null) {
+                                popUpTo(loginRoute) {
+                                    inclusive = false
+                                }
+                            } else {
+                                // If Login route doesn't exist in graph, clear all
+                                popUpTo(0) {
+                                    inclusive = true
+                                }
                             }
+                            launchSingleTop = true
                         }
                     }
                 }
