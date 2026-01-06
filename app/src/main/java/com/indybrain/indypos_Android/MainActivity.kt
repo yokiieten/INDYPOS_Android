@@ -70,6 +70,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var languageLocalDataSource: LanguageLocalDataSource
     
+    // Flag to track if we received a new intent from onNewIntent
+    private var hasNewIntent = false
+    
     override fun attachBaseContext(newBase: Context) {
         val localeCode = try {
             val prefs = newBase.getSharedPreferences("indypos_prefs", Context.MODE_PRIVATE)
@@ -98,22 +101,54 @@ class MainActivity : ComponentActivity() {
                     // Store current intent URI and timestamp to force updates
                     var currentIntentUri by remember { mutableStateOf(intent?.data?.toString()) }
                     var lastIntentTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+                    // Track the last processed intent URI to prevent re-processing on resume
+                    var lastProcessedIntentUri by remember { mutableStateOf<String?>(null) }
+                    // Track if we have a new intent from onNewIntent that needs processing
+                    var hasNewIntentToProcess by remember { mutableStateOf(false) }
+                    
+                    // Helper function to check if URI is a reset-password deep link
+                    fun isResetPasswordDeepLink(uri: String?): Boolean {
+                        if (uri == null) return false
+                        return uri.contains("reset-password") && 
+                               (uri.contains("indy-pos.com") || 
+                                uri.contains("dev.indy-pos.com") || 
+                                uri.contains("stg.indy-pos.com"))
+                    }
                     
                     // Watch lifecycle to handle new intents from onNewIntent
                     val lifecycleOwner = LocalLifecycleOwner.current
                     DisposableEffect(lifecycleOwner) {
                         val observer = LifecycleEventObserver { _, event ->
                             if (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START) {
-                                // Check if intent has changed (from onNewIntent)
-                                // Use a small delay to ensure intent is updated
+                                // On resume, check if intent has changed (from onNewIntent)
                                 coroutineScope.launch {
                                     kotlinx.coroutines.delay(100)
                                     val newIntentUri = this@MainActivity.intent?.data?.toString()
                                     if (newIntentUri != null) {
-                                        // Always update timestamp to force LaunchedEffect to trigger
-                                        // This allows handling the same link clicked again
-                                        currentIntentUri = newIntentUri
-                                        lastIntentTimestamp = System.currentTimeMillis()
+                                        val isResetPassword = isResetPasswordDeepLink(newIntentUri)
+                                        val isNewIntent = this@MainActivity.hasNewIntent
+                                        
+                                        // Reset the flag after checking
+                                        this@MainActivity.hasNewIntent = false
+                                        
+                                        // Determine if we should update and process the deep link
+                                        val shouldUpdate = when {
+                                            // New intent from onNewIntent: always update
+                                            isNewIntent -> {
+                                                hasNewIntentToProcess = true
+                                                true
+                                            }
+                                            // Reset-password on resume: only process if URI changed (new link clicked)
+                                            isResetPassword -> newIntentUri != lastProcessedIntentUri
+                                            // Other deep links: only process if URI changed
+                                            else -> newIntentUri != currentIntentUri
+                                        }
+                                        
+                                        if (shouldUpdate) {
+                                            val currentTime = System.currentTimeMillis()
+                                            currentIntentUri = newIntentUri
+                                            lastIntentTimestamp = currentTime
+                                        }
                                     }
                                 }
                             }
@@ -127,7 +162,26 @@ class MainActivity : ComponentActivity() {
                     // Handle deep link when intent URI or timestamp changes (both onCreate and onNewIntent)
                     LaunchedEffect(currentIntentUri, lastIntentTimestamp) {
                         if (currentIntentUri != null) {
-                            handleDeepLink(this@MainActivity.intent, navController, coroutineScope)
+                            val isResetPassword = isResetPasswordDeepLink(currentIntentUri)
+                            
+                            // Determine if we should process the deep link
+                            val shouldProcess = when {
+                                // New intent from onNewIntent: always process (even if same URI for reset-password)
+                                hasNewIntentToProcess -> {
+                                    hasNewIntentToProcess = false
+                                    true
+                                }
+                                // Reset-password: only process if URI changed (new link clicked)
+                                isResetPassword -> currentIntentUri != lastProcessedIntentUri
+                                // Other deep links: only process if URI changed
+                                else -> currentIntentUri != lastProcessedIntentUri
+                            }
+                            
+                            if (shouldProcess) {
+                                // Mark this deep link as processed before handling
+                                lastProcessedIntentUri = currentIntentUri
+                                handleDeepLink(this@MainActivity.intent, navController, coroutineScope)
+                            }
                         }
                     }
                     
@@ -793,8 +847,10 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        // Clear intent data after setting to allow handling same link again
-        // We'll use a flag or counter in Compose state instead
+        // Mark that we received a new intent so lifecycle observer knows to process it
+        hasNewIntent = true
+        // The deep link will be processed by the lifecycle observer
+        // when it detects the intent URI has changed
     }
 
     private fun handleDeepLink(
