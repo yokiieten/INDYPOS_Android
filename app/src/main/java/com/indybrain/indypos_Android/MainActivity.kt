@@ -754,6 +754,15 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // Handle deep link when app is already running
+        // Since we can't access navController here, we recreate the activity
+        // This will trigger the LaunchedEffect in onCreate with the new intent
+        recreate()
+    }
 
     private fun handleDeepLink(
         intent: Intent?, 
