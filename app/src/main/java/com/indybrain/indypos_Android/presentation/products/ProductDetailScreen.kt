@@ -56,6 +56,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -114,8 +117,19 @@ fun ProductDetailScreen(
         }
     }
     
+    val snackbarHostState = remember { SnackbarHostState() }
+    
     Scaffold(
         containerColor = BaseBackground,
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { snackbarData ->
+                Snackbar(
+                    snackbarData = snackbarData,
+                    containerColor = Color(0xFF323232),
+                    contentColor = Color.White
+                )
+            }
+        },
         topBar = {
             Box(
                 modifier = Modifier
@@ -183,6 +197,7 @@ fun ProductDetailScreen(
                         addonsByGroup = uiState.addonsByGroup,
                         selectedAddons = uiState.selectedAddons,
                         quantity = uiState.quantity,
+                        maxAvailableQuantity = uiState.maxAvailableQuantity,
                         specialRequest = uiState.specialRequest,
                         onAddonToggle = { addonGroupId, addonId ->
                             viewModel.toggleAddon(addonGroupId, addonId)
@@ -232,49 +247,15 @@ fun ProductDetailScreen(
                         )
                     }
                     
-                    // Error Dialog
+                    // Show error as snackbar (toast without icon)
                     uiState.errorMessage?.let { errorMessage ->
-                        androidx.compose.material3.AlertDialog(
-                            onDismissRequest = {
-                                viewModel.clearErrorMessage()
-                            },
-                            title = {
-                                Text(
-                                    text = "แจ้งเตือน",
-                                    style = FontUtils.mainFont(
-                                        style = AppFontStyle.Bold,
-                                        size = FontSize.Large
-                                    ),
-                                    color = PrimaryText
-                                )
-                            },
-                            text = {
-                                Text(
-                                    text = errorMessage,
-                                    style = FontUtils.mainFont(
-                                        style = AppFontStyle.Regular,
-                                        size = FontSize.Medium
-                                    ),
-                                    color = SecondaryText
-                                )
-                            },
-                            confirmButton = {
-                                TextButton(
-                                    onClick = {
-                                        viewModel.clearErrorMessage()
-                                    }
-                                ) {
-                                    Text(
-                                        text = "ตกลง",
-                                        style = FontUtils.mainFont(
-                                            style = AppFontStyle.Medium,
-                                            size = FontSize.Medium
-                                        ),
-                                        color = PrimaryButton
-                                    )
-                                }
-                            }
-                        )
+                        LaunchedEffect(errorMessage) {
+                            snackbarHostState.showSnackbar(
+                                message = errorMessage,
+                                duration = androidx.compose.material3.SnackbarDuration.Short
+                            )
+                            viewModel.clearErrorMessage()
+                        }
                     }
                 }
             }
@@ -289,6 +270,7 @@ private fun ProductDetailContent(
     addonsByGroup: Map<String, List<AddonEntity>>,
     selectedAddons: Map<String, Set<String>>,
     quantity: Int,
+    maxAvailableQuantity: Int?,
     specialRequest: String,
     onAddonToggle: (String, String) -> Unit,
     onQuantityChange: (Int) -> Unit,
@@ -416,6 +398,7 @@ private fun ProductDetailContent(
         // Bottom Bar with Quantity and Add to Cart
         BottomActionBar(
             quantity = quantity,
+            maxAvailableQuantity = maxAvailableQuantity,
             totalPrice = totalPrice,
             onQuantityChange = onQuantityChange,
             onAddToCart = onAddToCart,
@@ -427,11 +410,15 @@ private fun ProductDetailContent(
 @Composable
 private fun BottomActionBar(
     quantity: Int,
+    maxAvailableQuantity: Int?,
     totalPrice: Double,
     onQuantityChange: (Int) -> Unit,
     onAddToCart: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Check if can increase quantity or add to cart
+    val canIncrease = maxAvailableQuantity == null || quantity < maxAvailableQuantity
+    val canAddToCart = maxAvailableQuantity == null || quantity <= maxAvailableQuantity
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = Color.White,
@@ -478,11 +465,12 @@ private fun BottomActionBar(
                 )
                 
                 TextButton(
-                    onClick = { onQuantityChange(quantity + 1) },
+                    onClick = { if (canIncrease) onQuantityChange(quantity + 1) },
+                    enabled = canIncrease,
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFFF5F5F5))
+                        .background(if (canIncrease) Color(0xFFF5F5F5) else Color(0xFFE0E0E0))
                 ) {
                     Text(
                         text = "+",
@@ -490,7 +478,7 @@ private fun BottomActionBar(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
                         ),
-                        color = PrimaryText
+                        color = if (canIncrease) PrimaryText else SecondaryText
                     )
                 }
             }
@@ -498,14 +486,15 @@ private fun BottomActionBar(
             // Add to Cart Button
             TextButton(
                 onClick = onAddToCart,
+                enabled = canAddToCart,
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 16.dp)
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(PrimaryButton),
+                    .background(if (canAddToCart) PrimaryButton else Color(0xFFE0E0E0)),
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color.White
+                    contentColor = if (canAddToCart) Color.White else SecondaryText
                 )
             ) {
                 Text(
@@ -514,7 +503,7 @@ private fun BottomActionBar(
                         style = AppFontStyle.Bold,
                         size = FontSize.Medium
                     ),
-                    color = Color.White
+                    color = if (canAddToCart) Color.White else SecondaryText
                 )
             }
         }

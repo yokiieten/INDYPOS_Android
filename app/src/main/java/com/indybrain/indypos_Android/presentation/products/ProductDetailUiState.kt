@@ -13,7 +13,8 @@ data class ProductDetailUiState(
     val quantity: Int = 1,
     val specialRequest: String = "",
     val errorMessage: String? = null,
-    val isAddToCartSuccess: Boolean = false
+    val isAddToCartSuccess: Boolean = false,
+    val maxAvailableQuantity: Int? = null // Maximum quantity available based on stock
 )
 
 
