@@ -99,7 +99,7 @@
     <string name="register_validation_email_required">Please enter email</string>
     <string name="register_validation_email_invalid">Invalid email format</string>
     <string name="register_validation_phone_required">Please enter phone number</string>
-    <string name="register_validation_phone_invalid">Phone number must be 10 digits</string>
+    <string name="register_validation_phone_invalid">Please enter a valid phone number</string>
     <string name="register_validation_birth_date_required">Please select date of birth</string>
     <string name="register_validation_birth_date_under_16">Age must be at least 16 years</string>
     <string name="register_validation_gender_required">Please select gender</string>

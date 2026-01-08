@@ -99,7 +99,7 @@
     <string name="register_validation_email_required">กรุณากรอกอีเมล</string>
     <string name="register_validation_email_invalid">รูปแบบอีเมลไม่ถูกต้อง</string>
     <string name="register_validation_phone_required">กรุณากรอกเบอร์โทรศัพท์</string>
-    <string name="register_validation_phone_invalid">เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก</string>
+    <string name="register_validation_phone_invalid">กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง</string>
     <string name="register_validation_birth_date_required">กรุณาเลือกวันเกิด</string>
     <string name="register_validation_birth_date_under_16">อายุต้องมากกว่า 16 ปี</string>
     <string name="register_validation_gender_required">กรุณาเลือกเพศ</string>
@@ -396,7 +396,7 @@
     <string name="printer_bluetooth">Bluetooth</string>
     <string name="printer_bluetooth_off">Off</string>
     <string name="printer_bluetooth_on">On</string>
-    <string name="printer_wifi">WiFi</string>
+    <string name="printer_wifi">Wi-Fi</string>
     <string name="printer_usb">USB</string>
     <string name="printer_support_message">ตอนนี้รองรับแค่รุ่น XPrinter เท่านั้น</string>
     <string name="printer_model">X 58 L</string>
