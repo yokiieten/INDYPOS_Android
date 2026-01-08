@@ -129,15 +129,15 @@ fun AddOnManagementScreen(
                 },
                 actions = {
                     // Sync button
-                    if (!uiState.isSelectionMode) {
-                        IconButton(onClick = { showSyncDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Filled.Sync,
-                                contentDescription = "Sync",
-                                tint = GreenComplete
-                            )
-                        }
-                    }
+                    // if (!uiState.isSelectionMode) {
+                    //     IconButton(onClick = { showSyncDialog = true }) {
+                    //         Icon(
+                    //             imageVector = Icons.Filled.Sync,
+                    //             contentDescription = "Sync",
+                    //             tint = GreenComplete
+                    //         )
+                    //     }
+                    // }
                     // Edit/Cancel button
                     TextButton(
                         onClick = { viewModel.toggleSelectionMode() }

@@ -166,15 +166,15 @@ fun ProductManagementScreen(
                 },
                 actions = {
                     // Sync button
-                    if (!uiState.isSelectionMode) {
-                        IconButton(onClick = { showSyncDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Filled.Sync,
-                                contentDescription = stringResource(id = R.string.product_management_sync),
-                                tint = GreenComplete
-                            )
-                        }
-                    }
+                    // if (!uiState.isSelectionMode) {
+                    //     IconButton(onClick = { showSyncDialog = true }) {
+                    //         Icon(
+                    //             imageVector = Icons.Filled.Sync,
+                    //             contentDescription = stringResource(id = R.string.product_management_sync),
+                    //             tint = GreenComplete
+                    //         )
+                    //     }
+                    // }
                     // Edit/Cancel button
                     TextButton(
                         onClick = { viewModel.toggleSelectionMode() }

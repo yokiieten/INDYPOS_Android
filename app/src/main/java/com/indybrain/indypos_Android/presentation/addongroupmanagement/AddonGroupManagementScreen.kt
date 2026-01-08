@@ -133,15 +133,15 @@ fun AddonGroupManagementScreen(
                 },
                 actions = {
                     // Sync button
-                    if (!uiState.isEditMode) {
-                        IconButton(onClick = { showSyncDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Filled.Sync,
-                                contentDescription = "Sync",
-                                tint = GreenComplete
-                            )
-                        }
-                    }
+                    // if (!uiState.isEditMode) {
+                    //     IconButton(onClick = { showSyncDialog = true }) {
+                    //         Icon(
+                    //             imageVector = Icons.Filled.Sync,
+                    //             contentDescription = "Sync",
+                    //             tint = GreenComplete
+                    //         )
+                    //     }
+                    // }
                     // Edit/Cancel button
                     TextButton(
                         onClick = { viewModel.toggleEditMode() }
