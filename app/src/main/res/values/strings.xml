@@ -301,6 +301,8 @@
     <string name="product_view_cart">ดูสินค้า (%1$d)</string>
     <string name="product_cart">ตะกร้า</string>
     <string name="product_barcode_scanner">สแกนบาร์โค้ด</string>
+    <string name="product_detail_required_addon_error">กรุณาเลือก %1$s</string>
+    <string name="product_detail_insufficient_stock">สินค้าในสต็อกไม่เพียงพอ</string>
     
     <!-- Search Product Screen -->
     <string name="search_title">ค้นหาสินค้า</string>

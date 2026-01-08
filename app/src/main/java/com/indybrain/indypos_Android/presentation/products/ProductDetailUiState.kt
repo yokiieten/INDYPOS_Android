@@ -11,7 +11,9 @@ data class ProductDetailUiState(
     val addonsByGroup: Map<String, List<AddonEntity>> = emptyMap(),
     val selectedAddons: Map<String, Set<String>> = emptyMap(), // Map<AddonGroupId, Set<AddonId>>
     val quantity: Int = 1,
-    val specialRequest: String = ""
+    val specialRequest: String = "",
+    val errorMessage: String? = null,
+    val isAddToCartSuccess: Boolean = false
 )
 
 

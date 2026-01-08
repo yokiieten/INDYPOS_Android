@@ -133,10 +133,45 @@ class ProductDetailViewModel @Inject constructor(
         _uiState.update { it.copy(specialRequest = request) }
     }
     
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+    
+    fun clearAddToCartSuccess() {
+        _uiState.update { it.copy(isAddToCartSuccess = false) }
+    }
+    
+    private fun validateRequiredAddonGroups(): String? {
+        val currentState = _uiState.value
+        val requiredGroups = currentState.addonGroups.filter { it.isRequired }
+        
+        val missingGroups = requiredGroups.filter { group ->
+            val selectedAddons = currentState.selectedAddons[group.id] ?: emptySet()
+            selectedAddons.isEmpty()
+        }
+        
+        return if (missingGroups.isNotEmpty()) {
+            val groupNames = missingGroups.joinToString(", ") { it.name }
+            "กรุณาเลือก ${groupNames}"
+        } else {
+            null
+        }
+    }
+    
     fun addToCart() {
         viewModelScope.launch {
             val currentState = _uiState.value
             val product = currentState.product ?: return@launch
+            
+            // Validate required addon groups
+            val validationError = validateRequiredAddonGroups()
+            if (validationError != null) {
+                _uiState.update { it.copy(errorMessage = validationError) }
+                return@launch
+            }
+            
+            // Clear any previous error
+            _uiState.update { it.copy(errorMessage = null) }
             
             // Get existing cart items for this product
             val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
@@ -212,6 +247,9 @@ class ProductDetailViewModel @Inject constructor(
                     addons = cartAddons
                 )
             }
+            
+            // Mark as success
+            _uiState.update { it.copy(isAddToCartSuccess = true, errorMessage = null) }
         }
     }
 }

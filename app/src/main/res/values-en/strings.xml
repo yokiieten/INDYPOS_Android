@@ -260,6 +260,7 @@
     <string name="barcode_scanner_camera_error_message">An error occurred while opening the camera. Please try again.</string>
     <string name="barcode_scanner_product_not_found_title">Product Not Found</string>
     <string name="barcode_scanner_product_not_found_message">No product found matching the scanned barcode</string>
+    <string name="product_detail_insufficient_stock">Insufficient stock available</string>
     
     <!-- Order Settings Screen -->
     <string name="order_settings_title">Order Settings</string>

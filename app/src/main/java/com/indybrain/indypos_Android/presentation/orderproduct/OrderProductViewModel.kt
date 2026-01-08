@@ -37,6 +37,10 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.indybrain.indypos_Android.R
+import okhttp3.ResponseBody
 
 @HiltViewModel
 class OrderProductViewModel @Inject constructor(
@@ -51,7 +55,9 @@ class OrderProductViewModel @Inject constructor(
     private val receiptSettingsRepository: ReceiptSettingsRepository,
     private val printerService: PrinterService,
     private val authRepository: AuthRepository,
-    private val getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase
+    private val getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase,
+    @ApplicationContext private val context: Context,
+    private val gson: Gson
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(OrderProductUiState())
@@ -251,7 +257,7 @@ class OrderProductViewModel @Inject constructor(
                             val displayMessage = when {
                                 lowercasedError.contains("insufficient stock") || 
                                 lowercasedError.contains("at least one item is required") -> {
-                                    "สินค้าในสต็อกไม่เพียงพอ"
+                                    context.getString(R.string.product_detail_insufficient_stock)
                                 }
                                 else -> errorMessage
                             }
@@ -305,7 +311,20 @@ class OrderProductViewModel @Inject constructor(
                     } catch (e: HttpException) {
                         // API error: Don't save to Room, show error
                         _uiState.update { it.copy(isLoading = false) }
-                        onError("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}")
+                        
+                        // Check error message for insufficient stock
+                        val errorMessage = parseErrorFromHttpException(e)
+                        val lowercasedError = errorMessage.lowercase()
+                        
+                        val displayMessage = when {
+                            lowercasedError.contains("insufficient stock") || 
+                            lowercasedError.contains("at least one item is required") -> {
+                                context.getString(R.string.product_detail_insufficient_stock)
+                            }
+                            else -> "เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message()}"
+                        }
+                        
+                        onError(displayMessage)
                     } catch (e: Exception) {
                         // Network error: Don't save to Room, show error
                         _uiState.update { it.copy(isLoading = false) }
@@ -517,6 +536,32 @@ class OrderProductViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Parse error message from HttpException
+     */
+    private fun parseErrorFromHttpException(e: HttpException): String {
+        return try {
+            val errorBody: ResponseBody? = e.response()?.errorBody()
+            if (errorBody != null) {
+                val errorJson = errorBody.string()
+                if (errorJson.isNotBlank()) {
+                    try {
+                        val errorResponse = gson.fromJson(errorJson, ErrorResponse::class.java)
+                        errorResponse.error ?: errorResponse.message ?: e.message() ?: "เกิดข้อผิดพลาด"
+                    } catch (parseException: Exception) {
+                        errorJson
+                    }
+                } else {
+                    e.message() ?: "เกิดข้อผิดพลาด"
+                }
+            } else {
+                e.message() ?: "เกิดข้อผิดพลาด"
+            }
+        } catch (exception: Exception) {
+            e.message() ?: "เกิดข้อผิดพลาด"
+        }
+    }
+    
     private fun generateOrderNumber(): String {
         val timestamp = System.currentTimeMillis()
         val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
@@ -524,6 +569,14 @@ class OrderProductViewModel @Inject constructor(
         return "ORD$dateStr${timestamp.toString().takeLast(6)}"
     }
 }
+
+/**
+ * Error response DTO for parsing API errors
+ */
+private data class ErrorResponse(
+    val error: String?,
+    val message: String?
+)
 
 
 

@@ -130,6 +130,12 @@ class ProductRepositoryImpl @Inject constructor(
             // This preserves any local changes or offline-created addons.
             addonDao.insertAll(addons)
             
+            // Delete old product-addon group junctions for all products being synced
+            // This ensures we remove junctions for products that no longer have addon groups
+            productsList.forEach { productDto ->
+                productAddonGroupJunctionDao.deleteByProductId(productDto.id)
+            }
+            
             // Save product-addon group junctions
             productsList.forEach { productDto ->
                 val productId = productDto.id
@@ -232,6 +238,12 @@ class ProductRepositoryImpl @Inject constructor(
             // Using REPLACE keeps existing rows (and cart relations) while updating data.
             if (products.isNotEmpty()) {
                 productDao.insertAll(products)
+            }
+            
+            // Delete old product-addon group junctions for all products being synced
+            // This ensures we remove junctions for products that no longer have addon groups
+            productsList.forEach { productDto ->
+                productAddonGroupJunctionDao.deleteByProductId(productDto.id)
             }
             
             // Save product-addon group junctions
@@ -1076,6 +1088,10 @@ class ProductRepositoryImpl @Inject constructor(
                         productEntity = ProductMapper.toEntity(productDto)
                         productDao.insertAll(listOf(productEntity))
                         
+                        // Delete old addon group relationships before inserting new ones
+                        // This ensures we remove old junctions if product was updated
+                        productAddonGroupJunctionDao.deleteByProductId(productEntity.id)
+                        
                         // Save addon group relationships from response
                         productDto.addonGroups?.forEach { addonGroupDto ->
                             productAddonGroupJunctionDao.insert(
@@ -1515,6 +1531,10 @@ class ProductRepositoryImpl @Inject constructor(
                         result.id?.let { id ->
                             val serverEntity = ProductMapper.toEntity(result.serverData)
                             productDao.insertAll(listOf(serverEntity))
+                            
+                            // Delete old addon group relationships before inserting new ones
+                            // This ensures we remove old junctions that are no longer in server data
+                            productAddonGroupJunctionDao.deleteByProductId(id)
                             
                             // Update addon group relationships
                             result.serverData.addonGroups?.forEach { addonGroupDto ->

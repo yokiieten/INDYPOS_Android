@@ -95,7 +95,22 @@ fun ProductDetailScreen(
         if (shouldAddToCart) {
             viewModel.addToCart()
             shouldAddToCart = false
+        }
+    }
+    
+    // Navigate back when cart is successfully added
+    LaunchedEffect(uiState.isAddToCartSuccess) {
+        if (uiState.isAddToCartSuccess) {
+            // Reset success flag
+            viewModel.clearAddToCartSuccess()
             onBackClick()
+        }
+    }
+    
+    // Clear error when addon is selected
+    LaunchedEffect(uiState.selectedAddons) {
+        if (uiState.errorMessage != null) {
+            viewModel.clearErrorMessage()
         }
     }
     
@@ -214,6 +229,51 @@ fun ProductDetailScreen(
                             imageUrl = fullImageUrl,
                             backgroundColor = bgColor,
                             onDismiss = { isImageViewerVisible = false }
+                        )
+                    }
+                    
+                    // Error Dialog
+                    uiState.errorMessage?.let { errorMessage ->
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = {
+                                viewModel.clearErrorMessage()
+                            },
+                            title = {
+                                Text(
+                                    text = "แจ้งเตือน",
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Bold,
+                                        size = FontSize.Large
+                                    ),
+                                    color = PrimaryText
+                                )
+                            },
+                            text = {
+                                Text(
+                                    text = errorMessage,
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = SecondaryText
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        viewModel.clearErrorMessage()
+                                    }
+                                ) {
+                                    Text(
+                                        text = "ตกลง",
+                                        style = FontUtils.mainFont(
+                                            style = AppFontStyle.Medium,
+                                            size = FontSize.Medium
+                                        ),
+                                        color = PrimaryButton
+                                    )
+                                }
+                            }
                         )
                     }
                 }

@@ -35,6 +35,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.indybrain.indypos_Android.R
+import okhttp3.ResponseBody
 
 @HiltViewModel
 class CashPaymentViewModel @Inject constructor(
@@ -48,7 +52,9 @@ class CashPaymentViewModel @Inject constructor(
     private val orderAddonDao: OrderAddonDao,
     private val receiptSettingsRepository: ReceiptSettingsRepository,
     private val printerService: PrinterService,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    @ApplicationContext private val context: Context,
+    private val gson: Gson
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(CashPaymentUiState())
@@ -230,7 +236,7 @@ class CashPaymentViewModel @Inject constructor(
                             val displayMessage = when {
                                 lowercasedError.contains("insufficient stock") || 
                                 lowercasedError.contains("at least one item is required") -> {
-                                    "สินค้าในสต็อกไม่เพียงพอ"
+                                    context.getString(R.string.product_detail_insufficient_stock)
                                 }
                                 else -> errorMessage
                             }
@@ -276,7 +282,20 @@ class CashPaymentViewModel @Inject constructor(
                     } catch (e: HttpException) {
                         // API error: Don't save to Room, show error
                         _uiState.update { it.copy(isProcessingOrder = false) }
-                        onError("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}")
+                        
+                        // Check error message for insufficient stock
+                        val errorMessage = parseErrorFromHttpException(e)
+                        val lowercasedError = errorMessage.lowercase()
+                        
+                        val displayMessage = when {
+                            lowercasedError.contains("insufficient stock") || 
+                            lowercasedError.contains("at least one item is required") -> {
+                                context.getString(R.string.product_detail_insufficient_stock)
+                            }
+                            else -> "เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message()}"
+                        }
+                        
+                        onError(displayMessage)
                     } catch (e: Exception) {
                         // Network error: Don't save to Room, show error
                         _uiState.update { it.copy(isProcessingOrder = false) }
@@ -494,5 +513,39 @@ class CashPaymentViewModel @Inject constructor(
             }
         }
     }
+    
+    /**
+     * Parse error message from HttpException
+     */
+    private fun parseErrorFromHttpException(e: HttpException): String {
+        return try {
+            val errorBody: ResponseBody? = e.response()?.errorBody()
+            if (errorBody != null) {
+                val errorJson = errorBody.string()
+                if (errorJson.isNotBlank()) {
+                    try {
+                        val errorResponse = gson.fromJson(errorJson, ErrorResponse::class.java)
+                        errorResponse.error ?: errorResponse.message ?: e.message() ?: "เกิดข้อผิดพลาด"
+                    } catch (parseException: Exception) {
+                        errorJson
+                    }
+                } else {
+                    e.message() ?: "เกิดข้อผิดพลาด"
+                }
+            } else {
+                e.message() ?: "เกิดข้อผิดพลาด"
+            }
+        } catch (exception: Exception) {
+            e.message() ?: "เกิดข้อผิดพลาด"
+        }
+    }
 }
+
+/**
+ * Error response DTO for parsing API errors
+ */
+private data class ErrorResponse(
+    val error: String?,
+    val message: String?
+)
 
