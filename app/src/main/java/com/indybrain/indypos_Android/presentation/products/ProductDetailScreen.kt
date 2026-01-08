@@ -439,6 +439,7 @@ private fun BottomActionBar(
             ) {
                 TextButton(
                     onClick = { if (quantity > 1) onQuantityChange(quantity - 1) },
+                    contentPadding = PaddingValues(0.dp),
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(16.dp))
@@ -467,6 +468,7 @@ private fun BottomActionBar(
                 TextButton(
                     onClick = { if (canIncrease) onQuantityChange(quantity + 1) },
                     enabled = canIncrease,
+                    contentPadding = PaddingValues(0.dp),
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(16.dp))
