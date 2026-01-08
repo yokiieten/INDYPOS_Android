@@ -197,13 +197,15 @@ fun ProductDetailScreen(
                         addonsByGroup = uiState.addonsByGroup,
                         selectedAddons = uiState.selectedAddons,
                         quantity = uiState.quantity,
-                        maxAvailableQuantity = uiState.maxAvailableQuantity,
                         specialRequest = uiState.specialRequest,
                         onAddonToggle = { addonGroupId, addonId ->
                             viewModel.toggleAddon(addonGroupId, addonId)
                         },
-                        onQuantityChange = { newQuantity ->
-                            viewModel.updateQuantity(newQuantity)
+                        onQuantityIncrease = {
+                            viewModel.increaseQuantity()
+                        },
+                        onQuantityDecrease = {
+                            viewModel.decreaseQuantity()
                         },
                         onSpecialRequestChange = { request ->
                             viewModel.updateSpecialRequest(request)
@@ -270,10 +272,10 @@ private fun ProductDetailContent(
     addonsByGroup: Map<String, List<AddonEntity>>,
     selectedAddons: Map<String, Set<String>>,
     quantity: Int,
-    maxAvailableQuantity: Int?,
     specialRequest: String,
     onAddonToggle: (String, String) -> Unit,
-    onQuantityChange: (Int) -> Unit,
+    onQuantityIncrease: () -> Unit,
+    onQuantityDecrease: () -> Unit,
     onSpecialRequestChange: (String) -> Unit,
     onAddToCart: () -> Unit,
     onImageClick: () -> Unit,
@@ -398,9 +400,9 @@ private fun ProductDetailContent(
         // Bottom Bar with Quantity and Add to Cart
         BottomActionBar(
             quantity = quantity,
-            maxAvailableQuantity = maxAvailableQuantity,
             totalPrice = totalPrice,
-            onQuantityChange = onQuantityChange,
+            onQuantityIncrease = onQuantityIncrease,
+            onQuantityDecrease = onQuantityDecrease,
             onAddToCart = onAddToCart,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
@@ -410,15 +412,12 @@ private fun ProductDetailContent(
 @Composable
 private fun BottomActionBar(
     quantity: Int,
-    maxAvailableQuantity: Int?,
     totalPrice: Double,
-    onQuantityChange: (Int) -> Unit,
+    onQuantityIncrease: () -> Unit,
+    onQuantityDecrease: () -> Unit,
     onAddToCart: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Check if can increase quantity or add to cart
-    val canIncrease = maxAvailableQuantity == null || quantity < maxAvailableQuantity
-    val canAddToCart = maxAvailableQuantity == null || quantity <= maxAvailableQuantity
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = Color.White,
@@ -438,7 +437,7 @@ private fun BottomActionBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(
-                    onClick = { if (quantity > 1) onQuantityChange(quantity - 1) },
+                    onClick = onQuantityDecrease,
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier
                         .size(32.dp)
@@ -466,13 +465,12 @@ private fun BottomActionBar(
                 )
                 
                 TextButton(
-                    onClick = { if (canIncrease) onQuantityChange(quantity + 1) },
-                    enabled = canIncrease,
+                    onClick = onQuantityIncrease,
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(if (canIncrease) Color(0xFFF5F5F5) else Color(0xFFE0E0E0))
+                        .background(Color(0xFFF5F5F5))
                 ) {
                     Text(
                         text = "+",
@@ -480,7 +478,7 @@ private fun BottomActionBar(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
                         ),
-                        color = if (canIncrease) PrimaryText else SecondaryText
+                        color = PrimaryText
                     )
                 }
             }
@@ -488,15 +486,14 @@ private fun BottomActionBar(
             // Add to Cart Button
             TextButton(
                 onClick = onAddToCart,
-                enabled = canAddToCart,
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 16.dp)
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(if (canAddToCart) PrimaryButton else Color(0xFFE0E0E0)),
+                    .background(PrimaryButton),
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = if (canAddToCart) Color.White else SecondaryText
+                    contentColor = Color.White
                 )
             ) {
                 Text(
@@ -505,7 +502,7 @@ private fun BottomActionBar(
                         style = AppFontStyle.Bold,
                         size = FontSize.Medium
                     ),
-                    color = if (canAddToCart) Color.White else SecondaryText
+                    color = Color.White
                 )
             }
         }

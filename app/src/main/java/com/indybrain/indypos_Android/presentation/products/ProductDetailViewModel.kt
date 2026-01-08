@@ -72,14 +72,6 @@ class ProductDetailViewModel @Inject constructor(
                     emptyMap()
                 }
                 
-                // Calculate max available quantity based on stock
-                val maxAvailableQuantity = if (product.isStockEnabled == true && product.stockQuantity != null) {
-                    val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
-                    product.stockQuantity - totalQuantityInCart
-                } else {
-                    null // No stock limit
-                }
-                
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -88,8 +80,7 @@ class ProductDetailViewModel @Inject constructor(
                         addonsByGroup = addonsByGroup,
                         selectedAddons = existingSelectedAddons,
                         quantity = existingQuantity,
-                        specialRequest = existingSpecialRequest,
-                        maxAvailableQuantity = maxAvailableQuantity
+                        specialRequest = existingSpecialRequest
                     )
                 }
             } catch (e: Exception) {
@@ -132,61 +123,147 @@ class ProductDetailViewModel @Inject constructor(
         }
     }
     
+    fun increaseQuantity() {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            val product = currentState.product ?: return@launch
+            
+            // Check if stock is enabled
+            if (product.isStockEnabled != true || product.stockQuantity == null) {
+                // Stock not enabled, allow increase
+                _uiState.update { 
+                    it.copy(
+                        quantity = currentState.quantity + 1, 
+                        errorMessage = null
+                    ) 
+                }
+                return@launch
+            }
+            
+            val newQuantity = currentState.quantity + 1
+            
+            // Get existing cart items for this product
+            val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
+            
+            // Find matching cart item (same product, addons, and special request)
+            val currentSpecialRequest = currentState.specialRequest ?: ""
+            val sortedGroups = currentState.selectedAddons.keys.sorted()
+            val addonsKey = sortedGroups.joinToString("|") { groupId ->
+                val addonIds = currentState.selectedAddons[groupId]
+                    ?.sorted()
+                    ?.joinToString(",") ?: ""
+                "$groupId:$addonIds"
+            }
+            val currentKey = "${product.id}|$currentSpecialRequest|$addonsKey"
+            
+            val matchingCartItem = existingCartItems.find { cartItem ->
+                val itemSpecialRequest = cartItem.specialRequest ?: ""
+                val itemSortedGroups = cartItem.selectedAddons.keys.sorted()
+                val itemAddonsKey = itemSortedGroups.joinToString("|") { groupId ->
+                    val addonIds = cartItem.selectedAddons[groupId]
+                        ?.map { it.id }
+                        ?.sorted()
+                        ?.joinToString(",") ?: ""
+                    "$groupId:$addonIds"
+                }
+                val itemKey = "${cartItem.product.id}|$itemSpecialRequest|$itemAddonsKey"
+                itemKey == currentKey
+            }
+            
+            // Calculate total quantity that would be in cart after increase
+            // If matching item exists, we need to calculate what the new total would be
+            val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
+            val totalQuantityAfterChange = if (matchingCartItem != null) {
+                // If matching item exists, replace its quantity with newQuantity
+                totalQuantityInCart - matchingCartItem.quantity + newQuantity
+            } else {
+                // If no matching item, add newQuantity to total
+                totalQuantityInCart + newQuantity
+            }
+            
+            // Check stock availability using checkStockAvailability
+            val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
+            
+            if (!hasStock) {
+                // Show error toast if stock is insufficient
+                val stockQuantity = product.stockQuantity ?: 0
+                val availableStock = if (matchingCartItem != null) {
+                    stockQuantity - (totalQuantityInCart - matchingCartItem.quantity)
+                } else {
+                    stockQuantity - totalQuantityInCart
+                }
+                val errorMessage = if (availableStock > 0) {
+                    "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
+                } else {
+                    "สินค้าในสต็อกไม่เพียงพอ"
+                }
+                _uiState.update { 
+                    it.copy(
+                        errorMessage = errorMessage
+                        // Keep current quantity, don't update
+                    ) 
+                }
+            } else {
+                // Only update quantity if stock is available
+                _uiState.update { 
+                    it.copy(
+                        quantity = newQuantity, 
+                        errorMessage = null
+                    ) 
+                }
+            }
+        }
+    }
+    
+    fun decreaseQuantity() {
+        val currentState = _uiState.value
+        if (currentState.quantity > 1) {
+            _uiState.update { 
+                it.copy(
+                    quantity = currentState.quantity - 1,
+                    errorMessage = null
+                ) 
+            }
+        }
+    }
+    
     fun updateQuantity(newQuantity: Int) {
         if (newQuantity >= 1) {
             viewModelScope.launch {
                 val currentState = _uiState.value
                 val product = currentState.product ?: return@launch
                 
-                // Check stock availability including existing cart items
+                // Check stock availability including existing cart items BEFORE updating
                 val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
                 val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
+                // Calculate what the total quantity would be if we update to newQuantity
                 val totalQuantity = totalQuantityInCart + newQuantity - currentState.quantity
                 
-                // Calculate max available quantity
-                val maxAvailableQuantity = if (product.isStockEnabled == true && product.stockQuantity != null) {
-                    product.stockQuantity - totalQuantityInCart
-                } else {
-                    null
-                }
+                // Check stock availability BEFORE updating quantity
+                val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantity)
                 
-                // Check if newQuantity exceeds max available quantity
-                if (maxAvailableQuantity != null && newQuantity > maxAvailableQuantity) {
-                    val errorMessage = if (maxAvailableQuantity > 0) {
-                        "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $maxAvailableQuantity ชิ้น"
+                if (hasStock) {
+                    // Only update quantity if stock is available
+                    _uiState.update { 
+                        it.copy(
+                            quantity = newQuantity, 
+                            errorMessage = null
+                        ) 
+                    }
+                } else {
+                    // Show error toast if stock is insufficient - DON'T update quantity
+                    val stockQuantity = product.stockQuantity ?: 0
+                    val availableStock = stockQuantity - totalQuantityInCart
+                    val errorMessage = if (availableStock > 0) {
+                        "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
                     } else {
                         "สินค้าในสต็อกไม่เพียงพอ"
                     }
                     _uiState.update { 
                         it.copy(
-                            errorMessage = errorMessage,
-                            maxAvailableQuantity = maxAvailableQuantity
+                            errorMessage = errorMessage
+                            // Keep current quantity, don't update to newQuantity
                         ) 
-                    }
-                } else {
-                    val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantity)
-                    if (hasStock) {
-                        _uiState.update { 
-                            it.copy(
-                                quantity = newQuantity, 
-                                errorMessage = null,
-                                maxAvailableQuantity = maxAvailableQuantity
-                            ) 
-                        }
-                    } else {
-                        val stockQuantity = product.stockQuantity ?: 0
-                        val availableStock = stockQuantity - totalQuantityInCart
-                        val errorMessage = if (availableStock > 0) {
-                            "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                        } else {
-                            "สินค้าในสต็อกไม่เพียงพอ"
-                        }
-                        _uiState.update { 
-                            it.copy(
-                                errorMessage = errorMessage,
-                                maxAvailableQuantity = maxAvailableQuantity
-                            ) 
-                        }
                     }
                 }
             }
@@ -274,8 +351,9 @@ class ProductDetailViewModel @Inject constructor(
                 val hasStock = cartRepository.checkStockAvailability(product.id, newQuantity)
                 if (!hasStock) {
                     val stockQuantity = product.stockQuantity ?: 0
-                    val currentQuantityInCart = matchingCartItem.quantity
-                    val availableStock = stockQuantity - currentQuantityInCart
+                    val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
+                    val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
+                    val availableStock = stockQuantity - totalQuantityInCart
                     val errorMessage = if (availableStock > 0) {
                         "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
                     } else {
@@ -287,21 +365,11 @@ class ProductDetailViewModel @Inject constructor(
                 
                 cartRepository.updateCartItemQuantity(matchingCartItem.id, newQuantity)
                 
-                // Update max available quantity after adding to cart
-                val updatedCartItems = cartRepository.getCartItemsByProduct(product.id).first()
-                val updatedTotalQuantityInCart = updatedCartItems.sumOf { it.quantity }
-                val updatedMaxAvailableQuantity = if (product.isStockEnabled == true && product.stockQuantity != null) {
-                    product.stockQuantity - updatedTotalQuantityInCart
-                } else {
-                    null
-                }
-                
                 // Mark as success
                 _uiState.update { 
                     it.copy(
                         isAddToCartSuccess = true, 
-                        errorMessage = null,
-                        maxAvailableQuantity = updatedMaxAvailableQuantity
+                        errorMessage = null
                     ) 
                 }
             } else {
@@ -360,21 +428,11 @@ class ProductDetailViewModel @Inject constructor(
                     addons = cartAddons
                 )
                 
-                // Update max available quantity after adding to cart
-                val updatedCartItems = cartRepository.getCartItemsByProduct(product.id).first()
-                val updatedTotalQuantityInCart = updatedCartItems.sumOf { it.quantity }
-                val updatedMaxAvailableQuantity = if (product.isStockEnabled == true && product.stockQuantity != null) {
-                    product.stockQuantity - updatedTotalQuantityInCart
-                } else {
-                    null
-                }
-                
                 // Mark as success
                 _uiState.update { 
                     it.copy(
                         isAddToCartSuccess = true, 
-                        errorMessage = null,
-                        maxAvailableQuantity = updatedMaxAvailableQuantity
+                        errorMessage = null
                     ) 
                 }
             }
