@@ -353,14 +353,15 @@ private fun OrderHeader(
             color = PrimaryText
         )
         
-        IconButton(onClick = onRefreshClick) {
-            Icon(
-                imageVector = Icons.Outlined.Refresh,
-                contentDescription = stringResource(id = R.string.order_refresh),
-                tint = GreenComplete,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        // Reload button
+        // IconButton(onClick = onRefreshClick) {
+        //     Icon(
+        //         imageVector = Icons.Outlined.Refresh,
+        //         contentDescription = stringResource(id = R.string.order_refresh),
+        //         tint = GreenComplete,
+        //         modifier = Modifier.size(24.dp)
+        //     )
+        // }
     }
 }
 
