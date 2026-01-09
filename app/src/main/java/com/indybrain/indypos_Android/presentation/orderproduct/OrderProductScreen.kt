@@ -93,6 +93,7 @@ fun OrderProductScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var itemToDelete by remember { mutableStateOf<GroupedCartItem?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showClearAllDialog by remember { mutableStateOf(false) }
     
     Scaffold(
         containerColor = BaseBackground,
@@ -146,15 +147,31 @@ fun OrderProductScreen(
                     color = PrimaryText
                 )
                 
-                TextButton(onClick = onAddMenuClick) {
-                    Text(
-                        text = "เพิ่มเมนู",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = PrimaryButton
-                    )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = { showClearAllDialog = true }) {
+                        Text(
+                            text = "ลบทั้งหมด",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = Color(0xFFFF5252)
+                        )
+                    }
+                    
+                    TextButton(onClick = onAddMenuClick) {
+                        Text(
+                            text = "เพิ่มเมนู",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
                 }
             }
             
@@ -516,6 +533,62 @@ fun OrderProductScreen(
                             size = FontSize.Medium
                         ),
                         color = PrimaryButton
+                    )
+                }
+            }
+        )
+    }
+
+    // Clear all confirmation dialog
+    if (showClearAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearAllDialog = false },
+            title = {
+                Text(
+                    text = "ลบรายการทั้งหมด",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryText
+                )
+            },
+            text = {
+                Text(
+                    text = "ต้องการลบสินค้าออกจากออเดอร์ทั้งหมดหรือไม่?",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearAllDialog = false
+                        viewModel.clearAllCartItems()
+                    }
+                ) {
+                    Text(
+                        text = "ลบทั้งหมด",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = Color(0xFFFF5252)
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllDialog = false }) {
+                    Text(
+                        text = "ยกเลิก",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
                     )
                 }
             }

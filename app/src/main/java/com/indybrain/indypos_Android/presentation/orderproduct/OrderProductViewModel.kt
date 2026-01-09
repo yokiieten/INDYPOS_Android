@@ -153,6 +153,19 @@ class OrderProductViewModel @Inject constructor(
         }
     }
     
+    fun clearAllCartItems() {
+        viewModelScope.launch {
+            cartRepository.clearCart()
+            _uiState.update {
+                it.copy(
+                    discountAmount = 0.0,
+                    discountType = null,
+                    discountValue = 0.0
+                )
+            }
+        }
+    }
+    
     fun placeOrder(
         onSuccess: (String?) -> Unit,
         onError: (String) -> Unit
