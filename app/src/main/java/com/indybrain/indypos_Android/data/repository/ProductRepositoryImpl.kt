@@ -38,6 +38,7 @@ class ProductRepositoryImpl @Inject constructor(
     private val addonGroupDao: AddonGroupDao,
     private val addonDao: AddonDao,
     private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
+    private val addonGroupAddonJunctionDao: AddonGroupAddonJunctionDao,
     private val authRepository: AuthRepository,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val cartRepository: CartRepository,
@@ -129,6 +130,26 @@ class ProductRepositoryImpl @Inject constructor(
             // Using REPLACE strategy keeps existing rows while updating data.
             // This preserves any local changes or offline-created addons.
             addonDao.insertAll(addons)
+            
+            // Delete old addon group-addon junctions for all addon groups being synced
+            // This ensures we remove junctions for addon groups that no longer have addons
+            addonGroupsMap.values.forEach { addonGroupDto ->
+                addonGroupAddonJunctionDao.deleteByAddonGroupId(addonGroupDto.id)
+            }
+            
+            // Save addon group-addon junctions
+            // Note: Use addonGroupsMap.values to avoid duplicate inserts when same addon group is used in multiple products
+            addonGroupsMap.values.forEach { addonGroupDto ->
+                addonGroupDto.addons?.forEachIndexed { addonIndex, addonDto ->
+                    addonGroupAddonJunctionDao.insert(
+                        com.indybrain.indypos_Android.data.local.entity.AddonGroupAddonJunctionEntity(
+                            addonGroupId = addonGroupDto.id,
+                            addonId = addonDto.id,
+                            sortOrder = addonIndex + 1
+                        )
+                    )
+                }
+            }
             
             // Delete old product-addon group junctions for all products being synced
             // This ensures we remove junctions for products that no longer have addon groups
@@ -227,6 +248,28 @@ class ProductRepositoryImpl @Inject constructor(
                     ProductMapper.toEntity(addonDto, groupId)
                 }
                 addonDao.insertAll(addons)
+            }
+            
+            // Delete old addon group-addon junctions for all addon groups being synced
+            // This ensures we remove junctions for addon groups that no longer have addons
+            addonGroupsMap.values.forEach { addonGroupDto ->
+                addonGroupAddonJunctionDao.deleteByAddonGroupId(addonGroupDto.id)
+            }
+            
+            // Save addon group-addon junctions
+            // Note: Use addonGroupsMap.values to avoid duplicate inserts when same addon group is used in multiple products
+            if (addonGroupsMap.isNotEmpty()) {
+                addonGroupsMap.values.forEach { addonGroupDto ->
+                    addonGroupDto.addons?.forEachIndexed { addonIndex, addonDto ->
+                        addonGroupAddonJunctionDao.insert(
+                            com.indybrain.indypos_Android.data.local.entity.AddonGroupAddonJunctionEntity(
+                                addonGroupId = addonGroupDto.id,
+                                addonId = addonDto.id,
+                                sortOrder = addonIndex + 1
+                            )
+                        )
+                    }
+                }
             }
             
             // Convert and save products

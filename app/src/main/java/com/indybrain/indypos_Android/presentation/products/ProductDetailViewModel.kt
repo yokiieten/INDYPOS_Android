@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
+import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
+import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +23,8 @@ class ProductDetailViewModel @Inject constructor(
     private val productDao: ProductDao,
     private val addonGroupDao: AddonGroupDao,
     private val addonDao: AddonDao,
+    private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
+    private val addonGroupAddonJunctionDao: AddonGroupAddonJunctionDao,
     private val cartRepository: CartRepository
 ) : ViewModel() {
     
@@ -40,17 +44,50 @@ class ProductDetailViewModel @Inject constructor(
                     return@launch
                 }
                 
-                // Get all addon groups (for now, we'll show all if product has additional options)
-                // In a real app, you might have a product-addon-group relationship table
+                // Get addon groups that are associated with this product via junction table
                 val addonGroups = if (product.hasAdditionalOptions == true) {
-                    addonGroupDao.getAllActiveAddonGroups()
+                    // Get addon group IDs for this product from junction table
+                    val addonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
+                    
+                    // Get addon groups by IDs and filter to show only active groups
+                    // getAddonGroupById already filters isDeletedLocally = 0, but we need to check isActive = true
+                    if (addonGroupIds.isNotEmpty()) {
+                        addonGroupIds.mapNotNull { groupId ->
+                            addonGroupDao.getAddonGroupById(groupId)
+                        }.filter { addonGroup ->
+                            // Only show addon groups that are active and not deleted
+                            addonGroup.isActive && !addonGroup.isDeletedLocally
+                        }
+                    } else {
+                        emptyList()
+                    }
                 } else {
                     emptyList()
                 }
                 
-                // Get addons for each group
+                // Get addons for each group using junction table
+                // First get addon IDs from junction table, then get addon entities
                 val addonsByGroup = addonGroups.associate { group ->
-                    group.id to addonDao.getAddonsByGroup(group.id)
+                    // Get addon IDs from junction table
+                    val addonIds = addonGroupAddonJunctionDao.getAddonIdsByAddonGroupIdSync(group.id)
+                    
+                    // Get addon entities by IDs and filter only active ones
+                    val addons = if (addonIds.isNotEmpty()) {
+                        addonIds.mapNotNull { addonId ->
+                            addonDao.getAddonById(addonId)
+                        }.filter { addon ->
+                            addon.isActive && !addon.isDeletedLocally
+                        }
+                    } else {
+                        emptyList()
+                    }
+                    
+                    // Debug: Log if group has no addons
+                    if (addons.isEmpty()) {
+                        android.util.Log.d("ProductDetailVM", "AddonGroup ${group.name} (${group.id}) has no active addons. Junction addonIds: $addonIds")
+                    }
+                    
+                    group.id to addons
                 }
                 
                 // Check if product is already in cart and load existing data
@@ -282,15 +319,26 @@ class ProductDetailViewModel @Inject constructor(
         _uiState.update { it.copy(isAddToCartSuccess = false) }
     }
     
+    /**
+     * Validates that all required addon groups have at least one addon selected.
+     * Non-required groups are allowed to be empty and will not block adding to cart.
+     * 
+     * @return Error message if validation fails, null if validation passes
+     */
     private fun validateRequiredAddonGroups(): String? {
         val currentState = _uiState.value
+        // Only check groups that are marked as required
+        // Groups without isRequired can be skipped and won't block adding to cart
         val requiredGroups = currentState.addonGroups.filter { it.isRequired }
         
+        // Check if any required group has no selected addons
         val missingGroups = requiredGroups.filter { group ->
             val selectedAddons = currentState.selectedAddons[group.id] ?: emptySet()
             selectedAddons.isEmpty()
         }
         
+        // Return error only if required groups are missing
+        // Non-required groups are intentionally allowed to be empty
         return if (missingGroups.isNotEmpty()) {
             val groupNames = missingGroups.joinToString(", ") { it.name }
             "กรุณาเลือก ${groupNames}"
