@@ -82,6 +82,7 @@ import java.text.DecimalFormat
 @Composable
 fun ProductDetailScreen(
     productId: String,
+    cartItemId: String? = null,
     onBackClick: () -> Unit = {},
     viewModel: ProductDetailViewModel = hiltViewModel()
 ) {
@@ -90,8 +91,8 @@ fun ProductDetailScreen(
     var isImageViewerVisible by remember { mutableStateOf(false) }
     var isExiting by remember { mutableStateOf(false) }
     
-    LaunchedEffect(productId) {
-        viewModel.loadProduct(productId)
+    LaunchedEffect(productId, cartItemId) {
+        viewModel.loadProduct(productId, cartItemId)
     }
     
     LaunchedEffect(shouldAddToCart) {

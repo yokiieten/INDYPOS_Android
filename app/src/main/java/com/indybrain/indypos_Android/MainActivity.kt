@@ -407,15 +407,21 @@ class MainActivity : ComponentActivity() {
                         
                         composable(
                             route = NavRoutes.PRODUCT_DETAIL_ROUTE,
-                            arguments = listOf(navArgument("productId") {})
+                            arguments = listOf(
+                                navArgument("productId") {},
+                                navArgument("cartItemId") { nullable = true }
+                            )
                         ) { backStackEntry ->
                             val productId = backStackEntry.arguments?.getString("productId") ?: ""
+                            val rawCartItemId = backStackEntry.arguments?.getString("cartItemId")
+                            val cartItemId = if (rawCartItemId == null || rawCartItemId == "null") null else rawCartItemId
                             // Clear scannedBarcode when entering ProductDetailScreen to prevent re-trigger
                             LaunchedEffect(Unit) {
                                 scannedBarcode = null
                             }
                             ProductDetailScreen(
                                 productId = productId,
+                                cartItemId = cartItemId,
                                 onBackClick = {
                                     // Clear scannedBarcode before going back
                                     scannedBarcode = null
@@ -444,9 +450,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onEditItemClick = { productId, productName, cartItemIds ->
-                                    // Navigate to ProductDetailScreen for editing
-                                    // ViewModel will automatically load existing cart data
-                                    navController.navigate(NavRoutes.productDetail(productId))
+                                    // Navigate to ProductDetailScreen for editing specific cart item
+                                    val targetCartItemId = cartItemIds.firstOrNull()
+                                    navController.navigate(NavRoutes.productDetail(productId, targetCartItemId))
                                 },
                                 onDiscountClick = {
                                     val subtotal = orderProductViewModel.calculateSubtotal()
@@ -591,15 +597,16 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onAddAnother = {
-                                    navController.navigate(NavRoutes.productDetail(productId)) {
+                                    // Go to ProductDetail in "new item" mode (no pre-filled cart data)
+                                    navController.navigate(NavRoutes.productDetail(productId, "new")) {
                                         popUpTo(NavRoutes.PRODUCT_EDIT_ROUTE)
                                     }
                                 },
                                 onUpdateBasket = {
                                     navController.popBackStack()
                                 },
-                                onEditClick = { editProductId ->
-                                    navController.navigate(NavRoutes.productDetail(editProductId)) {
+                                onEditClick = { editProductId, cartItemId ->
+                                    navController.navigate(NavRoutes.productDetail(editProductId, cartItemId)) {
                                         popUpTo(NavRoutes.PRODUCT_EDIT_ROUTE)
                                     }
                                 }

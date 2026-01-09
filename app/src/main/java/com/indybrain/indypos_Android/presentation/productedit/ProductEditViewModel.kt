@@ -11,7 +11,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProductEditViewModel @Inject constructor(
-    private val getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase,
+    private val getGroupedCartItemsByProductUseCase: GetGroupedCartItemsByProductUseCase,
     private val increaseQuantityUseCase: IncreaseCartItemQuantityUseCase,
     private val decreaseQuantityUseCase: DecreaseCartItemQuantityUseCase,
     private val deleteCartItemGroupUseCase: DeleteCartItemGroupUseCase
@@ -23,9 +23,9 @@ class ProductEditViewModel @Inject constructor(
     private val _events = MutableSharedFlow<ProductEditEvent>()
     val events: SharedFlow<ProductEditEvent> = _events.asSharedFlow()
     
-    fun init() {
+    fun init(productId: String) {
         viewModelScope.launch {
-            getGroupedCartItemsUseCase()
+            getGroupedCartItemsByProductUseCase(productId)
                 .catch { e ->
                     _events.emit(ProductEditEvent.ShowError(e.message ?: "Unknown error"))
                 }

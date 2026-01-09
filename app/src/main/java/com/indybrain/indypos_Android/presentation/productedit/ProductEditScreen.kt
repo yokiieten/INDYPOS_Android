@@ -69,7 +69,7 @@ fun ProductEditScreen(
     onDismiss: () -> Unit,
     onAddAnother: () -> Unit,
     onUpdateBasket: () -> Unit,
-    onEditClick: (String) -> Unit = {}
+    onEditClick: (String, String) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var itemToDelete by remember { mutableStateOf<GroupedCartItem?>(null) }
@@ -97,12 +97,12 @@ fun ProductEditScreen(
         }
     }
     
-    LaunchedEffect(Unit) {
-        viewModel.init()
+    LaunchedEffect(productId) {
+        viewModel.init(productId)
     }
     
-    // Show cart title since we're displaying all cart items
-    val displayProductName = stringResource(id = R.string.product_cart)
+    // Show product name as title since we're displaying only this product's cart items
+    val displayProductName = productName.ifBlank { stringResource(id = R.string.product_cart) }
     
     // Handle events
     LaunchedEffect(Unit) {
@@ -236,9 +236,11 @@ fun ProductEditScreen(
                                         itemToDelete = groupedItem
                                     },
                                     onEditClick = {
-                                        val itemProductId = groupedItem.items.firstOrNull()?.product?.id
-                                        if (itemProductId != null) {
-                                            onEditClick(itemProductId)
+                                        val firstItem = groupedItem.items.firstOrNull()
+                                        val itemProductId = firstItem?.product?.id
+                                        val cartItemId = firstItem?.id
+                                        if (itemProductId != null && cartItemId != null) {
+                                            onEditClick(itemProductId, cartItemId)
                                         }
                                     }
                                 )

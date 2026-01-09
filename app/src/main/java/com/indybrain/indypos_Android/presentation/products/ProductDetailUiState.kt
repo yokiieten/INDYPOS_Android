@@ -13,7 +13,9 @@ data class ProductDetailUiState(
     val quantity: Int = 1,
     val specialRequest: String = "",
     val errorMessage: String? = null,
-    val isAddToCartSuccess: Boolean = false
+    val isAddToCartSuccess: Boolean = false,
+    // If not null, we are editing an existing cart item (from Order / ProductEdit)
+    val editingCartItemId: String? = null
 )
 
 
