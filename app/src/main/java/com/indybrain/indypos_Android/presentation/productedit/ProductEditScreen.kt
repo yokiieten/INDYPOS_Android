@@ -39,6 +39,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
@@ -70,6 +73,7 @@ fun ProductEditScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var itemToDelete by remember { mutableStateOf<GroupedCartItem?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
     
     // Flag to prevent multiple dismiss calls
     var isDismissing by remember { mutableStateOf(false) }
@@ -166,141 +170,145 @@ fun ProductEditScreen(
             color = Color.White,
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
-            ) {
-                // Product title
-                Text(
-                    text = displayProductName,
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Large
-                    ),
-                    color = PrimaryText,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                
-                // Error message
-                uiState.errorMessage?.let { error ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFFFEBEE)
-                    ) {
-                        Text(
-                            text = error,
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = Color(0xFFC62828),
-                            modifier = Modifier.padding(12.dp)
-                        )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 20.dp)
+                ) {
+                    // Product title
+                    Text(
+                        text = displayProductName,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    
+                    // Show error as snackbar (toast without icon)
+                    uiState.errorMessage?.let { errorMessage ->
+                        LaunchedEffect(errorMessage) {
+                            snackbarHostState.showSnackbar(
+                                message = errorMessage,
+                                duration = androidx.compose.material3.SnackbarDuration.Short
+                            )
+                            viewModel.clearErrorMessage()
+                        }
                     }
-                }
-                
-                // Cart items - show all items
-                if (uiState.groupedItems.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "ไม่มีสินค้าในตะกร้า",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = SecondaryText
-                        )
-                    }
-                } else {
-                    // Show all grouped items in scrollable list
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 400.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(uiState.groupedItems) { groupedItem ->
-                            CartItemGroupCard(
-                                groupedItem = groupedItem,
-                                onIncreaseQuantity = { 
-                                    viewModel.increaseQuantity(groupedItem.items.first().id) 
-                                },
-                                onDecreaseQuantity = { 
-                                    viewModel.decreaseQuantity(groupedItem.items.first().id) 
-                                },
-                                onDelete = { 
-                                    itemToDelete = groupedItem
-                                },
-                                onEditClick = {
-                                    val itemProductId = groupedItem.items.firstOrNull()?.product?.id
-                                    if (itemProductId != null) {
-                                        onEditClick(itemProductId)
+                    
+                    // Cart items - show all items
+                    if (uiState.groupedItems.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "ไม่มีสินค้าในตะกร้า",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = SecondaryText
+                            )
+                        }
+                    } else {
+                        // Show all grouped items in scrollable list
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 400.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            items(uiState.groupedItems) { groupedItem ->
+                                CartItemGroupCard(
+                                    groupedItem = groupedItem,
+                                    onIncreaseQuantity = { 
+                                        viewModel.increaseQuantity(groupedItem.items.first().id) 
+                                    },
+                                    onDecreaseQuantity = { 
+                                        viewModel.decreaseQuantity(groupedItem.items.first().id) 
+                                    },
+                                    onDelete = { 
+                                        itemToDelete = groupedItem
+                                    },
+                                    onEditClick = {
+                                        val itemProductId = groupedItem.items.firstOrNull()?.product?.id
+                                        if (itemProductId != null) {
+                                            onEditClick(itemProductId)
+                                        }
                                     }
-                                }
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Action buttons
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = onAddAnother,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE3F2FD)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "เพิ่มอีก",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "เพิ่มอีก",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = PrimaryButton
+                            )
+                        }
+                        
+                        Button(
+                            onClick = safeUpdateBasket,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isUpdatingBasket && !isDismissing && itemToDelete == null,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PrimaryButton,
+                                disabledContainerColor = PrimaryButton.copy(alpha = 0.6f)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "อัปเดตตะกร้า",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = Color.White
                             )
                         }
                     }
                 }
                 
-                // Action buttons
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = onAddAnother,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE3F2FD)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "เพิ่มอีก",
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "เพิ่มอีก",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = PrimaryButton
-                        )
-                    }
-                    
-                    Button(
-                        onClick = safeUpdateBasket,
-                        modifier = Modifier.weight(1f),
-                        enabled = !isUpdatingBasket && !isDismissing && itemToDelete == null,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = PrimaryButton,
-                            disabledContainerColor = PrimaryButton.copy(alpha = 0.6f)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "อัปเดตตะกร้า",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = Color.White
-                        )
-                    }
+                // Snackbar host for toast messages
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) { snackbarData ->
+                    Snackbar(
+                        snackbarData = snackbarData,
+                        containerColor = Color(0xFF323232),
+                        contentColor = Color.White
+                    )
                 }
             }
         }

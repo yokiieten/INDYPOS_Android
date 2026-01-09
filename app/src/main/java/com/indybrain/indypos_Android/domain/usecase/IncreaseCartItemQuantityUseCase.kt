@@ -18,18 +18,31 @@ class IncreaseCartItemQuantityUseCase @Inject constructor(
         // Get all cart items for this product to calculate total quantity
         val allCartItemsForProduct = repository.getCartItemsByProduct(cartItem.product.id).first()
         val currentTotalQuantity = allCartItemsForProduct.sumOf { it.quantity }
-
         
-        // Check stock availability
-        val hasStock = repository.checkStockAvailability(
-            cartItem.product.id,
-            newQuantity
-        )
-//
-//        if (!hasStock) {
-//            emit(Result.failure(InsufficientStockException("Insufficient stock")))
-//            return@flow
-//        }
+        // Calculate total quantity after increase
+        // We need to replace the current cartItem.quantity with newQuantity
+        val totalQuantityAfterIncrease = currentTotalQuantity - cartItem.quantity + newQuantity
+        
+        // Check stock availability - check if stock is enabled first
+        val product = cartItem.product
+        if (product.isStockEnabled == true && product.stockQuantity != null) {
+            val hasStock = repository.checkStockAvailability(
+                cartItem.product.id,
+                totalQuantityAfterIncrease
+            )
+            
+            if (!hasStock) {
+                val stockQuantity = product.stockQuantity ?: 0
+                val availableStock = stockQuantity - (currentTotalQuantity - cartItem.quantity)
+                val errorMessage = if (availableStock > 0) {
+                    "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
+                } else {
+                    "สินค้าในสต็อกไม่เพียงพอ"
+                }
+                emit(Result.failure(Exception(errorMessage)))
+                return@flow
+            }
+        }
         
         // Update quantity
         val result = repository.updateCartItemQuantity(cartItemId, newQuantity)
