@@ -304,6 +304,13 @@
     <string name="product_detail_required_addon_error">กรุณาเลือก %1$s</string>
     <string name="product_detail_insufficient_stock">สินค้าในสต็อกไม่เพียงพอ</string>
     
+    <!-- Order Product / Cart -->
+    <string name="order_product_empty_cart">ตะกร้าสินค้าว่างเปล่า</string>
+    <string name="order_product_subtotal">ยอดรวม</string>
+    <string name="order_product_discount">ส่วนลด</string>
+    <string name="order_product_total">ยอดรวมทั้งสิ้น</string>
+    <string name="order_product_checkout">ชำระเงิน</string>
+    
     <!-- Search Product Screen -->
     <string name="search_title">ค้นหาสินค้า</string>
     <string name="search_placeholder">ค้นหาสินค้า…</string>

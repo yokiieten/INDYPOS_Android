@@ -250,6 +250,13 @@
     <string name="product_cart">Cart</string>
     <string name="product_barcode_scanner">Scan Barcode</string>
     
+    <!-- Order Product / Cart -->
+    <string name="order_product_empty_cart">Cart is empty</string>
+    <string name="order_product_subtotal">Subtotal</string>
+    <string name="order_product_discount">Discount</string>
+    <string name="order_product_total">Total</string>
+    <string name="order_product_checkout">Checkout</string>
+    
     <!-- Barcode Scanner Screen -->
     <string name="barcode_scanner_title">Barcode Scanner</string>
     <string name="barcode_scanner_instruction">Place barcode within the frame to scan</string>

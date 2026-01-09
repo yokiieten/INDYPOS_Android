@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,14 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,18 +27,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material3.Badge
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -53,44 +45,51 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
-import androidx.compose.ui.res.stringResource
 import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
+import com.indybrain.indypos_Android.core.ui.getLandscapeSplitRatio
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
+import com.indybrain.indypos_Android.domain.usecase.GetGroupedCartItemsUseCase
+import com.indybrain.indypos_Android.presentation.products.components.LiveCartPanel
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
-import com.indybrain.indypos_Android.core.ui.isTabletLandscape
-import com.indybrain.indypos_Android.core.ui.getProductGridColumns
+import androidx.hilt.navigation.compose.hiltViewModel
 
+/**
+ * Landscape layout for MainProductScreen with split screen:
+ * - Left side (60-70%): Product grid with 3 columns
+ * - Right side (30-40%): Live cart panel
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainProductScreen(
+fun MainProductScreenLandscape(
     onBackClick: () -> Unit = {},
     onProductClick: (productId: String, productName: String, isInCart: Boolean) -> Unit = { _, _, _ -> },
     onProductClickFromScan: (productId: String, productName: String) -> Unit = { _, _ -> },
@@ -98,30 +97,28 @@ fun MainProductScreen(
     onBarcodeScannerClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     scannedBarcode: String? = null,
-    viewModel: MainProductViewModel = hiltViewModel()
+    viewModel: MainProductViewModel = hiltViewModel(),
+    getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase = hiltViewModel<LandscapeCartViewModel>().getGroupedCartItemsUseCase
 ) {
-    // Use split screen layout only for tablet in landscape mode
-    // Mobile (all orientations) and Tablet portrait → use original layout
-    val shouldUseSplitScreen = isTabletLandscape()
-    
-    if (shouldUseSplitScreen) {
-        // Tablet landscape: Use split screen layout with live cart panel
-        MainProductScreenLandscape(
-            onBackClick = onBackClick,
-            onProductClick = onProductClick,
-            onProductClickFromScan = onProductClickFromScan,
-            onCartClick = onCartClick,
-            onBarcodeScannerClick = onBarcodeScannerClick,
-            onSearchClick = onSearchClick,
-            scannedBarcode = scannedBarcode,
-            viewModel = viewModel
-        )
-        return
-    }
-    
-    // Default layout (Mobile all orientations + Tablet portrait)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle(initialValue = emptyList())
+    
+    // Get grouped cart items for the live cart panel
+    val groupedCartItems by getGroupedCartItemsUseCase().collectAsStateWithLifecycle(initialValue = emptyList())
+    
+    // Calculate totals using the same logic as OrderProductViewModel
+    val subtotal = remember(groupedCartItems) {
+        groupedCartItems.sumOf { groupedItem ->
+            val firstItem = groupedItem.items.firstOrNull() ?: return@sumOf 0.0
+            val productPrice = firstItem.product.price * groupedItem.totalQuantity
+            val addonsPrice = firstItem.selectedAddons.values
+                .flatten()
+                .sumOf { it.price } * groupedItem.totalQuantity
+            productPrice + addonsPrice
+        }
+    }
+    val discount = 0.0 // No discount in product selection screen
+    val total = (subtotal - discount).coerceAtLeast(0.0)
     
     // Handle scanned barcode
     var showProductNotFoundDialog by remember { mutableStateOf(false) }
@@ -129,29 +126,25 @@ fun MainProductScreen(
     
     LaunchedEffect(scannedBarcode) {
         scannedBarcode?.let { barcode ->
-            // Only process if not already processed
             if (barcode != processedBarcode) {
                 processedBarcode = barcode
-                // Add small delay to ensure state is stable
                 kotlinx.coroutines.delay(100)
                 val product: ProductEntity? = viewModel.findProductByCode(barcode)
                 product?.let { foundProduct ->
-                    // Product found - navigate to detail (always go to ProductDetailScreen when scanned)
-                    // Clear processedBarcode before navigation to prevent re-trigger
                     processedBarcode = null
                     onProductClickFromScan(foundProduct.id, foundProduct.name)
                 } ?: run {
-                    // Product not found - show dialog
                     showProductNotFoundDialog = true
-                    // Clear processedBarcode after showing dialog
                     processedBarcode = null
                 }
             }
         } ?: run {
-            // Clear processedBarcode when scannedBarcode is null
             processedBarcode = null
         }
     }
+    
+    // Get split ratio based on screen size
+    val splitRatio = getLandscapeSplitRatio()
     
     // Save scroll position
     var savedScrollIndex by rememberSaveable { mutableStateOf(0) }
@@ -162,48 +155,38 @@ fun MainProductScreen(
         initialFirstVisibleItemScrollOffset = savedScrollOffset
     )
     
-    // Save scroll position when it changes
     LaunchedEffect(scrollState.firstVisibleItemIndex, scrollState.firstVisibleItemScrollOffset) {
         savedScrollIndex = scrollState.firstVisibleItemIndex
         savedScrollOffset = scrollState.firstVisibleItemScrollOffset
     }
     
-            // Track which category is visible based on scroll position
-            val visibleCategoryId = remember {
-                derivedStateOf {
-                    // Use the same categories order as CategoryFilterBar
-                    val categoriesWithProducts = uiState.categories.filter { category ->
-                        uiState.allProducts.any { it.categoryId == category.id }
-                    }
-                    
-                    if (categoriesWithProducts.isEmpty() || scrollState.layoutInfo.visibleItemsInfo.isEmpty()) {
-                        return@derivedStateOf null
-                    }
+    // Track visible category
+    val visibleCategoryId = remember {
+        derivedStateOf {
+            val categoriesWithProducts = uiState.categories.filter { category ->
+                uiState.allProducts.any { it.categoryId == category.id }
+            }
             
-            // Get visible items info
+            if (categoriesWithProducts.isEmpty() || scrollState.layoutInfo.visibleItemsInfo.isEmpty()) {
+                return@derivedStateOf null
+            }
+            
             val visibleItems = scrollState.layoutInfo.visibleItemsInfo
             
-            // Find the first visible item that is a category header or products grid
             for (visibleItem in visibleItems) {
                 val itemKey = visibleItem.key as? String
                 if (itemKey != null) {
                     when {
                         itemKey.startsWith("category_") -> {
-                            // Found a category header
-                            val categoryId = itemKey.removePrefix("category_")
-                            return@derivedStateOf categoryId
+                            return@derivedStateOf itemKey.removePrefix("category_")
                         }
                         itemKey.startsWith("products_") -> {
-                            // Found a products grid - get the category ID
-                            val categoryId = itemKey.removePrefix("products_")
-                            return@derivedStateOf categoryId
+                            return@derivedStateOf itemKey.removePrefix("products_")
                         }
                     }
                 }
             }
             
-            // If no category found in visible items, check the first visible index
-            // Each category takes 2 items: header (even index) and products (odd index)
             val firstVisibleIndex = scrollState.firstVisibleItemIndex
             val categoryIndex = firstVisibleIndex / 2
             
@@ -211,12 +194,10 @@ fun MainProductScreen(
                 return@derivedStateOf categoriesWithProducts[categoryIndex].id
             }
             
-            // Default to last category if scrolled to bottom
             categoriesWithProducts.lastOrNull()?.id
         }
     }
     
-    // Update focused category when scrolling
     LaunchedEffect(visibleCategoryId.value) {
         visibleCategoryId.value?.let { categoryId ->
             if (categoryId != uiState.focusedCategoryId) {
@@ -225,31 +206,23 @@ fun MainProductScreen(
         }
     }
     
-    // Scroll to selected category when category is selected
-    // Only perform scroll when the selected category actually changes,
-    // so navigating back from ProductDetail won't trigger an extra scroll.
     var lastScrolledCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(uiState.selectedCategoryId) {
         val categoryId = uiState.selectedCategoryId
         if (categoryId != null && categoryId != lastScrolledCategoryId) {
-            // Use the same categories order as CategoryFilterBar
             val categoriesWithProducts = uiState.categories.filter { category ->
                 uiState.allProducts.any { it.categoryId == category.id }
             }
             
-            // Each category has 2 items: header (index 0) and products grid (index 1)
-            // So category indices are: 0, 2, 4, 6, ...
             var targetIndex = 0
             for (category in categoriesWithProducts) {
                 if (category.id == categoryId) {
-                    // Scroll to category header with a small offset to ensure header is visible
                     scrollState.animateScrollToItem(
                         index = targetIndex,
-                        scrollOffset = -16 // Small negative offset to show header clearly
+                        scrollOffset = -16
                     )
                     break
                 }
-                // Each category uses 2 items: header + products grid
                 targetIndex += 2
             }
             
@@ -310,100 +283,50 @@ fun MainProductScreen(
             )
         }
     ) { padding ->
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Observe cart count once for both list padding and cart button
-            val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle(initialValue = 0)
-            
-            Column(
-                modifier = Modifier.fillMaxSize()
+            // Left side: Product grid
+            Box(
+                modifier = Modifier
+                    .weight(splitRatio)
+                    .fillMaxHeight()
             ) {
-                // Category filter bar at top - only show categories that have products
-                // Products without categoryId are already filtered in ViewModel
-                val categoriesWithProducts = uiState.categories.filter { category ->
-                    uiState.allProducts.any { it.categoryId == category.id }
-                }
-                // Only show focused category if it has products
-                val validFocusedCategoryId = uiState.focusedCategoryId?.takeIf { categoryId ->
-                    uiState.allProducts.any { it.categoryId == categoryId }
-                }
-                CategoryFilterBar(
-                    categories = categoriesWithProducts,
-                    focusedCategoryId = validFocusedCategoryId,
-                    onCategorySelected = { categoryId ->
-                        viewModel.selectCategory(categoryId)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                // Products grid
-                // Use allProducts instead of products to avoid flickering
-                val hasProducts = uiState.allProducts.isNotEmpty()
-                
-                when {
-                    uiState.isLoading -> {
-                        // Show loading only when loading
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = PrimaryButton)
-                        }
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Category filter bar
+                    val categoriesWithProducts = uiState.categories.filter { category ->
+                        uiState.allProducts.any { it.categoryId == category.id }
                     }
-                    !hasProducts -> {
-                        // Show empty state only when not loading and no products
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.product_empty),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
-                        }
+                    val validFocusedCategoryId = uiState.focusedCategoryId?.takeIf { categoryId ->
+                        uiState.allProducts.any { it.categoryId == categoryId }
                     }
-                    else -> {
-                        // Show products when we have products
-                        // Always show all products grouped by category
-                        // Filtering is handled by scrolling to the selected category
-                        // Products without categoryId are already filtered in ViewModel
-                        
-                        // Use the same categories order as CategoryFilterBar
-                        val categoriesWithProducts = uiState.categories.filter { category ->
-                            uiState.allProducts.any { it.categoryId == category.id }
-                        }
-                        
-                        // Group products by categoryId for quick lookup
-                        val productsByCategoryId = uiState.allProducts
-                            .filter { it.categoryId != null && it.categoryId.isNotBlank() }
-                            .groupBy { it.categoryId }
-                        
-                        // Get dynamic column count based on device and orientation
-                        val columnsCount = getProductGridColumns()
                     
-                    LazyColumn(
-                        state = scrollState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 8.dp,
-                            // Fixed bottom padding so content doesn't jump when cart button appears/disappears
-                            bottom = 80.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-                    if (categoriesWithProducts.isEmpty()) {
-                        item {
+                    CategoryFilterBarLandscape(
+                        categories = categoriesWithProducts,
+                        focusedCategoryId = validFocusedCategoryId,
+                        onCategorySelected = { categoryId ->
+                            viewModel.selectCategory(categoryId)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    // Products grid
+                    val hasProducts = uiState.allProducts.isNotEmpty()
+                    
+                    when {
+                        uiState.isLoading -> {
                             Box(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryButton)
+                            }
+                        }
+                        !hasProducts -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -416,59 +339,89 @@ fun MainProductScreen(
                                 )
                             }
                         }
-                    } else {
-                        // Show products grouped by category in the same order as CategoryFilterBar
-                        categoriesWithProducts.forEach { category ->
-                            val products = productsByCategoryId[category.id] ?: emptyList()
+                        else -> {
+                            val productsByCategoryId = uiState.allProducts
+                                .filter { it.categoryId != null && it.categoryId.isNotBlank() }
+                                .groupBy { it.categoryId }
                             
-                            // Skip if no products in this category
-                            if (products.isEmpty()) return@forEach
-                            
-                            item(key = "category_${category.id}") {
-                                // Category header
-                                Text(
-                                    text = category.name,
-                                    style = FontUtils.mainFont(
-                                        style = AppFontStyle.Bold,
-                                        size = FontSize.Large
-                                    ),
-                                    color = PrimaryText,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-                            }
-                            
-                            // Products grid for this category with dynamic columns
-                            item(key = "products_${category.id}") {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    products.chunked(columnsCount).forEach { rowProducts ->
-                                        Row(
+                            LazyColumn(
+                                state = scrollState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    end = 8.dp,
+                                    top = 8.dp,
+                                    bottom = 16.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(24.dp)
+                            ) {
+                                if (categoriesWithProducts.isEmpty()) {
+                                    item {
+                                        Box(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            rowProducts.forEach { product ->
-                                                val cartQuantity = cartItems
-                                                    .filter { it.productId == product.id }
-                                                    .sumOf { it.quantity }
-                                                
-                                                ProductCard(
-                                                    product = product,
-                                                    cartQuantity = cartQuantity,
-                                                    onClick = { 
-                                                        // If product is in cart, pass productName for ProductEditScreen
-                                                        // Otherwise, just pass productId for ProductDetailScreen
-                                                        onProductClick(product.id, product.name, cartQuantity > 0)
-                                                    },
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .fillMaxWidth()
-                                                )
-                                            }
-                                            // Add spacers for remaining columns
-                                            repeat(columnsCount - rowProducts.size) {
-                                                Spacer(modifier = Modifier.weight(1f))
+                                            Text(
+                                                text = stringResource(id = R.string.product_empty),
+                                                style = FontUtils.mainFont(
+                                                    style = AppFontStyle.Regular,
+                                                    size = FontSize.Medium
+                                                ),
+                                                color = SecondaryText
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    categoriesWithProducts.forEach { category ->
+                                        val products = productsByCategoryId[category.id] ?: emptyList()
+                                        
+                                        if (products.isEmpty()) return@forEach
+                                        
+                                        item(key = "category_${category.id}") {
+                                            Text(
+                                                text = category.name,
+                                                style = FontUtils.mainFont(
+                                                    style = AppFontStyle.Bold,
+                                                    size = FontSize.Large
+                                                ),
+                                                color = PrimaryText,
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                            )
+                                        }
+                                        
+                                        item(key = "products_${category.id}") {
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                // Display 3 columns in landscape
+                                                products.chunked(3).forEach { rowProducts ->
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                                    ) {
+                                                        rowProducts.forEach { product ->
+                                                            val cartQuantity = cartItems
+                                                                .filter { it.productId == product.id }
+                                                                .sumOf { it.quantity }
+                                                            
+                                                            ProductCardLandscape(
+                                                                product = product,
+                                                                cartQuantity = cartQuantity,
+                                                                onClick = {
+                                                                    onProductClick(product.id, product.name, cartQuantity > 0)
+                                                                },
+                                                                modifier = Modifier
+                                                                    .weight(1f)
+                                                                    .fillMaxWidth()
+                                                            )
+                                                        }
+                                                        // Add spacers for remaining columns
+                                                        repeat(3 - rowProducts.size) {
+                                                            Spacer(modifier = Modifier.weight(1f))
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -476,40 +429,55 @@ fun MainProductScreen(
                             }
                         }
                     }
+                    
+                    // Error message
+                    uiState.errorMessage?.let { error ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFFFFEBEE))
+                                .padding(12.dp)
+                        ) {
+                            Text(
+                                text = error,
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Small
+                                ),
+                                color = Color(0xFFC62828)
+                            )
+                        }
                     }
                 }
             }
             
-                // Error message
-                uiState.errorMessage?.let { error ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFFFEBEE)
-                    ) {
-                        Text(
-                            text = error,
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = Color(0xFFC62828),
-                            modifier = Modifier.padding(12.dp)
-                        )
-                    }
-                }
-            }
+            // Divider
+            Divider(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(1.dp),
+                color = Color(0xFFE5E5E5)
+            )
             
-            // Cart Button - Floating at bottom
-            if (cartItemCount > 0) {
-                CartButton(
-                    itemCount = cartItemCount,
-                    onClick = onCartClick,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
+            // Right side: Live cart panel
+            Box(
+                modifier = Modifier
+                    .weight(1f - splitRatio)
+                    .fillMaxHeight()
+            ) {
+                LiveCartPanel(
+                    groupedItems = groupedCartItems,
+                    subtotal = subtotal,
+                    discount = discount,
+                    total = total,
+                    onCartItemClick = { productId, productName ->
+                        // Navigate to edit cart item
+                        val cartQuantity = cartItems.count { it.productId == productId }
+                        onProductClick(productId, productName, cartQuantity > 0)
+                    },
+                    onCheckoutClick = onCartClick
                 )
             }
         }
@@ -558,7 +526,7 @@ fun MainProductScreen(
 }
 
 @Composable
-private fun CategoryFilterBar(
+private fun CategoryFilterBarLandscape(
     categories: List<CategoryEntity>,
     focusedCategoryId: String?,
     onCategorySelected: (String?) -> Unit,
@@ -566,18 +534,15 @@ private fun CategoryFilterBar(
 ) {
     val categoryScrollState = rememberLazyListState()
     
-    // Scroll to focused category when it changes
     LaunchedEffect(focusedCategoryId) {
         focusedCategoryId?.let { categoryId ->
             val categoryIndex = categories.indexOfFirst { it.id == categoryId }
             if (categoryIndex >= 0) {
-                // Check if the item is visible
                 val layoutInfo = categoryScrollState.layoutInfo
                 val visibleItems = layoutInfo.visibleItemsInfo
                 val isVisible = visibleItems.any { it.index == categoryIndex }
                 
                 if (!isVisible) {
-                    // Scroll to the category if it's not visible
                     categoryScrollState.animateScrollToItem(
                         index = categoryIndex,
                         scrollOffset = 0
@@ -595,9 +560,8 @@ private fun CategoryFilterBar(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        // Category chips only (no "ทั้งหมด")
         items(categories) { category ->
-            CategoryChip(
+            CategoryChipLandscape(
                 text = category.name,
                 isFocused = focusedCategoryId == category.id,
                 onClick = { onCategorySelected(category.id) }
@@ -607,7 +571,7 @@ private fun CategoryFilterBar(
 }
 
 @Composable
-private fun CategoryChip(
+private fun CategoryChipLandscape(
     text: String,
     isFocused: Boolean,
     onClick: () -> Unit,
@@ -637,7 +601,6 @@ private fun CategoryChip(
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        // Underline when focused (light blue)
         if (isFocused) {
             Box(
                 modifier = Modifier
@@ -652,14 +615,14 @@ private fun CategoryChip(
 }
 
 @Composable
-private fun ProductCard(
+private fun ProductCardLandscape(
     product: ProductEntity,
     cartQuantity: Int = 0,
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val backgroundColor = product.selectedColorHex?.let { 
+    val backgroundColor = product.selectedColorHex?.let {
         try {
             Color(android.graphics.Color.parseColor(it))
         } catch (e: Exception) {
@@ -676,7 +639,6 @@ private fun ProductCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Product image or color
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -688,20 +650,16 @@ private fun ProductCard(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Check if imageUrl exists and is not empty
                     val imageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
                     val hasColor = product.selectedColorHex != null && product.selectedColorHex.isNotBlank()
                     
                     if (!imageUrl.isNullOrBlank()) {
-                    // Load image from URL using Coil
-                    // Handle both absolute URLs and relative URLs
-                    val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-                        imageUrl
-                    } else {
-                        // If relative URL, prepend base URL
-                        AppConfig.buildImageUrl(imageUrl)
-                    }
-                    
+                        val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+                            imageUrl
+                        } else {
+                            AppConfig.buildImageUrl(imageUrl)
+                        }
+                        
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(fullImageUrl)
@@ -714,23 +672,20 @@ private fun ProductCard(
                             placeholder = painterResource(id = R.drawable.logo_appstore)
                         )
                     } else if (!hasColor) {
-                        // If no image URL and no color, show placeholder icon
                         Image(
                             painter = painterResource(id = R.drawable.logo_appstore),
                             contentDescription = product.name,
-                            modifier = Modifier.size(60.dp),
+                            modifier = Modifier.size(48.dp),
                             contentScale = ContentScale.Fit
                         )
                     }
-                    // If has color but no image, just show the background color (no icon)
                 }
             }
             
-            // Product info
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp)
+                    .padding(10.dp)
             ) {
                 Text(
                     text = product.name,
@@ -759,12 +714,11 @@ private fun ProductCard(
                         color = PrimaryButton
                     )
                     
-                    // Cart Badge - Bottom Right (if in cart)
                     if (cartQuantity > 0) {
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .size(22.dp)
+                                .clip(RoundedCornerShape(11.dp))
                                 .background(PrimaryButton),
                             contentAlignment = Alignment.Center
                         ) {
@@ -772,7 +726,7 @@ private fun ProductCard(
                                 text = cartQuantity.toString(),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Bold,
-                                    size = FontSize.Small
+                                    size = FontSize.Smallest
                                 ),
                                 color = Color.White
                             )
@@ -784,50 +738,15 @@ private fun ProductCard(
     }
 }
 
-@Composable
-private fun CartButton(
-    itemCount: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick),
-        color = PrimaryButton
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Filled.ShoppingCart,
-                contentDescription = stringResource(id = R.string.product_cart),
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Text(
-                text = stringResource(id = R.string.product_view_cart, itemCount),
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Medium
-                ),
-                color = Color.White
-            )
-        }
-    }
-}
-
 private fun formatCurrency(value: Double): String {
     val formatter = DecimalFormat("#,##0.00")
     return "฿${formatter.format(value)}"
 }
 
+/**
+ * Helper ViewModel to inject GetGroupedCartItemsUseCase for landscape mode
+ */
+@dagger.hilt.android.lifecycle.HiltViewModel
+class LandscapeCartViewModel @javax.inject.Inject constructor(
+    val getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase
+) : androidx.lifecycle.ViewModel()
