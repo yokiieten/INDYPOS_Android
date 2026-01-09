@@ -77,6 +77,8 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
+import com.indybrain.indypos_Android.core.ui.isLandscape
+import com.indybrain.indypos_Android.core.ui.isTablet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -191,35 +193,106 @@ fun ProductDetailScreen(
                 }
             }
             else -> {
+                // Detect device type and orientation to choose layout
+                val isLandscapeMode = isLandscape()
+                val isTabletDevice = isTablet()
+                
                 Box(modifier = Modifier.fillMaxSize()) {
-                    ProductDetailContent(
-                        product = uiState.product!!,
-                        addonGroups = uiState.addonGroups,
-                        addonsByGroup = uiState.addonsByGroup,
-                        selectedAddons = uiState.selectedAddons,
-                        quantity = uiState.quantity,
-                        specialRequest = uiState.specialRequest,
-                        onAddonToggle = { addonGroupId, addonId ->
-                            viewModel.toggleAddon(addonGroupId, addonId)
-                        },
-                        onQuantityIncrease = {
-                            viewModel.increaseQuantity()
-                        },
-                        onQuantityDecrease = {
-                            viewModel.decreaseQuantity()
-                        },
-                        onSpecialRequestChange = { request ->
-                            viewModel.updateSpecialRequest(request)
-                        },
-                        onAddToCart = {
-                            shouldAddToCart = true
-                        },
-                        onImageClick = {
-                            // เปิด viewer ได้ทั้งกรณีมีรูปและมีแค่สี
-                            isImageViewerVisible = true
-                        },
-                        modifier = Modifier.padding(padding)
-                    )
+                    when {
+                        // Tablet landscape: Use 40:60 split screen
+                        isTabletDevice && isLandscapeMode -> {
+                            ProductDetailContentLandscape(
+                                product = uiState.product!!,
+                                addonGroups = uiState.addonGroups,
+                                addonsByGroup = uiState.addonsByGroup,
+                                selectedAddons = uiState.selectedAddons,
+                                quantity = uiState.quantity,
+                                specialRequest = uiState.specialRequest,
+                                onAddonToggle = { addonGroupId, addonId ->
+                                    viewModel.toggleAddon(addonGroupId, addonId)
+                                },
+                                onQuantityIncrease = {
+                                    viewModel.increaseQuantity()
+                                },
+                                onQuantityDecrease = {
+                                    viewModel.decreaseQuantity()
+                                },
+                                onSpecialRequestChange = { request ->
+                                    viewModel.updateSpecialRequest(request)
+                                },
+                                onAddToCart = {
+                                    shouldAddToCart = true
+                                },
+                                onImageClick = {
+                                    isImageViewerVisible = true
+                                },
+                                modifier = Modifier.padding(padding)
+                            )
+                        }
+                        
+                        // Mobile landscape: Use compact 30:70 split screen
+                        !isTabletDevice && isLandscapeMode -> {
+                            ProductDetailContentMobileLandscape(
+                            product = uiState.product!!,
+                            addonGroups = uiState.addonGroups,
+                            addonsByGroup = uiState.addonsByGroup,
+                            selectedAddons = uiState.selectedAddons,
+                            quantity = uiState.quantity,
+                            specialRequest = uiState.specialRequest,
+                            onAddonToggle = { addonGroupId, addonId ->
+                                viewModel.toggleAddon(addonGroupId, addonId)
+                            },
+                            onQuantityIncrease = {
+                                viewModel.increaseQuantity()
+                            },
+                            onQuantityDecrease = {
+                                viewModel.decreaseQuantity()
+                            },
+                            onSpecialRequestChange = { request ->
+                                viewModel.updateSpecialRequest(request)
+                            },
+                            onAddToCart = {
+                                shouldAddToCart = true
+                            },
+                            onImageClick = {
+                                isImageViewerVisible = true
+                            },
+                            modifier = Modifier.padding(padding)
+                            )
+                        }
+                        
+                        // Portrait (mobile or tablet): Use original vertical layout
+                        else -> {
+                        ProductDetailContent(
+                            product = uiState.product!!,
+                            addonGroups = uiState.addonGroups,
+                            addonsByGroup = uiState.addonsByGroup,
+                            selectedAddons = uiState.selectedAddons,
+                            quantity = uiState.quantity,
+                            specialRequest = uiState.specialRequest,
+                            onAddonToggle = { addonGroupId, addonId ->
+                                viewModel.toggleAddon(addonGroupId, addonId)
+                            },
+                            onQuantityIncrease = {
+                                viewModel.increaseQuantity()
+                            },
+                            onQuantityDecrease = {
+                                viewModel.decreaseQuantity()
+                            },
+                            onSpecialRequestChange = { request ->
+                                viewModel.updateSpecialRequest(request)
+                            },
+                            onAddToCart = {
+                                shouldAddToCart = true
+                            },
+                            onImageClick = {
+                                // เปิด viewer ได้ทั้งกรณีมีรูปและมีแค่สี
+                                isImageViewerVisible = true
+                            },
+                            modifier = Modifier.padding(padding)
+                            )
+                        }
+                    }
                     
                     // Fullscreen Image Viewer
                     if (isImageViewerVisible) {
