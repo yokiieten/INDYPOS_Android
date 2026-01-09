@@ -30,6 +30,12 @@ interface CartRepository {
     fun getCartItemsDomain(): Flow<List<CartItem>>
     suspend fun getCartItemById(cartItemId: String): CartItem?
     suspend fun updateCartItemQuantity(cartItemId: String, quantity: Int): Result<Unit>
+    suspend fun updateCartItemConfiguration(
+        cartItemId: String,
+        specialRequest: String?,
+        unitPrice: Double,
+        addons: List<CartAddonEntity>
+    ): Result<Unit>
     suspend fun deleteCartItems(cartItemIds: List<String>): Result<Unit>
     suspend fun checkStockAvailability(productId: String, quantity: Int): Boolean
 }

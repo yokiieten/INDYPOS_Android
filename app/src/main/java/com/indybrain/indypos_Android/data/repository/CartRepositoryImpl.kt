@@ -200,6 +200,33 @@ class CartRepositoryImpl @Inject constructor(
         }
     }
     
+    override suspend fun updateCartItemConfiguration(
+        cartItemId: String,
+        specialRequest: String?,
+        unitPrice: Double,
+        addons: List<CartAddonEntity>
+    ): Result<Unit> {
+        return try {
+            // Update main cart item fields (keep createdAt, productId, etc.)
+            cartDao.updateCartItemConfiguration(
+                id = cartItemId,
+                specialRequest = specialRequest,
+                unitPrice = unitPrice
+            )
+            
+            // Replace addons: delete old then insert new with same cartItemId
+            cartDao.deleteSelectedAddons(cartItemId)
+            if (addons.isNotEmpty()) {
+                val addonsWithItemId = addons.map { it.copy(cartItemId = cartItemId) }
+                cartDao.insertCartAddons(addonsWithItemId)
+            }
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
     override suspend fun checkStockAvailability(
         productId: String, 
         quantity: Int

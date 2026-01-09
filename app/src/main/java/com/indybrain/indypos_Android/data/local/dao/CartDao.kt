@@ -92,5 +92,16 @@ interface CartDao {
             deleteCartItem(cartItemId)
         }
     }
+
+    @Query("""
+        UPDATE cart_items 
+        SET specialRequest = :specialRequest, unitPrice = :unitPrice 
+        WHERE id = :id
+    """)
+    suspend fun updateCartItemConfiguration(
+        id: String,
+        specialRequest: String?,
+        unitPrice: Double
+    )
 }
 

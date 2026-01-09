@@ -441,7 +441,8 @@ class ProductDetailViewModel @Inject constructor(
                     cartRepository.updateCartItemQuantity(matchingOtherItem.id, newQuantityForMatching)
                     cartRepository.deleteCartItems(listOf(editingCartItemId))
                 } else {
-                    // Case 2: New config doesn't match any other item -> remove original and add new item
+                    // Case 2: New config doesn't match any other item -> update original item IN PLACE
+                    // so that its createdAt (and list position) is preserved
                     val totalQuantityAfterChange = totalQuantityExcludingOriginal + currentState.quantity
                     val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
                     if (!hasStock) {
@@ -456,7 +457,7 @@ class ProductDetailViewModel @Inject constructor(
                         return@launch
                     }
                     
-                    // Prepare new item data
+                    // Prepare updated configuration data (price + addons) for the original item
                     val addonPrice = calculateAddonPrice()
                     val unitPrice = product.price + addonPrice
                     
@@ -468,7 +469,7 @@ class ProductDetailViewModel @Inject constructor(
                             if (addon != null && addonGroup != null) {
                                 cartAddons.add(
                                     CartAddonEntity(
-                                        cartItemId = "", // Will be set by repository
+                                        cartItemId = editingCartItemId, // Will be overwritten in repository, kept for clarity
                                         addonId = addon.id,
                                         addonName = addon.name,
                                         addonPrice = addon.price,
@@ -480,18 +481,15 @@ class ProductDetailViewModel @Inject constructor(
                         }
                     }
                     
-                    // Remove original item then add new one
-                    cartRepository.deleteCartItems(listOf(editingCartItemId))
-                    cartRepository.addToCart(
-                        productId = product.id,
-                        productName = product.name,
-                        productImageUrl = product.imageUrl,
-                        productColorHex = product.selectedColorHex,
-                        unitPrice = unitPrice,
-                        quantity = currentState.quantity,
+                    // Update the original cart item configuration (specialRequest, unitPrice, addons, quantity)
+                    cartRepository.updateCartItemConfiguration(
+                        cartItemId = editingCartItemId,
                         specialRequest = currentState.specialRequest.takeIf { it.isNotBlank() },
+                        unitPrice = unitPrice,
                         addons = cartAddons
                     )
+                    // Also update quantity (so both config and quantity are changed on the same item)
+                    cartRepository.updateCartItemQuantity(editingCartItemId, currentState.quantity)
                 }
                 
                 // Mark as success (and clear edit state)
