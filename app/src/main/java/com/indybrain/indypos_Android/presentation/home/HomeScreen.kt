@@ -785,7 +785,7 @@ private fun HomeBottomBar(
 ) {
     NavigationBar(
         containerColor = Color.White,
-        tonalElevation = 8.dp
+        tonalElevation = 0.dp
     ) {
         HomeBottomDestination.entries.forEach { destination ->
             NavigationBarItem(
