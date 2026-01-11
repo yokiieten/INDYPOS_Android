@@ -36,9 +36,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -76,7 +73,6 @@ import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
-import com.indybrain.indypos_Android.presentation.navigation.HomeBottomDestination
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.GreenComplete
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
@@ -97,19 +93,12 @@ fun GraphScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
-    var selectedDestination by rememberSaveable { mutableStateOf(HomeBottomDestination.Charts) }
     var showCustomRangeSheet by rememberSaveable { mutableStateOf(false) }
     var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     
     Scaffold(
-        containerColor = BaseBackground,
-        bottomBar = {
-            HomeBottomBar(
-                selected = selectedDestination,
-                onSelected = { selectedDestination = it }
-            )
-        }
+        containerColor = BaseBackground
     ) { padding ->
         Column(
             modifier = Modifier
@@ -118,17 +107,6 @@ fun GraphScreen(
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
-            // Title
-            Text(
-                text = stringResource(id = R.string.graph_title),
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Large
-                ),
-                color = PrimaryText,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            
             // Date selector
             TimePeriodSelector(
                 selectedPeriod = uiState.selectedPeriod,
@@ -858,47 +836,6 @@ private fun LineChart(
         }
     }
 }
-
-@Composable
-private fun HomeBottomBar(
-    selected: HomeBottomDestination,
-    onSelected: (HomeBottomDestination) -> Unit
-) {
-    NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 8.dp
-    ) {
-        HomeBottomDestination.entries.forEach { destination ->
-            NavigationBarItem(
-                selected = destination == selected,
-                onClick = { onSelected(destination) },
-                icon = {
-                    Icon(
-                        imageVector = if (destination == selected) destination.selectedIcon else destination.icon,
-                        contentDescription = stringResource(destination.labelRes)
-                    )
-                },
-                label = {
-                    Text(
-                        text = stringResource(destination.labelRes),
-                        style = FontUtils.mainFont(
-                            style = if (destination == selected) AppFontStyle.Bold else AppFontStyle.Regular,
-                            size = FontSize.Smallest
-                        )
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = Color.White,
-                    selectedIconColor = PrimaryText,
-                    selectedTextColor = PrimaryText,
-                    unselectedIconColor = PlaceholderText,
-                    unselectedTextColor = PlaceholderText
-                )
-            )
-        }
-    }
-}
-
 
 private fun formatCurrency(value: Double): String {
     val formatter = DecimalFormat("#,##0.00")

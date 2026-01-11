@@ -87,6 +87,7 @@ import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.core.ui.components.ShopTopAppBar
+import com.indybrain.indypos_Android.core.ui.components.CenteredTopAppBar
 import com.indybrain.indypos_Android.presentation.graph.GraphScreen
 import com.indybrain.indypos_Android.presentation.navigation.HomeBottomDestination
 import com.indybrain.indypos_Android.presentation.order.OrderScreen
@@ -146,15 +147,28 @@ fun HomeScreen(
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
-            if (!isImageViewerVisible &&
-                selectedDestination != HomeBottomDestination.Charts &&
-                selectedDestination != HomeBottomDestination.Orders &&
-                selectedDestination != HomeBottomDestination.Settings
-            ) {
-                ShopTopAppBar(
-                    shopName = uiState.shopName,
-                    onEditClick = { viewModel.showEditStoreNameDialog() }
-                )
+            if (!isImageViewerVisible) {
+                when (selectedDestination) {
+                    HomeBottomDestination.Charts -> {
+                        CenteredTopAppBar(
+                            title = stringResource(id = R.string.graph_title)
+                        )
+                    }
+                    HomeBottomDestination.Orders -> {
+                        CenteredTopAppBar(
+                            title = stringResource(id = R.string.order_history_title)
+                        )
+                    }
+                    HomeBottomDestination.Settings -> {
+                        // ไม่แสดง TopAppBar สำหรับ Settings
+                    }
+                    else -> {
+                        ShopTopAppBar(
+                            shopName = uiState.shopName,
+                            onEditClick = { viewModel.showEditStoreNameDialog() }
+                        )
+                    }
+                }
             }
         },
         bottomBar = {

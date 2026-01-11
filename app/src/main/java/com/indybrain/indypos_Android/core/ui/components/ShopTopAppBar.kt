@@ -114,3 +114,36 @@ fun ShopTopAppBar(
     )
 }
 
+/**
+ * Simple centered TopAppBar for displaying page titles
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CenteredTopAppBar(
+    title: String,
+    modifier: Modifier = Modifier
+) {
+    TopAppBar(
+        title = {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = title,
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = BaseBackground,
+            titleContentColor = PrimaryText
+        ),
+        modifier = modifier
+    )
+}
+

@@ -121,13 +121,6 @@ fun OrderScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Header
-            OrderHeader(
-                onRefreshClick = { viewModel.refreshOrders() }
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
             // Tabs
             OrderTabs(
                 selectedTab = uiState.selectedTab,
@@ -330,38 +323,6 @@ fun OrderScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun OrderHeader(
-    onRefreshClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = stringResource(id = R.string.order_history_title),
-            style = FontUtils.mainFont(
-                style = AppFontStyle.Bold,
-                size = FontSize.Large
-            ),
-            color = PrimaryText
-        )
-        
-        // Reload button
-        // IconButton(onClick = onRefreshClick) {
-        //     Icon(
-        //         imageVector = Icons.Outlined.Refresh,
-        //         contentDescription = stringResource(id = R.string.order_refresh),
-        //         tint = GreenComplete,
-        //         modifier = Modifier.size(24.dp)
-        //     )
-        // }
     }
 }
 
