@@ -189,7 +189,7 @@ fun HomeScreen(
         } else {
             when (selectedDestination) {
                 HomeBottomDestination.Charts -> {
-                    GraphScreen()
+                    GraphScreen(contentPadding = padding)
                 }
                 HomeBottomDestination.Orders -> {
                     OrderScreen(

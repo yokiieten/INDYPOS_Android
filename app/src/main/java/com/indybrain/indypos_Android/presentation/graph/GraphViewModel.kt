@@ -144,44 +144,90 @@ class GraphViewModel @Inject constructor(
             ChartDataPoint(label, value)
         }
         
+        // ดึงออเดอร์ทั้งหมดและกรองเฉพาะวันนี้
+        val ordersResult = orderRepository.getOrders().first()
+        val orders = ordersResult.getOrElse { emptyList() }
+        
+        val calendar = Calendar.getInstance()
+        val today = calendar.apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+        
+        val tomorrow = calendar.apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+        }.time
+        
+        val todayOrders = orders.filter { order ->
+            order.orderDate >= today && order.orderDate < tomorrow
+        }
+        
+        // ยอดตามช่องทาง (โอน / เงินสด) วันนี้
+        val activeTodayOrders = todayOrders.filter { it.statusRaw != 5 }
+        val transferAmount = activeTodayOrders
+            .filter { it.paymentTypeRaw == 1 } // 1 = transfer
+            .sumOf { it.total }
+        val cashAmount = activeTodayOrders
+            .filter { it.paymentTypeRaw == 0 } // 0 = cash
+            .sumOf { it.total }
         val revenueComparison = RevenueComparison(
-            transferAmount = todaySales * 0.55,
-            cashAmount = todaySales * 0.45
+            transferAmount = transferAmount,
+            cashAmount = cashAmount
         )
         
-        // สร้าง mock product stats / bestseller จากยอดรวมเพื่อให้มีกราฟดูง่าย ๆ
-        val productStats = listOf(
-            ProductStatsData("สินค้า A", todaySales * 0.4, 1.0),
-            ProductStatsData("สินค้า B", todaySales * 0.35, 0.8),
-            ProductStatsData("สินค้า C", todaySales * 0.25, 0.6)
+        // สินค้า Top ของวันนี้ (จาก order items)
+        data class ProductAggToday(
+            var name: String,
+            var amount: Double,
+            var quantity: Int,
+            var productId: String?
         )
         
-        val bestSellers = listOf(
-            BestSellerData(
-                productName = "สินค้า A",
-                totalSales = todaySales * 0.4,
-                salesCount = 10,
-                imageUrl = null,
-                colorHex = "#8B4513",
-                rank = 1
-            ),
-            BestSellerData(
-                productName = "สินค้า B",
-                totalSales = todaySales * 0.35,
-                salesCount = 8,
-                imageUrl = null,
-                colorHex = "#D2691E",
-                rank = 2
-            ),
-            BestSellerData(
-                productName = "สินค้า C",
-                totalSales = todaySales * 0.25,
-                salesCount = 6,
-                imageUrl = null,
-                colorHex = "#F4A460",
-                rank = 3
+        val productMap = mutableMapOf<String, ProductAggToday>()
+        for (order in activeTodayOrders) {
+            val items = orderRepository.getOrderItems(order.id)
+            items.forEach { item ->
+                val key = item.productId ?: item.productName
+                val agg = productMap.getOrPut(key) {
+                    ProductAggToday(
+                        name = item.productName,
+                        amount = 0.0,
+                        quantity = 0,
+                        productId = item.productId
+                    )
+                }
+                agg.amount += item.totalPrice
+                agg.quantity += item.quantity
+            }
+        }
+        
+        val topProducts = productMap
+            .entries
+            .sortedByDescending { it.value.amount }
+            .take(3)
+        
+        val maxAmount = topProducts.maxOfOrNull { it.value.amount } ?: 1.0
+        val productStats = topProducts.map { (_, agg) ->
+            ProductStatsData(
+                name = agg.name,
+                amount = agg.amount,
+                progress = (agg.amount / maxAmount).coerceIn(0.0, 1.0)
             )
-        )
+        }
+        
+        val bestSellers = topProducts.mapIndexed { index, (_, agg) ->
+            val product = agg.productId?.let { productDao.getProductById(it) }
+            BestSellerData(
+                productName = agg.name,
+                totalSales = agg.amount,
+                salesCount = agg.quantity,
+                imageUrl = product?.imageUrl,
+                colorHex = product?.selectedColorHex,
+                rank = index + 1
+            )
+        }
         
         _uiState.update { current ->
             current.copy(

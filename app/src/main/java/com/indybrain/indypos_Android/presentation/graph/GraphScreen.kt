@@ -36,12 +36,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,7 +89,9 @@ import android.app.DatePickerDialog
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GraphScreen(
-    viewModel: GraphViewModel = hiltViewModel()
+    viewModel: GraphViewModel = hiltViewModel(),
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -97,16 +99,13 @@ fun GraphScreen(
     var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     
-    Scaffold(
-        containerColor = BaseBackground
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 20.dp, vertical = 24.dp)
-        ) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 24.dp)
+    ) {
             // Date selector
             TimePeriodSelector(
                 selectedPeriod = uiState.selectedPeriod,
@@ -185,7 +184,6 @@ fun GraphScreen(
             BestSellerCard(
                 bestSellers = uiState.bestSellers
             )
-        }
     }
     
     if (showCustomRangeSheet) {
