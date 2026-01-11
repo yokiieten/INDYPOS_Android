@@ -148,7 +148,8 @@ fun HomeScreen(
         topBar = {
             if (!isImageViewerVisible &&
                 selectedDestination != HomeBottomDestination.Charts &&
-                selectedDestination != HomeBottomDestination.Orders
+                selectedDestination != HomeBottomDestination.Orders &&
+                selectedDestination != HomeBottomDestination.Settings
             ) {
                 ShopTopAppBar(
                     shopName = uiState.shopName,
