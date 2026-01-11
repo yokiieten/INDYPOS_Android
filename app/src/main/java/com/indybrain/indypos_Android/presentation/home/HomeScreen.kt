@@ -193,7 +193,8 @@ fun HomeScreen(
                 }
                 HomeBottomDestination.Orders -> {
                     OrderScreen(
-                        onOrderClick = onNavigateToOrderDetail
+                        onOrderClick = onNavigateToOrderDetail,
+                        contentPadding = padding
                     )
                 }
                 HomeBottomDestination.Settings -> {

@@ -32,12 +32,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -81,7 +81,9 @@ import android.app.DatePickerDialog
 @Composable
 fun OrderScreen(
     viewModel: OrderViewModel = hiltViewModel(),
-    onOrderClick: (String) -> Unit = {}
+    onOrderClick: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -113,14 +115,11 @@ fun OrderScreen(
         }
     }
     
-    Scaffold(
-        containerColor = BaseBackground
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+    ) {
             // Tabs
             OrderTabs(
                 selectedTab = uiState.selectedTab,
@@ -171,7 +170,6 @@ fun OrderScreen(
                     )
                 }
             }
-        }
     }
 
     if (showCustomRangeSheet) {
@@ -827,7 +825,10 @@ private fun OrderListContent(
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                horizontal = 20.dp,
+                vertical = 16.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(orders) { order ->
