@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android.presentation.products
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -96,6 +97,15 @@ fun SearchProductScreen(
         viewModel.updateSearchQuery(searchQuery)
     }
     
+    val context = LocalContext.current
+    val configuration = context.resources.configuration
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    
+    // Adjust grid columns and spacing based on orientation
+    val gridColumns = if (isLandscape) 4 else 2
+    val horizontalPadding = if (isLandscape) 24.dp else 16.dp
+    val gridSpacing = if (isLandscape) 16.dp else 12.dp
+    
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
@@ -137,7 +147,7 @@ fun SearchProductScreen(
                 onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(horizontal = horizontalPadding, vertical = if (isLandscape) 12.dp else 16.dp)
                     .focusRequester(focusRequester),
                 placeholder = {
                     Text(
@@ -210,16 +220,16 @@ fun SearchProductScreen(
                 }
                 else -> {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
+                        columns = GridCells.Fixed(gridColumns),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
+                            start = horizontalPadding,
+                            end = horizontalPadding,
                             top = 8.dp,
                             bottom = 16.dp
                         ),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+                        verticalArrangement = Arrangement.spacedBy(gridSpacing)
                     ) {
                         items(uiState.filteredProducts) { product ->
                             val cartQuantity = cartItems
@@ -232,7 +242,8 @@ fun SearchProductScreen(
                                 onClick = {
                                     onProductClick(product.id, product.name, cartQuantity > 0)
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                isLandscape = isLandscape
                             )
                         }
                     }
@@ -247,7 +258,8 @@ private fun ProductCard(
     product: ProductEntity,
     cartQuantity: Int = 0,
     onClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLandscape: Boolean = false
 ) {
     val context = LocalContext.current
     val backgroundColor = product.selectedColorHex?.let { 
@@ -257,6 +269,11 @@ private fun ProductCard(
             Color(0xFFE0E0E0)
         }
     } ?: Color(0xFFE0E0E0)
+    
+    // Adjust sizes based on orientation
+    val cardPadding = if (isLandscape) 10.dp else 12.dp
+    val placeholderSize = if (isLandscape) 48.dp else 60.dp
+    val badgeSize = if (isLandscape) 22.dp else 24.dp
     
     Card(
         modifier = modifier.clickable(onClick = onClick),
@@ -309,7 +326,7 @@ private fun ProductCard(
                         Image(
                             painter = painterResource(id = R.drawable.logo_appstore),
                             contentDescription = product.name,
-                            modifier = Modifier.size(60.dp),
+                            modifier = Modifier.size(placeholderSize),
                             contentScale = ContentScale.Fit
                         )
                     }
@@ -321,20 +338,20 @@ private fun ProductCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp)
+                    .padding(cardPadding)
             ) {
                 Text(
                     text = product.name,
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
-                        size = FontSize.Small
+                        size = if (isLandscape) FontSize.Smallest else FontSize.Small
                     ),
                     color = PrimaryText,
-                    maxLines = 2,
+                    maxLines = if (isLandscape) 1 else 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(if (isLandscape) 3.dp else 4.dp))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -345,7 +362,7 @@ private fun ProductCard(
                         text = formatCurrency(product.price),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
-                            size = FontSize.Small
+                            size = if (isLandscape) FontSize.Smallest else FontSize.Small
                         ),
                         color = PrimaryButton
                     )
@@ -354,8 +371,8 @@ private fun ProductCard(
                     if (cartQuantity > 0) {
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .size(badgeSize)
+                                .clip(RoundedCornerShape(badgeSize / 2))
                                 .background(PrimaryButton),
                             contentAlignment = Alignment.Center
                         ) {
@@ -363,7 +380,7 @@ private fun ProductCard(
                                 text = cartQuantity.toString(),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Bold,
-                                    size = FontSize.Small
+                                    size = FontSize.Smallest
                                 ),
                                 color = Color.White
                             )
