@@ -34,5 +34,10 @@ sealed class LoginIntent {
      * Acknowledge success dialog
      */
     data object AcknowledgeSuccess : LoginIntent()
+    
+    /**
+     * Show unauthorized error (from 401 force logout)
+     */
+    data object ShowUnauthorizedError : LoginIntent()
 }
 

@@ -149,6 +149,10 @@
     <string name="home_store_name_empty_error">ชื่อร้านไม่สามารถว่างได้</string>
     <string name="home_edit_store_name_message">กรุณากรอกชื่อร้านใหม่</string>
     <string name="home_ok">ตกลง</string>
+    <string name="home_error_title">ข้อผิดพลาด</string>
+    
+    <!-- API Error Messages -->
+    <string name="api_error_unauthorized">เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง</string>
     
     <!-- Graph Screen -->
     <string name="graph_title">กราฟ</string>

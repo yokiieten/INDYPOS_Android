@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -223,6 +224,23 @@ fun LoginScreen(
     LaunchedEffect(uiState.isLoginSuccess) {
         if (uiState.isLoginSuccess) {
             onLoginSuccess()
+        }
+    }
+    
+    // Check for unauthorized error flag from 401 force logout
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("indypos_prefs", android.content.Context.MODE_PRIVATE)
+        val showUnauthorizedError = prefs.getBoolean("show_unauthorized_error", false)
+        
+        if (showUnauthorizedError) {
+            // Clear the flag
+            prefs.edit()
+                .putBoolean("show_unauthorized_error", false)
+                .apply()
+            
+            // Show error message
+            viewModel.handleIntent(LoginIntent.ShowUnauthorizedError)
         }
     }
 }

@@ -9,6 +9,7 @@ import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
 import com.indybrain.indypos_Android.data.remote.interceptor.AuthInterceptor
 import com.indybrain.indypos_Android.data.remote.interceptor.CurlLoggingInterceptor
+import com.indybrain.indypos_Android.data.remote.interceptor.UnauthorizedInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,7 +36,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        authInterceptor: AuthInterceptor
+        authInterceptor: AuthInterceptor,
+        unauthorizedInterceptor: UnauthorizedInterceptor
     ): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
@@ -45,6 +47,8 @@ object NetworkModule {
             .addInterceptor(authInterceptor)
             .addInterceptor(CurlLoggingInterceptor())
             .addInterceptor(loggingInterceptor)
+            // Add UnauthorizedInterceptor to handle 401 errors globally
+            .addInterceptor(unauthorizedInterceptor)
             .build()
     }
     

@@ -135,6 +135,11 @@
     <string name="home_nav_orders">Orders</string>
     <string name="home_nav_charts">Charts</string>
     <string name="home_nav_settings">Settings</string>
+    <string name="home_error_title">Error</string>
+    <string name="home_ok">OK</string>
+    
+    <!-- API Error Messages -->
+    <string name="api_error_unauthorized">Session expired. Please login again</string>
     
     <!-- Graph Screen -->
     <string name="graph_title">Charts</string>

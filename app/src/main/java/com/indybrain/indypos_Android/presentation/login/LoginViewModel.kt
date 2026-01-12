@@ -72,6 +72,16 @@ class LoginViewModel @Inject constructor(
                 }
                 _state.value = LoginState.Idle
             }
+            
+            is LoginIntent.ShowUnauthorizedError -> {
+                // Show unauthorized error message (session expired)
+                _uiState.update {
+                    it.copy(
+                        errorMessage = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง"
+                    )
+                }
+                _state.value = LoginState.Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง")
+            }
         }
     }
     
