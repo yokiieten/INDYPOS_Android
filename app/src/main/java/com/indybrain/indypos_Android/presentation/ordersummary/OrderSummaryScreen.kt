@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android.presentation.ordersummary
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +55,8 @@ fun OrderSummaryScreen(
     viewModel: OrderSummaryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     
     Scaffold(
         containerColor = BaseBackground,
@@ -74,31 +79,217 @@ fun OrderSummaryScreen(
             )
         }
     ) { padding ->
-        Column(
+        if (isLandscape) {
+            OrderSummaryLandscapeContent(
+                totalAmount = totalAmount,
+                uiState = uiState,
+                onAddOrderClick = onAddOrderClick,
+                onTogglePrintReceipt = { viewModel.togglePrintReceipt() },
+                onToggleOpenCashDrawer = { viewModel.toggleOpenCashDrawer() },
+                modifier = Modifier.padding(padding)
+            )
+        } else {
+            OrderSummaryPortraitContent(
+                totalAmount = totalAmount,
+                uiState = uiState,
+                onAddOrderClick = onAddOrderClick,
+                onTogglePrintReceipt = { viewModel.togglePrintReceipt() },
+                onToggleOpenCashDrawer = { viewModel.toggleOpenCashDrawer() },
+                modifier = Modifier.padding(padding)
+            )
+        }
+    }
+}
+
+@Composable
+private fun OrderSummaryPortraitContent(
+    totalAmount: Double,
+    uiState: OrderSummaryUiState,
+    onAddOrderClick: () -> Unit,
+    onTogglePrintReceipt: () -> Unit,
+    onToggleOpenCashDrawer: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Container view
+        Surface(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .fillMaxWidth()
+                .padding(horizontal = 40.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.White
         ) {
-            // Container view
-            Surface(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 40.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = Color.White
+                    .padding(40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                // Checkmark icon
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .background(Color.Transparent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = "สำเร็จ",
+                        tint = Color.Black,
+                        modifier = Modifier.size(100.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(30.dp))
+                
+                // Cash label
+                Text(
+                    text = "เงินทอน",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Largest
+                    ),
+                    color = Color.Black
+                )
+                
+                Spacer(modifier = Modifier.height(10.dp))
+                
+                // Amount label
+                Text(
+                    text = formatCurrency(totalAmount),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Largest
+                    ),
+                    color = Color.Black
+                )
+                
+                Spacer(modifier = Modifier.height(40.dp))
+                
+                // Print receipt checkbox
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(40.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .clickable { onTogglePrintReceipt() },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CheckboxIcon(isSelected = uiState.isPrintReceiptSelected)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "พิมพ์ใบเสร็จอัตโนมัติ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = Color.Black
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Open cash drawer checkbox
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onToggleOpenCashDrawer() },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CheckboxIcon(isSelected = uiState.isOpenCashDrawerSelected)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "เปิดลิ้นชักอัตโนมัติ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = Color.Black
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // Add order button
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 40.dp)
+                .height(50.dp)
+                .clip(RoundedCornerShape(25.dp))
+                .clickable(onClick = onAddOrderClick),
+            color = PrimaryButton
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "เพิ่มออเดอร์",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "เพิ่มออเดอร์",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.SemiBold,
+                        size = FontSize.Medium
+                    ),
+                    color = Color.White
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(30.dp))
+    }
+}
+
+@Composable
+private fun OrderSummaryLandscapeContent(
+    totalAmount: Double,
+    uiState: OrderSummaryUiState,
+    onAddOrderClick: () -> Unit,
+    onTogglePrintReceipt: () -> Unit,
+    onToggleOpenCashDrawer: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 30.dp, vertical = 16.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.White
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(32.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left column - Amount display
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     // Checkmark icon
                     Box(
                         modifier = Modifier
-                            .size(100.dp)
+                            .size(80.dp)
                             .clip(CircleShape)
                             .background(Color.Transparent),
                         contentAlignment = Alignment.Center
@@ -107,11 +298,11 @@ fun OrderSummaryScreen(
                             imageVector = Icons.Filled.Check,
                             contentDescription = "สำเร็จ",
                             tint = Color.Black,
-                            modifier = Modifier.size(100.dp)
+                            modifier = Modifier.size(80.dp)
                         )
                     }
                     
-                    Spacer(modifier = Modifier.height(30.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     
                     // Cash label
                     Text(
@@ -123,7 +314,7 @@ fun OrderSummaryScreen(
                         color = Color.Black
                     )
                     
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     
                     // Amount label
                     Text(
@@ -134,14 +325,28 @@ fun OrderSummaryScreen(
                         ),
                         color = Color.Black
                     )
-                    
-                    Spacer(modifier = Modifier.height(40.dp))
-                    
+                }
+                
+                // Vertical divider
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(200.dp)
+                        .background(Color(0xFFE0E0E0))
+                )
+                
+                // Right column - Options and button
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.Center
+                ) {
                     // Print receipt checkbox
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { viewModel.togglePrintReceipt() },
+                            .clickable { onTogglePrintReceipt() }
+                            .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         CheckboxIcon(isSelected = uiState.isPrintReceiptSelected)
@@ -156,13 +361,14 @@ fun OrderSummaryScreen(
                         )
                     }
                     
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     
                     // Open cash drawer checkbox
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { viewModel.toggleOpenCashDrawer() },
+                            .clickable { onToggleOpenCashDrawer() }
+                            .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         CheckboxIcon(isSelected = uiState.isOpenCashDrawerSelected)
@@ -176,45 +382,42 @@ fun OrderSummaryScreen(
                             color = Color.Black
                         )
                     }
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Add order button
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .clip(RoundedCornerShape(25.dp))
+                            .clickable(onClick = onAddOrderClick),
+                        color = PrimaryButton
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "เพิ่มออเดอร์",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "เพิ่มออเดอร์",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.SemiBold,
+                                    size = FontSize.Medium
+                                ),
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
             }
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // Add order button
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 40.dp)
-                    .height(50.dp)
-                    .clip(RoundedCornerShape(25.dp))
-                    .clickable(onClick = onAddOrderClick),
-                color = PrimaryButton
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "เพิ่มออเดอร์",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "เพิ่มออเดอร์",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.SemiBold,
-                            size = FontSize.Medium
-                        ),
-                        color = Color.White
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(30.dp))
         }
     }
 }
