@@ -29,7 +29,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -54,6 +53,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -1106,8 +1108,13 @@ private fun GroupedCartItemRow(
                     .background(backgroundColor)
             ) {
                 val imageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
+                val hasColor = product.selectedColorHex != null && product.selectedColorHex.isNotBlank()
                 
-                if (!imageUrl.isNullOrBlank()) {
+                if (hasColor) {
+                    // If product has color, just show the color background (no image, no default)
+                    // The background color is already set in the Box modifier above
+                } else if (!imageUrl.isNullOrBlank()) {
+                    // If no color but has image, load product image
                     val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
                         imageUrl
                     } else {
@@ -1126,6 +1133,7 @@ private fun GroupedCartItemRow(
                         placeholder = painterResource(id = R.drawable.logo_appstore)
                     )
                 } else {
+                    // If neither color nor image, show default image
                     Image(
                         painter = painterResource(id = R.drawable.logo_appstore),
                         contentDescription = product.name,
@@ -1328,13 +1336,45 @@ private fun PaymentTypeButton(
                         )
                     }
                 } else {
-                    // Transfer icon - circular arrows
-                    Icon(
-                        imageVector = Icons.Filled.SwapHoriz,
-                        contentDescription = null,
-                        tint = if (isSelected) PrimaryButton else SecondaryText,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    // Transfer icon - horizontal arrows
+                    Canvas(modifier = Modifier.size(20.dp)) {
+                        val centerX = size.width / 2
+                        val centerY = size.height / 2
+                        val iconColor = if (isSelected) PrimaryButton else SecondaryText
+                        val radius = 6f
+                        
+                        // Draw horizontal arrows for transfer
+                        // Left arrow (pointing left)
+                        drawPath(
+                            path = Path().apply {
+                                moveTo(centerX - radius, centerY)
+                                lineTo(centerX - radius - 3f, centerY - 2f)
+                                moveTo(centerX - radius, centerY)
+                                lineTo(centerX - radius - 3f, centerY + 2f)
+                            },
+                            color = iconColor,
+                            style = Stroke(width = 2f, cap = StrokeCap.Round)
+                        )
+                        // Right arrow (pointing right)
+                        drawPath(
+                            path = Path().apply {
+                                moveTo(centerX + radius, centerY)
+                                lineTo(centerX + radius + 3f, centerY - 2f)
+                                moveTo(centerX + radius, centerY)
+                                lineTo(centerX + radius + 3f, centerY + 2f)
+                            },
+                            color = iconColor,
+                            style = Stroke(width = 2f, cap = StrokeCap.Round)
+                        )
+                        // Horizontal line connecting arrows
+                        drawLine(
+                            color = iconColor,
+                            start = Offset(centerX - radius, centerY),
+                            end = Offset(centerX + radius, centerY),
+                            strokeWidth = 2f,
+                            cap = StrokeCap.Round
+                        )
+                    }
                 }
             }
             
