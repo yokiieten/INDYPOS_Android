@@ -38,6 +38,12 @@ interface AuthRepository {
     suspend fun isLoggedIn(): Boolean
     
     /**
+     * Resume authentication with refresh token
+     * @return Result containing User on success or error message
+     */
+    suspend fun resumeAuth(): Result<User>
+    
+    /**
      * Change password
      * @param oldPassword Current password
      * @param newPassword New password

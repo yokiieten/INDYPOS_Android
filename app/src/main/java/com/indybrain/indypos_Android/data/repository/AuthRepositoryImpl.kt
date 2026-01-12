@@ -17,9 +17,11 @@ import com.indybrain.indypos_Android.data.remote.api.LoginRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LogoutRequestDto
 import com.indybrain.indypos_Android.data.remote.api.RegisterRequestDto
 import com.indybrain.indypos_Android.data.remote.api.RegisterResponseDto
+import com.indybrain.indypos_Android.data.remote.api.ResumeAuthRequestDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateShopDescriptionRequestDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateShopNameRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
+import com.indybrain.indypos_Android.data.remote.dto.ResumeAuthResponseDto
 import com.indybrain.indypos_Android.domain.model.LoginRequest
 import com.indybrain.indypos_Android.domain.model.RegisterRequest
 import com.indybrain.indypos_Android.domain.model.User
@@ -268,6 +270,69 @@ class AuthRepositoryImpl @Inject constructor(
     
     override suspend fun isLoggedIn(): Boolean {
         return localDataSource.isLoggedIn()
+    }
+    
+    override suspend fun resumeAuth(): Result<User> {
+        return try {
+            // Check if we have a refresh token
+            val refreshToken = localDataSource.getRefreshToken()
+            if (refreshToken.isNullOrBlank()) {
+                return Result.failure(IllegalStateException("ไม่พบ refresh token"))
+            }
+            
+            // Get device info with error handling
+            val deviceInfo = try {
+                deviceInfoProvider.getDeviceInfo()
+            } catch (e: Exception) {
+                return Result.failure(IllegalStateException("ไม่สามารถอ่านข้อมูลอุปกรณ์ได้: ${e.message}", e))
+            }
+            
+            // Call resume auth API
+            val response = authApi.resumeAuth(
+                ResumeAuthRequestDto(
+                    deviceUuid = deviceInfo.deviceUuid,
+                    refreshToken = refreshToken,
+                    platform = deviceInfo.platform,
+                    model = deviceInfo.model,
+                    version = deviceInfo.version,
+                    appVersion = deviceInfo.appVersion
+                )
+            )
+            
+            if (response.isSuccess) {
+                // Map DTO to domain model
+                val user = try {
+                    response.toDomainModel()
+                } catch (e: Exception) {
+                    return Result.failure(IllegalStateException("ไม่สามารถแปลงข้อมูลผู้ใช้ได้: ${e.message}", e))
+                }
+                
+                // Save updated user data to local storage
+                try {
+                    localDataSource.saveUser(user)
+                } catch (e: Exception) {
+                    // Don't fail resume if save fails, user data is still valid
+                }
+                
+                Result.success(user)
+            } else {
+                val errorMessage = response.error ?: "เกิดข้อผิดพลาดในการยืนยันตัวตน"
+                Result.failure(IllegalStateException(errorMessage))
+            }
+        } catch (e: HttpException) {
+            val errorMessage = parseErrorMessage(e.response()?.errorBody())
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
+                e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
+                e.message?.contains("No address associated with hostname", ignoreCase = true) == true -> "ไม่พบเซิร์ฟเวอร์ กรุณาตรวจสอบการเชื่อมต่อ"
+                e.message?.contains("Connection refused", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้"
+                e.message?.contains("Network is unreachable", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่ออินเทอร์เน็ตได้"
+                else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        }
     }
     
     override suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> {
@@ -670,6 +735,44 @@ class AuthRepositoryImpl @Inject constructor(
                 token = this.token?.takeIf { it.isNotBlank() },
                 refreshToken = this.refreshToken?.takeIf { it.isNotBlank() },
                 expiresIn = null
+            )
+        } catch (e: Exception) {
+            throw IllegalStateException("ไม่สามารถแปลงข้อมูลผู้ใช้ได้: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Extension function to map ResumeAuthResponseDto to domain model
+     */
+    private fun ResumeAuthResponseDto.toDomainModel(): User {
+        return try {
+            val userDto = this.user ?: throw IllegalStateException("User data is null")
+            User(
+                id = userDto.id,
+                username = userDto.username,
+                firstName = userDto.firstName,
+                lastName = userDto.lastName,
+                email = userDto.email.ifBlank { "" },
+                phone = userDto.phone,
+                role = userDto.role,
+                shopName = userDto.shopName,
+                shopDescription = userDto.shopDescription,
+                shopImageUrl = userDto.shopImageUrl,
+                subscriptionPlan = userDto.subscriptionPlan,
+                subscriptionExpiresAt = userDto.subscriptionExpiresAt,
+                maxDevices = userDto.maxDevices,
+                currentDeviceUuid = userDto.currentDeviceUuid,
+                isActivated = userDto.isActivated,
+                termOfUse = userDto.termOfUse,
+                privacyPolicy = userDto.privacyPolicy,
+                marketingConsent = userDto.marketingConsent,
+                birthDate = userDto.birthDate,
+                createdAt = userDto.createdAt,
+                updatedAt = userDto.updatedAt,
+                orderCount = userDto.orderCount,
+                token = this.token?.ifBlank { null },
+                refreshToken = this.refreshToken?.ifBlank { null },
+                expiresIn = this.expiresIn
             )
         } catch (e: Exception) {
             throw IllegalStateException("ไม่สามารถแปลงข้อมูลผู้ใช้ได้: ${e.message}", e)

@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.data.remote.api
 
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.LogoutResponseDto
+import com.indybrain.indypos_Android.data.remote.dto.ResumeAuthResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.UploadShopImageResponseDto
 import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
@@ -27,6 +28,12 @@ interface AuthApi {
      */
     @POST("auth/register")
     suspend fun register(@Body request: RegisterRequestDto): RegisterResponseDto
+    
+    /**
+     * Resume authentication endpoint
+     */
+    @POST("auth/resume")
+    suspend fun resumeAuth(@Body request: ResumeAuthRequestDto): ResumeAuthResponseDto
     
     /**
      * Logout endpoint
@@ -93,6 +100,21 @@ data class LoginRequestDto(
     val deviceName: String,
     @SerializedName("device_type")
     val deviceType: String,
+    val platform: String,
+    val model: String,
+    val version: String,
+    @SerializedName("app_version")
+    val appVersion: String
+)
+
+/**
+ * Request DTO for resume authentication
+ */
+data class ResumeAuthRequestDto(
+    @SerializedName("device_uuid")
+    val deviceUuid: String,
+    @SerializedName("refresh_token")
+    val refreshToken: String,
     val platform: String,
     val model: String,
     val version: String,

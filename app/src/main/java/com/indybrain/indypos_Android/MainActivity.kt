@@ -28,6 +28,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
+import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.presentation.forgotpassword.ForgotPasswordScreen
 import com.indybrain.indypos_Android.presentation.resetpassword.ResetPasswordScreen
 import com.indybrain.indypos_Android.presentation.home.HomeScreen
@@ -69,6 +70,9 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var languageLocalDataSource: LanguageLocalDataSource
+    
+    @Inject
+    lateinit var authRepository: AuthRepository
     
     // Flag to track if we received a new intent from onNewIntent
     private var hasNewIntent = false
@@ -118,10 +122,14 @@ class MainActivity : ComponentActivity() {
                                 uri.contains("stg.indy-pos.com"))
                     }
                     
+                    // Track last resume time to prevent multiple calls
+                    var lastResumeTime by remember { mutableStateOf(0L) }
+                    
                     // Watch lifecycle to handle new intents from onNewIntent
                     val lifecycleOwner = LocalLifecycleOwner.current
                     DisposableEffect(lifecycleOwner) {
                         val observer = LifecycleEventObserver { _, event ->
+                            // Handle deep link on resume
                             if (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START) {
                                 // On resume, check if intent has changed (from onNewIntent)
                                 coroutineScope.launch {
@@ -159,6 +167,24 @@ class MainActivity : ComponentActivity() {
                         lifecycleOwner.lifecycle.addObserver(observer)
                         onDispose {
                             lifecycleOwner.lifecycle.removeObserver(observer)
+                        }
+                    }
+                    
+                    // Separate effect for resume authentication - only on ON_RESUME
+                    DisposableEffect(lifecycleOwner) {
+                        val resumeObserver = LifecycleEventObserver { _, event ->
+                            if (event == Lifecycle.Event.ON_RESUME) {
+                                val currentTime = System.currentTimeMillis()
+                                // Prevent multiple calls within 1 second
+                                if (currentTime - lastResumeTime > 1000) {
+                                    lastResumeTime = currentTime
+                                    resumeAuthentication(navController, coroutineScope)
+                                }
+                            }
+                        }
+                        lifecycleOwner.lifecycle.addObserver(resumeObserver)
+                        onDispose {
+                            lifecycleOwner.lifecycle.removeObserver(resumeObserver)
                         }
                     }
                     
@@ -911,6 +937,40 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
+        }
+    }
+    
+    /**
+     * Resume authentication when app becomes active
+     * Similar to iOS sceneDidBecomeActive
+     */
+    private fun resumeAuthentication(
+        navController: androidx.navigation.NavController,
+        coroutineScope: kotlinx.coroutines.CoroutineScope
+    ) {
+        coroutineScope.launch {
+            // Add a small delay similar to iOS (0.33s)
+            kotlinx.coroutines.delay(330)
+            
+            try {
+                val result = authRepository.resumeAuth()
+                result.onSuccess { user ->
+                    // Navigate to contact admin if account is not activated
+                    if (user.isActivated == false) {
+                        // Navigate to ContactUs and clear back stack
+                        navController.navigate(NavRoutes.ContactUs.route) {
+                            popUpTo(0) {
+                                inclusive = true
+                            }
+                        }
+                    }
+                }.onFailure {
+                    // Silently fail - don't interrupt user experience
+                    // This is normal if user is not logged in or has no refresh token
+                }
+            } catch (e: Exception) {
+                // Silently fail - don't interrupt user experience
             }
         }
     }
