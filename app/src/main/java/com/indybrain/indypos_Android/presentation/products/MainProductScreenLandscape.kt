@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -102,6 +103,9 @@ fun MainProductScreenLandscape(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle(initialValue = emptyList())
+    
+    // View mode state
+    var viewMode by rememberSaveable { mutableStateOf(ProductViewMode.GRID) }
     
     // Get grouped cart items for the live cart panel
     val groupedCartItems by getGroupedCartItemsUseCase().collectAsStateWithLifecycle(initialValue = emptyList())
@@ -268,9 +272,19 @@ fun MainProductScreenLandscape(
                             tint = PrimaryText
                         )
                     }
-                    IconButton(onClick = { /* TODO: Grid/List toggle */ }) {
+                    IconButton(onClick = { 
+                        viewMode = if (viewMode == ProductViewMode.GRID) {
+                            ProductViewMode.LIST
+                        } else {
+                            ProductViewMode.GRID
+                        }
+                    }) {
                         Icon(
-                            imageVector = Icons.Outlined.GridView,
+                            imageVector = if (viewMode == ProductViewMode.GRID) {
+                                Icons.Outlined.ViewList
+                            } else {
+                                Icons.Outlined.GridView
+                            },
                             contentDescription = stringResource(id = R.string.product_change_view),
                             tint = PrimaryText
                         )
@@ -390,36 +404,60 @@ fun MainProductScreenLandscape(
                                         }
                                         
                                         item(key = "products_${category.id}") {
-                                            Column(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                                            ) {
-                                                // Display 3 columns in landscape
-                                                products.chunked(3).forEach { rowProducts ->
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                                    ) {
-                                                        rowProducts.forEach { product ->
-                                                            val cartQuantity = cartItems
-                                                                .filter { it.productId == product.id }
-                                                                .sumOf { it.quantity }
-                                                            
-                                                            ProductCardLandscape(
-                                                                product = product,
-                                                                cartQuantity = cartQuantity,
-                                                                onClick = {
-                                                                    onProductClick(product.id, product.name, cartQuantity > 0)
-                                                                },
-                                                                modifier = Modifier
-                                                                    .weight(1f)
-                                                                    .fillMaxWidth()
-                                                            )
+                                            if (viewMode == ProductViewMode.GRID) {
+                                                // Grid View
+                                                Column(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                                ) {
+                                                    // Display 3 columns in landscape
+                                                    products.chunked(3).forEach { rowProducts ->
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                                        ) {
+                                                            rowProducts.forEach { product ->
+                                                                val cartQuantity = cartItems
+                                                                    .filter { it.productId == product.id }
+                                                                    .sumOf { it.quantity }
+                                                                
+                                                                ProductCardLandscape(
+                                                                    product = product,
+                                                                    cartQuantity = cartQuantity,
+                                                                    onClick = {
+                                                                        onProductClick(product.id, product.name, cartQuantity > 0)
+                                                                    },
+                                                                    modifier = Modifier
+                                                                        .weight(1f)
+                                                                        .fillMaxWidth()
+                                                                )
+                                                            }
+                                                            // Add spacers for remaining columns
+                                                            repeat(3 - rowProducts.size) {
+                                                                Spacer(modifier = Modifier.weight(1f))
+                                                            }
                                                         }
-                                                        // Add spacers for remaining columns
-                                                        repeat(3 - rowProducts.size) {
-                                                            Spacer(modifier = Modifier.weight(1f))
-                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                // List View
+                                                Column(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                                ) {
+                                                    products.forEach { product ->
+                                                        val cartQuantity = cartItems
+                                                            .filter { it.productId == product.id }
+                                                            .sumOf { it.quantity }
+                                                        
+                                                        ProductListItemLandscape(
+                                                            product = product,
+                                                            cartQuantity = cartQuantity,
+                                                            onClick = {
+                                                                onProductClick(product.id, product.name, cartQuantity > 0)
+                                                            },
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
                                                     }
                                                 }
                                             }
@@ -610,6 +648,138 @@ private fun CategoryChipLandscape(
             )
         } else {
             Spacer(modifier = Modifier.height(2.dp))
+        }
+    }
+}
+
+@Composable
+private fun ProductListItemLandscape(
+    product: ProductEntity,
+    cartQuantity: Int = 0,
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val backgroundColor = product.selectedColorHex?.let { 
+        try {
+            Color(android.graphics.Color.parseColor(it))
+        } catch (e: Exception) {
+            Color(0xFFE0E0E0)
+        }
+    } ?: Color(0xFFE0E0E0)
+    
+    Card(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(90.dp)
+        ) {
+            // Product image or color - Left side (square)
+            Box(
+                modifier = Modifier
+                    .width(90.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
+                    .background(backgroundColor)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val imageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
+                    val hasColor = product.selectedColorHex != null && product.selectedColorHex.isNotBlank()
+                    
+                    if (!imageUrl.isNullOrBlank()) {
+                        val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+                            imageUrl
+                        } else {
+                            AppConfig.buildImageUrl(imageUrl)
+                        }
+                        
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(fullImageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = product.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            error = painterResource(id = R.drawable.logo_appstore),
+                            placeholder = painterResource(id = R.drawable.logo_appstore)
+                        )
+                    } else if (!hasColor) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo_appstore),
+                            contentDescription = product.name,
+                            modifier = Modifier.size(45.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+            }
+            
+            // Product info - Right side
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Product name and price
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = product.name,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = formatCurrency(product.price),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton
+                    )
+                }
+                
+                // Cart Badge - Right side
+                if (cartQuantity > 0) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(PrimaryButton),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = cartQuantity.toString(),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White
+                        )
+                    }
+                }
+            }
         }
     }
 }
