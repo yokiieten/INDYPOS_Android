@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,12 +18,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.gestures.rememberTransformableState
+import android.content.res.Configuration
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Close
@@ -236,45 +241,26 @@ fun HomeScreen(
                     )
                 }
                 else -> {
-                    Column(
+                    HomeContent(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(padding)
-                            .verticalScroll(scrollState)
-                            .padding(horizontal = 20.dp, vertical = 24.dp)
-                    ) {
-                        ShopCoverCard(
-                            shopImageUrl = uiState.shopImageUrl,
-                            description = uiState.shopDescription,
-                            onImageClick = {
-                                if (!uiState.shopImageUrl.isNullOrBlank()) {
-                                    isImageViewerVisible = true
-                                }
-                            },
-                            onChangeImageClick = { viewModel.showImagePicker() },
-                            onDescriptionClick = { viewModel.showEditDescriptionDialog() }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        DailyOverviewSection(statistics = uiState.statistics)
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        TopProductSection(statistics = uiState.statistics)
-                        
-                        Spacer(modifier = Modifier.height(32.dp))
-                        
-                        ShortcutsSection(
-                            shortcuts = uiState.shortcuts,
-                            onShortcutClick = { shortcutId ->
-                                when (shortcutId) {
-                                    "start_order" -> onNavigateToMainProduct()
-                                    // Add other shortcut handlers here
-                                }
+                            .padding(padding),
+                        uiState = uiState,
+                        scrollState = scrollState,
+                        onImageClick = {
+                            if (!uiState.shopImageUrl.isNullOrBlank()) {
+                                isImageViewerVisible = true
                             }
-                        )
-                    }
+                        },
+                        onChangeImageClick = { viewModel.showImagePicker() },
+                        onDescriptionClick = { viewModel.showEditDescriptionDialog() },
+                        onShortcutClick = { shortcutId ->
+                            when (shortcutId) {
+                                "start_order" -> onNavigateToMainProduct()
+                                // Add other shortcut handlers here
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -387,6 +373,156 @@ fun HomeScreen(
                 imageUrl = buildShopImageUrl(uiState.shopImageUrl!!),
                 onDismiss = { isImageViewerVisible = false }
             )
+        }
+    }
+}
+
+@Composable
+private fun HomeContent(
+    modifier: Modifier = Modifier,
+    uiState: HomeUiState,
+    scrollState: androidx.compose.foundation.ScrollState,
+    onImageClick: () -> Unit,
+    onChangeImageClick: () -> Unit,
+    onDescriptionClick: () -> Unit,
+    onShortcutClick: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val configuration = context.resources.configuration
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    
+    if (isLandscape) {
+        LandscapeHomeContent(
+            modifier = modifier,
+            uiState = uiState,
+            scrollState = scrollState,
+            onImageClick = onImageClick,
+            onChangeImageClick = onChangeImageClick,
+            onDescriptionClick = onDescriptionClick,
+            onShortcutClick = onShortcutClick
+        )
+    } else {
+        PortraitHomeContent(
+            modifier = modifier,
+            uiState = uiState,
+            scrollState = scrollState,
+            onImageClick = onImageClick,
+            onChangeImageClick = onChangeImageClick,
+            onDescriptionClick = onDescriptionClick,
+            onShortcutClick = onShortcutClick
+        )
+    }
+}
+
+@Composable
+private fun PortraitHomeContent(
+    modifier: Modifier = Modifier,
+    uiState: HomeUiState,
+    scrollState: androidx.compose.foundation.ScrollState,
+    onImageClick: () -> Unit,
+    onChangeImageClick: () -> Unit,
+    onDescriptionClick: () -> Unit,
+    onShortcutClick: (String) -> Unit
+) {
+    Column(
+        modifier = modifier
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 24.dp)
+    ) {
+        ShopCoverCard(
+            shopImageUrl = uiState.shopImageUrl,
+            description = uiState.shopDescription,
+            onImageClick = onImageClick,
+            onChangeImageClick = onChangeImageClick,
+            onDescriptionClick = onDescriptionClick
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        DailyOverviewSection(statistics = uiState.statistics)
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        TopProductSection(statistics = uiState.statistics)
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        ShortcutsSection(
+            shortcuts = uiState.shortcuts,
+            onShortcutClick = onShortcutClick
+        )
+    }
+}
+
+@Composable
+private fun LandscapeHomeContent(
+    modifier: Modifier = Modifier,
+    uiState: HomeUiState,
+    scrollState: androidx.compose.foundation.ScrollState,
+    onImageClick: () -> Unit,
+    onChangeImageClick: () -> Unit,
+    onDescriptionClick: () -> Unit,
+    onShortcutClick: (String) -> Unit
+) {
+    Row(
+        modifier = modifier
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Left Column - Shop info and shortcuts
+        Column(
+            modifier = Modifier
+                .weight(0.45f),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Compact Shop Cover Card for landscape
+            ShopCoverCardLandscape(
+                shopImageUrl = uiState.shopImageUrl,
+                description = uiState.shopDescription,
+                onImageClick = onImageClick,
+                onChangeImageClick = onChangeImageClick,
+                onDescriptionClick = onDescriptionClick
+            )
+            
+            // Shortcuts in grid layout for landscape
+            ShortcutsSectionLandscape(
+                shortcuts = uiState.shortcuts,
+                onShortcutClick = onShortcutClick
+            )
+        }
+        
+        // Right Column - Statistics
+        Column(
+            modifier = Modifier
+                .weight(0.55f),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Daily Overview - stacked vertically in landscape
+            Text(
+                text = stringResource(id = R.string.home_daily_sales_title),
+                style = FontUtils.mainFont(style = AppFontStyle.Bold, size = FontSize.Medium),
+                color = PrimaryText
+            )
+            
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SummaryCard(
+                    title = stringResource(id = R.string.home_daily_sales_label),
+                    value = "${formatCurrency(uiState.statistics.todaysSales)} ${stringResource(id = R.string.home_currency_suffix)}",
+                    modifier = Modifier.fillMaxWidth()
+                )
+                SummaryCard(
+                    title = stringResource(id = R.string.home_orders_today_label),
+                    value = "${uiState.statistics.ordersToday} ${stringResource(id = R.string.home_orders_unit)}",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            TopProductSection(statistics = uiState.statistics)
         }
     }
 }
@@ -506,6 +642,221 @@ private fun ShopCoverCard(
                     modifier = Modifier.size(20.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ShopCoverCardLandscape(
+    shopImageUrl: String?,
+    description: String,
+    onImageClick: () -> Unit,
+    onChangeImageClick: () -> Unit,
+    onDescriptionClick: () -> Unit
+) {
+    val context = LocalContext.current
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Store Image with 2:1 aspect ratio for landscape
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 1f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFF5F5F7))
+                .clickable(onClick = onImageClick)
+        ) {
+            val imageUrl = shopImageUrl?.takeIf { it.isNotBlank() }
+            if (!imageUrl.isNullOrBlank()) {
+                val fullImageUrl = buildShopImageUrl(imageUrl)
+                
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(fullImageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(id = R.drawable.logo_appstore),
+                    placeholder = painterResource(id = R.drawable.logo_appstore)
+                )
+            } else {
+                // Placeholder
+                Image(
+                    painter = painterResource(id = R.drawable.logo_appstore),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(80.dp)
+                )
+            }
+            
+            // Edit Cover Image Button - positioned at bottom right
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .clickable(onClick = onChangeImageClick),
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF5EA6ED),
+                border = BorderStroke(1.dp, Color.White)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_open_eye),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = stringResource(id = R.string.home_change_cover),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Smallest
+                        ),
+                        color = Color.White
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(10.dp))
+        
+        // Description Container - more compact for landscape
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onDescriptionClick),
+            color = Color.White,
+            border = BorderStroke(1.dp, Color(0xFFE5E5E5))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = description.ifBlank {
+                        stringResource(id = R.string.home_description_placeholder)
+                    },
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = if (description.isBlank()) PlaceholderText else PrimaryText,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.home_edit_shop_cd),
+                    tint = PlaceholderText,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShortcutsSectionLandscape(
+    shortcuts: List<HomeShortcut>,
+    onShortcutClick: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(id = R.string.home_shortcuts_title),
+            style = FontUtils.mainFont(style = AppFontStyle.Bold, size = FontSize.Medium),
+            color = PrimaryText
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Grid layout for shortcuts in landscape
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            shortcuts.chunked(2).forEach { rowShortcuts ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    rowShortcuts.forEach { shortcut ->
+                        ShortcutGridItem(
+                            shortcut = shortcut,
+                            onClick = { onShortcutClick(shortcut.id) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // Add spacer if odd number of shortcuts
+                    if (rowShortcuts.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShortcutGridItem(
+    shortcut: HomeShortcut,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Icon Container
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFFEFF1F3)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = shortcut.icon,
+                    contentDescription = null,
+                    tint = PrimaryText,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            
+            // Title
+            Text(
+                text = shortcut.title,
+                style = FontUtils.mainFont(style = AppFontStyle.Medium, size = FontSize.Small),
+                color = PrimaryText,
+                maxLines = 1
+            )
+            
+            // Subtitle
+            Text(
+                text = shortcut.subtitle,
+                style = FontUtils.mainFont(style = AppFontStyle.Regular, size = FontSize.Smallest),
+                color = PrimaryText.copy(alpha = 0.6f),
+                maxLines = 1
+            )
         }
     }
 }
