@@ -1,5 +1,23 @@
 package com.indybrain.indypos_Android.presentation.products
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,6 +49,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
@@ -45,6 +64,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -62,9 +84,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -132,6 +157,17 @@ fun MainProductScreen(
     
     // View mode state
     var viewMode by rememberSaveable { mutableStateOf(ProductViewMode.GRID) }
+    
+    // Snackbar for stock error messages
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Show stock error message
+    LaunchedEffect(uiState.stockErrorMessage) {
+        uiState.stockErrorMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearStockErrorMessage()
+        }
+    }
     
     // Handle scanned barcode
     var showProductNotFoundDialog by remember { mutableStateOf(false) }
@@ -269,6 +305,15 @@ fun MainProductScreen(
     
     Scaffold(
         containerColor = BaseBackground,
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = Color(0xFF2C2C2C),
+                    contentColor = Color.White
+                )
+            }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -474,12 +519,35 @@ fun MainProductScreen(
                                                     val cartQuantity = cartItems
                                                         .filter { it.productId == product.id }
                                                         .sumOf { it.quantity }
+                                                    val isExpanded = uiState.expandedProductId == product.id
                                                     
                                                     ProductCard(
                                                         product = product,
                                                         cartQuantity = cartQuantity,
+                                                        isExpanded = isExpanded,
                                                         onClick = { 
                                                             onProductClick(product.id, product.name, cartQuantity > 0)
+                                                        },
+                                                        onAddToCart = {
+                                                            // Check if product has additional options
+                                                            if (product.hasAdditionalOptions == true) {
+                                                                // Has options -> navigate to product detail
+                                                                onProductClick(product.id, product.name, cartQuantity > 0)
+                                                            } else {
+                                                                // No options and not in cart -> add to cart directly
+                                                                if (cartQuantity == 0) {
+                                                                    viewModel.addQuickToCart(product)
+                                                                } else {
+                                                                    // Already in cart -> show quantity adjuster
+                                                                    viewModel.showQuantityAdjuster(product.id)
+                                                                }
+                                                            }
+                                                        },
+                                                        onIncrease = {
+                                                            viewModel.increaseQuantity(product)
+                                                        },
+                                                        onDecrease = {
+                                                            viewModel.decreaseQuantity(product)
                                                         },
                                                         modifier = Modifier
                                                             .weight(1f)
@@ -503,12 +571,35 @@ fun MainProductScreen(
                                             val cartQuantity = cartItems
                                                 .filter { it.productId == product.id }
                                                 .sumOf { it.quantity }
+                                            val isExpanded = uiState.expandedProductId == product.id
                                             
                                             ProductListItem(
                                                 product = product,
                                                 cartQuantity = cartQuantity,
+                                                isExpanded = isExpanded,
                                                 onClick = { 
                                                     onProductClick(product.id, product.name, cartQuantity > 0)
+                                                },
+                                                onAddToCart = {
+                                                    // Check if product has additional options
+                                                    if (product.hasAdditionalOptions == true) {
+                                                        // Has options -> navigate to product detail
+                                                        onProductClick(product.id, product.name, cartQuantity > 0)
+                                                    } else {
+                                                        // No options and not in cart -> add to cart directly
+                                                        if (cartQuantity == 0) {
+                                                            viewModel.addQuickToCart(product)
+                                                        } else {
+                                                            // Already in cart -> show quantity adjuster
+                                                            viewModel.showQuantityAdjuster(product.id)
+                                                        }
+                                                    }
+                                                },
+                                                onIncrease = {
+                                                    viewModel.increaseQuantity(product)
+                                                },
+                                                onDecrease = {
+                                                    viewModel.decreaseQuantity(product)
                                                 },
                                                 modifier = Modifier.fillMaxWidth()
                                             )
@@ -697,7 +788,11 @@ private fun CategoryChip(
 private fun ProductCard(
     product: ProductEntity,
     cartQuantity: Int = 0,
+    isExpanded: Boolean = false,
     onClick: () -> Unit = {},
+    onAddToCart: () -> Unit = {},
+    onIncrease: () -> Unit = {},
+    onDecrease: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -801,23 +896,150 @@ private fun ProductCard(
                         color = PrimaryButton
                     )
                     
-                    // Cart Badge - Bottom Right (if in cart)
-                    if (cartQuantity > 0) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(PrimaryButton),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = cartQuantity.toString(),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Bold,
-                                    size = FontSize.Small
+                    val haptic = LocalHapticFeedback.current
+                    
+                    // Animated transition between collapsed button and expanded adjuster
+                    AnimatedContent(
+                        targetState = isExpanded && cartQuantity > 0,
+                        transitionSpec = {
+                            // Smooth scale + expand animation
+                            scaleIn(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow
                                 ),
-                                color = Color.White
-                            )
+                                initialScale = 0.8f
+                            ) + expandHorizontally(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow
+                                ),
+                                expandFrom = Alignment.End
+                            ) togetherWith
+                            scaleOut(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                ),
+                                targetScale = 0.8f
+                            ) + shrinkHorizontally(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                ),
+                                shrinkTowards = Alignment.End
+                            ) using
+                            SizeTransform(clip = false)
+                        },
+                        label = "quantity_adjuster"
+                    ) { expanded ->
+                        if (expanded) {
+                            // Expanded: Full quantity adjuster
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color(0xFFF5F5F5))
+                                    .padding(horizontal = 4.dp, vertical = 4.dp)
+                                    .animateContentSize(
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessLow
+                                        )
+                                    )
+                            ) {
+                                // Minus button
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White)
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            onDecrease()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "−",
+                                        style = FontUtils.mainFont(
+                                            style = AppFontStyle.Bold,
+                                            size = FontSize.Large
+                                        ),
+                                        color = PrimaryButton
+                                    )
+                                }
+                                
+                                // Quantity with scale animation
+                                Text(
+                                    text = cartQuantity.toString(),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Bold,
+                                        size = FontSize.Small
+                                    ),
+                                    color = PrimaryText,
+                                    modifier = Modifier
+                                        .padding(horizontal = 8.dp)
+                                        .animateContentSize(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
+                                        )
+                                )
+                                
+                                // Plus button
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(PrimaryButton)
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            onIncrease()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Add,
+                                        contentDescription = "Increase",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            // Collapsed: Single add button
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(PrimaryButton)
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onAddToCart()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (cartQuantity > 0) {
+                                    Text(
+                                        text = cartQuantity.toString(),
+                                        style = FontUtils.mainFont(
+                                            style = AppFontStyle.Bold,
+                                            size = FontSize.Small
+                                        ),
+                                        color = Color.White
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Filled.Add,
+                                        contentDescription = "Add to cart",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -830,7 +1052,11 @@ private fun ProductCard(
 private fun ProductListItem(
     product: ProductEntity,
     cartQuantity: Int = 0,
+    isExpanded: Boolean = false,
     onClick: () -> Unit = {},
+    onAddToCart: () -> Unit = {},
+    onIncrease: () -> Unit = {},
+    onDecrease: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -934,23 +1160,149 @@ private fun ProductListItem(
                     )
                 }
                 
-                // Cart Badge - Right side
-                if (cartQuantity > 0) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(PrimaryButton),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = cartQuantity.toString(),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Bold,
-                                size = FontSize.Medium
+                val haptic = LocalHapticFeedback.current
+                
+                // Animated transition between collapsed button and expanded adjuster
+                AnimatedContent(
+                    targetState = isExpanded && cartQuantity > 0,
+                    transitionSpec = {
+                        scaleIn(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
                             ),
-                            color = Color.White
-                        )
+                            initialScale = 0.8f
+                        ) + expandHorizontally(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            expandFrom = Alignment.End
+                        ) togetherWith
+                        scaleOut(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            ),
+                            targetScale = 0.8f
+                        ) + shrinkHorizontally(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            ),
+                            shrinkTowards = Alignment.End
+                        ) using
+                        SizeTransform(clip = false)
+                    },
+                    label = "quantity_adjuster_list"
+                ) { expanded ->
+                    if (expanded) {
+                        // Expanded: Full quantity adjuster
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color(0xFFF5F5F5))
+                                .padding(horizontal = 6.dp, vertical = 6.dp)
+                                .animateContentSize(
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
+                                )
+                        ) {
+                            // Minus button
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color.White)
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onDecrease()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "−",
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Bold,
+                                        size = FontSize.Large
+                                    ),
+                                    color = PrimaryButton
+                                )
+                            }
+                            
+                            // Quantity
+                            Text(
+                                text = cartQuantity.toString(),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Bold,
+                                    size = FontSize.Medium
+                                ),
+                                color = PrimaryText,
+                                modifier = Modifier
+                                    .padding(horizontal = 10.dp)
+                                    .animateContentSize(
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                            )
+                            
+                            // Plus button
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(PrimaryButton)
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onIncrease()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = "Increase",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    } else {
+                        // Collapsed: Single add button
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(PrimaryButton)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onAddToCart()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (cartQuantity > 0) {
+                                Text(
+                                    text = cartQuantity.toString(),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Bold,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = Color.White
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = "Add to cart",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

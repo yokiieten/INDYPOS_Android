@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 @HiltViewModel
@@ -30,6 +32,8 @@ class MainProductViewModel @Inject constructor(
     val uiState: StateFlow<MainProductUiState> = _uiState.asStateFlow()
     
     private val selectedCategoryFlow = MutableStateFlow<String?>(null)
+    
+    private var hideAdjusterJob: Job? = null
     
     init {
         // Start observing local Room data immediately
@@ -146,6 +150,146 @@ class MainProductViewModel @Inject constructor(
      */
     suspend fun findProductByCode(code: String): ProductEntity? {
         return productRepository.getProductByCode(code)
+    }
+    
+    /**
+     * Add product to cart directly (for products without additional options)
+     */
+    fun addQuickToCart(product: ProductEntity) {
+        viewModelScope.launch {
+            // Check stock if stock management is enabled
+            if (product.isStockEnabled == true && product.stockQuantity != null) {
+                // Get existing cart items for this product
+                val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
+                val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
+                val newTotalQuantity = totalQuantityInCart + 1
+                
+                // Check stock availability
+                val hasStock = cartRepository.checkStockAvailability(product.id, newTotalQuantity)
+                
+                if (!hasStock) {
+                    // Show stock error message
+                    val stockQuantity = product.stockQuantity
+                    val availableStock = stockQuantity - totalQuantityInCart
+                    val errorMessage = if (availableStock > 0) {
+                        "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
+                    } else {
+                        "สินค้าหมดสต็อก"
+                    }
+                    _uiState.update { it.copy(stockErrorMessage = errorMessage) }
+                    return@launch
+                }
+            }
+            
+            // Add to cart
+            cartRepository.addToCart(
+                productId = product.id,
+                productName = product.name,
+                productImageUrl = product.imageUrl,
+                productColorHex = product.selectedColorHex,
+                unitPrice = product.price,
+                quantity = 1,
+                specialRequest = null,
+                addons = emptyList()
+            )
+        }
+    }
+    
+    fun clearStockErrorMessage() {
+        _uiState.update { it.copy(stockErrorMessage = null) }
+    }
+    
+    /**
+     * Show quantity adjuster for a product and auto-hide after 2 seconds
+     */
+    fun showQuantityAdjuster(productId: String) {
+        // Cancel previous timer
+        hideAdjusterJob?.cancel()
+        
+        // Show adjuster
+        _uiState.update { it.copy(expandedProductId = productId) }
+        
+        // Auto-hide after 2 seconds
+        hideAdjusterJob = viewModelScope.launch {
+            delay(2000)
+            _uiState.update { it.copy(expandedProductId = null) }
+        }
+    }
+    
+    /**
+     * Hide quantity adjuster immediately
+     */
+    fun hideQuantityAdjuster() {
+        hideAdjusterJob?.cancel()
+        _uiState.update { it.copy(expandedProductId = null) }
+    }
+    
+    /**
+     * Increase product quantity in cart
+     */
+    fun increaseQuantity(product: ProductEntity) {
+        viewModelScope.launch {
+            // Reset timer
+            showQuantityAdjuster(product.id)
+            
+            // Check stock if enabled
+            if (product.isStockEnabled == true && product.stockQuantity != null) {
+                val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
+                val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
+                val newTotalQuantity = totalQuantityInCart + 1
+                
+                val hasStock = cartRepository.checkStockAvailability(product.id, newTotalQuantity)
+                
+                if (!hasStock) {
+                    val stockQuantity = product.stockQuantity
+                    val availableStock = stockQuantity - totalQuantityInCart
+                    val errorMessage = if (availableStock > 0) {
+                        "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
+                    } else {
+                        "สินค้าหมดสต็อก"
+                    }
+                    _uiState.update { it.copy(stockErrorMessage = errorMessage) }
+                    return@launch
+                }
+            }
+            
+            // Add to cart
+            cartRepository.addToCart(
+                productId = product.id,
+                productName = product.name,
+                productImageUrl = product.imageUrl,
+                productColorHex = product.selectedColorHex,
+                unitPrice = product.price,
+                quantity = 1,
+                specialRequest = null,
+                addons = emptyList()
+            )
+        }
+    }
+    
+    /**
+     * Decrease product quantity in cart
+     */
+    fun decreaseQuantity(product: ProductEntity) {
+        viewModelScope.launch {
+            // Reset timer
+            showQuantityAdjuster(product.id)
+            
+            val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
+            if (existingCartItems.isEmpty()) return@launch
+            
+            // Sort by creation date (oldest first) to remove FIFO
+            val sortedItems = existingCartItems.sortedBy { it.createdAt }
+            val oldestItem = sortedItems.first()
+            
+            if (oldestItem.quantity > 1) {
+                // Decrease quantity by 1
+                cartRepository.updateCartItemQuantity(oldestItem.id, oldestItem.quantity - 1)
+            } else {
+                // Remove item from cart
+                cartRepository.deleteCartItem(oldestItem.id)
+            }
+        }
     }
 }
 

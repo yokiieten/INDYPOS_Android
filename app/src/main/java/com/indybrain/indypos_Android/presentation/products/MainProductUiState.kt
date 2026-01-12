@@ -13,6 +13,8 @@ data class MainProductUiState(
     val products: List<ProductEntity> = emptyList(), // Filtered products based on selected category
     val selectedCategoryId: String? = null,
     val focusedCategoryId: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val stockErrorMessage: String? = null,
+    val expandedProductId: String? = null // Product ID that is showing quantity adjuster
 )
 
