@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android.presentation.orderproduct
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +23,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -52,6 +55,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
@@ -94,6 +98,8 @@ fun OrderProductScreen(
     var itemToDelete by remember { mutableStateOf<GroupedCartItem?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showClearAllDialog by remember { mutableStateOf(false) }
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     
     Scaffold(
         containerColor = BaseBackground,
@@ -125,318 +131,36 @@ fun OrderProductScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Header section
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "ออเดอร์ของฉัน",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Large
-                    ),
-                    color = PrimaryText
-                )
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = { showClearAllDialog = true }) {
-                        Text(
-                            text = "ลบทั้งหมด",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = Color(0xFFFF5252)
-                        )
-                    }
-                    
-                    TextButton(onClick = onAddMenuClick) {
-                        Text(
-                            text = "เพิ่มเมนู",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = PrimaryButton
-                        )
-                    }
-                }
-            }
-            
-            // Cart items list
-            if (uiState.groupedItems.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "ไม่มีสินค้าในตะกร้า",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = SecondaryText
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(
-                        items = uiState.groupedItems,
-                        key = { it.key }
-                    ) { groupedItem ->
-                        SwipeToDeleteCartItem(
-                            onDelete = { itemToDelete = groupedItem }
-                        ) {
-                            GroupedCartItemRow(
-                                groupedItem = groupedItem,
-                                onEditClick = { 
-                                    val productId = groupedItem.items.firstOrNull()?.product?.id
-                                    val productName = groupedItem.items.firstOrNull()?.product?.name ?: ""
-                                    if (productId != null) {
-                                        // Get all cart item IDs in this group to delete when editing
-                                        val cartItemIds = groupedItem.items.map { it.id }
-                                        onEditItemClick(productId, productName, cartItemIds)
-                                    }
-                                },
-                                onDeleteClick = { itemToDelete = groupedItem }
-                            )
-                        }
-                    }
-                    
-                    // Divider
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(Color(0xFFE0E0E0))
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    
-                    // Payment type section
-                    item {
-                        Text(
-                            text = "ประเภทการจ่ายเงิน",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Bold,
-                                size = FontSize.Medium
-                            ),
-                            color = PrimaryText,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            PaymentTypeButton(
-                                paymentType = PaymentType.CASH,
-                                isSelected = uiState.selectedPaymentType == PaymentType.CASH,
-                                onClick = { viewModel.selectPaymentType(PaymentType.CASH) },
-                                modifier = Modifier.weight(1f)
-                            )
-                            
-                            PaymentTypeButton(
-                                paymentType = PaymentType.TRANSFER,
-                                isSelected = uiState.selectedPaymentType == PaymentType.TRANSFER,
-                                onClick = { viewModel.selectPaymentType(PaymentType.TRANSFER) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                    
-                    // Discount section
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "ส่วนลด",
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = PrimaryText
-                            )
-                            
-                            if (uiState.discountAmount > 0 && uiState.discountType != null) {
-                                val discountText = when (val discountType = uiState.discountType) {
-                                    com.indybrain.indypos_Android.presentation.discount.DiscountType.PERCENTAGE -> {
-                                        "${uiState.discountValue.toInt()}%"
-                                    }
-                                    com.indybrain.indypos_Android.presentation.discount.DiscountType.FIXED_AMOUNT -> {
-                                        formatCurrency(uiState.discountValue)
-                                    }
-                                    null -> "" // This should never happen due to the if condition
-                                }
-                                TextButton(
-                                    onClick = onDiscountClick,
-                                    contentPadding = PaddingValues(0.dp)
-                                ) {
-                                    Text(
-                                        text = discountText,
-                                        style = FontUtils.mainFont(
-                                            style = AppFontStyle.Regular,
-                                            size = FontSize.Medium
-                                        ),
-                                        color = PrimaryButton
-                                    )
-                                }
-                            } else {
-                                TextButton(onClick = onDiscountClick) {
-                                    Text(
-                                        text = "เพิ่ม (ถ้ามี)",
-                                        style = FontUtils.mainFont(
-                                            style = AppFontStyle.Regular,
-                                            size = FontSize.Small
-                                        ),
-                                        color = PrimaryButton
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Total section
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "ยอดรวมราคา",
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = PrimaryText
-                            )
-                            
-                            Text(
-                                text = formatCurrency(viewModel.calculateSubtotal()),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Bold,
-                                    size = FontSize.Medium
-                                ),
-                                color = PrimaryText
-                            )
-                        }
-                        
-                        if (uiState.discountAmount > 0) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "ส่วนลด",
-                                    style = FontUtils.mainFont(
-                                        style = AppFontStyle.Regular,
-                                        size = FontSize.Medium
-                                    ),
-                                    color = PrimaryText
-                                )
-                                
-                                Text(
-                                    text = "-${formatCurrency(uiState.discountAmount)}",
-                                    style = FontUtils.mainFont(
-                                        style = AppFontStyle.Regular,
-                                        size = FontSize.Medium
-                                    ),
-                                    color = PrimaryButton
-                                )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "รวม",
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Bold,
-                                    size = FontSize.Medium
-                                ),
-                                color = PrimaryText
-                            )
-                            
-                            Text(
-                                text = formatCurrency(viewModel.calculateTotal()),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Bold,
-                                    size = FontSize.Medium
-                                ),
-                                color = PrimaryText
-                            )
-                        }
-                    }
-                    
-                    // Bottom spacing for order button
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
-                }
-            }
-            
-            // Order button (fixed at bottom)
-            if (uiState.groupedItems.isNotEmpty()) {
-                val totalItemCount = uiState.groupedItems.sumOf { it.totalQuantity }
-                OrderButton(
-                    itemCount = totalItemCount,
-                    totalAmount = viewModel.calculateTotal(),
-                    onClick = {
-                        val total = viewModel.calculateTotal()
-                        val subtotal = viewModel.calculateSubtotal()
-                        val discount = uiState.discountAmount
-                        
-                        // Navigate to cash payment if CASH is selected
-                        if (uiState.selectedPaymentType == PaymentType.CASH) {
-                            onPlaceOrderClick(total, subtotal, discount)
-                        } else {
-                            // For TRANSFER payment, place order directly
-                            viewModel.placeOrder(
-                                onSuccess = { orderNumber ->
-                                    // Navigate to order summary on success
-                                    onOrderSuccess(total)
-                                },
-                                onError = { error ->
-                                    errorMessage = error
-                                }
-                            )
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                )
-            }
+        if (isLandscape) {
+            // Landscape Layout - Split screen
+            LandscapeOrderContent(
+                padding = padding,
+                uiState = uiState,
+                viewModel = viewModel,
+                onAddMenuClick = onAddMenuClick,
+                onEditItemClick = onEditItemClick,
+                onDeleteItem = { itemToDelete = it },
+                onDiscountClick = onDiscountClick,
+                onPlaceOrderClick = onPlaceOrderClick,
+                onOrderSuccess = onOrderSuccess,
+                onClearAllClick = { showClearAllDialog = true },
+                onError = { errorMessage = it }
+            )
+        } else {
+            // Portrait Layout - Original vertical layout
+            PortraitOrderContent(
+                padding = padding,
+                uiState = uiState,
+                viewModel = viewModel,
+                onAddMenuClick = onAddMenuClick,
+                onEditItemClick = onEditItemClick,
+                onDeleteItem = { itemToDelete = it },
+                onDiscountClick = onDiscountClick,
+                onPlaceOrderClick = onPlaceOrderClick,
+                onOrderSuccess = onOrderSuccess,
+                onClearAllClick = { showClearAllDialog = true },
+                onError = { errorMessage = it }
+            )
         }
     }
 
@@ -593,6 +317,672 @@ fun OrderProductScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun LandscapeOrderContent(
+    padding: PaddingValues,
+    uiState: OrderProductUiState,
+    viewModel: OrderProductViewModel,
+    onAddMenuClick: () -> Unit,
+    onEditItemClick: (productId: String, productName: String, cartItemIds: List<String>) -> Unit,
+    onDeleteItem: (GroupedCartItem) -> Unit,
+    onDiscountClick: () -> Unit,
+    onPlaceOrderClick: (totalAmount: Double, subtotal: Double, discount: Double) -> Unit,
+    onOrderSuccess: (totalAmount: Double) -> Unit,
+    onClearAllClick: () -> Unit,
+    onError: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+    ) {
+        // Left side - Cart Items List (60% width)
+        Column(
+            modifier = Modifier
+                .weight(0.6f)
+                .fillMaxSize()
+        ) {
+            // Header section
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "ออเดอร์ของฉัน",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText
+                )
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onClearAllClick) {
+                        Text(
+                            text = "ลบทั้งหมด",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color(0xFFFF5252)
+                        )
+                    }
+                    
+                    TextButton(onClick = onAddMenuClick) {
+                        Text(
+                            text = "เพิ่มเมนู",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                }
+            }
+            
+            // Cart items list
+            if (uiState.groupedItems.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "ไม่มีสินค้าในตะกร้า",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = uiState.groupedItems,
+                        key = { it.key }
+                    ) { groupedItem ->
+                        SwipeToDeleteCartItem(
+                            onDelete = { onDeleteItem(groupedItem) }
+                        ) {
+                            GroupedCartItemRow(
+                                groupedItem = groupedItem,
+                                onEditClick = { 
+                                    val productId = groupedItem.items.firstOrNull()?.product?.id
+                                    val productName = groupedItem.items.firstOrNull()?.product?.name ?: ""
+                                    if (productId != null) {
+                                        val cartItemIds = groupedItem.items.map { it.id }
+                                        onEditItemClick(productId, productName, cartItemIds)
+                                    }
+                                },
+                                onDeleteClick = { onDeleteItem(groupedItem) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Divider
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .fillMaxSize()
+                .background(Color(0xFFE0E0E0))
+        )
+        
+        // Right side - Payment & Summary (40% width)
+        Column(
+            modifier = Modifier
+                .weight(0.4f)
+                .fillMaxSize()
+        ) {
+            if (uiState.groupedItems.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    // Payment type section
+                    Text(
+                        text = "ประเภทการจ่ายเงิน",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        PaymentTypeButton(
+                            paymentType = PaymentType.CASH,
+                            isSelected = uiState.selectedPaymentType == PaymentType.CASH,
+                            onClick = { viewModel.selectPaymentType(PaymentType.CASH) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        PaymentTypeButton(
+                            paymentType = PaymentType.TRANSFER,
+                            isSelected = uiState.selectedPaymentType == PaymentType.TRANSFER,
+                            onClick = { viewModel.selectPaymentType(PaymentType.TRANSFER) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Divider
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color(0xFFE0E0E0))
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Discount section
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "ส่วนลด",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                        
+                        if (uiState.discountAmount > 0 && uiState.discountType != null) {
+                            val discountText = when (val discountType = uiState.discountType) {
+                                com.indybrain.indypos_Android.presentation.discount.DiscountType.PERCENTAGE -> {
+                                    "${uiState.discountValue.toInt()}%"
+                                }
+                                com.indybrain.indypos_Android.presentation.discount.DiscountType.FIXED_AMOUNT -> {
+                                    formatCurrency(uiState.discountValue)
+                                }
+                                null -> ""
+                            }
+                            TextButton(
+                                onClick = onDiscountClick,
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(
+                                    text = discountText,
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = PrimaryButton
+                                )
+                            }
+                        } else {
+                            TextButton(onClick = onDiscountClick) {
+                                Text(
+                                    text = "เพิ่ม (ถ้ามี)",
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Small
+                                    ),
+                                    color = PrimaryButton
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Total section
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "ยอดรวมราคา",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                        
+                        Text(
+                            text = formatCurrency(viewModel.calculateSubtotal()),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                    }
+                    
+                    if (uiState.discountAmount > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "ส่วนลด",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = PrimaryText
+                            )
+                            
+                            Text(
+                                text = "-${formatCurrency(uiState.discountAmount)}",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = PrimaryButton
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "รวม",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Large
+                            ),
+                            color = PrimaryText
+                        )
+                        
+                        Text(
+                            text = formatCurrency(viewModel.calculateTotal()),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Large
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Order button
+                    val totalItemCount = uiState.groupedItems.sumOf { it.totalQuantity }
+                    OrderButton(
+                        itemCount = totalItemCount,
+                        totalAmount = viewModel.calculateTotal(),
+                        onClick = {
+                            val total = viewModel.calculateTotal()
+                            val subtotal = viewModel.calculateSubtotal()
+                            val discount = uiState.discountAmount
+                            
+                            if (uiState.selectedPaymentType == PaymentType.CASH) {
+                                onPlaceOrderClick(total, subtotal, discount)
+                            } else {
+                                viewModel.placeOrder(
+                                    onSuccess = { orderNumber ->
+                                        onOrderSuccess(total)
+                                    },
+                                    onError = { error ->
+                                        onError(error)
+                                    }
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PortraitOrderContent(
+    padding: PaddingValues,
+    uiState: OrderProductUiState,
+    viewModel: OrderProductViewModel,
+    onAddMenuClick: () -> Unit,
+    onEditItemClick: (productId: String, productName: String, cartItemIds: List<String>) -> Unit,
+    onDeleteItem: (GroupedCartItem) -> Unit,
+    onDiscountClick: () -> Unit,
+    onPlaceOrderClick: (totalAmount: Double, subtotal: Double, discount: Double) -> Unit,
+    onOrderSuccess: (totalAmount: Double) -> Unit,
+    onClearAllClick: () -> Unit,
+    onError: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+    ) {
+        // Header section
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "ออเดอร์ของฉัน",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+            
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onClearAllClick) {
+                    Text(
+                        text = "ลบทั้งหมด",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = Color(0xFFFF5252)
+                    )
+                }
+                
+                TextButton(onClick = onAddMenuClick) {
+                    Text(
+                        text = "เพิ่มเมนู",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton
+                    )
+                }
+            }
+        }
+        
+        // Cart items list
+        if (uiState.groupedItems.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "ไม่มีสินค้าในตะกร้า",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(
+                    items = uiState.groupedItems,
+                    key = { it.key }
+                ) { groupedItem ->
+                    SwipeToDeleteCartItem(
+                        onDelete = { onDeleteItem(groupedItem) }
+                    ) {
+                        GroupedCartItemRow(
+                            groupedItem = groupedItem,
+                            onEditClick = { 
+                                val productId = groupedItem.items.firstOrNull()?.product?.id
+                                val productName = groupedItem.items.firstOrNull()?.product?.name ?: ""
+                                if (productId != null) {
+                                    val cartItemIds = groupedItem.items.map { it.id }
+                                    onEditItemClick(productId, productName, cartItemIds)
+                                }
+                            },
+                            onDeleteClick = { onDeleteItem(groupedItem) }
+                        )
+                    }
+                }
+                
+                // Divider
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color(0xFFE0E0E0))
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                // Payment type section
+                item {
+                    Text(
+                        text = "ประเภทการจ่ายเงิน",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        PaymentTypeButton(
+                            paymentType = PaymentType.CASH,
+                            isSelected = uiState.selectedPaymentType == PaymentType.CASH,
+                            onClick = { viewModel.selectPaymentType(PaymentType.CASH) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        PaymentTypeButton(
+                            paymentType = PaymentType.TRANSFER,
+                            isSelected = uiState.selectedPaymentType == PaymentType.TRANSFER,
+                            onClick = { viewModel.selectPaymentType(PaymentType.TRANSFER) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                
+                // Discount section
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "ส่วนลด",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                        
+                        if (uiState.discountAmount > 0 && uiState.discountType != null) {
+                            val discountText = when (val discountType = uiState.discountType) {
+                                com.indybrain.indypos_Android.presentation.discount.DiscountType.PERCENTAGE -> {
+                                    "${uiState.discountValue.toInt()}%"
+                                }
+                                com.indybrain.indypos_Android.presentation.discount.DiscountType.FIXED_AMOUNT -> {
+                                    formatCurrency(uiState.discountValue)
+                                }
+                                null -> ""
+                            }
+                            TextButton(
+                                onClick = onDiscountClick,
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(
+                                    text = discountText,
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = PrimaryButton
+                                )
+                            }
+                        } else {
+                            TextButton(onClick = onDiscountClick) {
+                                Text(
+                                    text = "เพิ่ม (ถ้ามี)",
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Small
+                                    ),
+                                    color = PrimaryButton
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Total section
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "ยอดรวมราคา",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                        
+                        Text(
+                            text = formatCurrency(viewModel.calculateSubtotal()),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                    }
+                    
+                    if (uiState.discountAmount > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "ส่วนลด",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = PrimaryText
+                            )
+                            
+                            Text(
+                                text = "-${formatCurrency(uiState.discountAmount)}",
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = PrimaryButton
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "รวม",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                        
+                        Text(
+                            text = formatCurrency(viewModel.calculateTotal()),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                    }
+                }
+                
+                // Bottom spacing for order button
+                item {
+                    Spacer(modifier = Modifier.height(80.dp))
+                }
+            }
+        }
+        
+        // Order button (fixed at bottom)
+        if (uiState.groupedItems.isNotEmpty()) {
+            val totalItemCount = uiState.groupedItems.sumOf { it.totalQuantity }
+            OrderButton(
+                itemCount = totalItemCount,
+                totalAmount = viewModel.calculateTotal(),
+                onClick = {
+                    val total = viewModel.calculateTotal()
+                    val subtotal = viewModel.calculateSubtotal()
+                    val discount = uiState.discountAmount
+                    
+                    if (uiState.selectedPaymentType == PaymentType.CASH) {
+                        onPlaceOrderClick(total, subtotal, discount)
+                    } else {
+                        viewModel.placeOrder(
+                            onSuccess = { orderNumber ->
+                                onOrderSuccess(total)
+                            },
+                            onError = { error ->
+                                onError(error)
+                            }
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
+        }
     }
 }
 
