@@ -176,16 +176,44 @@ fun ProductEditScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 20.dp)
                 ) {
-                    // Product title
-                    Text(
-                        text = displayProductName,
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Bold,
-                            size = FontSize.Large
-                        ),
-                        color = PrimaryText,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    // Product title with delete all button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = displayProductName,
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Large
+                            ),
+                            color = PrimaryText,
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        // Delete all button
+                        IconButton(
+                            onClick = {
+                                // Show delete all confirmation
+                                itemToDelete = uiState.groupedItems.firstOrNull()?.let { 
+                                    // Create a special marker to indicate delete all
+                                    it.copy(items = uiState.groupedItems.flatMap { group -> group.items })
+                                }
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "ลบสินค้าทั้งหมด",
+                                tint = Color.Red,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
                     
                     // Show error as snackbar (toast without icon)
                     uiState.errorMessage?.let { errorMessage ->
@@ -318,11 +346,14 @@ fun ProductEditScreen(
     
     // Delete confirmation dialog
     if (itemToDelete != null) {
+        // Check if it's delete all (has multiple items from different groups)
+        val isDeleteAll = itemToDelete?.items?.size ?: 0 > (uiState.groupedItems.firstOrNull()?.items?.size ?: 0)
+        
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
             title = {
                 Text(
-                    text = "ลบสินค้า",
+                    text = if (isDeleteAll) "ลบสินค้าทั้งหมด" else "ลบสินค้า",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Medium
@@ -332,7 +363,11 @@ fun ProductEditScreen(
             },
             text = {
                 Text(
-                    text = "คุณต้องการลบสินค้านี้จากตะกร้าหรือไม่?",
+                    text = if (isDeleteAll) {
+                        "คุณต้องการลบสินค้าทั้งหมดจากตะกร้าหรือไม่?"
+                    } else {
+                        "คุณต้องการลบสินค้านี้จากตะกร้าหรือไม่?"
+                    },
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -346,10 +381,7 @@ fun ProductEditScreen(
                         itemToDelete?.let { group ->
                             viewModel.deleteItemGroup(group.items.map { it.id })
                             itemToDelete = null
-                            // Check if this was the last item
-                            if (uiState.groupedItems.size == 1) {
-                                // Will be handled by LaunchedEffect watching groupedItems
-                            }
+                            // Will be handled by LaunchedEffect watching groupedItems
                         }
                     }
                 ) {
