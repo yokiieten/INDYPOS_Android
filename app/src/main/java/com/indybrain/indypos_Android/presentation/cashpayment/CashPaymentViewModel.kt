@@ -11,6 +11,8 @@ import com.indybrain.indypos_Android.data.remote.dto.CreateOrderResponseDto
 import com.indybrain.indypos_Android.domain.model.PaymentType
 import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.printer.PrinterService
+import com.indybrain.indypos_Android.core.printer.LabelPrinterService
+import com.indybrain.indypos_Android.core.printer.PrinterType
 import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
 import com.indybrain.indypos_Android.data.local.dao.OrderDao
 import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
@@ -24,6 +26,7 @@ import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import com.indybrain.indypos_Android.domain.repository.ReceiptSettingsRepository
+import com.indybrain.indypos_Android.domain.repository.PrinterSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import java.util.Date
@@ -51,7 +54,9 @@ class CashPaymentViewModel @Inject constructor(
     private val orderItemDao: OrderItemDao,
     private val orderAddonDao: OrderAddonDao,
     private val receiptSettingsRepository: ReceiptSettingsRepository,
+    private val printerSettingsRepository: PrinterSettingsRepository,
     private val printerService: PrinterService,
+    private val labelPrinterService: LabelPrinterService,
     private val authRepository: AuthRepository,
     @ApplicationContext private val context: Context,
     private val gson: Gson
@@ -479,6 +484,7 @@ class CashPaymentViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val receiptSettings = receiptSettingsRepository.getReceiptSettingsSync()
+                val labelPrinterSettings = printerSettingsRepository.getPrinterSettingsSync(PrinterType.LABEL)
                 
                 // Get shop name
                 val shopName = authRepository.getCurrentUser().first()?.shopName
@@ -491,7 +497,7 @@ class CashPaymentViewModel @Inject constructor(
                     printerService.openCashDrawer()
                 }
                 
-                // Check if receipt should be printed
+                // 1. Check if receipt should be printed
                 if (receiptSettings?.printAfterFinish == true) {
                     printerService.printOrderReceipt(
                         cartItems = cartItems,
@@ -506,6 +512,21 @@ class CashPaymentViewModel @Inject constructor(
                         receivedAmount = receivedAmount,
                         change = change
                     )
+                }
+                
+                // 2. Check if label printer is enabled and print stickers
+                if (labelPrinterSettings?.enabled == true) {
+                    // Print labels for each item based on quantity
+                    val printSuccess = labelPrinterService.printLabels(
+                        cartItems = cartItems,
+                        cartAddonsMap = cartAddonsMap,
+                        shopName = shopName
+                    )
+                    
+                    if (!printSuccess) {
+                        // Log error but don't fail the order
+                        android.util.Log.e("CashPaymentViewModel", "Failed to print some labels")
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

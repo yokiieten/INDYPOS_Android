@@ -30,9 +30,10 @@ import com.indybrain.indypos_Android.data.local.entity.*
         SelectedAddonJunctionEntity::class,
         // Store and Settings entities
         StoreEntity::class,
-        ReceiptSettingsEntity::class
+        ReceiptSettingsEntity::class,
+        PrinterSettingsEntity::class
     ],
-    version = 1, // Reset to version 1 for fresh start (not in production yet)
+    version = 2, // Incremented version for new PrinterSettingsEntity
     exportSchema = false
 )
 @TypeConverters(DateConverter::class)
@@ -57,6 +58,7 @@ abstract class IndyPosDatabase : RoomDatabase() {
     // Store and Settings DAOs
     abstract fun storeDao(): StoreDao
     abstract fun receiptSettingsDao(): ReceiptSettingsDao
+    abstract fun printerSettingsDao(): PrinterSettingsDao
     
     /**
      * Clear all data from Room database
@@ -88,6 +90,7 @@ abstract class IndyPosDatabase : RoomDatabase() {
         // Clear Store and Settings data
         storeDao().deleteAll()
         receiptSettingsDao().deleteAll()
+        printerSettingsDao().deleteAll()
     }
 }
 

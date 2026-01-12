@@ -48,4 +48,3 @@ interface OrdersApi {
 data class UpdateOrderStatusRequestDto(
     val status: Int
 )
-

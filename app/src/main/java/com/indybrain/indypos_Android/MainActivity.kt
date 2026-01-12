@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import kotlinx.coroutines.launch
 import androidx.navigation.compose.composable
@@ -730,13 +731,18 @@ class MainActivity : ComponentActivity() {
                                 onBackClick = {
                                     navController.popBackStack()
                                 },
-                                onNavigateToBluetoothScan = {
-                                    navController.navigate(NavRoutes.BluetoothPrinterScan.route)
+                                onNavigateToBluetoothScan = { printerType ->
+                                    navController.navigate(NavRoutes.bluetoothPrinterScan(printerType.name))
                                 }
                             )
                         }
                         
-                        composable(NavRoutes.BluetoothPrinterScan.route) {
+                        composable(
+                            route = NavRoutes.BLUETOOTH_PRINTER_SCAN_ROUTE,
+                            arguments = listOf(
+                                navArgument("printerType") { type = NavType.StringType }
+                            )
+                        ) {
                             BluetoothPrinterScanScreen(
                                 onBackClick = {
                                     navController.popBackStack()

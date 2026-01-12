@@ -731,4 +731,3 @@ data class UpdateProductStockResponseDto(
     val productId: String?,
     val delta: Int?
 )
-

@@ -9,6 +9,7 @@ import com.indybrain.indypos_Android.data.repository.CartRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.OrderRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.ProductRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.ReceiptSettingsRepositoryImpl
+import com.indybrain.indypos_Android.data.repository.PrinterSettingsRepositoryImpl
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
@@ -16,6 +17,7 @@ import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.repository.ReceiptSettingsRepository
+import com.indybrain.indypos_Android.domain.repository.PrinterSettingsRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -89,6 +91,14 @@ object RepositoryModule {
         receiptSettingsRepositoryImpl: ReceiptSettingsRepositoryImpl
     ): ReceiptSettingsRepository {
         return receiptSettingsRepositoryImpl
+    }
+    
+    @Provides
+    @Singleton
+    fun providePrinterSettingsRepository(
+        printerSettingsRepositoryImpl: PrinterSettingsRepositoryImpl
+    ): PrinterSettingsRepository {
+        return printerSettingsRepositoryImpl
     }
 }
 

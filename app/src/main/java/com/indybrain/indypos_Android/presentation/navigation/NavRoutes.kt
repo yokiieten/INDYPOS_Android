@@ -38,6 +38,8 @@ sealed class NavRoutes(val route: String) {
     data object BluetoothPrinterScan : NavRoutes("bluetooth_printer_scan")
     
     companion object {
+        const val BLUETOOTH_PRINTER_SCAN_ROUTE = "bluetooth_printer_scan/{printerType}"
+        fun bluetoothPrinterScan(printerType: String) = "bluetooth_printer_scan/$printerType"
         const val ADD_EDIT_PRODUCT_ROUTE = "add_edit_product/{productId}"
         fun addEditProduct(productId: String?) = if (productId != null) {
             "add_edit_product/$productId"

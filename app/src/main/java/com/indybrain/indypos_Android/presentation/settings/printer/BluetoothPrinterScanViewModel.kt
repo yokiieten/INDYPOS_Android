@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.Build
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,11 +20,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import com.indybrain.indypos_Android.core.printer.PrinterManager
+import com.indybrain.indypos_Android.core.printer.PrinterType
+import com.indybrain.indypos_Android.domain.repository.PrinterSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.posprinter.IConnectListener
+import net.posprinter.IDeviceConnection
 import net.posprinter.POSConnect
 import javax.inject.Inject
 
@@ -33,8 +37,15 @@ import javax.inject.Inject
 @HiltViewModel
 class BluetoothPrinterScanViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val printerManager: PrinterManager
+    private val printerManager: PrinterManager,
+    private val printerSettingsRepository: PrinterSettingsRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+    
+    // Get printer type from navigation argument
+    private val printerType: PrinterType = savedStateHandle.get<String>("printerType")
+        ?.let { PrinterType.valueOf(it) } 
+        ?: PrinterType.RECEIPT
     
     private val bluetoothManager: BluetoothManager by lazy {
         context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -94,33 +105,65 @@ class BluetoothPrinterScanViewModel @Inject constructor(
         }
     }
     
+    private var currentConnectingDevice: BluetoothDeviceInfo? = null
+    private var currentConnection: IDeviceConnection? = null
+    
     private val connectListener = IConnectListener { code, connInfo, msg ->
         when (code) {
             POSConnect.CONNECT_SUCCESS -> {
                 viewModelScope.launch {
-                    // Connection successful - show checkmark
-                    printerManager.currentPrinter?.let { printer ->
-                        deviceConnectionStates[printer.address] = ConnectionState.Connected
-                        _connectionStatesFlow.update { deviceConnectionStates.toMap() }
+                    // Connection successful
+                    currentConnectingDevice?.let { deviceInfo ->
+                        val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(deviceInfo.address)
+                        if (bluetoothDevice != null && currentConnection != null) {
+                            // Save to printer manager
+                            printerManager.savePrinterConnection(
+                                device = bluetoothDevice,
+                                connection = currentConnection!!,
+                                type = printerType
+                            )
+                            
+                            // Save to printer settings repository
+                            printerSettingsRepository.savePrinterSettings(
+                                type = printerType,
+                                printerName = deviceInfo.name,
+                                macAddress = deviceInfo.address,
+                                enabled = true,
+                                autoConnect = false
+                            )
+                            
+                            // Update connection status
+                            printerSettingsRepository.updateConnectionStatus(printerType, true)
+                            
+                            // Show success state
+                            deviceConnectionStates[deviceInfo.address] = ConnectionState.Connected
+                            _connectionStatesFlow.update { deviceConnectionStates.toMap() }
+                        }
                     }
                 }
             }
             POSConnect.CONNECT_FAIL -> {
                 viewModelScope.launch {
                     // Connection failed - change back to disconnected
-                    printerManager.currentPrinter?.let { printer ->
-                        deviceConnectionStates[printer.address] = ConnectionState.Disconnected
+                    currentConnectingDevice?.let { deviceInfo ->
+                        deviceConnectionStates[deviceInfo.address] = ConnectionState.Disconnected
                         _connectionStatesFlow.update { deviceConnectionStates.toMap() }
                     }
+                    currentConnection?.close()
+                    currentConnection = null
+                    currentConnectingDevice = null
                 }
             }
             POSConnect.CONNECT_INTERRUPT -> {
                 viewModelScope.launch {
                     // Connection interrupted - change to disconnected
-                    printerManager.currentPrinter?.let { printer ->
-                        deviceConnectionStates[printer.address] = ConnectionState.Disconnected
+                    currentConnectingDevice?.let { deviceInfo ->
+                        deviceConnectionStates[deviceInfo.address] = ConnectionState.Disconnected
                         _connectionStatesFlow.update { deviceConnectionStates.toMap() }
                     }
+                    currentConnection?.close()
+                    currentConnection = null
+                    currentConnectingDevice = null
                 }
             }
             else -> {}
@@ -233,15 +276,7 @@ class BluetoothPrinterScanViewModel @Inject constructor(
                     // Show loading when clicked
                     deviceConnectionStates[device.address] = ConnectionState.Connecting
                     _connectionStatesFlow.update { deviceConnectionStates.toMap() }
-                    // Save to printer manager
-                    try {
-                        val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
-                        bluetoothDevice?.let {
-                            printerManager.currentPrinter = it
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                    
                     // Connect in background
                     connectToDevice(device)
                 }
@@ -299,16 +334,21 @@ class BluetoothPrinterScanViewModel @Inject constructor(
     private fun connectToDevice(device: BluetoothDeviceInfo) {
         viewModelScope.launch {
             try {
-                // Get BluetoothDevice from address
-                val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
-                bluetoothDevice?.let {
-                    // Connect in background - loading is already shown
-                    printerManager.connectBluetooth(device.address, connectListener)
-                }
+                currentConnectingDevice = device
+                
+                // Create connection
+                currentConnection?.close()
+                currentConnection = POSConnect.createDevice(POSConnect.DEVICE_TYPE_BLUETOOTH)
+                
+                // Connect
+                currentConnection?.connect(device.address, connectListener)
             } catch (e: Exception) {
                 // If connection fails, change state back to disconnected
                 deviceConnectionStates[device.address] = ConnectionState.Disconnected
                 _connectionStatesFlow.update { deviceConnectionStates.toMap() }
+                currentConnection?.close()
+                currentConnection = null
+                currentConnectingDevice = null
                 e.printStackTrace()
             }
         }
@@ -316,7 +356,8 @@ class BluetoothPrinterScanViewModel @Inject constructor(
     
     private fun disconnectFromDevice() {
         viewModelScope.launch {
-            printerManager.disconnect()
+            printerManager.disconnect(printerType)
+            printerSettingsRepository.updateConnectionStatus(printerType, false)
         }
     }
     

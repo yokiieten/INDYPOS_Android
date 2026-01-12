@@ -83,5 +83,10 @@ object DatabaseModule {
     fun provideReceiptSettingsDao(database: IndyPosDatabase): ReceiptSettingsDao {
         return database.receiptSettingsDao()
     }
+    
+    @Provides
+    fun providePrinterSettingsDao(database: IndyPosDatabase): PrinterSettingsDao {
+        return database.printerSettingsDao()
+    }
 }
 
