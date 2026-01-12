@@ -453,8 +453,10 @@ fun CartItemGroupCard(
                 contentAlignment = Alignment.Center
             ) {
                 val imageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
+                val hasColor = product.selectedColorHex != null && product.selectedColorHex.isNotBlank()
                 
                 if (!imageUrl.isNullOrBlank()) {
+                    // มีรูป: แสดงรูป (ถ้า error ให้แสดง logo default)
                     val fullImageUrl = if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
                         imageUrl
                     } else {
@@ -472,8 +474,8 @@ fun CartItemGroupCard(
                         error = painterResource(id = R.drawable.logo_appstore),
                         placeholder = painterResource(id = R.drawable.logo_appstore)
                     )
-                } else {
-                    // Show placeholder if no image
+                } else if (!hasColor) {
+                    // ไม่มีทั้งรูปและสี: แสดงไอคอน logo default
                     Image(
                         painter = painterResource(id = R.drawable.logo_appstore),
                         contentDescription = product.name,
@@ -481,6 +483,7 @@ fun CartItemGroupCard(
                         contentScale = ContentScale.Fit
                     )
                 }
+                // ถ้ามีแค่สี (hasColor = true) แต่ไม่มีรูป: แสดงแค่สีพื้นหลัง ไม่มีไอคอน
             }
             
             Column(
