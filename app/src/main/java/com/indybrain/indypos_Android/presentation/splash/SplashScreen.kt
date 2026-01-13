@@ -27,10 +27,16 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 @Composable
 fun SplashScreen(
     viewModel: SplashViewModel = hiltViewModel(),
+    onSplashReady: () -> Unit = {},
     onNavigateToHome: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    
+    // Notify that splash screen is ready (to close system splash)
+    LaunchedEffect(Unit) {
+        onSplashReady()
+    }
 
     // Navigate based on auth status
     LaunchedEffect(uiState.isLoading) {
@@ -49,11 +55,11 @@ fun SplashScreen(
             .background(BaseBackground),
         contentAlignment = Alignment.Center
     ) {
-        // App Logo
+        // App Logo - Show larger to fill screen better
         Image(
             painter = painterResource(id = R.drawable.logo_appstore),
             contentDescription = null,
-            modifier = Modifier.size(120.dp)
+            modifier = Modifier.size(200.dp)
         )
 
         // Loading indicator at bottom

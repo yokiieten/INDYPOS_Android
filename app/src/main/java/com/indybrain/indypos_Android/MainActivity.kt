@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -77,6 +78,9 @@ class MainActivity : ComponentActivity() {
     // Flag to track if we received a new intent from onNewIntent
     private var hasNewIntent = false
     
+    // Splash screen instance
+    private var splashScreen: androidx.core.splashscreen.SplashScreen? = null
+    
     override fun attachBaseContext(newBase: Context) {
         val localeCode = try {
             val prefs = newBase.getSharedPreferences("indypos_prefs", Context.MODE_PRIVATE)
@@ -89,6 +93,10 @@ class MainActivity : ComponentActivity() {
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install Splash Screen before super.onCreate() for Android 12+
+        splashScreen = installSplashScreen()
+        splashScreen?.setKeepOnScreenCondition { true }
+        
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -104,6 +112,16 @@ class MainActivity : ComponentActivity() {
                     val coroutineScope = rememberCoroutineScope()
                     var scannedBarcode by remember { mutableStateOf<String?>(null) }
                     var scannedBarcodeForProduct by remember { mutableStateOf<String?>(null) }
+                    
+                    // Control splash screen visibility
+                    var isSplashScreenReady by remember { mutableStateOf(false) }
+                    
+                    // Close system splash screen when Compose splash screen is ready
+                    LaunchedEffect(isSplashScreenReady) {
+                        if (isSplashScreenReady) {
+                            splashScreen?.setKeepOnScreenCondition { false }
+                        }
+                    }
                     
                     // Store current intent URI and timestamp to force updates
                     var currentIntentUri by remember { mutableStateOf(intent?.data?.toString()) }
@@ -220,6 +238,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         composable(NavRoutes.Splash.route) {
                             SplashScreen(
+                                onSplashReady = { isSplashScreenReady = true },
                                 onNavigateToHome = {
                                     navController.navigate(NavRoutes.Home.route) {
                                         popUpTo(NavRoutes.Splash.route) {

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.INDYPOS_Android" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.INDYPOS_Android" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Splash Screen API - Use simple background, logo will be shown in Compose -->
+        <item name="android:windowSplashScreenBackground">#FFFFFF</item>
+        <item name="android:windowSplashScreenAnimationDuration">300</item>
+    </style>
 </resources>
