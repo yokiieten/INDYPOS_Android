@@ -117,7 +117,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install Splash Screen before super.onCreate() for Android 12+
         splashScreen = installSplashScreen()
-        splashScreen?.setKeepOnScreenCondition { true }
+        // ไม่ต้องบังคับให้ Splash ค้างตลอด ปล่อยให้ระบบจัดการเอง
+        splashScreen?.setKeepOnScreenCondition { false }
         
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
