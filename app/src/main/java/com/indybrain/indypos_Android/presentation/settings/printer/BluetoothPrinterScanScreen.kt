@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android.presentation.settings.printer
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -290,7 +291,7 @@ private fun HeaderSection(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Printer Icon Placeholder (you can replace with actual image)
+        // Printer Icon
         Box(
             modifier = Modifier
                 .size(100.dp)
@@ -298,13 +299,10 @@ private fun HeaderSection(
                 .background(Color(0xFFF5F5F7)),
             contentAlignment = Alignment.Center
         ) {
-            // Placeholder - replace with actual printer image
-            Text(
-                text = "🖨️",
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Regular,
-                    size = FontSize.Large
-                )
+            Image(
+                painter = painterResource(id = R.drawable.logo_printer_connect),
+                contentDescription = "Printer",
+                modifier = Modifier.size(100.dp)
             )
         }
         
