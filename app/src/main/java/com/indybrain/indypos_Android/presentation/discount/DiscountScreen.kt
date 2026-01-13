@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
+import com.indybrain.indypos_Android.core.ui.isLandscape
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
@@ -79,6 +80,7 @@ fun DiscountScreen(
     val isValid by viewModel.isValid.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val isLandscapeMode = isLandscape()
     
     var valueText by remember { mutableStateOf("") }
     
@@ -122,11 +124,49 @@ fun DiscountScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+        if (isLandscapeMode) {
+            // Landscape Layout - Split screen
+            DiscountScreenLandscape(
+                subtotal = subtotal,
+                discount = discount,
+                isValid = isValid,
+                errorMessage = errorMessage,
+                valueText = valueText,
+                quickOptions = viewModel.getQuickDiscountOptions(),
+                onValueTextChange = { newValue ->
+                    val filtered = newValue.filter { it.isDigit() || it == '.' }
+                    valueText = filtered
+                    val doubleValue = filtered.toDoubleOrNull() ?: 0.0
+                    viewModel.setDiscountValue(doubleValue)
+                },
+                onDiscountTypeChange = { type ->
+                    viewModel.setDiscountType(type)
+                    valueText = ""
+                    keyboardController?.hide()
+                },
+                onQuickOptionClick = { option ->
+                    viewModel.setDiscountType(option.type)
+                    viewModel.setDiscountValue(option.value)
+                    valueText = if (option.type == DiscountType.PERCENTAGE) {
+                        option.value.toInt().toString()
+                    } else {
+                        option.value.toString()
+                    }
+                    keyboardController?.hide()
+                },
+                onCancel = onCancel,
+                onApply = {
+                    onDiscountSelected(viewModel.getDiscountModel())
+                },
+                modifier = Modifier.padding(padding)
+            )
+        } else {
+            // Portrait Layout - Original vertical layout
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
@@ -325,32 +365,38 @@ fun DiscountScreen(
                         )
                         
                         val quickOptions = viewModel.getQuickDiscountOptions()
-                        val numberOfRows = kotlin.math.ceil(quickOptions.size / 2.0).toInt()
-                        val cellHeight = 52
-                        val spacing = 12
-                        val totalHeightDp = ((numberOfRows * cellHeight + (numberOfRows - 1) * spacing).toFloat()).dp
                         
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.height(totalHeightDp)
+                        // Display in 2 columns without scrolling
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(quickOptions) { option ->
-                                QuickDiscountOption(
-                                    discount = option,
-                                    isSelected = discount.type == option.type && discount.value == option.value,
-                                    onClick = {
-                                        viewModel.setDiscountType(option.type)
-                                        viewModel.setDiscountValue(option.value)
-                                        valueText = if (option.type == DiscountType.PERCENTAGE) {
-                                            option.value.toInt().toString()
-                                        } else {
-                                            option.value.toString()
-                                        }
-                                        keyboardController?.hide()
+                            quickOptions.chunked(2).forEach { rowOptions ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    rowOptions.forEach { option ->
+                                        QuickDiscountOption(
+                                            discount = option,
+                                            isSelected = discount.type == option.type && discount.value == option.value,
+                                            onClick = {
+                                                viewModel.setDiscountType(option.type)
+                                                viewModel.setDiscountValue(option.value)
+                                                valueText = if (option.type == DiscountType.PERCENTAGE) {
+                                                    option.value.toInt().toString()
+                                                } else {
+                                                    option.value.toString()
+                                                }
+                                                keyboardController?.hide()
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        )
                                     }
-                                )
+                                    // Fill empty space if odd number of items
+                                    if (rowOptions.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
                             }
                         }
                     }
@@ -507,6 +553,7 @@ fun DiscountScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -514,10 +561,11 @@ fun DiscountScreen(
 private fun QuickDiscountOption(
     discount: DiscountModel,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(52.dp)
             .clickable(onClick = onClick),
