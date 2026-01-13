@@ -8,18 +8,26 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.NavHost
@@ -63,8 +71,19 @@ import com.indybrain.indypos_Android.presentation.settings.OrderSettingsItem
 import com.indybrain.indypos_Android.presentation.settings.printer.PrinterSettingsScreen
 import com.indybrain.indypos_Android.presentation.settings.printer.BluetoothPrinterScanScreen
 import com.indybrain.indypos_Android.ui.theme.INDYPOS_AndroidTheme
+import com.indybrain.indypos_Android.core.network.NetworkMonitor
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import javax.inject.Singleton
 import javax.inject.Inject
+
+/**
+ * CompositionLocal exposing global online/offline state to all composables.
+ *
+ * Default is `true` so preview/unspecified cases behave as online.
+ */
+val LocalIsOnline = staticCompositionLocalOf { true }
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -74,6 +93,9 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var networkMonitor: NetworkMonitor
     
     // Flag to track if we received a new intent from onNewIntent
     private var hasNewIntent = false
@@ -110,6 +132,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
                     val coroutineScope = rememberCoroutineScope()
+                    val isOnline by networkMonitor.isOnline.collectAsState()
                     var scannedBarcode by remember { mutableStateOf<String?>(null) }
                     var scannedBarcodeForProduct by remember { mutableStateOf<String?>(null) }
                     
@@ -290,11 +313,12 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    
-                    NavHost(
-                        navController = navController,
-                        startDestination = NavRoutes.Splash.route
-                    ) {
+                    CompositionLocalProvider(LocalIsOnline provides isOnline) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            NavHost(
+                                navController = navController,
+                                startDestination = NavRoutes.Splash.route
+                            ) {
                         composable(NavRoutes.Splash.route) {
                             SplashScreen(
                                 onSplashReady = { isSplashScreenReady = true },
@@ -951,6 +975,30 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 }
                             )
+                        }
+                    }
+                }
+
+                        // Global offline overlay that blocks all interactions when there is no internet.
+                        if (!isOnline) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.4f))
+                                    // Consume all clicks so underlying UI cannot be interacted with
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { /* no-op, just block */ }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "ไม่มีการเชื่อมต่ออินเทอร์เน็ต",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
                         }
                     }
                 }
