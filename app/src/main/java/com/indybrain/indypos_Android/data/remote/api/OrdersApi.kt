@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.data.remote.api
 
 import com.indybrain.indypos_Android.data.remote.dto.CreateOrderRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.CreateOrderResponseDto
+import com.indybrain.indypos_Android.data.remote.dto.OrdersListResponseWrapper
 import com.indybrain.indypos_Android.data.remote.dto.OrdersResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.UpdateOrderStatusResponseDto
 import retrofit2.http.Body
@@ -16,7 +17,7 @@ import retrofit2.http.Query
  */
 interface OrdersApi {
     /**
-     * Get orders endpoint
+     * Get orders endpoint (paginated) - used by other screens
      */
     @GET("protected/indypos/orders/paginated")
     suspend fun getOrders(
@@ -26,6 +27,12 @@ interface OrdersApi {
         @Query("start_date") startDate: String? = null,
         @Query("end_date") endDate: String? = null
     ): OrdersResponseDto
+    
+    /**
+     * Get orders list endpoint (non-paginated) - used by HomeScreen
+     */
+    @GET("protected/indypos/orders")
+    suspend fun getOrdersList(): OrdersListResponseWrapper
     
     /**
      * Create order endpoint

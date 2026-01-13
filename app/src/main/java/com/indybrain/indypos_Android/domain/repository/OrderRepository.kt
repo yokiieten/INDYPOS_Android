@@ -9,6 +9,12 @@ interface OrderRepository {
     suspend fun refreshOrders()
     
     /**
+     * Refresh orders using the new list endpoint (non-paginated)
+     * Used by HomeScreen
+     */
+    suspend fun refreshOrdersList()
+    
+    /**
      * Total sales amount for today's orders (local time).
      */
     suspend fun getTodaySales(): Double

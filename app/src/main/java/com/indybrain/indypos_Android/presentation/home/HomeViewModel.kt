@@ -31,11 +31,12 @@ class HomeViewModel @Inject constructor(
     
     /**
      * Refresh data when screen appears (like viewWillAppear in iOS)
+     * Uses the new orders list endpoint (non-paginated)
      */
     fun refreshData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            orderRepository.refreshOrders()
+            orderRepository.refreshOrdersList()
         }
     }
     

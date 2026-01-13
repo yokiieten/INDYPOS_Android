@@ -11,6 +11,7 @@ import com.indybrain.indypos_Android.data.mapper.OrderMapper
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.api.UpdateOrderStatusRequestDto
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
+import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -66,6 +67,55 @@ class OrderRepositoryImpl @Inject constructor(
                     orderAddonDao.insertOrderAddons(orderAddons)
                 }
             } catch (e: Exception) {
+                // Silently fail - local database will be used
+            }
+        }
+    }
+    
+    override suspend fun refreshOrdersList() {
+        if (networkConnectivityChecker.isConnected()) {
+            try {
+                Log.d("OrderRepository", "📤 Getting orders from API (list)")
+                val response = ordersApi.getOrdersList()
+                
+                val ordersList = response.data
+                if (response.status == 200 && ordersList != null) {
+                    Log.d("OrderRepository", "✅ Get orders list success: ${ordersList.size} items")
+                    
+                    // Convert DTOs to entities (filter out nulls)
+                    val orders = ordersList.mapNotNull { OrderMapper.toEntity(it) }
+                    val orderItems = mutableListOf<OrderItemEntity>()
+                    val orderAddons = mutableListOf<OrderAddonEntity>()
+                    
+                    // Process items and addons
+                    ordersList.forEach { orderListData ->
+                        orderListData.items?.forEach { itemDto ->
+                            val orderItem = OrderMapper.toEntity(itemDto, orderListData.id ?: "")
+                            if (orderItem != null) {
+                                orderItems.add(orderItem)
+                                itemDto.addons?.forEach { addonDto ->
+                                    val addon = OrderMapper.toEntity(addonDto, itemDto.id ?: "")
+                                    if (addon != null) {
+                                        orderAddons.add(addon)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Save to database
+                    orderDao.deleteAllOrders()
+                    orderItemDao.deleteAllOrderItems()
+                    orderAddonDao.deleteAllOrderAddons()
+                    
+                    orderDao.insertOrders(orders)
+                    orderItemDao.insertOrderItems(orderItems)
+                    orderAddonDao.insertOrderAddons(orderAddons)
+                } else {
+                    Log.e("OrderRepository", "❌ Get orders list error: status=${response.status}, message=${response.message}")
+                }
+            } catch (e: Exception) {
+                Log.e("OrderRepository", "❌ Get orders list error: ${e.message}", e)
                 // Silently fail - local database will be used
             }
         }

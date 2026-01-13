@@ -7,6 +7,9 @@ import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
 import com.indybrain.indypos_Android.data.remote.dto.OrderAddonDto
 import com.indybrain.indypos_Android.data.remote.dto.OrderDto
 import com.indybrain.indypos_Android.data.remote.dto.OrderItemDto
+import com.indybrain.indypos_Android.data.remote.dto.OrderListAddon
+import com.indybrain.indypos_Android.data.remote.dto.OrderListData
+import com.indybrain.indypos_Android.data.remote.dto.OrderListItem
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -103,6 +106,86 @@ object OrderMapper {
             addonName = dto.addonName,
             addonPrice = dto.addonPrice,
             quantity = dto.quantity
+        )
+    }
+    
+    // Mapper functions for OrderListData (used by HomeScreen)
+    fun toEntity(dto: OrderListData): OrderEntity? {
+        // Skip if required fields are missing
+        if (dto.id.isNullOrBlank() || dto.orderNumber.isNullOrBlank()) {
+            return null
+        }
+        
+        val orderDate = parseDate(dto.orderDate) ?: Date()
+        val updatedAt = parseDate(dto.updatedAt) ?: orderDate
+        val createdAt = parseDate(dto.createdAt)
+        
+        return OrderEntity(
+            id = dto.id,
+            orderNumber = dto.orderNumber,
+            orderDate = orderDate,
+            subtotal = dto.subtotal ?: 0.0,
+            discount = dto.discountAmount ?: 0.0,
+            total = dto.total ?: 0.0,
+            paymentTypeRaw = dto.paymentType ?: 0,
+            statusRaw = dto.orderStatus ?: 0,
+            updatedAt = updatedAt,
+            userId = dto.userId,
+            customerName = dto.customerName,
+            customerPhone = dto.customerPhone,
+            customerEmail = dto.customerEmail,
+            discountAmount = dto.discountAmount,
+            discountPercentage = dto.discountPercentage,
+            taxAmount = dto.taxAmount,
+            taxPercentage = dto.taxPercentage,
+            paymentStatus = dto.paymentStatus,
+            notes = dto.notes,
+            createdAt = createdAt
+        )
+    }
+    
+    fun toEntity(dto: OrderListItem, orderId: String): OrderItemEntity? {
+        // Skip if required fields are missing
+        if (dto.id.isNullOrBlank() || dto.productName.isNullOrBlank()) {
+            return null
+        }
+        
+        val addonsJson = if (dto.addons != null && dto.addons.isNotEmpty()) {
+            gson.toJson(dto.addons)
+        } else {
+            null
+        }
+        
+        return OrderItemEntity(
+            id = dto.id,
+            orderId = orderId,
+            productName = dto.productName,
+            productPrice = dto.unitPrice ?: 0.0,
+            productUnitPrice = dto.unitPrice ?: 0.0,
+            quantity = dto.quantity ?: 0,
+            totalPrice = dto.totalPrice ?: 0.0,
+            addons = addonsJson,
+            specialRequest = dto.specialRequest,
+            productId = dto.productId,
+            productCode = dto.productCode,
+            unitCost = dto.unitCost,
+            notes = dto.notes,
+            createdAt = parseDate(dto.createdAt)
+        )
+    }
+    
+    fun toEntity(dto: OrderListAddon, orderItemId: String): OrderAddonEntity? {
+        // Skip if required fields are missing
+        if (dto.addonId.isNullOrBlank() || dto.addonName.isNullOrBlank()) {
+            return null
+        }
+        
+        return OrderAddonEntity(
+            orderItemId = orderItemId,
+            addonId = dto.addonId,
+            addonName = dto.addonName,
+            addonPrice = dto.unitPrice ?: 0.0, // Map unitPrice to addonPrice
+            quantity = dto.quantity ?: 0
         )
     }
     
