@@ -41,6 +41,7 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.indybrain.indypos_Android.R
 import okhttp3.ResponseBody
+import com.indybrain.indypos_Android.core.notification.StockNotificationHelper
 
 @HiltViewModel
 class OrderProductViewModel @Inject constructor(
@@ -56,6 +57,7 @@ class OrderProductViewModel @Inject constructor(
     private val printerService: PrinterService,
     private val authRepository: AuthRepository,
     private val getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase,
+    private val stockNotificationHelper: StockNotificationHelper,
     @ApplicationContext private val context: Context,
     private val gson: Gson
 ) : ViewModel() {
@@ -306,6 +308,10 @@ class OrderProductViewModel @Inject constructor(
                             // Check receipt settings and print if enabled
                             handlePrintingAndCashDrawer(orderNumber, subtotal, discount, paymentTypeCode)
                             
+                            // Check for low stock products and show notification (after order is placed)
+                            // ส่ง cartItems ที่เพิ่งสั่งไปเพื่อคำนวณ stock ที่เหลือ
+                            checkLowStockProducts(cartItems)
+                            
                             cartRepository.clearCart()
                             _uiState.update { 
                                 it.copy(
@@ -546,6 +552,29 @@ class OrderProductViewModel @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
             // Don't fail the order if printing fails
+        }
+    }
+    
+    /**
+     * ตรวจสอบสินค้าใกล้หมดและแสดง notification
+     * @param orderedCartItems รายการสินค้าที่เพิ่งสั่งไป
+     */
+    private fun checkLowStockProducts(orderedCartItems: List<CartItemEntity>) {
+        viewModelScope.launch {
+            try {
+                val products = productDao.getAllActiveProducts()
+                
+                // สร้าง Map ของ productId -> quantity ที่สั่งไป (กรอง productId ที่เป็น null)
+                val orderedItemsMap = orderedCartItems
+                    .filter { it.productId != null }
+                    .groupBy { it.productId!! }
+                    .mapValues { (_, items) -> items.sumOf { it.quantity } }
+                
+                stockNotificationHelper.checkAndNotifyLowStock(products, orderedItemsMap)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Don't fail the order if notification check fails
+            }
         }
     }
     

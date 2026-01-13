@@ -232,6 +232,65 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     
+                    // Track navigation intent extra
+                    var navigateToExtra by remember { mutableStateOf<String?>(null) }
+                    
+                    // Handle navigation from notification (intent extra) - on create
+                    LaunchedEffect(Unit) {
+                        navigateToExtra = this@MainActivity.intent?.getStringExtra("navigate_to")
+                    }
+                    
+                    // Watch lifecycle to handle navigation from notification when app is already open
+                    DisposableEffect(lifecycleOwner) {
+                        val navigationObserver = LifecycleEventObserver { _, event ->
+                            if (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START) {
+                                // Check for navigation intent extra when app resumes
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(100)
+                                    val newNavigateTo = this@MainActivity.intent?.getStringExtra("navigate_to")
+                                    if (newNavigateTo != null && newNavigateTo != navigateToExtra) {
+                                        navigateToExtra = newNavigateTo
+                                    }
+                                }
+                            }
+                        }
+                        lifecycleOwner.lifecycle.addObserver(navigationObserver)
+                        onDispose {
+                            lifecycleOwner.lifecycle.removeObserver(navigationObserver)
+                        }
+                    }
+                    
+                    // Navigate when navigateToExtra is set
+                    LaunchedEffect(navigateToExtra) {
+                        if (navigateToExtra == "stock_management") {
+                            // รอให้ navigation graph พร้อม
+                            kotlinx.coroutines.delay(500)
+                            // Navigate to Stock Management
+                            try {
+                                navController.navigate(NavRoutes.StockManagement.route) {
+                                    // Pop to Home if it exists, otherwise clear all
+                                    val homeRoute = NavRoutes.Home.route
+                                    if (navController.graph.findNode(homeRoute) != null) {
+                                        popUpTo(homeRoute) {
+                                            inclusive = false
+                                        }
+                                    } else {
+                                        popUpTo(0) {
+                                            inclusive = true
+                                        }
+                                    }
+                                    launchSingleTop = true
+                                }
+                                // Clear the extra to prevent re-navigation
+                                navigateToExtra = null
+                                this@MainActivity.intent?.removeExtra("navigate_to")
+                            } catch (e: Exception) {
+                                // Ignore navigation errors
+                                navigateToExtra = null
+                            }
+                        }
+                    }
+                    
                     NavHost(
                         navController = navController,
                         startDestination = NavRoutes.Splash.route
