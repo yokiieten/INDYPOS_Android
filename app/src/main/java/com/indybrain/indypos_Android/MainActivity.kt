@@ -458,7 +458,11 @@ class MainActivity : ComponentActivity() {
                         composable(NavRoutes.MainProduct.route) {
                             MainProductScreen(
                                 onBackClick = {
-                                    navController.popBackStack()
+                                    // วิธีที่ 2: กดกลับจาก MainProduct ให้กลับไป Home เสมอ
+                                    navController.popBackStack(
+                                        route = NavRoutes.Home.route,
+                                        inclusive = false
+                                    )
                                 },
                                 onProductClick = { productId, productName, isInCart ->
                                     // Clear scannedBarcode before navigation to prevent re-trigger
