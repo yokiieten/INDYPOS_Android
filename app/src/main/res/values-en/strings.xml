@@ -179,6 +179,7 @@
     <string name="order_status_cancelled">Cancelled</string>
     <string name="order_loading">Loading...</string>
     <string name="order_empty">No orders</string>
+    <string name="order_load_more">Load More</string>
     
     <!-- Order Detail Screen -->
     <string name="order_detail_title">Order Details</string>

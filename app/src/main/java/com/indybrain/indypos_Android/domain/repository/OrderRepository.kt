@@ -9,6 +9,15 @@ interface OrderRepository {
     suspend fun refreshOrders()
     
     /**
+     * Load additional orders using the paginated endpoint.
+     *
+     * @param page The page index to load (1-based).
+     * @param pageSize Number of orders per page.
+     * @return true if there are more pages to load, false otherwise.
+     */
+    suspend fun loadMoreOrders(page: Int, pageSize: Int = 10): Boolean
+    
+    /**
      * Refresh orders using the new list endpoint (non-paginated)
      * Used by HomeScreen
      */

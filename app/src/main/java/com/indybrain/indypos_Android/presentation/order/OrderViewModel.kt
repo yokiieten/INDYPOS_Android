@@ -112,8 +112,35 @@ class OrderViewModel @Inject constructor(
     
     fun refreshOrders() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isLoadingMore = false,
+                    currentPage = 1,
+                    hasMore = true
+                )
+            }
             orderRepository.refreshOrders()
+        }
+    }
+
+    fun loadMore() {
+        val state = _uiState.value
+        if (state.isLoadingMore || !state.hasMore) {
+            return
+        }
+
+        viewModelScope.launch {
+            val nextPage = state.currentPage + 1
+            _uiState.update { it.copy(isLoadingMore = true) }
+            val hasMore = orderRepository.loadMoreOrders(page = nextPage, pageSize = 10)
+            _uiState.update {
+                it.copy(
+                    isLoadingMore = false,
+                    currentPage = if (hasMore) nextPage else nextPage,
+                    hasMore = hasMore
+                )
+            }
         }
     }
 

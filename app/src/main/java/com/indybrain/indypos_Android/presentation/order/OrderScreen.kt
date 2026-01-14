@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,6 +73,7 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -161,11 +164,17 @@ fun OrderScreen(
                     0 -> OrderListContent(
                         orders = uiState.completedOrders,
                         isLoading = uiState.isLoading,
+                        isLoadingMore = uiState.isLoadingMore,
+                        hasMore = uiState.hasMore,
+                        onLoadMore = { viewModel.loadMore() },
                         onOrderClick = onOrderClick
                     )
                     1 -> OrderListContent(
                         orders = uiState.cancelledOrders,
                         isLoading = uiState.isLoading,
+                        isLoadingMore = uiState.isLoadingMore,
+                        hasMore = uiState.hasMore,
+                        onLoadMore = { viewModel.loadMore() },
                         onOrderClick = onOrderClick
                     )
                 }
@@ -792,6 +801,9 @@ private fun formatOrderCustomDate(millis: Long?): String {
 private fun OrderListContent(
     orders: List<Order>,
     isLoading: Boolean,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    onLoadMore: () -> Unit,
     onOrderClick: (String) -> Unit = {}
 ) {
     if (isLoading) {
@@ -823,8 +835,27 @@ private fun OrderListContent(
             )
         }
     } else {
+        val listState = rememberLazyListState()
+
+        // Trigger load more automatically when scrolled near the end
+        LaunchedEffect(listState, hasMore, isLoadingMore) {
+            snapshotFlow {
+                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                val totalItems = listState.layoutInfo.totalItemsCount
+                // When user scrolls to last 3 items
+                lastVisible >= totalItems - 3
+            }
+                .distinctUntilChanged()
+                .collect { shouldLoadMore ->
+                    if (shouldLoadMore && hasMore && !isLoadingMore) {
+                        onLoadMore()
+                    }
+                }
+        }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
+            state = listState,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 horizontal = 20.dp,
                 vertical = 16.dp
@@ -836,6 +867,29 @@ private fun OrderListContent(
                     order = order,
                     onClick = { onOrderClick(order.id) }
                 )
+            }
+
+            // Footer: loading indicator while fetching more
+            item {
+                if (isLoadingMore && hasMore) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.order_loading),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = SecondaryText
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
             }
         }
     }

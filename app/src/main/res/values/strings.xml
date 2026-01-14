@@ -200,6 +200,7 @@
     <string name="order_status_cancelled">ยกเลิกแล้ว</string>
     <string name="order_loading">กำลังโหลด...</string>
     <string name="order_empty">ไม่มีออเดอร์</string>
+    <string name="order_load_more">โหลดเพิ่ม</string>
     
     <!-- Order Detail Screen -->
     <string name="order_detail_title">รายละเอียดออเดอร์</string>

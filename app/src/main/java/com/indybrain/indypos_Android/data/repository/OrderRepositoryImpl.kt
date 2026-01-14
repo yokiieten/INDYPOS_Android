@@ -31,9 +31,9 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun refreshOrders() {
         if (networkConnectivityChecker.isConnected()) {
             try {
-                // Default params: first page, reasonable limit, no status/date filtering
+                // First page, page size 10, no status/date filtering
                 val response = ordersApi.getOrders(
-                    limit = 100,
+                    limit = 10,
                     page = 1,
                     status = null,
                     startDate = null,
@@ -57,7 +57,7 @@ class OrderRepositoryImpl @Inject constructor(
                         }
                     }
                     
-                    // Save to database
+                    // Save to database (clear old data)
                     orderDao.deleteAllOrders()
                     orderItemDao.deleteAllOrderItems()
                     orderAddonDao.deleteAllOrderAddons()
@@ -69,6 +69,54 @@ class OrderRepositoryImpl @Inject constructor(
             } catch (e: Exception) {
                 // Silently fail - local database will be used
             }
+        }
+    }
+    
+    override suspend fun loadMoreOrders(page: Int, pageSize: Int): Boolean {
+        if (!networkConnectivityChecker.isConnected()) {
+            return false
+        }
+        
+        return try {
+            val response = ordersApi.getOrders(
+                limit = pageSize,
+                page = page,
+                status = null,
+                startDate = null,
+                endDate = null
+            )
+            
+            val ordersDto = response.data?.orders
+            if (response.status == 200 && ordersDto != null && ordersDto.isNotEmpty()) {
+                val orders = ordersDto.map { OrderMapper.toEntity(it) }
+                val orderItems = mutableListOf<OrderItemEntity>()
+                val orderAddons = mutableListOf<OrderAddonEntity>()
+                
+                ordersDto.forEach { orderDto ->
+                    orderDto.items?.forEach { itemDto ->
+                        orderItems.add(OrderMapper.toEntity(itemDto, orderDto.id))
+                        itemDto.addons?.forEach { addonDto ->
+                            orderAddons.add(OrderMapper.toEntity(addonDto, itemDto.id))
+                        }
+                    }
+                }
+                
+                // Append to database (no delete)
+                orderDao.insertOrders(orders)
+                orderItemDao.insertOrderItems(orderItems)
+                orderAddonDao.insertOrderAddons(orderAddons)
+                
+                // Determine if there's more data
+                val pagination = response.data?.pagination
+                when {
+                    pagination != null -> pagination.hasNext
+                    else -> ordersDto.size >= pageSize
+                }
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
         }
     }
     
