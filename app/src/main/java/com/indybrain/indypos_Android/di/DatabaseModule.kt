@@ -25,7 +25,7 @@ object DatabaseModule {
             IndyPosDatabase::class.java,
             "indypos_database"
         )
-        .fallbackToDestructiveMigration() // For development - remove in production
+//        .fallbackToDestructiveMigration() // For development - remove in production
         .build()
     }
     
