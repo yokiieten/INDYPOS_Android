@@ -38,6 +38,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -167,6 +169,7 @@ fun OrderScreen(
                         isLoadingMore = uiState.isLoadingMore,
                         hasMore = uiState.hasMore,
                         onLoadMore = { viewModel.loadMore() },
+                        onRefresh = { viewModel.refreshOrders() },
                         onOrderClick = onOrderClick
                     )
                     1 -> OrderListContent(
@@ -175,6 +178,7 @@ fun OrderScreen(
                         isLoadingMore = uiState.isLoadingMore,
                         hasMore = uiState.hasMore,
                         onLoadMore = { viewModel.loadMore() },
+                        onRefresh = { viewModel.refreshOrders() },
                         onOrderClick = onOrderClick
                     )
                 }
@@ -804,91 +808,99 @@ private fun OrderListContent(
     isLoadingMore: Boolean,
     hasMore: Boolean,
     onLoadMore: () -> Unit,
+    onRefresh: () -> Unit,
     onOrderClick: (String) -> Unit = {}
 ) {
-    if (isLoading) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = stringResource(id = R.string.order_loading),
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Regular,
-                    size = FontSize.Medium
-                ),
-                color = SecondaryText
-            )
-        }
-    } else if (orders.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = stringResource(id = R.string.order_empty),
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Regular,
-                    size = FontSize.Medium
-                ),
-                color = PlaceholderText
-            )
-        }
-    } else {
-        val listState = rememberLazyListState()
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isLoading)
 
-        // Trigger load more automatically when scrolled near the end
-        LaunchedEffect(listState, hasMore, isLoadingMore) {
-            snapshotFlow {
-                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                val totalItems = listState.layoutInfo.totalItemsCount
-                // When user scrolls to last 3 items
-                lastVisible >= totalItems - 3
-            }
-                .distinctUntilChanged()
-                .collect { shouldLoadMore ->
-                    if (shouldLoadMore && hasMore && !isLoadingMore) {
-                        onLoadMore()
-                    }
-                }
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = listState,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                horizontal = 20.dp,
-                vertical = 16.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(orders) { order ->
-                OrderItem(
-                    order = order,
-                    onClick = { onOrderClick(order.id) }
+    SwipeRefresh(
+        state = swipeRefreshState,
+        onRefresh = onRefresh
+    ) {
+        if (isLoading && orders.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(id = R.string.order_loading),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
                 )
             }
+        } else if (orders.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(id = R.string.order_empty),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = PlaceholderText
+                )
+            }
+        } else {
+            val listState = rememberLazyListState()
 
-            // Footer: loading indicator while fetching more
-            item {
-                if (isLoadingMore && hasMore) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.order_loading),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = SecondaryText
-                        )
+            // Trigger load more automatically when scrolled near the end
+            LaunchedEffect(listState, hasMore, isLoadingMore) {
+                snapshotFlow {
+                    val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                    val totalItems = listState.layoutInfo.totalItemsCount
+                    // When user scrolls to last 3 items
+                    lastVisible >= totalItems - 3
+                }
+                    .distinctUntilChanged()
+                    .collect { shouldLoadMore ->
+                        if (shouldLoadMore && hasMore && !isLoadingMore) {
+                            onLoadMore()
+                        }
                     }
-                } else {
-                    Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = 20.dp,
+                    vertical = 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(orders) { order ->
+                    OrderItem(
+                        order = order,
+                        onClick = { onOrderClick(order.id) }
+                    )
+                }
+
+                // Footer: loading indicator while fetching more
+                item {
+                    if (isLoadingMore && hasMore) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.order_loading),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Small
+                                ),
+                                color = SecondaryText
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                 }
             }
         }
