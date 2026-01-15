@@ -1,6 +1,5 @@
 package com.indybrain.indypos_Android.presentation.settings
 
-import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,16 +26,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,19 +53,10 @@ import com.indybrain.indypos_Android.ui.theme.SecondaryText
 @Composable
 fun LanguageSettingsScreen(
     onBackClick: () -> Unit = {},
+    onLanguageChanged: (Int) -> Unit = {},
     viewModel: LanguageSettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    var languageChanged by remember { mutableStateOf(false) }
-    
-    // Restart activity when language changes
-    LaunchedEffect(languageChanged) {
-        if (languageChanged) {
-            val activity = context as? Activity
-            activity?.recreate()
-        }
-    }
     
     Scaffold(
         containerColor = BaseBackground,
@@ -118,7 +103,8 @@ fun LanguageSettingsScreen(
                     onClick = { 
                         val changed = viewModel.selectLanguage(languageOption)
                         if (changed) {
-                            languageChanged = true
+                            // Trigger locale update in MainActivity
+                            onLanguageChanged(languageOption.localeCode)
                         }
                     }
                 )

@@ -85,6 +85,11 @@ import javax.inject.Inject
  */
 val LocalIsOnline = staticCompositionLocalOf { true }
 
+/**
+ * CompositionLocal for triggering UI recomposition when locale changes
+ */
+val LocalLocaleVersion = staticCompositionLocalOf { 0 }
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     
@@ -121,6 +126,14 @@ class MainActivity : ComponentActivity() {
         splashScreen?.setKeepOnScreenCondition { false }
         
         super.onCreate(savedInstanceState)
+        
+        // For Android 8-10, ensure locale is properly applied after onCreate
+        if (android.os.Build.VERSION.SDK_INT in android.os.Build.VERSION_CODES.O..android.os.Build.VERSION_CODES.Q) {
+            val localeCode = languageLocalDataSource.getLanguageLocale()
+            val locale = LocaleHelper.getLocaleFromCode(localeCode)
+            java.util.Locale.setDefault(locale)
+        }
+        
         enableEdgeToEdge()
         setContent {
             INDYPOS_AndroidTheme(
@@ -136,6 +149,42 @@ class MainActivity : ComponentActivity() {
                     val isOnline by networkMonitor.isOnline.collectAsState()
                     var scannedBarcode by remember { mutableStateOf<String?>(null) }
                     var scannedBarcodeForProduct by remember { mutableStateOf<String?>(null) }
+                    
+                    // State for locale version to trigger recomposition when language changes
+                    var localeVersion by remember { mutableStateOf(0) }
+                    
+                    // Function to update locale at runtime without recreating activity
+                    val updateLocale: (Int) -> Unit = { localeCode ->
+                        val locale = LocaleHelper.getLocaleFromCode(localeCode)
+                        java.util.Locale.setDefault(locale)
+                        
+                        // Update configuration for the current context
+                        val config = android.content.res.Configuration(resources.configuration)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                            config.setLocale(locale)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            config.locale = locale
+                        }
+                        
+                        // Update resources configuration
+                        @Suppress("DEPRECATION")
+                        resources.updateConfiguration(config, resources.displayMetrics)
+                        
+                        // Also update base context resources
+                        val baseConfig = android.content.res.Configuration(baseContext.resources.configuration)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                            baseConfig.setLocale(locale)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            baseConfig.locale = locale
+                        }
+                        @Suppress("DEPRECATION")
+                        baseContext.resources.updateConfiguration(baseConfig, baseContext.resources.displayMetrics)
+                        
+                        // Trigger recomposition by updating version
+                        localeVersion++
+                    }
                     
                     // Control splash screen visibility
                     var isSplashScreenReady by remember { mutableStateOf(false) }
@@ -314,7 +363,10 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    CompositionLocalProvider(LocalIsOnline provides isOnline) {
+                    CompositionLocalProvider(
+                        LocalIsOnline provides isOnline,
+                        LocalLocaleVersion provides localeVersion
+                    ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             NavHost(
                                 navController = navController,
@@ -753,6 +805,9 @@ class MainActivity : ComponentActivity() {
                             LanguageSettingsScreen(
                                 onBackClick = {
                                     navController.popBackStack()
+                                },
+                                onLanguageChanged = { localeCode ->
+                                    updateLocale(localeCode)
                                 }
                             )
                         }

@@ -24,9 +24,12 @@ class LanguageLocalDataSource @Inject constructor(
      * @param localeCode Locale code (1033 for English, 1054 for Thai)
      */
     fun saveLanguageLocale(localeCode: Int) {
+        // Use commit() instead of apply() to ensure synchronous save
+        // This is important when changing language to prevent race condition
+        // with activity restart
         sharedPreferences.edit()
             .putInt(KEY_LANGUAGE_LOCALE, localeCode)
-            .apply()
+            .commit()
     }
     
     /**
