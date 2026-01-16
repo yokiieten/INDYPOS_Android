@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -1358,7 +1361,7 @@ private fun CategoryDropdown(
             onDismissRequest = { showDropdown = false },
             title = {
                 Text(
-                    text = "เลือกหมวดหมู่",
+                    text = "เลือกหมวดหมู่ (${categories.size} รายการ)",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -1367,8 +1370,13 @@ private fun CategoryDropdown(
                 )
             },
             text = {
-                Column {
-                    categories.forEach { category ->
+                // Use LazyColumn for scrollable list
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp) // Limit max height for scrolling
+                ) {
+                    items(categories) { category ->
                         TextButton(
                             onClick = {
                                 onCategorySelected(category.id)

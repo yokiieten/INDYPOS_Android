@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -550,7 +551,7 @@ private fun CategoryDropdown(
             onDismissRequest = { showDropdown = false },
             title = {
                 Text(
-                    text = stringResource(id = R.string.product_management_all_categories),
+                    text = "${stringResource(id = R.string.product_management_all_categories)} (${categories.size + 1} รายการ)",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -559,26 +560,33 @@ private fun CategoryDropdown(
                 )
             },
             text = {
-                Column {
+                // Use LazyColumn for scrollable list
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp) // Limit max height for scrolling
+                ) {
                     // All Categories option
-                    TextButton(
-                        onClick = {
-                            onCategorySelected(null)
-                            showDropdown = false
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.product_management_all_categories),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = if (selectedCategoryId == null) PrimaryButton else PrimaryText
-                        )
+                    item {
+                        TextButton(
+                            onClick = {
+                                onCategorySelected(null)
+                                showDropdown = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.product_management_all_categories),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = if (selectedCategoryId == null) PrimaryButton else PrimaryText
+                            )
+                        }
                     }
                     // Category options
-                    categories.forEach { category ->
+                    items(categories) { category ->
                         TextButton(
                             onClick = {
                                 onCategorySelected(category.id)
