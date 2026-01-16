@@ -354,8 +354,14 @@ class AddEditProductViewModel @Inject constructor(
         val categoryName = _uiState.value.categoryName.trim()
         
         if (categoryName.isBlank()) {
+            // Validation error - close dialog and show as popup
             _uiState.update { 
-                it.copy(categoryError = "กรุณาใส่ชื่อหมวดหมู่")
+                it.copy(
+                    showAddCategoryDialog = false,
+                    categoryName = "",
+                    categoryError = null,
+                    errorMessage = "กรุณาใส่ชื่อหมวดหมู่"
+                )
             }
             return
         }

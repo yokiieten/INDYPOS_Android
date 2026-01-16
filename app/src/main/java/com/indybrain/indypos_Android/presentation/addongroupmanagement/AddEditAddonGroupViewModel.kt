@@ -289,6 +289,17 @@ class AddEditAddonGroupViewModel @Inject constructor(
      * Create new addon
      */
     fun createAddon(name: String, price: Double) {
+        // Validation - close dialog and show as popup
+        if (name.trim().isBlank()) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = "กรุณาใส่ชื่อ Addon"
+                )
+            }
+            return
+        }
+        
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             

@@ -291,17 +291,11 @@ fun AddEditAddonGroupScreen(
             )
         }
         
-        // Close dialog when API error occurs or success
+        // Close dialog when any error occurs or success
         LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
-            // If error occurs while dialog is open and it's an API error (not validation)
-            uiState.errorMessage?.let { error ->
-                if (showAddAddonDialog) {
-                    // Check if it's an API error (contains duplicate, etc.) not validation
-                    if (error.contains("ซ้ำ") || error.contains("duplicate") || 
-                        error.contains("เกิดข้อผิดพลาด") || error.length > 30) {
-                        showAddAddonDialog = false
-                    }
-                }
+            // If error occurs while dialog is open, close dialog and show error popup
+            if (showAddAddonDialog && uiState.errorMessage != null) {
+                showAddAddonDialog = false
             }
             // Close dialog on success
             if (showAddAddonDialog && uiState.successMessage != null) {
@@ -663,26 +657,7 @@ private fun AddAddonDialog(
                     ),
                     enabled = !isLoading
                 )
-                
-                // Show validation errors in dialog
-                // API errors are shown as separate popup after dialog closes
-                errorMessage?.let { error ->
-                    // Only show validation errors (short, simple messages)
-                    // API errors will be shown as popup after dialog closes
-                    if (!error.contains("ซ้ำ") && !error.contains("duplicate") && 
-                        !error.contains("เกิดข้อผิดพลาด") && 
-                        error.length < 50) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = error,
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = RedFailure
-                        )
-                    }
-                }
+                // Don't show errors inline - all errors (including validation) are shown as popup
             }
         },
         confirmButton = {

@@ -1170,19 +1170,7 @@ private fun AddCategoryDialog(
                         focusedBorderColor = PrimaryButton
                     )
                 )
-                // Show validation errors in dialog
-                // API errors are shown as separate popup after dialog closes
-                errorMessage?.let { error ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = error,
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color(0xFFE83808)
-                    )
-                }
+                // Don't show errors inline - all errors (including validation) are shown as popup
             }
         },
         confirmButton = {
