@@ -36,25 +36,34 @@ class CategoryManagementViewModel @Inject constructor(
      */
     fun loadCategories() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            // Check internet connectivity
-            if (networkConnectivityChecker.isConnected()) {
-                // Has internet - fetch from API and sync with Room
-                val result = productRepository.fetchAndSyncCategories()
-                result.onSuccess {
-                    // Data will be updated via observeCategories() Flow
-                }.onFailure { error ->
-                    _uiState.update { current ->
-                        current.copy(
-                            isLoading = false,
-                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
-                        )
+            try {
+                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+                
+                // Check internet connectivity
+                if (networkConnectivityChecker.isConnected()) {
+                    // Has internet - fetch from API and sync with Room
+                    val result = productRepository.fetchAndSyncCategories()
+                    result.onSuccess {
+                        // Data will be updated via observeCategories() Flow
+                    }.onFailure { error ->
+                        _uiState.update { current ->
+                            current.copy(
+                                isLoading = false,
+                                errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                            )
+                        }
                     }
+                } else {
+                    // No internet - data will be loaded from Room via Flow
+                    // isLoading will be set to false by observeCategories() when data arrives
                 }
-            } else {
-                // No internet - data will be loaded from Room via Flow
-                // isLoading will be set to false by observeCategories() when data arrives
+            } catch (e: Exception) {
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        errorMessage = "เกิดข้อผิดพลาด: ${e.message ?: "ไม่ทราบสาเหตุ"}"
+                    )
+                }
             }
         }
     }
@@ -64,11 +73,24 @@ class CategoryManagementViewModel @Inject constructor(
      */
     private fun observeCategories() {
         viewModelScope.launch {
-            productRepository.getAllCategoriesFlow().collect { categories ->
+            try {
+                productRepository.getAllCategoriesFlow().collect { categories ->
+                    // Check if ViewModel is still active before updating state
+                    if (categories != null) {
+                        _uiState.update { current ->
+                            current.copy(
+                                categories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE },
+                                isLoading = false // Clear loading state once we have data from Room
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle any exceptions during collection
                 _uiState.update { current ->
                     current.copy(
-                        categories = categories.sortedBy { it.sortOrder },
-                        isLoading = false // Clear loading state once we have data from Room
+                        isLoading = false,
+                        errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูล: ${e.message}"
                     )
                 }
             }

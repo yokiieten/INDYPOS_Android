@@ -95,11 +95,11 @@ fun CategoryManagementScreen(
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     
-    // Calculate categories to show
+    // Calculate categories to show - add null safety
     val categoriesToShow = if (uiState.searchQuery.isNotBlank()) {
-        uiState.filteredCategories
+        uiState.filteredCategories ?: emptyList()
     } else {
-        uiState.categories
+        uiState.categories ?: emptyList()
     }
     
     // Update search when query changes
@@ -218,45 +218,57 @@ fun CategoryManagementScreen(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshCategories() }
                 ) {
-                    if (categoriesToShow.isEmpty() && !uiState.isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.category_management_empty),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
+                    when {
+                        uiState.isLoading && categoriesToShow.isEmpty() -> {
+                            // Show loading indicator
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryButton)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                top = 8.dp,
-                                end = 16.dp,
-                                bottom = if (uiState.isEditMode) 80.dp else 80.dp // Space for bottom button
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(categoriesToShow) { category ->
-                                CategoryItem(
-                                    category = category,
-                                    isEditMode = uiState.isEditMode,
-                                    isSelected = uiState.selectedCategoryIds.contains(category.id),
-                                    onUseClick = { /* TODO: Handle use click */ },
-                                    onClick = { 
-                                        if (uiState.isEditMode) {
-                                            viewModel.toggleCategorySelection(category.id)
-                                        } else {
-                                            selectedCategory = category
-                                        }
-                                    }
+                        categoriesToShow.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.category_management_empty),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = SecondaryText
                                 )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    top = 8.dp,
+                                    end = 16.dp,
+                                    bottom = if (uiState.isEditMode) 80.dp else 80.dp // Space for bottom button
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(categoriesToShow) { category ->
+                                    CategoryItem(
+                                        category = category,
+                                        isEditMode = uiState.isEditMode,
+                                        isSelected = uiState.selectedCategoryIds.contains(category.id),
+                                        onUseClick = { /* TODO: Handle use click */ },
+                                        onClick = { 
+                                            if (uiState.isEditMode) {
+                                                viewModel.toggleCategorySelection(category.id)
+                                            } else {
+                                                selectedCategory = category
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

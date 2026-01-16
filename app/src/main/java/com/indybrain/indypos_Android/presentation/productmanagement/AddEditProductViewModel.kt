@@ -50,8 +50,15 @@ class AddEditProductViewModel @Inject constructor(
      */
     private fun loadCategories() {
         viewModelScope.launch {
-            productRepository.getAllCategoriesFlow().collect { categories ->
-                _categories.value = categories.sortedBy { it.sortOrder ?: 0 }
+            try {
+                productRepository.getAllCategoriesFlow().collect { categories ->
+                    if (categories != null) {
+                        _categories.value = categories.sortedBy { it.sortOrder ?: 0 }
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error silently or log it
+                // Categories will remain empty if there's an error
             }
         }
     }
@@ -61,8 +68,15 @@ class AddEditProductViewModel @Inject constructor(
      */
     private fun loadAddonGroups() {
         viewModelScope.launch {
-            addonGroupRepository.getAllAddonGroupsFlow().collect { addonGroups ->
-                _uiState.update { it.copy(availableAddonGroups = addonGroups.sortedBy { it.sortOrder ?: 0 }) }
+            try {
+                addonGroupRepository.getAllAddonGroupsFlow().collect { addonGroups ->
+                    if (addonGroups != null) {
+                        _uiState.update { it.copy(availableAddonGroups = addonGroups.sortedBy { it.sortOrder ?: 0 }) }
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error silently or log it
+                // Addon groups will remain empty if there's an error
             }
         }
     }
@@ -73,45 +87,58 @@ class AddEditProductViewModel @Inject constructor(
     fun loadProduct(productId: String) {
         this.productId = productId
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val product = productRepository.getProductById(productId)
-            if (product != null) {
-                loadedProduct = product
-                // Normalize imageUrl: treat blank string as null
-                val normalizedImageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
-                // Decide initial mode: image vs color
-                val isColorMode = (product.selectedUnit == SELECTED_UNIT_COLOR) ||
-                    (normalizedImageUrl == null && !product.selectedColorHex.isNullOrBlank())
-                val isImageMode = !isColorMode
-                // Load selected addon group IDs
-                val selectedAddonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
-                
-                _uiState.update { 
-                    it.copy(
-                        productName = product.name,
-                        productCode = product.productCode ?: "",
-                        sellingPrice = product.price.toString(),
-                        costPrice = product.costPrice?.toString() ?: "",
-                        unit = product.unit ?: "",
-                        imageUrl = normalizedImageUrl,
-                        selectedColorHex = product.selectedColorHex,
-                        isImageSelected = isImageMode,
-                        categoryId = product.categoryId,
-                        isSkuEnabled = product.isSkuEnabled ?: false,
-                        skuCode = product.skuCode ?: "",
-                        isStockEnabled = product.isStockEnabled ?: false,
-                        stockQuantity = product.stockQuantity?.toString() ?: "",
-                        addonGroupIds = selectedAddonGroupIds,
-                        // ใช้ค่า product.hasAdditionalOptions เป็นหลักในการเปิด/ปิด Switch
-                        hasAdditionalOptions = product.hasAdditionalOptions ?: false,
-                        isLoading = false
-                    )
+            try {
+                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+                val product = productRepository.getProductById(productId)
+                if (product != null) {
+                    loadedProduct = product
+                    // Normalize imageUrl: treat blank string as null
+                    val normalizedImageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
+                    // Decide initial mode: image vs color
+                    val isColorMode = (product.selectedUnit == SELECTED_UNIT_COLOR) ||
+                        (normalizedImageUrl == null && !product.selectedColorHex.isNullOrBlank())
+                    val isImageMode = !isColorMode
+                    // Load selected addon group IDs
+                    val selectedAddonGroupIds = try {
+                        productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
+                    } catch (e: Exception) {
+                        emptyList() // Fallback to empty list if there's an error
+                    }
+                    
+                    _uiState.update { 
+                        it.copy(
+                            productName = product.name ?: "",
+                            productCode = product.productCode ?: "",
+                            sellingPrice = product.price?.toString() ?: "0",
+                            costPrice = product.costPrice?.toString() ?: "",
+                            unit = product.unit ?: "",
+                            imageUrl = normalizedImageUrl,
+                            selectedColorHex = product.selectedColorHex,
+                            isImageSelected = isImageMode,
+                            categoryId = product.categoryId,
+                            isSkuEnabled = product.isSkuEnabled ?: false,
+                            skuCode = product.skuCode ?: "",
+                            isStockEnabled = product.isStockEnabled ?: false,
+                            stockQuantity = product.stockQuantity?.toString() ?: "",
+                            addonGroupIds = selectedAddonGroupIds,
+                            // ใช้ค่า product.hasAdditionalOptions เป็นหลักในการเปิด/ปิด Switch
+                            hasAdditionalOptions = product.hasAdditionalOptions ?: false,
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = "ไม่พบสินค้าที่ต้องการแก้ไข"
+                        )
+                    }
                 }
-            } else {
+            } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = "ไม่พบสินค้าที่ต้องการแก้ไข"
+                        errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูล: ${e.message ?: "ไม่ทราบสาเหตุ"}"
                     )
                 }
             }
