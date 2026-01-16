@@ -169,19 +169,6 @@ fun AddEditCategoryScreen(
                     enabled = !uiState.isLoading
                 )
                 
-                // Error Message
-                uiState.errorMessage?.let { errorMessage ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = errorMessage,
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color(0xFFE83808), // Red color
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
             }
             
             // Save Button - Fixed at bottom
@@ -230,6 +217,45 @@ fun AddEditCategoryScreen(
                 onOkClick = {
                     viewModel.dismissSuccessDialog()
                     onSaveSuccess()
+                }
+            )
+        }
+        
+        // Error Dialog - Show API errors as popup
+        uiState.errorMessage?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearError() },
+                title = {
+                    Text(
+                        text = "เกิดข้อผิดพลาด",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = error,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text(
+                            text = "ตกลง",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
                 }
             )
         }

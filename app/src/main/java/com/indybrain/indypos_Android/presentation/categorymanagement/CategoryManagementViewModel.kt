@@ -311,6 +311,13 @@ class CategoryManagementViewModel @Inject constructor(
     }
     
     /**
+     * Clear error message
+     */
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+    
+    /**
      * Load sync statistics
      */
     fun loadSyncStatistics() {

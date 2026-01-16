@@ -304,11 +304,13 @@ class AddEditAddonGroupViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
+                    // API error - close dialog and show as popup
                     val errorMessage = error.message ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = errorMessage
+                            errorMessage = errorMessage,
+                            successMessage = null // Clear success message if any
                         )
                     }
                 }

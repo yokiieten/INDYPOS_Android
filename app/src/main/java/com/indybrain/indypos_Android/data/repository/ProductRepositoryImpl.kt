@@ -725,6 +725,58 @@ class ProductRepositoryImpl @Inject constructor(
                 val errorText = errorResponse.error?.lowercase() ?: ""
                 val messageText = errorResponse.message?.lowercase() ?: ""
                 
+                // Check for specific error keys first
+                val errorKey = errorResponse.error?.takeIf { it.isNotBlank() }
+                val messageKey = errorResponse.message?.takeIf { it.isNotBlank() }
+                val combinedErrorText = "$errorText $messageText"
+                
+                // Helper function to get localized string
+                fun getLocalizedString(resourceName: String, fallback: String): String {
+                    val resourceId = context.resources.getIdentifier(
+                        resourceName,
+                        "string",
+                        context.packageName
+                    )
+                    return if (resourceId != 0) {
+                        context.getString(resourceId)
+                    } else {
+                        fallback
+                    }
+                }
+                
+                // Handle category_form_validation_exists error key
+                when {
+                    errorKey == "category_form_validation_exists" || messageKey == "category_form_validation_exists" -> {
+                        return getLocalizedString("category_form_validation_exists", "หมวดหมู่นี้มีอยู่แล้ว")
+                    }
+                }
+                
+                // Handle product error keys
+                when {
+                    errorKey == "product_error_duplicate_sku" || messageKey == "product_error_duplicate_sku" -> {
+                        return getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
+                    }
+                    errorKey == "product_error_duplicate_name" || messageKey == "product_error_duplicate_name" -> {
+                        return getLocalizedString("product_error_duplicate_name", "ชื่อนี้มีอยู่แล้ว")
+                    }
+                    errorKey == "product_error_duplicate_code" || messageKey == "product_error_duplicate_code" -> {
+                        return getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
+                    }
+                }
+                
+                // Handle product error messages by content (for cases where error key is not provided)
+                when {
+                    combinedErrorText.contains("duplicate sku") || combinedErrorText.contains("duplicate sku code") -> {
+                        return getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
+                    }
+                    combinedErrorText.contains("duplicate product name") || combinedErrorText.contains("duplicate name") -> {
+                        return getLocalizedString("product_error_duplicate_name", "ชื่อนี้มีอยู่แล้ว")
+                    }
+                    combinedErrorText.contains("duplicate product code") || combinedErrorText.contains("duplicate code") -> {
+                        return getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
+                    }
+                }
+                
                 // Handle specific status codes
                 when (statusCode) {
                     400 -> {
@@ -763,10 +815,23 @@ class ProductRepositoryImpl @Inject constructor(
                     }
                     409 -> {
                         // Conflict - Duplicate name or code
-                        // Show both error and message if available
+                        // Check if it's a product error first
                         val errorTextValue = errorResponse.error?.takeIf { it.isNotBlank() }
                         val messageTextValue = errorResponse.message?.takeIf { it.isNotBlank() }
+                        val combinedText = "$errorTextValue $messageTextValue".lowercase()
+                        
+                        // Check for product duplicate errors
                         when {
+                            combinedText.contains("duplicate sku") || combinedText.contains("duplicate sku code") -> {
+                                getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
+                            }
+                            combinedText.contains("duplicate product name") || combinedText.contains("duplicate name") -> {
+                                getLocalizedString("product_error_duplicate_name", "ชื่อนี้มีอยู่แล้ว")
+                            }
+                            combinedText.contains("duplicate product code") || combinedText.contains("duplicate code") -> {
+                                getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
+                            }
+                            // For category or other duplicate errors
                             errorTextValue != null && messageTextValue != null -> "$errorTextValue ($messageTextValue)"
                             errorTextValue != null -> errorTextValue
                             messageTextValue != null -> messageTextValue
@@ -789,12 +854,37 @@ class ProductRepositoryImpl @Inject constructor(
             } catch (e: Exception) {
                 // If parsing fails, check raw string
                 val errorLower = errorJson.lowercase()
+                
+                // Helper function to get localized string
+                fun getLocalizedString(resourceName: String, fallback: String): String {
+                    val resourceId = context.resources.getIdentifier(
+                        resourceName,
+                        "string",
+                        context.packageName
+                    )
+                    return if (resourceId != 0) {
+                        context.getString(resourceId)
+                    } else {
+                        fallback
+                    }
+                }
+                
                 when {
                     statusCode == 409 && errorLower.contains("duplicate category name") -> {
                         "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
                     }
                     statusCode == 403 && errorLower.contains("free_plan_limit_exceeded") -> {
                         "คุณใช้หมวดหมู่ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                    }
+                    // Product duplicate errors
+                    errorLower.contains("duplicate sku") || errorLower.contains("duplicate sku code") -> {
+                        getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
+                    }
+                    errorLower.contains("duplicate product name") || errorLower.contains("duplicate name") -> {
+                        getLocalizedString("product_error_duplicate_name", "ชื่อนี้มีอยู่แล้ว")
+                    }
+                    errorLower.contains("duplicate product code") || errorLower.contains("duplicate code") -> {
+                        getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
                     }
                     else -> {
                         getDefaultErrorMessage(statusCode)

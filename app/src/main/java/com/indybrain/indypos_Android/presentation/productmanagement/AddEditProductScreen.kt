@@ -1170,6 +1170,8 @@ private fun AddCategoryDialog(
                         focusedBorderColor = PrimaryButton
                     )
                 )
+                // Show validation errors in dialog
+                // API errors are shown as separate popup after dialog closes
                 errorMessage?.let { error ->
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(

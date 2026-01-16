@@ -281,5 +281,14 @@
     <string name="order_settings_product_management">Product Management</string>
     <string name="order_settings_addon_group_management">Add-on Group Management</string>
     <string name="order_settings_addon_management">Add-on Management</string>
+    
+    <!-- Category Error Messages -->
+    <string name="category_form_validation_exists">This category already exists</string>
+    
+    <!-- Product Error Messages -->
+    <string name="product_error_duplicate_sku">SKU code already exists</string>
+    <string name="product_error_duplicate_name">Product name already exists</string>
+    <string name="product_error_duplicate_code">Product code already exists</string>
+    <string name="product_form_error_edit_failed">Failed to update product</string>
 </resources>
 

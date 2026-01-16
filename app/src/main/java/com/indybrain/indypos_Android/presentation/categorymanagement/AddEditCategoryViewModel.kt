@@ -57,6 +57,13 @@ class AddEditCategoryViewModel @Inject constructor(
     }
     
     /**
+     * Clear error message
+     */
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+    
+    /**
      * Save category (add new or update existing)
      */
     fun saveCategory(onSuccess: () -> Unit) {

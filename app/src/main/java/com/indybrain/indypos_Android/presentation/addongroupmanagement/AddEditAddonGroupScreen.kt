@@ -280,7 +280,7 @@ fun AddEditAddonGroupScreen(
             AddAddonDialog(
                 onConfirm = { name, price ->
                     viewModel.createAddon(name, price)
-                    showAddAddonDialog = false
+                    // Don't close dialog here - let ViewModel handle it for API errors
                 },
                 onDismiss = {
                     showAddAddonDialog = false
@@ -289,6 +289,24 @@ fun AddEditAddonGroupScreen(
                 isLoading = uiState.isLoading,
                 errorMessage = uiState.errorMessage
             )
+        }
+        
+        // Close dialog when API error occurs or success
+        LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
+            // If error occurs while dialog is open and it's an API error (not validation)
+            uiState.errorMessage?.let { error ->
+                if (showAddAddonDialog) {
+                    // Check if it's an API error (contains duplicate, etc.) not validation
+                    if (error.contains("ซ้ำ") || error.contains("duplicate") || 
+                        error.contains("เกิดข้อผิดพลาด") || error.length > 30) {
+                        showAddAddonDialog = false
+                    }
+                }
+            }
+            // Close dialog on success
+            if (showAddAddonDialog && uiState.successMessage != null) {
+                showAddAddonDialog = false
+            }
         }
     }
 }
@@ -646,16 +664,24 @@ private fun AddAddonDialog(
                     enabled = !isLoading
                 )
                 
-                errorMessage?.let {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = it,
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = RedFailure
-                    )
+                // Show validation errors in dialog
+                // API errors are shown as separate popup after dialog closes
+                errorMessage?.let { error ->
+                    // Only show validation errors (short, simple messages)
+                    // API errors will be shown as popup after dialog closes
+                    if (!error.contains("ซ้ำ") && !error.contains("duplicate") && 
+                        !error.contains("เกิดข้อผิดพลาด") && 
+                        error.length < 50) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = error,
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = RedFailure
+                        )
+                    }
                 }
             }
         },

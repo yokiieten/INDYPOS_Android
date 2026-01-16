@@ -319,5 +319,12 @@ class AddonGroupManagementViewModel @Inject constructor(
             _uiState.update { it.copy(syncStatistics = stats) }
         }
     }
+    
+    /**
+     * Clear error message
+     */
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
 }
 

@@ -403,6 +403,45 @@ fun CategoryManagementScreen(
                 }
             )
         }
+        
+        // Error Dialog - Show API errors as popup
+        uiState.errorMessage?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearError() },
+                title = {
+                    Text(
+                        text = "เกิดข้อผิดพลาด",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = error,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text(
+                            text = "ตกลง",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                }
+            )
+        }
     }
 }
 

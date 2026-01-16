@@ -394,10 +394,14 @@ class AddEditProductViewModel @Inject constructor(
                 // Reload categories to include the new one
                 loadCategories()
             }.onFailure { error ->
+                // API error - close dialog and show as popup
                 _uiState.update { 
                     it.copy(
                         isCreatingCategory = false,
-                        categoryError = error.message ?: "เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่"
+                        showAddCategoryDialog = false,
+                        categoryName = "",
+                        categoryError = null,
+                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่"
                     ) 
                 }
             }
