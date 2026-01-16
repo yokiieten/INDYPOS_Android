@@ -212,44 +212,61 @@ fun AddOnManagementScreen(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshAddons() }
                 ) {
-                    if (uiState.filteredAddons.isEmpty() && !uiState.isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "ไม่มี Addon",
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
+                    // Calculate addons to show
+                    val addonsToShow = uiState.filteredAddons ?: emptyList()
+                    // Show loading if data hasn't been loaded yet (addons is null) or isLoading is true
+                    val shouldShowLoading = uiState.isLoading || uiState.addons == null
+                    
+                    when {
+                        shouldShowLoading -> {
+                            // Show loading indicator when loading or data hasn't been loaded yet
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryButton)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                top = 8.dp,
-                                end = 16.dp,
-                                bottom = if (uiState.isSelectionMode) 80.dp else 80.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(uiState.filteredAddons) { addon ->
-                                AddonItem(
-                                    addon = addon,
-                                    isSelectionMode = uiState.isSelectionMode,
-                                    isSelected = uiState.selectedAddonIds.contains(addon.id),
-                                    onClick = { 
-                                        if (uiState.isSelectionMode) {
-                                            viewModel.toggleAddonSelection(addon.id)
-                                        } else {
-                                            selectedAddon = addon
-                                        }
-                                    }
+                        addonsToShow.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "ไม่มี Addon",
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = SecondaryText
                                 )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    top = 8.dp,
+                                    end = 16.dp,
+                                    bottom = if (uiState.isSelectionMode) 80.dp else 80.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(addonsToShow) { addon ->
+                                    AddonItem(
+                                        addon = addon,
+                                        isSelectionMode = uiState.isSelectionMode,
+                                        isSelected = uiState.selectedAddonIds.contains(addon.id),
+                                        onClick = { 
+                                            if (uiState.isSelectionMode) {
+                                                viewModel.toggleAddonSelection(addon.id)
+                                            } else {
+                                                selectedAddon = addon
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -259,9 +276,10 @@ fun AddOnManagementScreen(
             // Bottom Action Bar - Show different UI based on selection mode
             if (uiState.isSelectionMode) {
                 // Selection Mode - Show selection actions
+                val addonsToShow = uiState.filteredAddons ?: emptyList()
                 SelectionModeBottomBar(
                     selectedCount = uiState.selectedAddonIds.size,
-                    totalCount = uiState.filteredAddons.size,
+                    totalCount = addonsToShow.size,
                     onSelectAll = { viewModel.selectAllAddons() },
                     onDeselectAll = { viewModel.deselectAllAddons() },
                     onDelete = {

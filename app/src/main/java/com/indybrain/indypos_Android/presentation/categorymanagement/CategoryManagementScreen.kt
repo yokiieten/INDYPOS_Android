@@ -102,6 +102,9 @@ fun CategoryManagementScreen(
         uiState.categories ?: emptyList()
     }
     
+    // Show loading if data hasn't been loaded yet (categories is null) or isLoading is true
+    val shouldShowLoading = uiState.isLoading || uiState.categories == null
+    
     // Update search when query changes
     LaunchedEffect(searchQuery) {
         viewModel.searchCategories(searchQuery)
@@ -219,8 +222,8 @@ fun CategoryManagementScreen(
                     onRefresh = { viewModel.refreshCategories() }
                 ) {
                     when {
-                        uiState.isLoading && categoriesToShow.isEmpty() -> {
-                            // Show loading indicator
+                        shouldShowLoading -> {
+                            // Show loading indicator when loading or data hasn't been loaded yet
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center

@@ -187,7 +187,8 @@ class ProductManagementViewModel @Inject constructor(
      */
     fun selectAllProducts() {
         _uiState.update { current ->
-            val allProductIds = current.filteredProducts.mapNotNull { it.id }.toSet()
+            val products = current.filteredProducts ?: emptyList()
+            val allProductIds = products.mapNotNull { it.id }.toSet()
             current.copy(selectedProductIds = allProductIds)
         }
     }

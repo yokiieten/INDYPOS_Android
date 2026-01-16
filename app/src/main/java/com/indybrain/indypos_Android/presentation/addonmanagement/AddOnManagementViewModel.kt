@@ -154,7 +154,8 @@ class AddOnManagementViewModel @Inject constructor(
      */
     fun selectAllAddons() {
         _uiState.update { current ->
-            val allAddonIds = current.filteredAddons.map { it.id }.toSet()
+            val addons = current.filteredAddons ?: emptyList()
+            val allAddonIds = addons.map { it.id }.toSet()
             current.copy(selectedAddonIds = allAddonIds)
         }
     }

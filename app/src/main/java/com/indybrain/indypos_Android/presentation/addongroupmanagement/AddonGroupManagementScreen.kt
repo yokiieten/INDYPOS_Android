@@ -93,12 +93,6 @@ fun AddonGroupManagementScreen(
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     
-    // Calculate addon groups to show
-    val addonGroupsToShow = if (uiState.searchQuery.isNotBlank()) {
-        uiState.filteredAddonGroups
-    } else {
-        uiState.addonGroups
-    }
     
     // Update search when query changes
     LaunchedEffect(searchQuery) {
@@ -216,44 +210,65 @@ fun AddonGroupManagementScreen(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshAddonGroups() }
                 ) {
-                    if (addonGroupsToShow.isEmpty() && !uiState.isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "ไม่มีกลุ่ม Addon",
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
-                        }
+                    // Calculate addon groups to show
+                    val groupsToShow = if (uiState.searchQuery.isNotBlank()) {
+                        uiState.filteredAddonGroups ?: emptyList()
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                top = 8.dp,
-                                end = 16.dp,
-                                bottom = if (uiState.isEditMode) 80.dp else 80.dp // Space for bottom button
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(addonGroupsToShow) { addonGroup ->
-                                AddonGroupItem(
-                                    addonGroup = addonGroup,
-                                    isEditMode = uiState.isEditMode,
-                                    isSelected = uiState.selectedAddonGroupIds.contains(addonGroup.id),
-                                    onClick = { 
-                                        if (uiState.isEditMode) {
-                                            viewModel.toggleAddonGroupSelection(addonGroup.id)
-                                        } else {
-                                            selectedAddonGroup = addonGroup
-                                        }
-                                    }
+                        uiState.addonGroups ?: emptyList()
+                    }
+                    // Show loading if data hasn't been loaded yet (addonGroups is null) or isLoading is true
+                    val shouldShowLoading = uiState.isLoading || uiState.addonGroups == null
+                    
+                    when {
+                        shouldShowLoading -> {
+                            // Show loading indicator when loading or data hasn't been loaded yet
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryButton)
+                            }
+                        }
+                        groupsToShow.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "ไม่มีกลุ่ม Addon",
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = SecondaryText
                                 )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    top = 8.dp,
+                                    end = 16.dp,
+                                    bottom = if (uiState.isEditMode) 80.dp else 80.dp // Space for bottom button
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(groupsToShow) { addonGroup ->
+                                    AddonGroupItem(
+                                        addonGroup = addonGroup,
+                                        isEditMode = uiState.isEditMode,
+                                        isSelected = uiState.selectedAddonGroupIds.contains(addonGroup.id),
+                                        onClick = { 
+                                            if (uiState.isEditMode) {
+                                                viewModel.toggleAddonGroupSelection(addonGroup.id)
+                                            } else {
+                                                selectedAddonGroup = addonGroup
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -263,9 +278,14 @@ fun AddonGroupManagementScreen(
             // Bottom Action Bar - Show different UI based on edit mode
             if (uiState.isEditMode) {
                 // Edit Mode - Show selection actions
+                val groupsToShow = if (uiState.searchQuery.isNotBlank()) {
+                    uiState.filteredAddonGroups ?: emptyList()
+                } else {
+                    uiState.addonGroups ?: emptyList()
+                }
                 EditModeBottomBar(
                     selectedCount = uiState.selectedAddonGroupIds.size,
-                    totalCount = addonGroupsToShow.size,
+                    totalCount = groupsToShow.size,
                     onSelectAll = { viewModel.selectAllAddonGroups() },
                     onDelete = {
                         if (uiState.selectedAddonGroupIds.isNotEmpty()) {

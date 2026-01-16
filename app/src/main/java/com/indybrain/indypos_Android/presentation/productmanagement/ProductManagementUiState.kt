@@ -8,9 +8,9 @@ import com.indybrain.indypos_Android.domain.repository.ProductSyncStatistics
  * UI state for Product Management Screen
  */
 data class ProductManagementUiState(
-    val isLoading: Boolean = false,
-    val products: List<ProductEntity> = emptyList(),
-    val filteredProducts: List<ProductEntity> = emptyList(),
+    val isLoading: Boolean = true, // Start with loading = true
+    val products: List<ProductEntity>? = null, // null means data hasn't been loaded yet
+    val filteredProducts: List<ProductEntity>? = null,
     val categories: List<CategoryEntity> = emptyList(),
     val searchQuery: String = "",
     val selectedCategoryId: String? = null,

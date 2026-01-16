@@ -262,45 +262,62 @@ fun ProductManagementScreen(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshProducts() }
                 ) {
-                    if (uiState.filteredProducts.isEmpty() && !uiState.isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.product_management_empty),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
+                    // Calculate products to show
+                    val productsToShow = uiState.filteredProducts ?: emptyList()
+                    // Show loading if data hasn't been loaded yet (products is null) or isLoading is true
+                    val shouldShowLoading = uiState.isLoading || uiState.products == null
+                    
+                    when {
+                        shouldShowLoading -> {
+                            // Show loading indicator when loading or data hasn't been loaded yet
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryButton)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                top = 8.dp,
-                                end = 16.dp,
-                                bottom = if (uiState.isSelectionMode) 80.dp else 80.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(uiState.filteredProducts) { product ->
-                                ProductItem(
-                                    product = product,
-                                    categories = uiState.categories,
-                                    isSelectionMode = uiState.isSelectionMode,
-                                    isSelected = uiState.selectedProductIds.contains(product.id),
-                                    onClick = { 
-                                        if (uiState.isSelectionMode) {
-                                            viewModel.toggleProductSelection(product.id ?: "")
-                                        } else {
-                                            selectedProduct = product
-                                        }
-                                    }
+                        productsToShow.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.product_management_empty),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = SecondaryText
                                 )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    top = 8.dp,
+                                    end = 16.dp,
+                                    bottom = if (uiState.isSelectionMode) 80.dp else 80.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(productsToShow) { product ->
+                                    ProductItem(
+                                        product = product,
+                                        categories = uiState.categories,
+                                        isSelectionMode = uiState.isSelectionMode,
+                                        isSelected = uiState.selectedProductIds.contains(product.id),
+                                        onClick = { 
+                                            if (uiState.isSelectionMode) {
+                                                viewModel.toggleProductSelection(product.id ?: "")
+                                            } else {
+                                                selectedProduct = product
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -310,9 +327,10 @@ fun ProductManagementScreen(
             // Bottom Action Bar - Show different UI based on selection mode
             if (uiState.isSelectionMode) {
                 // Selection Mode - Show selection actions
+                val productsToShow = uiState.filteredProducts ?: emptyList()
                 SelectionModeBottomBar(
                     selectedCount = uiState.selectedProductIds.size,
-                    totalCount = uiState.filteredProducts.size,
+                    totalCount = productsToShow.size,
                     onSelectAll = { viewModel.selectAllProducts() },
                     onDeselectAll = { viewModel.deselectAllProducts() },
                     onDelete = {

@@ -87,10 +87,11 @@ class AddonGroupManagementViewModel @Inject constructor(
      */
     fun searchAddonGroups(query: String) {
         _uiState.update { current ->
+            val addonGroups = current.addonGroups ?: emptyList()
             val filteredAddonGroups = if (query.isBlank()) {
-                current.addonGroups
+                null // Clear filter when query is blank
             } else {
-                current.addonGroups.filter { 
+                addonGroups.filter { 
                     it.name.contains(query, ignoreCase = true) 
                 }
             }
@@ -102,7 +103,7 @@ class AddonGroupManagementViewModel @Inject constructor(
      * Clear search
      */
     fun clearSearch() {
-        _uiState.update { it.copy(searchQuery = "", filteredAddonGroups = emptyList()) }
+        _uiState.update { it.copy(searchQuery = "", filteredAddonGroups = null) }
     }
     
     /**
@@ -222,7 +223,8 @@ class AddonGroupManagementViewModel @Inject constructor(
      */
     fun selectAllAddonGroups() {
         _uiState.update { current ->
-            val allAddonGroupIds = current.addonGroups.map { it.id }.toSet()
+            val addonGroups = current.addonGroups ?: emptyList()
+            val allAddonGroupIds = addonGroups.map { it.id }.toSet()
             current.copy(selectedAddonGroupIds = allAddonGroupIds)
         }
     }

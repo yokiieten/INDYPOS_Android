@@ -45,6 +45,7 @@ class CategoryManagementViewModel @Inject constructor(
                     val result = productRepository.fetchAndSyncCategories()
                     result.onSuccess {
                         // Data will be updated via observeCategories() Flow
+                        // isLoading will be set to false when Flow emits data
                     }.onFailure { error ->
                         _uiState.update { current ->
                             current.copy(
@@ -83,12 +84,18 @@ class CategoryManagementViewModel @Inject constructor(
                                 isLoading = false // Clear loading state once we have data from Room
                             )
                         }
+                    } else {
+                        // If categories is null, keep loading state
+                        _uiState.update { current ->
+                            current.copy(categories = emptyList(), isLoading = false)
+                        }
                     }
                 }
             } catch (e: Exception) {
                 // Handle any exceptions during collection
                 _uiState.update { current ->
                     current.copy(
+                        categories = emptyList(),
                         isLoading = false,
                         errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูล: ${e.message}"
                     )
@@ -109,10 +116,11 @@ class CategoryManagementViewModel @Inject constructor(
      */
     fun searchCategories(query: String) {
         _uiState.update { current ->
+            val categories = current.categories ?: emptyList()
             val filteredCategories = if (query.isBlank()) {
-                current.categories
+                null // Clear filter when query is blank
             } else {
-                current.categories.filter { 
+                categories.filter { 
                     it.name.contains(query, ignoreCase = true) 
                 }
             }
@@ -124,7 +132,7 @@ class CategoryManagementViewModel @Inject constructor(
      * Clear search
      */
     fun clearSearch() {
-        _uiState.update { it.copy(searchQuery = "", filteredCategories = emptyList()) }
+        _uiState.update { it.copy(searchQuery = "", filteredCategories = null) }
     }
     
     /**
@@ -244,7 +252,8 @@ class CategoryManagementViewModel @Inject constructor(
      */
     fun selectAllCategories() {
         _uiState.update { current ->
-            val allCategoryIds = current.categories.map { it.id }.toSet()
+            val categories = current.categories ?: emptyList()
+            val allCategoryIds = categories.map { it.id }.toSet()
             current.copy(selectedCategoryIds = allCategoryIds)
         }
     }

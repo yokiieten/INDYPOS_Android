@@ -6,10 +6,10 @@ import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
  * UI state for Addon Group Management screen
  */
 data class AddonGroupManagementUiState(
-    val addonGroups: List<AddonGroupEntity> = emptyList(),
-    val filteredAddonGroups: List<AddonGroupEntity> = emptyList(),
+    val addonGroups: List<AddonGroupEntity>? = null, // null means data hasn't been loaded yet
+    val filteredAddonGroups: List<AddonGroupEntity>? = null,
     val searchQuery: String = "",
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true, // Start with loading = true
     val errorMessage: String? = null,
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,
