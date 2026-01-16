@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.indybrain.indypos_Android.BuildConfig
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
+import com.indybrain.indypos_Android.data.remote.api.EmployeesApi
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
 import com.indybrain.indypos_Android.data.remote.interceptor.AuthInterceptor
@@ -81,6 +82,12 @@ object NetworkModule {
     @Singleton
     fun provideProductsApi(retrofit: Retrofit): ProductsApi {
         return retrofit.create(ProductsApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideEmployeesApi(retrofit: Retrofit): EmployeesApi {
+        return retrofit.create(EmployeesApi::class.java)
     }
 }
 

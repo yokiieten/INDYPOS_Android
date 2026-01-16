@@ -51,6 +51,7 @@ import com.indybrain.indypos_Android.presentation.products.ProductDetailScreen
 import com.indybrain.indypos_Android.presentation.products.SearchProductScreen
 import com.indybrain.indypos_Android.presentation.settings.LanguageSettingsScreen
 import com.indybrain.indypos_Android.presentation.settings.AccountScreen
+import com.indybrain.indypos_Android.presentation.settings.CreateEmployeeScreen
 import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.stockmanagement.StockManagementScreen
@@ -814,6 +815,17 @@ class MainActivity : ComponentActivity() {
 
                         composable(NavRoutes.AccountSettings.route) {
                             AccountScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onCreateEmployeeClick = {
+                                    navController.navigate(NavRoutes.CreateEmployee.route)
+                                }
+                            )
+                        }
+
+                        composable(NavRoutes.CreateEmployee.route) {
+                            CreateEmployeeScreen(
                                 onBackClick = {
                                     navController.popBackStack()
                                 }
