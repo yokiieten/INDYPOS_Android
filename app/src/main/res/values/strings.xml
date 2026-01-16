@@ -369,6 +369,7 @@
     <string name="category_management_add_success">เพิ่มหมวดหมู่เรียบร้อยแล้ว</string>
     <string name="category_management_edit_success">อัปเดตหมวดหมู่เรียบร้อยแล้ว</string>
     <string name="category_form_validation_exists">หมวดหมู่นี้มีอยู่แล้ว</string>
+    <string name="category_error_duplicate_name">ชื่อหมวดหมู่นี้มีอยู่แล้ว</string>
     
     <!-- Product Error Messages -->
     <string name="product_error_duplicate_sku">รหัส SKU นี้มีอยู่แล้ว</string>

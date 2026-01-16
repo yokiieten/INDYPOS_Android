@@ -284,6 +284,7 @@
     
     <!-- Category Error Messages -->
     <string name="category_form_validation_exists">This category already exists</string>
+    <string name="category_error_duplicate_name">Duplicate category name</string>
     
     <!-- Product Error Messages -->
     <string name="product_error_duplicate_sku">SKU code already exists</string>

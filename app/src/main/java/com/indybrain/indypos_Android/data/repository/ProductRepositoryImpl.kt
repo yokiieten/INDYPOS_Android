@@ -820,8 +820,13 @@ class ProductRepositoryImpl @Inject constructor(
                         val messageTextValue = errorResponse.message?.takeIf { it.isNotBlank() }
                         val combinedText = "$errorTextValue $messageTextValue".lowercase()
                         
-                        // Check for product duplicate errors
+                        // Check for category duplicate errors first
                         when {
+                            combinedText.contains("duplicate category name") || 
+                            errorTextValue?.lowercase()?.contains("duplicate category name") == true -> {
+                                getLocalizedString("category_error_duplicate_name", "ชื่อหมวดหมู่นี้มีอยู่แล้ว / Duplicate category name")
+                            }
+                            // Check for product duplicate errors
                             combinedText.contains("duplicate sku") || combinedText.contains("duplicate sku code") -> {
                                 getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
                             }
@@ -831,7 +836,7 @@ class ProductRepositoryImpl @Inject constructor(
                             combinedText.contains("duplicate product code") || combinedText.contains("duplicate code") -> {
                                 getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
                             }
-                            // For category or other duplicate errors
+                            // For other duplicate errors
                             errorTextValue != null && messageTextValue != null -> "$errorTextValue ($messageTextValue)"
                             errorTextValue != null -> errorTextValue
                             messageTextValue != null -> messageTextValue
@@ -871,7 +876,7 @@ class ProductRepositoryImpl @Inject constructor(
                 
                 when {
                     statusCode == 409 && errorLower.contains("duplicate category name") -> {
-                        "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
+                        getLocalizedString("category_error_duplicate_name", "ชื่อหมวดหมู่นี้มีอยู่แล้ว / Duplicate category name")
                     }
                     statusCode == 403 && errorLower.contains("free_plan_limit_exceeded") -> {
                         "คุณใช้หมวดหมู่ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
