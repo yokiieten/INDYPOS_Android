@@ -230,6 +230,24 @@ class AddonGroupManagementViewModel @Inject constructor(
     }
     
     /**
+     * Select specific addon groups by IDs
+     */
+    fun selectAddonGroups(addonGroupIds: Set<String>) {
+        _uiState.update { current ->
+            current.copy(selectedAddonGroupIds = addonGroupIds)
+        }
+    }
+    
+    /**
+     * Deselect all addon groups
+     */
+    fun deselectAllAddonGroups() {
+        _uiState.update { current ->
+            current.copy(selectedAddonGroupIds = emptySet())
+        }
+    }
+    
+    /**
      * Delete selected addon groups
      */
     fun deleteSelectedAddonGroups() {

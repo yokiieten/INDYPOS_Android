@@ -31,8 +31,8 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -283,10 +283,20 @@ fun AddonGroupManagementScreen(
                 } else {
                     uiState.addonGroups ?: emptyList()
                 }
+                val allSelected = uiState.selectedAddonGroupIds.size == groupsToShow.size && groupsToShow.isNotEmpty()
                 EditModeBottomBar(
                     selectedCount = uiState.selectedAddonGroupIds.size,
                     totalCount = groupsToShow.size,
-                    onSelectAll = { viewModel.selectAllAddonGroups() },
+                    allSelected = allSelected,
+                    onSelectAll = { 
+                        if (allSelected) {
+                            viewModel.deselectAllAddonGroups()
+                        } else {
+                            // Select only visible/filtered addon groups
+                            val visibleAddonGroupIds = groupsToShow.map { it.id }.toSet()
+                            viewModel.selectAddonGroups(visibleAddonGroupIds)
+                        }
+                    },
                     onDelete = {
                         if (uiState.selectedAddonGroupIds.isNotEmpty()) {
                             showMultipleDeleteConfirmation = true
@@ -841,6 +851,7 @@ private fun MultipleDeleteConfirmationDialog(
 private fun EditModeBottomBar(
     selectedCount: Int,
     totalCount: Int,
+    allSelected: Boolean,
     onSelectAll: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -858,12 +869,12 @@ private fun EditModeBottomBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Select All Button
+            // Select All / Deselect All Button
             TextButton(
                 onClick = onSelectAll
             ) {
                 Text(
-                    text = "เลือกทั้งหมด",
+                    text = if (allSelected) "ยกเลิกเลือกทั้งหมด" else "เลือกทั้งหมด",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -924,14 +935,14 @@ private fun AddonGroupItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Radio Button (in edit mode)
+            // Checkbox (in edit mode)
             if (isEditMode) {
-                RadioButton(
-                    selected = isSelected,
-                    onClick = onClick,
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = PrimaryButton,
-                        unselectedColor = SecondaryText
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = PrimaryButton,
+                        uncheckedColor = SecondaryText
                     )
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -965,40 +976,42 @@ private fun AddonGroupItem(
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Status Badge
-            if (addonGroup.isActive) {
-                // Active - Show Green Badge
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp)),
-                    color = GreenComplete
-                ) {
-                    Text(
-                        text = "ใช้งาน",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
-            } else {
-                // Inactive - Show Red Badge
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp)),
-                    color = RedFailure
-                ) {
-                    Text(
-                        text = "ไม่ใช้งาน",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+            // Status Badge - Hide in edit mode
+            if (!isEditMode) {
+                if (addonGroup.isActive) {
+                    // Active - Show Green Badge
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp)),
+                        color = GreenComplete
+                    ) {
+                        Text(
+                            text = "ใช้งาน",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    // Inactive - Show Red Badge
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp)),
+                        color = RedFailure
+                    ) {
+                        Text(
+                            text = "ไม่ใช้งาน",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
                 }
             }
         }
