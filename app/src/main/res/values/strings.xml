@@ -389,7 +389,7 @@
     <string name="product_management_loading">กำลังโหลด...</string>
     <string name="product_management_select_products">เลือกสินค้า</string>
     <string name="product_management_select_all">เลือกทั้งหมด</string>
-    <string name="product_management_deselect_all">ยกเลิกการเลือกทั้งหมด</string>
+    <string name="product_management_deselect_all">ยกเลิกเลือกทั้งหมด</string>
     <string name="product_management_select_items">เลือก %1$d รายการ</string>
     <string name="product_management_delete">ลบ</string>
     <string name="product_management_action_title">การดำเนินการสินค้า</string>
