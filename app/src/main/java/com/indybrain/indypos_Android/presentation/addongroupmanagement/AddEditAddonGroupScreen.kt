@@ -34,6 +34,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -254,13 +255,54 @@ fun AddEditAddonGroupScreen(
             }
         }
         
-        // Success Dialog
+        // Success Dialog for Addon Group
         if (uiState.isSuccess) {
             SuccessDialog(
                 isEditMode = isEditMode,
                 isOffline = uiState.isOfflineSuccess,
                 onOkClick = {
                     shouldNavigateBack = true
+                }
+            )
+        }
+        
+        // Success Dialog for Addon Creation
+        uiState.successMessage?.takeIf { !uiState.isSuccess }?.let { successMessage ->
+            AlertDialog(
+                onDismissRequest = { /* Prevent dismissing */ },
+                title = {
+                    Text(
+                        text = "สำเร็จ",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = successMessage,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.clearSuccessMessage()
+                    }) {
+                        Text(
+                            text = "ตกลง",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
                 }
             )
         }
@@ -277,18 +319,22 @@ fun AddEditAddonGroupScreen(
         
         // Add New Addon Dialog
         if (showAddAddonDialog) {
-            AddAddonDialog(
-                onConfirm = { name, price ->
-                    viewModel.createAddon(name, price)
-                    // Don't close dialog here - let ViewModel handle it for API errors
-                },
-                onDismiss = {
-                    showAddAddonDialog = false
-                    viewModel.clearErrorMessage()
-                },
-                isLoading = uiState.isLoading,
-                errorMessage = uiState.errorMessage
-            )
+            // Use key to reset dialog state when it opens
+            key(showAddAddonDialog) {
+                AddAddonDialog(
+                    onConfirm = { name, price ->
+                        viewModel.createAddon(name, price)
+                        // Don't close dialog here - let ViewModel handle it for API errors
+                    },
+                    onDismiss = {
+                        showAddAddonDialog = false
+                        viewModel.clearErrorMessage()
+                        viewModel.clearSuccessMessage()
+                    },
+                    isLoading = uiState.isLoading,
+                    errorMessage = uiState.errorMessage
+                )
+            }
         }
         
         // Close dialog when any error occurs or success
@@ -297,8 +343,8 @@ fun AddEditAddonGroupScreen(
             if (showAddAddonDialog && uiState.errorMessage != null) {
                 showAddAddonDialog = false
             }
-            // Close dialog on success
-            if (showAddAddonDialog && uiState.successMessage != null) {
+            // Close dialog on success (when successMessage is set and not for addon group creation)
+            if (showAddAddonDialog && uiState.successMessage != null && !uiState.isSuccess) {
                 showAddAddonDialog = false
             }
         }
@@ -591,6 +637,46 @@ private fun AddAddonDialog(
 ) {
     var addonName by remember { mutableStateOf("") }
     var addonPrice by remember { mutableStateOf("") }
+    var showValidationError by remember { mutableStateOf(false) }
+    
+    // Show validation error dialog
+    if (showValidationError) {
+        AlertDialog(
+            onDismissRequest = { showValidationError = false },
+            title = {
+                Text(
+                    text = "เกิดข้อผิดพลาด",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText
+                )
+            },
+            text = {
+                Text(
+                    text = "กรุณากรอกข้อมูลให้ครบ",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showValidationError = false }) {
+                    Text(
+                        text = "ตกลง",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton
+                    )
+                }
+            }
+        )
+    }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -606,12 +692,23 @@ private fun AddAddonDialog(
         },
         text = {
             Column {
+                // Secondary instruction text
+                Text(
+                    text = "กรุณาใส่ชื่อและราคาแอดออน",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = SecondaryText,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
                 OutlinedTextField(
                     value = addonName,
                     onValueChange = { addonName = it },
                     placeholder = {
                         Text(
-                            text = "ชื่อ Addon",
+                            text = "ระบุชื่อแอดออน",
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -621,7 +718,13 @@ private fun AddAddonDialog(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    enabled = !isLoading
+                    enabled = !isLoading,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = Color.White,
+                        unfocusedBorderColor = Color(0xFFE0E0E0),
+                        focusedBorderColor = PrimaryButton
+                    )
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -653,9 +756,15 @@ private fun AddAddonDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = KeyboardType.Decimal
+                        keyboardType = KeyboardType.Number
                     ),
-                    enabled = !isLoading
+                    enabled = !isLoading,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = Color.White,
+                        unfocusedBorderColor = Color(0xFFE0E0E0),
+                        focusedBorderColor = PrimaryButton
+                    )
                 )
                 // Don't show errors inline - all errors (including validation) are shown as popup
             }
@@ -664,14 +773,23 @@ private fun AddAddonDialog(
             TextButton(
                 onClick = {
                     val name = addonName.trim()
-                    val price = addonPrice.toDoubleOrNull() ?: 0.0
-                    if (name.isNotEmpty()) {
-                        onConfirm(name, price)
-                        addonName = ""
-                        addonPrice = ""
+                    val priceStr = addonPrice.trim()
+                    
+                    // Validate both fields are filled
+                    if (name.isEmpty() || priceStr.isEmpty()) {
+                        showValidationError = true
+                    } else {
+                        val price = priceStr.toDoubleOrNull()
+                        if (price == null || price <= 0) {
+                            showValidationError = true
+                        } else {
+                            onConfirm(name, price)
+                            addonName = ""
+                            addonPrice = ""
+                        }
                     }
                 },
-                enabled = !isLoading && addonName.trim().isNotEmpty()
+                enabled = !isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))

@@ -55,4 +55,3 @@ data class BestSellerData(
     val colorHex: String? = null,
     val rank: Int = 1
 )
-
