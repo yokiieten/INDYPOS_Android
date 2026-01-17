@@ -355,13 +355,14 @@
     <string name="category_management_action_deactivate">ปิดใช้งาน</string>
     <string name="category_management_action_activate">เปิดใช้งาน</string>
     <string name="category_management_action_edit">แก้ไขหมวดหมู่</string>
-    <string name="category_management_action_delete">ลบหมวดหมู่</string>
+    <string name="category_management_action_delete">ลบ</string>
     <string name="category_management_action_cancel">ยกเลิก</string>
     <string name="category_management_confirm_delete_title">ยืนยันการลบ</string>
     <string name="category_management_confirm_delete_message">คุณแน่ใจหรือไม่ที่จะลบรายการที่เลือกไว้?</string>
     <string name="category_management_confirm_delete_warning">การกระทำนี้ไม่สามารถย้อนกลับได้</string>
     <string name="category_management_select_category">เลือกหมวดหมู่</string>
     <string name="category_management_select_all">เลือกทั้งหมด</string>
+    <string name="category_management_deselect_all">ยกเลิกทั้งหมด</string>
     <string name="category_management_select_items">เลือก %1$d รายการ</string>
     <string name="category_management_name_label">ชื่อหมวดหมู่ *</string>
     <string name="category_management_name_placeholder">กรอกชื่อหมวดหมู่</string>

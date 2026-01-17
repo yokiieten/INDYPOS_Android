@@ -31,8 +31,8 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -281,10 +281,20 @@ fun CategoryManagementScreen(
             // Bottom Action Bar - Show different UI based on edit mode
             if (uiState.isEditMode) {
                 // Edit Mode - Show selection actions
+                val allSelected = uiState.selectedCategoryIds.size == categoriesToShow.size && categoriesToShow.isNotEmpty()
                 EditModeBottomBar(
                     selectedCount = uiState.selectedCategoryIds.size,
                     totalCount = categoriesToShow.size,
-                    onSelectAll = { viewModel.selectAllCategories() },
+                    allSelected = allSelected,
+                    onSelectAll = { 
+                        if (allSelected) {
+                            viewModel.deselectAllCategories()
+                        } else {
+                            // Select only visible/filtered categories
+                            val visibleCategoryIds = categoriesToShow.map { it.id }.toSet()
+                            viewModel.selectCategories(visibleCategoryIds)
+                        }
+                    },
                     onDelete = {
                         if (uiState.selectedCategoryIds.isNotEmpty()) {
                             showMultipleDeleteConfirmation = true
@@ -839,6 +849,7 @@ private fun MultipleDeleteConfirmationDialog(
 private fun EditModeBottomBar(
     selectedCount: Int,
     totalCount: Int,
+    allSelected: Boolean,
     onSelectAll: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -856,12 +867,15 @@ private fun EditModeBottomBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Select All Button
+            // Select All / Deselect All Button
             TextButton(
                 onClick = onSelectAll
             ) {
                 Text(
-                    text = stringResource(id = R.string.category_management_select_all),
+                    text = if (allSelected) 
+                        stringResource(id = R.string.category_management_deselect_all)
+                    else 
+                        stringResource(id = R.string.category_management_select_all),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -926,14 +940,14 @@ private fun CategoryItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Radio Button (in edit mode)
+            // Checkbox (in edit mode)
             if (isEditMode) {
-                RadioButton(
-                    selected = isSelected,
-                    onClick = onClick,
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = PrimaryButton,
-                        unselectedColor = SecondaryText
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = PrimaryButton,
+                        uncheckedColor = SecondaryText
                     )
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -970,41 +984,43 @@ private fun CategoryItem(
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Status Badge or Use Button
-            if (category.isActive) {
-                // Active - Show Use Button
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onUseClick),
-                    color = GreenComplete
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.category_management_use),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
-            } else {
-                // Inactive - Show Red Badge
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp)),
-                    color = RedFailure
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.category_management_inactive),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+            // Status Badge or Use Button - Hide in edit mode
+            if (!isEditMode) {
+                if (category.isActive) {
+                    // Active - Show Use Button
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(onClick = onUseClick),
+                        color = GreenComplete
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.category_management_use),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    // Inactive - Show Red Badge
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp)),
+                        color = RedFailure
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.category_management_inactive),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
                 }
             }
         }

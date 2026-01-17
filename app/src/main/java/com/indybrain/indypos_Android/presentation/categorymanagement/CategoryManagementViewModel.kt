@@ -259,6 +259,24 @@ class CategoryManagementViewModel @Inject constructor(
     }
     
     /**
+     * Select specific categories by IDs
+     */
+    fun selectCategories(categoryIds: Set<String>) {
+        _uiState.update { current ->
+            current.copy(selectedCategoryIds = categoryIds)
+        }
+    }
+    
+    /**
+     * Deselect all categories
+     */
+    fun deselectAllCategories() {
+        _uiState.update { current ->
+            current.copy(selectedCategoryIds = emptySet())
+        }
+    }
+    
+    /**
      * Delete selected categories
      */
     fun deleteSelectedCategories() {
