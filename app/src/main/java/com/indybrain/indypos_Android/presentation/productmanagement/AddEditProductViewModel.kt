@@ -513,6 +513,29 @@ class AddEditProductViewModel @Inject constructor(
             return
         }
         
+        // Validate SKU Code if SKU is enabled
+        if (state.isSkuEnabled && state.skuCode.trim().isBlank()) {
+            _uiState.update { 
+                it.copy(errorMessage = "กรุณากรอกรหัส SKU")
+            }
+            return
+        }
+        
+        // Validate Stock Quantity if Stock is enabled
+        if (state.isStockEnabled) {
+            val stockQuantity = try {
+                state.stockQuantity.trim().toIntOrNull()
+            } catch (e: Exception) {
+                null
+            }
+            if (stockQuantity == null || stockQuantity < 0) {
+                _uiState.update { 
+                    it.copy(errorMessage = "กรุณากรอกจำนวนสินค้า")
+                }
+                return
+            }
+        }
+        
         // Check network connectivity
         val hasNetwork = networkConnectivityChecker.isConnected()
         
