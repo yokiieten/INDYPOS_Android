@@ -161,10 +161,10 @@ fun AddEditCategoryScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF5F5F5),
+                        unfocusedContainerColor = Color.White,
                         focusedContainerColor = Color.White,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = Color.Transparent
+                        unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
+                        focusedBorderColor = PrimaryButton
                     ),
                     enabled = !uiState.isLoading
                 )

@@ -407,10 +407,10 @@ private fun FormTextFieldSection(
             ),
             shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = Color(0xFFF5F5F5),
+                unfocusedContainerColor = Color.White,
                 focusedContainerColor = Color.White,
-                unfocusedBorderColor = Color.Transparent,
-                focusedBorderColor = Color.Transparent
+                unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
+                focusedBorderColor = PrimaryButton
             )
         )
     }
@@ -722,7 +722,7 @@ private fun AddAddonDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = Color.White,
                         focusedContainerColor = Color.White,
-                        unfocusedBorderColor = Color(0xFFE0E0E0),
+                        unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
                         focusedBorderColor = PrimaryButton
                     )
                 )
@@ -762,7 +762,7 @@ private fun AddAddonDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = Color.White,
                         focusedContainerColor = Color.White,
-                        unfocusedBorderColor = Color(0xFFE0E0E0),
+                        unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
                         focusedBorderColor = PrimaryButton
                     )
                 )

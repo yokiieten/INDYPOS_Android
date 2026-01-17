@@ -247,9 +247,9 @@ fun AddEditProductScreen(
                         singleLine = true,
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White,
-                            unfocusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
                             focusedBorderColor = PrimaryButton
                         ),
                         enabled = !uiState.isLoading
@@ -276,9 +276,9 @@ fun AddEditProductScreen(
                         },
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White,
-                            unfocusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
                             focusedBorderColor = PrimaryButton
                         ),
                         enabled = !uiState.isLoading
@@ -297,9 +297,9 @@ fun AddEditProductScreen(
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White,
-                            unfocusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
                             focusedBorderColor = PrimaryButton
                         ),
                         enabled = !uiState.isLoading
@@ -318,9 +318,9 @@ fun AddEditProductScreen(
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White,
-                            unfocusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
                             focusedBorderColor = PrimaryButton
                         ),
                         enabled = !uiState.isLoading
@@ -338,9 +338,9 @@ fun AddEditProductScreen(
                         singleLine = true,
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White,
-                            unfocusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
                             focusedBorderColor = PrimaryButton
                         ),
                         enabled = !uiState.isLoading
@@ -506,10 +506,10 @@ fun AddEditProductScreen(
                             singleLine = true,
                             shape = RoundedCornerShape(8.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedContainerColor = Color(0xFFF5F5F5),
+                                unfocusedContainerColor = Color.White,
                                 focusedContainerColor = Color.White,
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedBorderColor = Color.Transparent
+                                unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
+                                focusedBorderColor = PrimaryButton
                             ),
                             enabled = !uiState.isLoading
                         )
@@ -551,10 +551,10 @@ fun AddEditProductScreen(
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
                             shape = RoundedCornerShape(8.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedContainerColor = Color(0xFFF5F5F5),
+                                unfocusedContainerColor = Color.White,
                                 focusedContainerColor = Color.White,
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedBorderColor = Color.Transparent
+                                unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
+                                focusedBorderColor = PrimaryButton
                             ),
                             enabled = !uiState.isLoading
                         )
@@ -1167,9 +1167,9 @@ private fun AddCategoryDialog(
                     enabled = !isLoading,
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF5F5F5),
+                        unfocusedContainerColor = Color.White,
                         focusedContainerColor = Color.White,
-                        unfocusedBorderColor = Color(0xFFE5E5E5),
+                        unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
                         focusedBorderColor = PrimaryButton
                     )
                 )
