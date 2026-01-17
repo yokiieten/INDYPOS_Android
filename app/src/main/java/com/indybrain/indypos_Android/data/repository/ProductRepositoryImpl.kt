@@ -1714,6 +1714,28 @@ class ProductRepositoryImpl @Inject constructor(
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
         }
     }
+    
+    /**
+     * Clear all products, categories, addon groups, addons and their junctions from Room database
+     * This is used before fetching fresh data from API
+     * Note: This will trigger foreign key constraints on cart_items (productId will be set to NULL)
+     * Cart items should be restored after fetching new products
+     */
+    override suspend fun clearAllProductsAndCategories() {
+        // Delete junctions first (to avoid foreign key constraint issues)
+        productAddonGroupJunctionDao.deleteAll()
+        addonGroupAddonJunctionDao.deleteAll()
+        
+        // Delete products (this will set productId to NULL in cart_items due to foreign key)
+        productDao.deleteAll()
+        
+        // Delete categories
+        categoryDao.deleteAll()
+        
+        // Delete addon groups and addons
+        addonGroupDao.deleteAll()
+        addonDao.deleteAll()
+    }
 }
 
 /**

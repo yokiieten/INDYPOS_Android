@@ -4,9 +4,14 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -369,15 +374,73 @@ fun MainProductScreenLandscape(
                     val hasProducts = uiState.allProducts.isNotEmpty()
                     
                     when {
-                        uiState.isLoading -> {
-                            Box(
+                        uiState.isLoading && uiState.errorMessage.isNullOrBlank() -> {
+                            // Show skeleton loading when loading (regardless of whether we have old data)
+                            LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    end = 8.dp,
+                                    top = 8.dp,
+                                    bottom = 16.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(24.dp)
                             ) {
-                                CircularProgressIndicator(color = PrimaryButton)
+                                // Show skeleton for 2-3 categories
+                                repeat(3) { categoryIndex ->
+                                    // Category header skeleton
+                                    item(key = "skeleton_category_landscape_$categoryIndex") {
+                                        SkeletonTextLandscape(
+                                            modifier = Modifier
+                                                .fillMaxWidth(0.3f)
+                                                .height(24.dp)
+                                                .padding(bottom = 8.dp)
+                                        )
+                                    }
+                                    
+                                    // Products skeleton
+                                    item(key = "skeleton_products_landscape_$categoryIndex") {
+                                        if (viewMode == ProductViewMode.GRID) {
+                                            // Grid skeleton - 3 columns in landscape
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                // Show 2 rows of skeleton products
+                                                repeat(2) {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                                    ) {
+                                                        repeat(3) {
+                                                            SkeletonProductCardLandscape(
+                                                                modifier = Modifier
+                                                                    .weight(1f)
+                                                                    .fillMaxWidth()
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            // List skeleton
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                repeat(3) {
+                                                    SkeletonProductListItemLandscape(
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
-                        !hasProducts -> {
+                        !hasProducts && !uiState.isLoading -> {
+                            // Show empty state only when not loading and no products
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
@@ -1231,6 +1294,184 @@ private fun ProductCardLandscape(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonTextLandscape(
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton_landscape")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "skeleton_landscape_alpha"
+    )
+    
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFE0E0E0))
+            .alpha(alpha)
+    )
+}
+
+@Composable
+private fun SkeletonProductCardLandscape(
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton_card_landscape")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "skeleton_card_landscape_alpha"
+    )
+    
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Image skeleton
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    .background(Color(0xFFE0E0E0))
+                    .alpha(alpha)
+            )
+            
+            // Content skeleton
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(10.dp)
+            ) {
+                // Product name skeleton
+                SkeletonTextLandscape(
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .height(14.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Price and button skeleton
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Price skeleton
+                    SkeletonTextLandscape(
+                        modifier = Modifier
+                            .width(50.dp)
+                            .height(14.dp)
+                    )
+                    
+                    // Button skeleton
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(Color(0xFFE0E0E0))
+                            .alpha(alpha)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonProductListItemLandscape(
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton_list_item_landscape")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "skeleton_list_item_landscape_alpha"
+    )
+    
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(90.dp)
+        ) {
+            // Image skeleton
+            Box(
+                modifier = Modifier
+                    .width(90.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
+                    .background(Color(0xFFE0E0E0))
+                    .alpha(alpha)
+            )
+            
+            // Content skeleton
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Product name skeleton
+                    SkeletonTextLandscape(
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .height(16.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    // Price skeleton
+                    SkeletonTextLandscape(
+                        modifier = Modifier
+                            .width(70.dp)
+                            .height(16.dp)
+                    )
+                }
+                
+                // Button skeleton
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFE0E0E0))
+                        .alpha(alpha)
+                )
             }
         }
     }
