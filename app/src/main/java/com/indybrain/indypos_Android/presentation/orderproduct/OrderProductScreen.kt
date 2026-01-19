@@ -57,6 +57,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -362,20 +364,22 @@ private fun LandscapeOrderContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onClearAllClick) {
-                        Text(
-                            text = "ลบทั้งหมด",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = Color(0xFFFF5252)
-                        )
+                    if (uiState.groupedItems.isNotEmpty()) {
+                        TextButton(onClick = onClearAllClick) {
+                            Text(
+                                text = stringResource(R.string.order_product_clear_all),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Small
+                                ),
+                                color = Color(0xFFFF5252)
+                            )
+                        }
                     }
                     
                     TextButton(onClick = onAddMenuClick) {
                         Text(
-                            text = "เพิ่มเมนู",
+                            text = stringResource(R.string.order_product_add_product),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Small
@@ -388,19 +392,10 @@ private fun LandscapeOrderContent(
             
             // Cart items list
             if (uiState.groupedItems.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "ไม่มีสินค้าในตะกร้า",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = SecondaryText
-                    )
-                }
+                EmptyCartContent(
+                    modifier = Modifier.weight(1f),
+                    onAddMenuClick = onAddMenuClick
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -697,20 +692,22 @@ private fun PortraitOrderContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onClearAllClick) {
-                    Text(
-                        text = "ลบทั้งหมด",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = Color(0xFFFF5252)
-                    )
+                if (uiState.groupedItems.isNotEmpty()) {
+                    TextButton(onClick = onClearAllClick) {
+                        Text(
+                            text = stringResource(R.string.order_product_clear_all),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = Color(0xFFFF5252)
+                        )
+                    }
                 }
                 
                 TextButton(onClick = onAddMenuClick) {
                     Text(
-                        text = "เพิ่มเมนู",
+                        text = stringResource(R.string.order_product_add_product),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -723,21 +720,10 @@ private fun PortraitOrderContent(
         
         // Cart items list
         if (uiState.groupedItems.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "ไม่มีสินค้าในตะกร้า",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Medium
-                    ),
-                    color = SecondaryText
-                )
-            }
+            EmptyCartContent(
+                modifier = Modifier.weight(1f),
+                onAddMenuClick = onAddMenuClick
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -1407,3 +1393,69 @@ private fun formatCurrency(value: Double): String {
     return "฿${formatter.format(value)}"
 }
 
+
+@Composable
+private fun EmptyCartContent(
+    modifier: Modifier = Modifier,
+    onAddMenuClick: () -> Unit
+) {
+    val emptyCartText = stringResource(R.string.order_product_empty_cart)
+    val (title, subtitle) = remember(emptyCartText) {
+        val parts = emptyCartText.split("\n", limit = 2)
+        if (parts.size >= 2) parts[0] to parts[1] else parts[0] to ""
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = title,
+            style = FontUtils.mainFont(
+                style = AppFontStyle.Bold,
+                size = FontSize.Large
+            ),
+            color = PrimaryText
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = subtitle,
+            style = FontUtils.mainFont(
+                style = AppFontStyle.Regular,
+                size = FontSize.Medium
+            ),
+            color = SecondaryText,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Surface(
+            modifier = Modifier
+                .width(200.dp)
+                .height(50.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onAddMenuClick),
+            color = PrimaryButton
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Text(
+                    text = stringResource(R.string.order_product_add_product),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Medium
+                    ),
+                    color = Color.White
+                )
+            }
+        }
+    }
+}

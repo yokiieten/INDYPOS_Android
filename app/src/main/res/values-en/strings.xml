@@ -257,7 +257,9 @@
     <string name="product_barcode_scanner">Scan Barcode</string>
     
     <!-- Order Product / Cart -->
-    <string name="order_product_empty_cart">Cart is empty</string>
+    <string name="order_product_empty_cart">Your cart is empty\nAdd items to start your order</string>
+    <string name="order_product_add_product">Add Products</string>
+    <string name="order_product_clear_all">Clear All</string>
     <string name="order_product_subtotal">Subtotal</string>
     <string name="order_product_discount">Discount</string>
     <string name="order_product_total">Total</string>

@@ -310,7 +310,9 @@
     <string name="product_detail_insufficient_stock">สินค้าในสต็อกไม่เพียงพอ</string>
     
     <!-- Order Product / Cart -->
-    <string name="order_product_empty_cart">ตะกร้าสินค้าว่างเปล่า</string>
+    <string name="order_product_empty_cart">ตะกร้าสินค้าว่าง\nเพิ่มสินค้าลงตะกร้าเพื่อเริ่มต้นออเดอร์</string>
+    <string name="order_product_add_product">เพิ่มสินค้า</string>
+    <string name="order_product_clear_all">ลบทั้งหมด</string>
     <string name="order_product_subtotal">ยอดรวม</string>
     <string name="order_product_discount">ส่วนลด</string>
     <string name="order_product_total">ยอดรวมทั้งสิ้น</string>
