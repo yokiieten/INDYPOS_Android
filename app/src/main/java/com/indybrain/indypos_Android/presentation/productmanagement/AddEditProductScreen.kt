@@ -544,7 +544,7 @@ fun AddEditProductScreen(
                         FormFieldLabel("จำนวนสินค้า", required = false)
                         OutlinedTextField(
                             value = uiState.stockQuantity,
-                            onValueChange = { viewModel.updateStockQuantity(it) },
+                            onValueChange = { if (it.all { char -> char.isDigit() }) viewModel.updateStockQuantity(it) },
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text("กรอกจำนวนสินค้า", color = PlaceholderText) },
                             singleLine = true,
