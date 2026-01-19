@@ -28,6 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -489,6 +490,13 @@ private fun StockUpdateDialog(
                     },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = Color.White,
+                        unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
+                        focusedBorderColor = PrimaryButton
                     ),
                     enabled = !isUpdating,
                     modifier = Modifier.fillMaxWidth()

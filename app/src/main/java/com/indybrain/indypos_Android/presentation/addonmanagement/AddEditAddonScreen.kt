@@ -56,6 +56,11 @@ import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 
 /**
@@ -209,8 +214,15 @@ fun AddEditAddonScreen(
                     )
                     
                     // Addon Price Input Field
+                    var priceFocused by rememberSaveable { mutableStateOf(false) }
+                    val focusManager = LocalFocusManager.current
+                    
                     OutlinedTextField(
-                        value = priceText,
+                        value = if (priceFocused) {
+                            priceText
+                        } else {
+                            formatPriceForDisplay(priceText)
+                        },
                         onValueChange = { newValue ->
                             // Allow only numbers and decimal point
                             val filtered = newValue.filter { 
@@ -226,7 +238,18 @@ fun AddEditAddonScreen(
                             priceText = finalValue
                             viewModel.updateAddonPrice(finalValue)
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                val wasFocused = priceFocused
+                                priceFocused = focusState.isFocused
+                                // When losing focus, format the price
+                                if (wasFocused && !focusState.isFocused) {
+                                    val formatted = formatPriceForDisplay(priceText)
+                                    priceText = formatted
+                                    viewModel.updateAddonPrice(formatted)
+                                }
+                            },
                         placeholder = {
                             Text(
                                 text = "กรุณากรอกราคา",
@@ -239,7 +262,16 @@ fun AddEditAddonScreen(
                         },
                         singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = KeyboardType.Decimal
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                val formatted = formatPriceForDisplay(priceText)
+                                priceText = formatted
+                                viewModel.updateAddonPrice(formatted)
+                                focusManager.clearFocus()
+                            }
                         ),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -436,6 +468,28 @@ private fun ErrorDialog(
             }
         }
     )
+}
+
+/**
+ * Format price for display
+ */
+private fun formatPriceForDisplay(price: String): String {
+    if (price.isBlank()) return price
+    
+    val endsWithDot = price.trim().endsWith(".")
+    val priceToParse = if (endsWithDot) price.trim().dropLast(1) else price.trim()
+    
+    val parsed = priceToParse.toDoubleOrNull()
+    return if (parsed != null) {
+        val formatted = if (parsed % 1.0 == 0.0) {
+            parsed.toInt().toString()
+        } else {
+            String.format("%.2f", parsed)
+        }
+        if (endsWithDot) "$formatted." else formatted
+    } else {
+        price
+    }
 }
 
 /**

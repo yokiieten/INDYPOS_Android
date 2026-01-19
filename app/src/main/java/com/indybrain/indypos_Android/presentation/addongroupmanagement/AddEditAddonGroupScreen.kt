@@ -61,6 +61,11 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.saveable.rememberSaveable
 
 /**
  * Add/Edit Addon Group Screen
@@ -173,7 +178,7 @@ fun AddEditAddonGroupScreen(
                         FormTextFieldSection(
                             title = "เลือกได้สูงสุด",
                             value = uiState.formState.maxSelection,
-                            onValueChange = viewModel::updateMaxSelection,
+                            onValueChange = { if (it.all { char -> char.isDigit() }) viewModel.updateMaxSelection(it) },
                             placeholder = "1",
                             keyboardType = KeyboardType.Number,
                             isRequired = false
@@ -637,7 +642,9 @@ private fun AddAddonDialog(
 ) {
     var addonName by remember { mutableStateOf("") }
     var addonPrice by remember { mutableStateOf("") }
+    var priceFocused by rememberSaveable { mutableStateOf(false) }
     var showValidationError by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
     
     // Show validation error dialog
     if (showValidationError) {
@@ -730,7 +737,11 @@ private fun AddAddonDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 OutlinedTextField(
-                    value = addonPrice,
+                    value = if (priceFocused) {
+                        addonPrice
+                    } else {
+                        formatPriceForDisplay(addonPrice)
+                    },
                     onValueChange = { newValue ->
                         val filtered = newValue.filter { 
                             it.isDigit() || it == '.' 
@@ -743,20 +754,35 @@ private fun AddAddonDialog(
                         }
                         addonPrice = finalValue
                     },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focusState ->
+                            val wasFocused = priceFocused
+                            priceFocused = focusState.isFocused
+                            if (wasFocused && !focusState.isFocused) {
+                                addonPrice = formatPriceForDisplay(addonPrice)
+                            }
+                        },
                     placeholder = {
                         Text(
                             text = "ราคา",
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
-                                size = FontSize.Medium
+                                    size = FontSize.Medium
                             ),
                             color = PlaceholderText
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = KeyboardType.Number
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            addonPrice = formatPriceForDisplay(addonPrice)
+                            focusManager.clearFocus()
+                        }
                     ),
                     enabled = !isLoading,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -818,5 +844,27 @@ private fun AddAddonDialog(
             }
         }
     )
+}
+
+/**
+ * Format price for display
+ */
+private fun formatPriceForDisplay(price: String): String {
+    if (price.isBlank()) return price
+    
+    val endsWithDot = price.trim().endsWith(".")
+    val priceToParse = if (endsWithDot) price.trim().dropLast(1) else price.trim()
+    
+    val parsed = priceToParse.toDoubleOrNull()
+    return if (parsed != null) {
+        val formatted = if (parsed % 1.0 == 0.0) {
+            parsed.toInt().toString()
+        } else {
+            String.format("%.2f", parsed)
+        }
+        if (endsWithDot) "$formatted." else formatted
+    } else {
+        price
+    }
 }
 
