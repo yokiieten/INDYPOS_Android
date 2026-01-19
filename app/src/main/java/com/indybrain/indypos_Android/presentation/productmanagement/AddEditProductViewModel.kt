@@ -544,6 +544,19 @@ class AddEditProductViewModel @Inject constructor(
             return
         }
         
+        // Validate that cost price (if provided) is not greater than selling price
+        val tempCostPrice = try {
+            state.costPrice.trim().toDoubleOrNull()
+        } catch (e: Exception) {
+            null
+        }
+        if (tempCostPrice != null && tempCostPrice > sellingPrice) {
+            _uiState.update {
+                it.copy(errorMessage = "ราคาต้นทุนต้องไม่มากกว่าราคาขาย")
+            }
+            return
+        }
+        
         if (state.unit.trim().isBlank()) {
             _uiState.update { 
                 it.copy(errorMessage = "กรุณากรอกหน่วยนับ")
