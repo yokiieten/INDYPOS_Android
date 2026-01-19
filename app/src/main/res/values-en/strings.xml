@@ -252,6 +252,8 @@
     <string name="product_search">Search</string>
     <string name="product_change_view">Change View</string>
     <string name="product_empty">No products</string>
+    <!-- Shown when a product has no category assigned -->
+    <string name="product_no_category_title">No Category</string>
     <string name="product_view_cart">View Cart (%1$d)</string>
     <string name="product_cart">Cart</string>
     <string name="product_barcode_scanner">Scan Barcode</string>

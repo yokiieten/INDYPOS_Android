@@ -766,9 +766,9 @@ private fun ProductItem(
                 // Category and Price
                 val categoryName = product.categoryId?.let { categoryId ->
                     categories.find { it.id == categoryId }?.name
-                } ?: ""
+                } ?: stringResource(id = R.string.product_no_category_title)
                 Text(
-                    text = "${if (categoryName.isNotBlank()) "$categoryName - " else ""}${formatCurrency(product.price ?: 0.0)}",
+                    text = "$categoryName - ${formatCurrency(product.price ?: 0.0)}",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small

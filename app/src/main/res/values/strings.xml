@@ -386,6 +386,8 @@
     <string name="product_management_cancel">ยกเลิก</string>
     <string name="product_management_search_placeholder">ค้นหาสินค้า…</string>
     <string name="product_management_all_categories">หมวดหมู่ทั้งหมด</string>
+    <!-- Shown when a product has no category assigned -->
+    <string name="product_no_category_title">ไม่มีหมวดหมู่</string>
     <string name="product_management_add_product">เพิ่มสินค้าใหม่</string>
     <string name="product_management_empty">ไม่มีสินค้า</string>
     <string name="product_management_loading">กำลังโหลด...</string>

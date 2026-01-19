@@ -1402,16 +1402,26 @@ private fun CategoryDropdown(
     modifier: Modifier = Modifier
 ) {
     var showDropdown by remember { mutableStateOf(false) }
-    
-    val selectedCategoryName = selectedCategoryId?.let { id ->
-        categories.find { it.id == id }?.name
-    } ?: "กรุณาเลือกหมวดหมู่"
-    
+    val hasCategories = categories.isNotEmpty()
+
+    val selectedCategoryName = when {
+        !hasCategories -> stringResource(id = R.string.product_no_category_title)
+        selectedCategoryId != null -> categories.find { it.id == selectedCategoryId }?.name
+            ?: stringResource(id = R.string.product_no_category_title)
+        else -> "กรุณาเลือกหมวดหมู่"
+    }
+
     Surface(
         modifier = modifier
             .height(44.dp)
             .clip(RoundedCornerShape(8.dp))
-            .clickable { showDropdown = true },
+            .then(
+                if (hasCategories) {
+                    Modifier.clickable { showDropdown = true }
+                } else {
+                    Modifier
+                }
+            ),
         color = Color(0xFFF5F5F5),
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -1442,7 +1452,7 @@ private fun CategoryDropdown(
         }
     }
     
-    if (showDropdown) {
+    if (showDropdown && hasCategories) {
         AlertDialog(
             onDismissRequest = { showDropdown = false },
             title = {
