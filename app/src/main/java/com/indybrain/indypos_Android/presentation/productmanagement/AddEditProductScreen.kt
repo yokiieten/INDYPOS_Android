@@ -59,11 +59,16 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -288,13 +293,39 @@ fun AddEditProductScreen(
                     
                     // Selling Price
                     FormFieldLabel("ราคาขาย", required = true)
+                    var sellingPriceFocused by rememberSaveable { mutableStateOf(false) }
+                    val focusManager = LocalFocusManager.current
                     OutlinedTextField(
-                        value = uiState.sellingPrice,
+                        value = if (sellingPriceFocused) {
+                            uiState.sellingPrice
+                        } else {
+                            formatPriceForDisplay(uiState.sellingPrice)
+                        },
                         onValueChange = { viewModel.updateSellingPrice(it) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                val wasFocused = sellingPriceFocused
+                                sellingPriceFocused = focusState.isFocused
+                                // When losing focus, format the price
+                                if (wasFocused && !focusState.isFocused) {
+                                    viewModel.formatSellingPriceOnUnfocus()
+                                }
+                            },
                         placeholder = { Text("0", color = PlaceholderText) },
                         singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // Format price when Done is pressed
+                                viewModel.formatSellingPriceOnUnfocus()
+                                // Clear focus to show formatted value
+                                focusManager.clearFocus()
+                            }
+                        ),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = Color.White,
@@ -309,13 +340,39 @@ fun AddEditProductScreen(
                     
                     // Cost Price
                     FormFieldLabel("ราคาต้นทุน", required = false)
+                    var costPriceFocused by rememberSaveable { mutableStateOf(false) }
+                    val focusManagerCost = LocalFocusManager.current
                     OutlinedTextField(
-                        value = uiState.costPrice,
+                        value = if (costPriceFocused) {
+                            uiState.costPrice
+                        } else {
+                            formatPriceForDisplay(uiState.costPrice)
+                        },
                         onValueChange = { viewModel.updateCostPrice(it) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                val wasFocused = costPriceFocused
+                                costPriceFocused = focusState.isFocused
+                                // When losing focus, format the price
+                                if (wasFocused && !focusState.isFocused) {
+                                    viewModel.formatCostPriceOnUnfocus()
+                                }
+                            },
                         placeholder = { Text("0 (ไม่บังคับ)", color = PlaceholderText) },
                         singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // Format price when Done is pressed
+                                viewModel.formatCostPriceOnUnfocus()
+                                // Clear focus to show formatted value
+                                focusManagerCost.clearFocus()
+                            }
+                        ),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = Color.White,
@@ -1219,6 +1276,35 @@ private fun AddCategoryDialog(
             }
         }
     )
+}
+
+/**
+ * Format price for display: Hide .00, show 2 decimal places otherwise
+ * Example: 5000.00 -> 5000, 5000.50 -> 5000.50
+ * Preserves decimal point if user is typing (e.g., "5000." stays as "5000.")
+ */
+private fun formatPriceForDisplay(price: String): String {
+    if (price.isBlank()) return price
+    
+    // If price ends with ".", preserve it (user is typing)
+    val endsWithDot = price.trim().endsWith(".")
+    val priceToParse = if (endsWithDot) price.trim().dropLast(1) else price.trim()
+    
+    val parsed = priceToParse.toDoubleOrNull()
+    return if (parsed != null) {
+        val formatted = if (parsed % 1.0 == 0.0) {
+            // If decimal is .00, don't show decimals
+            parsed.toInt().toString()
+        } else {
+            // Show 2 decimal places
+            String.format("%.2f", parsed)
+        }
+        // If original ended with ".", add it back
+        if (endsWithDot) "$formatted." else formatted
+    } else {
+        // If can't parse, return as is (might be invalid input or user typing)
+        price
+    }
 }
 
 @Composable

@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 
 /**
@@ -105,12 +107,20 @@ class AddEditProductViewModel @Inject constructor(
                         emptyList() // Fallback to empty list if there's an error
                     }
                     
+                    // Format prices for display when loading
+                    val formattedSellingPrice = product.price?.let { 
+                        formatPriceForDisplay(it.toString()) 
+                    } ?: "0"
+                    val formattedCostPrice = product.costPrice?.let { 
+                        formatPriceForDisplay(it.toString()) 
+                    } ?: ""
+                    
                     _uiState.update { 
                         it.copy(
                             productName = product.name ?: "",
                             productCode = product.productCode ?: "",
-                            sellingPrice = product.price?.toString() ?: "0",
-                            costPrice = product.costPrice?.toString() ?: "",
+                            sellingPrice = formattedSellingPrice,
+                            costPrice = formattedCostPrice,
                             unit = product.unit ?: "",
                             imageUrl = normalizedImageUrl,
                             selectedColorHex = product.selectedColorHex,
@@ -160,17 +170,75 @@ class AddEditProductViewModel @Inject constructor(
     }
     
     /**
-     * Update selling price
+     * Format price when user finishes input (on unfocus): Round to 2 decimal places
+     * Example: 5000.533555 -> 5000.53, 5000.535555 -> 5000.54
+     */
+    private fun formatPriceOnUnfocus(input: String): String {
+        if (input.isBlank()) return input
+        
+        try {
+            // Use BigDecimal for precise rounding (round half up)
+            val bigDecimal = BigDecimal(input.trim())
+            val rounded = bigDecimal.setScale(2, RoundingMode.HALF_UP)
+            // Format to 2 decimal places
+            return String.format("%.2f", rounded.toDouble())
+        } catch (e: Exception) {
+            // If parsing fails, return as is
+            return input
+        }
+    }
+    
+    /**
+     * Format price for display: Hide .00, show 2 decimal places otherwise
+     * Example: 5000.00 -> 5000, 5000.50 -> 5000.50
+     */
+    fun formatPriceForDisplay(price: String): String {
+        if (price.isBlank()) return price
+        
+        val parsed = price.trim().toDoubleOrNull()
+        return if (parsed != null) {
+            // If decimal is .00, don't show decimals
+            if (parsed % 1.0 == 0.0) {
+                parsed.toInt().toString()
+            } else {
+                // Show 2 decimal places
+                String.format("%.2f", parsed)
+            }
+        } else {
+            price
+        }
+    }
+    
+    /**
+     * Update selling price (allow free typing, no formatting during input)
      */
     fun updateSellingPrice(price: String) {
         _uiState.update { it.copy(sellingPrice = price, errorMessage = null) }
     }
     
     /**
-     * Update cost price
+     * Format selling price when user finishes input
+     */
+    fun formatSellingPriceOnUnfocus() {
+        val currentPrice = _uiState.value.sellingPrice
+        val formatted = formatPriceOnUnfocus(currentPrice)
+        _uiState.update { it.copy(sellingPrice = formatted, errorMessage = null) }
+    }
+    
+    /**
+     * Update cost price (allow free typing, no formatting during input)
      */
     fun updateCostPrice(price: String) {
         _uiState.update { it.copy(costPrice = price, errorMessage = null) }
+    }
+    
+    /**
+     * Format cost price when user finishes input
+     */
+    fun formatCostPriceOnUnfocus() {
+        val currentPrice = _uiState.value.costPrice
+        val formatted = formatPriceOnUnfocus(currentPrice)
+        _uiState.update { it.copy(costPrice = formatted, errorMessage = null) }
     }
     
     /**
