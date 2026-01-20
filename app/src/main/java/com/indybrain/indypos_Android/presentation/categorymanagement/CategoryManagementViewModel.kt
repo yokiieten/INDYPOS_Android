@@ -76,19 +76,16 @@ class CategoryManagementViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 productRepository.getAllCategoriesFlow().collect { categories ->
-                    // Check if ViewModel is still active before updating state
-                    if (categories != null) {
-                        _uiState.update { current ->
-                            current.copy(
-                                categories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE },
-                                isLoading = false // Clear loading state once we have data from Room
-                            )
-                        }
-                    } else {
-                        // If categories is null, keep loading state
-                        _uiState.update { current ->
-                            current.copy(categories = emptyList(), isLoading = false)
-                        }
+                    // Always keep the visual order of categories stable and
+                    // independent from server-side sort changes (e.g. when
+                    // toggling active/inactive status). We therefore rely on
+                    // createdAt instead of sortOrder so that enabling/disabling
+                    // a category does not move it to the bottom of the list.
+                    _uiState.update { current ->
+                        current.copy(
+                            categories = categories.sortedBy { it.createdAt },
+                            isLoading = false // Clear loading state once we have data from Room
+                        )
                     }
                 }
             } catch (e: Exception) {
