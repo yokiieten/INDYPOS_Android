@@ -201,7 +201,19 @@ class MainProductViewModel @Inject constructor(
      * Find product by barcode (productCode or skuCode)
      */
     suspend fun findProductByCode(code: String): ProductEntity? {
-        return productRepository.getProductByCode(code)
+        // 1) Find active product by code
+        val product = productRepository.getProductByCode(code) ?: return null
+
+        // 2) Product must have a category
+        val categoryId = product.categoryId?.takeIf { it.isNotBlank() } ?: return null
+
+        // 3) Category must still be active (and not deleted locally)
+        val category = productRepository.getCategoryById(categoryId)
+        val isCategoryActive = category?.let { it.isActive && !it.isDeletedLocally } ?: false
+
+        // If category is not active, treat as "product not found" for scanning/search,
+        // to match iOS behaviour and the SearchProductViewModel filters.
+        return if (isCategoryActive) product else null
     }
     
     /**
