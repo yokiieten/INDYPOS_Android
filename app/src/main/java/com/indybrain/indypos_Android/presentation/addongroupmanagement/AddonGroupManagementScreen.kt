@@ -51,8 +51,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -256,8 +258,10 @@ fun AddonGroupManagementScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(groupsToShow) { addonGroup ->
+                                    val addonCount = uiState.addonCounts[addonGroup.id]
                                     AddonGroupItem(
                                         addonGroup = addonGroup,
+                                        addonCount = addonCount,
                                         isEditMode = uiState.isEditMode,
                                         isSelected = uiState.selectedAddonGroupIds.contains(addonGroup.id),
                                         onClick = { 
@@ -917,6 +921,7 @@ private fun EditModeBottomBar(
 @Composable
 private fun AddonGroupItem(
     addonGroup: com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity,
+    addonCount: Int?,
     isEditMode: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit
@@ -963,9 +968,37 @@ private fun AddonGroupItem(
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                // Additional info
+                // Additional info (required/optional + selection mode)
+                val requiredText = stringResource(
+                    id = if (addonGroup.isRequired) {
+                        R.string.addon_group_required
+                    } else {
+                        R.string.addon_group_optional
+                    }
+                )
+
+                val selectionText = stringResource(
+                    id = if (addonGroup.isSingleSelection) {
+                        R.string.addon_group_single_selection
+                    } else {
+                        R.string.addon_group_multiple_selection
+                    }
+                )
+
+                val baseInfoText = "$requiredText \u2022 $selectionText"
+
+                val infoText = if (addonCount != null && addonCount > 0) {
+                    val itemsText = stringResource(
+                        id = R.string.addon_group_items_count,
+                        addonCount
+                    )
+                    "$baseInfoText \u2022 $itemsText"
+                } else {
+                    baseInfoText
+                }
+
                 Text(
-                    text = if (addonGroup.isRequired) "จำเป็น" else "ไม่จำเป็น",
+                    text = infoText,
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small

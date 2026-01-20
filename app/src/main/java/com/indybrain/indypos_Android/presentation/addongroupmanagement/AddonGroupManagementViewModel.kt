@@ -64,10 +64,15 @@ class AddonGroupManagementViewModel @Inject constructor(
      */
     private fun observeAddonGroups() {
         viewModelScope.launch {
-            addonGroupRepository.getAllAddonGroupsFlow().collect { addonGroups ->
+            addonGroupRepository.getAllAddonGroupsWithCountFlow().collect { groupsWithCount ->
+                val sortedGroups = groupsWithCount.sortedBy { it.addonGroup.sortOrder ?: 0 }
+                val addonGroups = sortedGroups.map { it.addonGroup }
+                val counts = sortedGroups.associate { it.addonGroup.id to it.addonCount }
+                
                 _uiState.update { current ->
                     current.copy(
-                        addonGroups = addonGroups.sortedBy { it.sortOrder ?: 0 },
+                        addonGroups = addonGroups,
+                        addonCounts = counts,
                         isLoading = false // Clear loading state once we have data from Room
                     )
                 }

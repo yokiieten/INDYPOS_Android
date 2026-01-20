@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.domain.repository
 
 import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
 import com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddons
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddonCount
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -12,6 +13,11 @@ interface AddonGroupRepository {
      * Get all addon groups from local database (including inactive, excluding deleted)
      */
     fun getAllAddonGroupsFlow(): Flow<List<AddonGroupEntity>>
+    
+    /**
+     * Get all addon groups with addon count from local database
+     */
+    fun getAllAddonGroupsWithCountFlow(): Flow<List<AddonGroupWithAddonCount>>
     
     /**
      * Get addon group by ID

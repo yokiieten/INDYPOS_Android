@@ -285,6 +285,13 @@
     <string name="order_settings_product_management">Product Management</string>
     <string name="order_settings_addon_group_management">Add-on Group Management</string>
     <string name="order_settings_addon_management">Add-on Management</string>
+
+    <!-- Addon Group Management Labels -->
+    <string name="addon_group_required">Required</string>
+    <string name="addon_group_optional">Optional</string>
+    <string name="addon_group_single_selection">Single Selection</string>
+    <string name="addon_group_multiple_selection">Multiple Selection</string>
+    <string name="addon_group_items_count">%1$d items</string>
     
     <!-- Category Error Messages -->
     <string name="category_form_validation_exists">This category already exists</string>

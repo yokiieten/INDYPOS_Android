@@ -340,6 +340,13 @@
     <string name="order_settings_product_management">จัดการสินค้า</string>
     <string name="order_settings_addon_group_management">จัดการกลุ่มแอดออน</string>
     <string name="order_settings_addon_management">จัดการแอดออน</string>
+
+    <!-- Addon Group Management Labels -->
+    <string name="addon_group_required">จำเป็น</string>
+    <string name="addon_group_optional">ไม่จำเป็น</string>
+    <string name="addon_group_single_selection">เลือกได้ 1 รายการ</string>
+    <string name="addon_group_multiple_selection">เลือกได้หลายรายการ</string>
+    <string name="addon_group_items_count">%1$d รายการ</string>
     
     <!-- Category Management Screen -->
     <string name="category_management_title">การจัดการหมวดหมู่</string>

@@ -8,6 +8,7 @@ import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
 data class AddonGroupManagementUiState(
     val addonGroups: List<AddonGroupEntity>? = null, // null means data hasn't been loaded yet
     val filteredAddonGroups: List<AddonGroupEntity>? = null,
+    val addonCounts: Map<String, Int> = emptyMap(),
     val searchQuery: String = "",
     val isLoading: Boolean = true, // Start with loading = true
     val errorMessage: String? = null,

@@ -37,6 +37,10 @@ class AddonGroupRepositoryImpl @Inject constructor(
     override fun getAllAddonGroupsFlow(): Flow<List<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity>> {
         return addonGroupDao.getAllAddonGroupsForManagementFlow()
     }
+
+    override fun getAllAddonGroupsWithCountFlow(): Flow<List<com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddonCount>> {
+        return addonGroupDao.getAddonGroupsWithAddonCountForManagementFlow()
+    }
     
     override suspend fun getAddonGroupById(id: String): com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity? {
         return addonGroupDao.getAddonGroupById(id)
