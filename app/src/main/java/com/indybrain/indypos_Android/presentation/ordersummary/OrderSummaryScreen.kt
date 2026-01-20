@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.presentation.ordersummary
 
 import android.content.res.Configuration
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,9 +37,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -130,7 +133,7 @@ private fun OrderSummaryPortraitContent(
                     .padding(40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Checkmark icon
+                // Checkmark icon (ใช้รูปเดียวกับ iOS)
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -138,10 +141,9 @@ private fun OrderSummaryPortraitContent(
                         .background(Color.Transparent),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_correct),
                         contentDescription = "สำเร็จ",
-                        tint = Color.Black,
                         modifier = Modifier.size(100.dp)
                     )
                 }
@@ -286,7 +288,7 @@ private fun OrderSummaryLandscapeContent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Checkmark icon
+                    // Checkmark icon (ใช้รูปเดียวกับ iOS)
                     Box(
                         modifier = Modifier
                             .size(80.dp)
@@ -294,10 +296,9 @@ private fun OrderSummaryLandscapeContent(
                             .background(Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_correct),
                             contentDescription = "สำเร็จ",
-                            tint = Color.Black,
                             modifier = Modifier.size(80.dp)
                         )
                     }

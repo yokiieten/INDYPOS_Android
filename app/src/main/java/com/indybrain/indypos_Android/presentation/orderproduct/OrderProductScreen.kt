@@ -636,7 +636,8 @@ private fun LandscapeOrderContent(
                             } else {
                                 viewModel.placeOrder(
                                     onSuccess = { orderNumber ->
-                                        onOrderSuccess(total)
+                                        // สำหรับการชำระเงินด้วยการโอนเงิน ให้แสดงเงินทอนเป็น 0 บาท
+                                        onOrderSuccess(0.0)
                                     },
                                     onError = { error ->
                                         onError(error)
@@ -952,7 +953,8 @@ private fun PortraitOrderContent(
                     } else {
                         viewModel.placeOrder(
                             onSuccess = { orderNumber ->
-                                onOrderSuccess(total)
+                                // สำหรับการชำระเงินด้วยการโอนเงิน ให้แสดงเงินทอนเป็น 0 บาทเสมอ
+                                onOrderSuccess(0.0)
                             },
                             onError = { error ->
                                 onError(error)
