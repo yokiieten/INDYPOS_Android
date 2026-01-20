@@ -546,53 +546,38 @@ class AddonGroupRepositoryImpl @Inject constructor(
             if (!networkConnectivityChecker.isConnected()) {
                 return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
             }
-            
+
             val response = productsApi.getAddonGroups()
-            
+
             if (response.status == 200) {
-                // Delete all old data before saving new data from API
-                // This includes all addon groups, addons, and junction table entries (including local data)
-                junctionDao.deleteAll()
-                addonGroupDao.deleteAll()
-                addonDao.deleteAll()
-                
                 // If status is 200, treat as success even if data is null or empty (new user might have no data)
                 val addonGroupsList = response.data ?: emptyList()
-                // Convert and save addon groups
+                // Convert and save addon groups + their addons + junctions
                 if (addonGroupsList.isNotEmpty()) {
+                    // 1) Save groups themselves
                     val addonGroups = addonGroupsList.map { ProductMapper.toEntity(it) }
                     addonGroupDao.insertAll(addonGroups)
-                    
-                    // Save addons and create junction table entries for relationships
-                    val allAddons = mutableListOf<com.indybrain.indypos_Android.data.local.entity.AddonEntity>()
-                    val junctionEntries = mutableListOf<AddonGroupAddonJunctionEntity>()
-                    
-                    addonGroupsList.forEach { addonGroupDto ->
-                        addonGroupDto.addons?.forEachIndexed { index, addonDto ->
-                            // Convert addon DTO to entity
-                            val addonEntity = ProductMapper.toEntity(addonDto)
-                            allAddons.add(addonEntity)
-                            
-                            // Create junction entry for the relationship
-                            // Use sortOrder from addonDto (it's always present in the DTO)
-                            junctionEntries.add(
-                                AddonGroupAddonJunctionEntity(
-                                    addonGroupId = addonGroupDto.id,
-                                    addonId = addonDto.id,
-                                    sortOrder = addonDto.sortOrder
+
+                    // 2) Optionally refresh junctions ONLY when server actually sends addons list
+                    //    (บาง environment อาจไม่ส่ง field addons มาเลย ถ้าลบทุกครั้งจะทำให้ความสัมพันธ์ใน Room หาย)
+                    addonGroupsList.forEach { groupDto ->
+                        val serverAddons = groupDto.addons
+                        if (serverAddons != null) {
+                            // Server บอกความสัมพันธ์มาอย่างชัดเจน → sync ตาม server
+                            junctionDao.deleteByAddonGroupId(groupDto.id)
+
+                            serverAddons.forEachIndexed { index, addonDto ->
+                                val addonEntity = ProductMapper.toEntity(addonDto, groupDto.id)
+                                addonDao.insert(addonEntity)
+                                junctionDao.insert(
+                                    AddonGroupAddonJunctionEntity(
+                                        addonGroupId = groupDto.id,
+                                        addonId = addonEntity.id,
+                                        sortOrder = index + 1
+                                    )
                                 )
-                            )
+                            }
                         }
-                    }
-                    
-                    // Save all addons (use insertAll which handles conflicts with REPLACE strategy)
-                    if (allAddons.isNotEmpty()) {
-                        addonDao.insertAll(allAddons)
-                    }
-                    
-                    // Save all junction entries
-                    if (junctionEntries.isNotEmpty()) {
-                        junctionDao.insertAll(junctionEntries)
                     }
                 }
                 Result.success(Unit)
@@ -671,7 +656,7 @@ class AddonGroupRepositoryImpl @Inject constructor(
             
             val request = SyncAddonGroupsRequestDto(addonGroups = syncItems)
             val response = productsApi.syncAddonGroups(request)
-            
+
             // Process sync results
             response.data?.forEach { result ->
                 when {
@@ -682,9 +667,29 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         }
                     }
                     result.serverData != null -> {
-                        // Update with server data
-                        val serverEntity = ProductMapper.toEntity(result.serverData)
+                        // Update with server data (group + optional addons + junctions)
+                        val serverGroupDto = result.serverData
+                        val serverEntity = ProductMapper.toEntity(serverGroupDto)
                         addonGroupDao.insertAddonGroup(serverEntity)
+
+                        val groupId = serverEntity.id
+                        val serverAddons = serverGroupDto.addons
+                        if (serverAddons != null) {
+                            // มีข้อมูล addons ชัดเจน → sync junctions ตาม server
+                            junctionDao.deleteByAddonGroupId(groupId)
+
+                            serverAddons.forEachIndexed { index, addonDto ->
+                                val addonEntity = ProductMapper.toEntity(addonDto, groupId)
+                                addonDao.insert(addonEntity)
+                                junctionDao.insert(
+                                    AddonGroupAddonJunctionEntity(
+                                        addonGroupId = groupId,
+                                        addonId = addonEntity.id,
+                                        sortOrder = index + 1
+                                    )
+                                )
+                            }
+                        }
                     }
                     else -> {
                         // Mark as synced

@@ -49,24 +49,27 @@ class AddEditAddonGroupViewModel @Inject constructor(
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
     
     init {
+        // ดึงรายการ Addon ล่าสุดจาก API -> Sync ลง Room ก่อน
+        // จากนั้นค่อยให้ UI subscribe จาก Room ผ่าน Flow
+        viewModelScope.launch {
+            try {
+                addonRepository.fetchAndSyncAddons()
+                // ถ้า fail (เช่น ไม่มีเน็ต) ก็ยังให้ UI ใช้ข้อมูลใน Room ต่อได้ตามปกติ
+            } catch (_: Exception) {
+                // ไม่ต้องโชว์ error ที่นี่ ปล่อยให้ flow ใน Room ทำงานต่อไป
+            }
+        }
         loadAvailableAddons()
     }
     
     /**
      * Initialize for edit mode
-     * Loads addon group with its mapped addons from Room and checkpoints the relationships
      */
     fun initializeForEdit(addonGroupId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            
-            // Get addon group with its mapped addons from Room (checkpoint the relationships)
             val addonGroupWithAddons = addonGroupRepository.getAddonGroupWithAddonsById(addonGroupId)
             if (addonGroupWithAddons != null) {
-                // Ensure available addons list is up to date
-                // The addon list is already loaded via init, but we verify the mapped relationships
-                val mappedAddonIds = addonGroupWithAddons.addons.mapNotNull { it.id }.toSet()
-                
                 _uiState.update { current ->
                     current.copy(
                         isEditMode = true,
@@ -77,8 +80,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
                             maxSelection = if (addonGroupWithAddons.addonGroup.maxSelection != null && addonGroupWithAddons.addonGroup.maxSelection!! > 0) {
                                 addonGroupWithAddons.addonGroup.maxSelection.toString()
                             } else "",
-                            // Checkpoint: Set selected addons based on mapped relationships from Room
-                            selectedAddonIds = mappedAddonIds
+                            selectedAddonIds = addonGroupWithAddons.addons.mapNotNull { it.id }.toSet()
                         ),
                         isLoading = false
                     )
