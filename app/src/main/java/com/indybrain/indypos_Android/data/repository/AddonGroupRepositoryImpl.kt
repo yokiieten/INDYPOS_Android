@@ -550,12 +550,50 @@ class AddonGroupRepositoryImpl @Inject constructor(
             val response = productsApi.getAddonGroups()
             
             if (response.status == 200) {
+                // Delete all old data before saving new data from API
+                // This includes all addon groups, addons, and junction table entries (including local data)
+                junctionDao.deleteAll()
+                addonGroupDao.deleteAll()
+                addonDao.deleteAll()
+                
                 // If status is 200, treat as success even if data is null or empty (new user might have no data)
                 val addonGroupsList = response.data ?: emptyList()
                 // Convert and save addon groups
                 if (addonGroupsList.isNotEmpty()) {
                     val addonGroups = addonGroupsList.map { ProductMapper.toEntity(it) }
                     addonGroupDao.insertAll(addonGroups)
+                    
+                    // Save addons and create junction table entries for relationships
+                    val allAddons = mutableListOf<com.indybrain.indypos_Android.data.local.entity.AddonEntity>()
+                    val junctionEntries = mutableListOf<AddonGroupAddonJunctionEntity>()
+                    
+                    addonGroupsList.forEach { addonGroupDto ->
+                        addonGroupDto.addons?.forEachIndexed { index, addonDto ->
+                            // Convert addon DTO to entity
+                            val addonEntity = ProductMapper.toEntity(addonDto)
+                            allAddons.add(addonEntity)
+                            
+                            // Create junction entry for the relationship
+                            // Use sortOrder from addonDto (it's always present in the DTO)
+                            junctionEntries.add(
+                                AddonGroupAddonJunctionEntity(
+                                    addonGroupId = addonGroupDto.id,
+                                    addonId = addonDto.id,
+                                    sortOrder = addonDto.sortOrder
+                                )
+                            )
+                        }
+                    }
+                    
+                    // Save all addons (use insertAll which handles conflicts with REPLACE strategy)
+                    if (allAddons.isNotEmpty()) {
+                        addonDao.insertAll(allAddons)
+                    }
+                    
+                    // Save all junction entries
+                    if (junctionEntries.isNotEmpty()) {
+                        junctionDao.insertAll(junctionEntries)
+                    }
                 }
                 Result.success(Unit)
             } else {
