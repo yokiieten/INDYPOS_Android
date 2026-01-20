@@ -614,12 +614,12 @@ private fun AddonGroupSection(
                 color = PrimaryText
             )
             
-            Row(
+                Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Max selection indicator
-                if (addonGroup.maxSelection != null) {
+                // Max selection indicator (hide when maxSelection is 0)
+                if (addonGroup.maxSelection != null && addonGroup.maxSelection > 0) {
                     Surface(
                         color = Color(0xFFE3F2FD),
                         shape = RoundedCornerShape(12.dp)
