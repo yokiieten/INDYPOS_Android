@@ -27,6 +27,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,11 +67,19 @@ fun AddEditCategoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isEditMode = categoryId != null
+    var isSaveInProgress by remember { mutableStateOf(false) }
     
     // Load category data if in edit mode
     LaunchedEffect(categoryId) {
         if (categoryId != null) {
             viewModel.loadCategory(categoryId)
+        }
+    }
+
+    // Reset save-in-progress flag when loading finishes
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            isSaveInProgress = false
         }
     }
     
@@ -180,8 +191,13 @@ fun AddEditCategoryScreen(
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .clickable(
-                        enabled = !uiState.isLoading,
-                        onClick = { viewModel.saveCategory {} }
+                        enabled = !uiState.isLoading && !isSaveInProgress,
+                        onClick = {
+                            if (!isSaveInProgress) {
+                                isSaveInProgress = true
+                                viewModel.saveCategory {}
+                            }
+                        }
                     ),
                 color = if (uiState.isLoading) 
                     PrimaryButton.copy(alpha = 0.6f) 

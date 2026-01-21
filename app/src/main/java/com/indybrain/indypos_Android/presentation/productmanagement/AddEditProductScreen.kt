@@ -115,11 +115,19 @@ fun AddEditProductScreen(
     var showImagePickerDialog by remember { mutableStateOf(false) }
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     var processedBarcode by remember { mutableStateOf<String?>(null) }
+    var isSaveInProgress by remember { mutableStateOf(false) }
     
     // Load product data if in edit mode
     LaunchedEffect(productId) {
         if (productId != null) {
             viewModel.loadProduct(productId)
+        }
+    }
+    
+    // Reset save-in-progress flag when loading finishes
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            isSaveInProgress = false
         }
     }
     
@@ -293,39 +301,17 @@ fun AddEditProductScreen(
                     
                     // Selling Price
                     FormFieldLabel("ราคาขาย", required = true)
-                    var sellingPriceFocused by rememberSaveable { mutableStateOf(false) }
-                    val focusManager = LocalFocusManager.current
                     OutlinedTextField(
-                        value = if (sellingPriceFocused) {
-                            uiState.sellingPrice
-                        } else {
-                            formatPriceForDisplay(uiState.sellingPrice)
-                        },
+                        value = uiState.sellingPrice,
                         onValueChange = { viewModel.updateSellingPrice(it) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onFocusChanged { focusState ->
-                                val wasFocused = sellingPriceFocused
-                                sellingPriceFocused = focusState.isFocused
-                                // When losing focus, format the price
-                                if (wasFocused && !focusState.isFocused) {
-                                    viewModel.formatSellingPriceOnUnfocus()
-                                }
-                            },
+                        modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("0", color = PlaceholderText) },
                         singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = KeyboardType.Decimal,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                // Format price when Done is pressed
-                                viewModel.formatSellingPriceOnUnfocus()
-                                // Clear focus to show formatted value
-                                focusManager.clearFocus()
-                            }
-                        ),
+                        keyboardActions = KeyboardActions(),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = Color.White,
@@ -340,39 +326,17 @@ fun AddEditProductScreen(
                     
                     // Cost Price
                     FormFieldLabel("ราคาต้นทุน", required = false)
-                    var costPriceFocused by rememberSaveable { mutableStateOf(false) }
-                    val focusManagerCost = LocalFocusManager.current
                     OutlinedTextField(
-                        value = if (costPriceFocused) {
-                            uiState.costPrice
-                        } else {
-                            formatPriceForDisplay(uiState.costPrice)
-                        },
+                        value = uiState.costPrice,
                         onValueChange = { viewModel.updateCostPrice(it) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onFocusChanged { focusState ->
-                                val wasFocused = costPriceFocused
-                                costPriceFocused = focusState.isFocused
-                                // When losing focus, format the price
-                                if (wasFocused && !focusState.isFocused) {
-                                    viewModel.formatCostPriceOnUnfocus()
-                                }
-                            },
+                        modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("0 (ไม่บังคับ)", color = PlaceholderText) },
                         singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = KeyboardType.Decimal,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                // Format price when Done is pressed
-                                viewModel.formatCostPriceOnUnfocus()
-                                // Clear focus to show formatted value
-                                focusManagerCost.clearFocus()
-                            }
-                        ),
+                        keyboardActions = KeyboardActions(),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = Color.White,
@@ -678,10 +642,15 @@ fun AddEditProductScreen(
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .clickable(
-                        enabled = !uiState.isLoading,
-                        onClick = { viewModel.saveProduct {} }
+                        enabled = !uiState.isLoading && !isSaveInProgress,
+                        onClick = {
+                            if (!isSaveInProgress) {
+                                isSaveInProgress = true
+                                viewModel.saveProduct {}
+                            }
+                        }
                     ),
-                color = if (uiState.isLoading) 
+                color = if (uiState.isLoading || isSaveInProgress) 
                     PrimaryButton.copy(alpha = 0.6f) 
                 else 
                     PrimaryButton

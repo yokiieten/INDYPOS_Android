@@ -79,6 +79,7 @@ fun AddEditAddonScreen(
     val isEditMode = addonId != null
     var priceText by remember { mutableStateOf(uiState.addonPrice) }
     val coroutineScope = rememberCoroutineScope()
+    var isSaveInProgress by remember { mutableStateOf(false) }
     
     // Load addon data if in edit mode
     LaunchedEffect(addonId) {
@@ -94,7 +95,14 @@ fun AddEditAddonScreen(
     
     // Track if user clicked OK on success dialog
     var shouldNavigateBack by remember { mutableStateOf(false) }
-    
+
+    // Reset save-in-progress flag when loading finishes
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            isSaveInProgress = false
+        }
+    }
+
     // Navigate back when user clicks OK
     LaunchedEffect(shouldNavigateBack) {
         if (shouldNavigateBack) {
@@ -213,16 +221,8 @@ fun AddEditAddonScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     
-                    // Addon Price Input Field
-                    var priceFocused by rememberSaveable { mutableStateOf(false) }
-                    val focusManager = LocalFocusManager.current
-                    
                     OutlinedTextField(
-                        value = if (priceFocused) {
-                            priceText
-                        } else {
-                            formatPriceForDisplay(priceText)
-                        },
+                        value = priceText,
                         onValueChange = { newValue ->
                             // Allow only numbers and decimal point
                             val filtered = newValue.filter { 
@@ -239,17 +239,7 @@ fun AddEditAddonScreen(
                             viewModel.updateAddonPrice(finalValue)
                         },
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .onFocusChanged { focusState ->
-                                val wasFocused = priceFocused
-                                priceFocused = focusState.isFocused
-                                // When losing focus, format the price
-                                if (wasFocused && !focusState.isFocused) {
-                                    val formatted = formatPriceForDisplay(priceText)
-                                    priceText = formatted
-                                    viewModel.updateAddonPrice(formatted)
-                                }
-                            },
+                            .fillMaxWidth(),
                         placeholder = {
                             Text(
                                 text = "กรุณากรอกราคา",
@@ -265,14 +255,7 @@ fun AddEditAddonScreen(
                             keyboardType = KeyboardType.Decimal,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                val formatted = formatPriceForDisplay(priceText)
-                                priceText = formatted
-                                viewModel.updateAddonPrice(formatted)
-                                focusManager.clearFocus()
-                            }
-                        ),
+                        keyboardActions = KeyboardActions(),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = Color.White,
@@ -294,8 +277,13 @@ fun AddEditAddonScreen(
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .clickable(
-                        enabled = !uiState.isLoading,
-                        onClick = { viewModel.saveAddon {} }
+                        enabled = !uiState.isLoading && !isSaveInProgress,
+                        onClick = {
+                            if (!isSaveInProgress) {
+                                isSaveInProgress = true
+                                viewModel.saveAddon {}
+                            }
+                        }
                     ),
                 color = if (uiState.isLoading) 
                     PrimaryButton.copy(alpha = 0.6f) 

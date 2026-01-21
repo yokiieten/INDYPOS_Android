@@ -83,6 +83,7 @@ fun AddEditAddonGroupScreen(
     val isEditMode = addonGroupId != null
     var showAddAddonDialog by remember { mutableStateOf(false) }
     var shouldNavigateBack by remember { mutableStateOf(false) }
+    var isSaveInProgress by remember { mutableStateOf(false) }
     
     // Initialize for edit mode
     LaunchedEffect(addonGroupId) {
@@ -97,6 +98,13 @@ fun AddEditAddonGroupScreen(
             onSaveSuccess()
             viewModel.dismissSuccessDialog()
             shouldNavigateBack = false
+        }
+    }
+
+    // Reset save-in-progress flag when loading finishes
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            isSaveInProgress = false
         }
     }
     
@@ -228,8 +236,13 @@ fun AddEditAddonGroupScreen(
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .clickable(
-                        enabled = !uiState.isLoading,
-                        onClick = { viewModel.saveAddonGroup() }
+                        enabled = !uiState.isLoading && !isSaveInProgress,
+                        onClick = {
+                            if (!isSaveInProgress) {
+                                isSaveInProgress = true
+                                viewModel.saveAddonGroup()
+                            }
+                        }
                     ),
                 color = if (uiState.isLoading) 
                     PrimaryButton.copy(alpha = 0.6f) 
@@ -642,7 +655,6 @@ private fun AddAddonDialog(
 ) {
     var addonName by remember { mutableStateOf("") }
     var addonPrice by remember { mutableStateOf("") }
-    var priceFocused by rememberSaveable { mutableStateOf(false) }
     var showValidationError by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     
@@ -737,11 +749,7 @@ private fun AddAddonDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 OutlinedTextField(
-                    value = if (priceFocused) {
-                        addonPrice
-                    } else {
-                        formatPriceForDisplay(addonPrice)
-                    },
+                    value = addonPrice,
                     onValueChange = { newValue ->
                         val filtered = newValue.filter { 
                             it.isDigit() || it == '.' 
@@ -755,14 +763,7 @@ private fun AddAddonDialog(
                         addonPrice = finalValue
                     },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .onFocusChanged { focusState ->
-                            val wasFocused = priceFocused
-                            priceFocused = focusState.isFocused
-                            if (wasFocused && !focusState.isFocused) {
-                                addonPrice = formatPriceForDisplay(addonPrice)
-                            }
-                        },
+                        .fillMaxWidth(),
                     placeholder = {
                         Text(
                             text = "ราคา",
@@ -778,12 +779,7 @@ private fun AddAddonDialog(
                         keyboardType = KeyboardType.Decimal,
                         imeAction = ImeAction.Done
                     ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            addonPrice = formatPriceForDisplay(addonPrice)
-                            focusManager.clearFocus()
-                        }
-                    ),
+                    keyboardActions = KeyboardActions(),
                     enabled = !isLoading,
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = Color.White,
