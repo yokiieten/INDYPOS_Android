@@ -35,7 +35,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -127,7 +126,7 @@ fun StockManagementScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "ไม่มีสินค้าที่เปิดใช้งานสต็อก",
+                        text = stringResource(id = R.string.stock_management_empty_products),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -181,7 +180,7 @@ fun StockManagementScreen(
             },
             text = {
                 Text(
-                    text = "การจัดการสต็อกต้องใช้การเชื่อมต่ออินเทอร์เน็ต",
+                    text = stringResource(id = R.string.stock_management_no_internet_message),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -205,15 +204,12 @@ fun StockManagementScreen(
     
     // Success Message
     uiState.updateSuccessMessage?.let { message ->
-        LaunchedEffect(message) {
-            kotlinx.coroutines.delay(3000)
-            viewModel.clearSuccessMessage()
-        }
         AlertDialog(
-            onDismissRequest = { viewModel.clearSuccessMessage() },
+            // Prevent dismissing by clicking outside or back button
+            onDismissRequest = { /* Do nothing */ },
             title = {
                 Text(
-                    text = "อัปเดตสต็อกสำเร็จ",
+                    text = stringResource(id = R.string.stock_management_success_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -387,7 +383,7 @@ private fun StockProductItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = "สต็อก: $stockQuantity ชิ้น",
+                    text = stringResource(id = R.string.stock_management_stock_label, stockQuantity),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -408,7 +404,7 @@ private fun StockProductItem(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "รอซิงค์",
+                        text = stringResource(id = R.string.stock_management_sync_pending),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Small
@@ -451,7 +447,7 @@ private fun StockUpdateDialog(
         onDismissRequest = { if (!isUpdating) onDismiss() },
         title = {
             Text(
-                text = "อัปเดตสต็อก",
+                text = stringResource(id = R.string.stock_management_update_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -462,7 +458,10 @@ private fun StockUpdateDialog(
         text = {
             Column {
                 Text(
-                    text = "${product.name}\nสต็อกปัจจุบัน: ${product.stockQuantity ?: 0} ชิ้น",
+                    text = product.name + "\n" + stringResource(
+                        id = R.string.stock_management_current_stock,
+                        product.stockQuantity ?: 0
+                    ),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -481,7 +480,7 @@ private fun StockUpdateDialog(
                     },
                     label = {
                         Text(
-                            text = "จำนวนที่ต้องการเพิ่ม/ลด (เช่น +10)",
+                            text = stringResource(id = R.string.stock_management_quantity_label),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Small
@@ -530,7 +529,7 @@ private fun StockUpdateDialog(
                     enabled = quantity.isNotBlank()
                 ) {
                     Text(
-                        text = "อัปเดต",
+                        text = stringResource(id = R.string.stock_management_update_button),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium
@@ -546,7 +545,7 @@ private fun StockUpdateDialog(
                 enabled = !isUpdating
             ) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.stock_management_cancel_button),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
