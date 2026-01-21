@@ -606,10 +606,10 @@ private fun SelectionModeBottomBar(
                 onClick = if (selectedCount == totalCount) onDeselectAll else onSelectAll
             ) {
                 Text(
-                    text = if (selectedCount == totalCount) 
-                        "ยกเลิกเลือกทั้งหมด"
-                    else 
-                        "เลือกทั้งหมด",
+                    text = if (selectedCount == totalCount)
+                        stringResource(id = R.string.category_management_deselect_all)
+                    else
+                        stringResource(id = R.string.category_management_select_all),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

@@ -293,6 +293,36 @@
     <string name="addon_group_multiple_selection">Multiple Selection</string>
     <string name="addon_group_items_count">%1$d items</string>
     
+    <!-- Category Management Screen -->
+    <string name="category_management_title">Category Management</string>
+    <string name="category_management_edit">Edit</string>
+    <string name="category_management_edit_title">Edit Category</string>
+    <string name="category_management_search_placeholder">Search categories…</string>
+    <string name="category_management_use">Active</string>
+    <string name="category_management_inactive">Inactive</string>
+    <string name="category_management_add_category">Add Category</string>
+    <string name="category_management_items">%1$d items</string>
+    <string name="category_management_empty">No categories</string>
+    <string name="category_management_loading">Loading...</string>
+    <string name="category_management_action_title">Category Actions</string>
+    <string name="category_management_action_subtitle">What would you like to do?</string>
+    <string name="category_management_action_deactivate">Deactivate</string>
+    <string name="category_management_action_activate">Activate</string>
+    <string name="category_management_action_edit">Edit Category</string>
+    <string name="category_management_action_delete">Delete</string>
+    <string name="category_management_action_cancel">Cancel</string>
+    <string name="category_management_confirm_delete_title">Confirm Deletion</string>
+    <string name="category_management_confirm_delete_message">Are you sure you want to delete the selected items?</string>
+    <string name="category_management_confirm_delete_warning">This action cannot be undone</string>
+    <string name="category_management_select_category">Select Category</string>
+    <string name="category_management_select_all">Select all</string>
+    <string name="category_management_deselect_all">Deselect all</string>
+    <string name="category_management_select_items">Select %1$d items</string>
+    <string name="category_management_name_label">Category name *</string>
+    <string name="category_management_name_placeholder">Enter category name</string>
+    <string name="category_management_save_changes">Save changes</string>
+    <string name="category_management_add_success">Category added successfully</string>
+    <string name="category_management_edit_success">Category updated successfully</string>
     <!-- Category Error Messages -->
     <string name="category_form_validation_exists">This category already exists</string>
     <string name="category_error_duplicate_name">Duplicate category name</string>
