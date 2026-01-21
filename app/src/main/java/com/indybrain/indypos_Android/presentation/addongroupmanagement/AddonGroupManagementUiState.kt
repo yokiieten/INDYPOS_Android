@@ -17,6 +17,8 @@ data class AddonGroupManagementUiState(
     val syncSuccessMessage: String? = null,
     val isEditMode: Boolean = false,
     val selectedAddonGroupIds: Set<String> = emptySet(),
-    val syncStatistics: com.indybrain.indypos_Android.domain.repository.AddonGroupSyncStatistics? = null
+    val syncStatistics: com.indybrain.indypos_Android.domain.repository.AddonGroupSyncStatistics? = null,
+    // IDs ที่กำลังอยู่ระหว่างการลบแบบหลายรายการ เพื่อไม่ให้ UI แสดงไล่ลบทีละอัน
+    val pendingDeleteAddonGroupIds: Set<String> = emptySet()
 )
 

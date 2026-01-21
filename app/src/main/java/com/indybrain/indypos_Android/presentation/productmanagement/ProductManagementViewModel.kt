@@ -89,9 +89,20 @@ class ProductManagementViewModel @Inject constructor(
                 Triple(products, sorted, query)
             }.collect { (allProducts, filteredProducts, query) ->
                 _uiState.update { current ->
+                    // ซ่อนสินค้าใน UI ทันทีถ้ากำลังถูกลบหลายรายการอยู่
+                    val pendingDeleteIds = current.pendingDeleteProductIds
+                    val visibleAllProducts = allProducts.filter { product ->
+                        val id = product.id
+                        id == null || !pendingDeleteIds.contains(id)
+                    }
+                    val visibleFilteredProducts = filteredProducts.filter { product ->
+                        val id = product.id
+                        id == null || !pendingDeleteIds.contains(id)
+                    }
+
                     current.copy(
-                        products = allProducts,
-                        filteredProducts = filteredProducts,
+                        products = visibleAllProducts,
+                        filteredProducts = visibleFilteredProducts,
                         searchQuery = query,
                         isLoading = false // Clear loading state once we have data from Room
                     )
@@ -285,7 +296,18 @@ class ProductManagementViewModel @Inject constructor(
                 return@launch
             }
             
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, deleteSuccessMessage = null) }
+            // ตั้งสถานะให้รู้ว่ารายการเหล่านี้กำลังถูกลบ และซ่อนออกจาก UI เลย
+            _uiState.update { current ->
+                current.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    deleteSuccessMessage = null,
+                    pendingDeleteProductIds = selectedIds.toSet(),
+                    // ออกจากโหมดเลือกและล้าง selection ทันที
+                    selectedProductIds = emptySet(),
+                    isSelectionMode = false
+                )
+            }
             
             val result = productRepository.deleteMultipleProducts(selectedIds)
             
@@ -300,10 +322,9 @@ class ProductManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        selectedProductIds = emptySet(),
-                        isSelectionMode = false,
                         deleteSuccessMessage = successMessage,
-                        errorMessage = null
+                        errorMessage = null,
+                        pendingDeleteProductIds = emptySet()
                     )
                 }
             }.onFailure { error ->
@@ -311,7 +332,8 @@ class ProductManagementViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบสินค้า",
-                        deleteSuccessMessage = null
+                        deleteSuccessMessage = null,
+                        pendingDeleteProductIds = emptySet()
                     )
                 }
             }

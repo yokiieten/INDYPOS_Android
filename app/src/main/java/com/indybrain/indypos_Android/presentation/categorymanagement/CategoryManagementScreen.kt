@@ -102,8 +102,9 @@ fun CategoryManagementScreen(
         uiState.categories ?: emptyList()
     }
     
-    // Show loading if data hasn't been loaded yet (categories is null) or isLoading is true
-    val shouldShowLoading = uiState.isLoading || uiState.categories == null
+    // Show loading only for initial load when data hasn't been loaded yet (categories is null)
+    // Avoid showing full-screen loading during actions like delete to prevent flicker
+    val shouldShowLoading = uiState.isLoading && uiState.categories == null
     
     // Update search when query changes
     LaunchedEffect(searchQuery) {
@@ -793,7 +794,7 @@ private fun MultipleDeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = stringResource(id = R.string.category_management_confirm_delete_message),
+                    text = "คุณต้องการลบหมวดหมู่ $selectedCount รายการใช่หรือไม่?",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

@@ -214,8 +214,9 @@ fun AddOnManagementScreen(
                 ) {
                     // Calculate addons to show
                     val addonsToShow = uiState.filteredAddons ?: emptyList()
-                    // Show loading if data hasn't been loaded yet (addons is null) or isLoading is true
-                    val shouldShowLoading = uiState.isLoading || uiState.addons == null
+                    // Show loading only for initial load when data hasn't been loaded yet (addons is null)
+                    // Avoid showing full-screen loading during actions like delete to prevent flicker
+                    val shouldShowLoading = uiState.isLoading && uiState.addons == null
                     
                     when {
                         shouldShowLoading -> {

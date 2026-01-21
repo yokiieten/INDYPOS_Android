@@ -82,8 +82,14 @@ class CategoryManagementViewModel @Inject constructor(
                     // createdAt instead of sortOrder so that enabling/disabling
                     // a category does not move it to the bottom of the list.
                     _uiState.update { current ->
+                        // ถ้ามีหมวดหมู่ที่กำลังถูกลบหลายรายการอยู่ ให้ซ่อนออกจาก UI ทันที
+                        val pendingDeleteIds = current.pendingDeleteCategoryIds
+                        val visibleCategories = categories
+                            .sortedBy { it.createdAt }
+                            .filterNot { pendingDeleteIds.contains(it.id) }
+
                         current.copy(
-                            categories = categories.sortedBy { it.createdAt },
+                            categories = visibleCategories,
                             isLoading = false // Clear loading state once we have data from Room
                         )
                     }
@@ -281,7 +287,17 @@ class CategoryManagementViewModel @Inject constructor(
             val selectedIds = _uiState.value.selectedCategoryIds.toList()
             if (selectedIds.isEmpty()) return@launch
             
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            // ตั้งสถานะให้รู้ว่ารายการเหล่านี้กำลังถูกลบ และซ่อนออกจาก UI เลย
+            _uiState.update { current ->
+                current.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    pendingDeleteCategoryIds = selectedIds.toSet(),
+                    // ออกจากโหมดแก้ไขและล้าง selection ทันที
+                    selectedCategoryIds = emptySet(),
+                    isEditMode = false
+                )
+            }
             
             var successCount = 0
             var failureMessage: String? = null
@@ -291,6 +307,7 @@ class CategoryManagementViewModel @Inject constructor(
                 result.onSuccess {
                     successCount++
                 }.onFailure { error ->
+                    // เก็บข้อความ error ไว้ แต่ยังพยายามลบตัวถัดไปต่อ
                     failureMessage = error.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
                 }
             }
@@ -299,7 +316,8 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = failureMessage
+                        errorMessage = failureMessage,
+                        pendingDeleteCategoryIds = emptySet()
                     )
                 }
             } else {
@@ -312,8 +330,7 @@ class CategoryManagementViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         deleteSuccessMessage = successMessage,
-                        selectedCategoryIds = emptySet(),
-                        isEditMode = false
+                        pendingDeleteCategoryIds = emptySet()
                     )
                 }
             }

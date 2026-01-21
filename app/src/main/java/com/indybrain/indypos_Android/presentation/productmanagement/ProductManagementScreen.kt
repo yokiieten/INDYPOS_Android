@@ -264,8 +264,9 @@ fun ProductManagementScreen(
                 ) {
                     // Calculate products to show
                     val productsToShow = uiState.filteredProducts ?: emptyList()
-                    // Show loading if data hasn't been loaded yet (products is null) or isLoading is true
-                    val shouldShowLoading = uiState.isLoading || uiState.products == null
+                    // Show loading only for initial load when data hasn't been loaded yet (products is null)
+                    // Avoid showing full-screen loading during actions like delete to prevent flicker
+                    val shouldShowLoading = uiState.isLoading && uiState.products == null
                     
                     when {
                         shouldShowLoading -> {

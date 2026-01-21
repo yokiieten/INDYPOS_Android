@@ -17,6 +17,8 @@ data class AddOnManagementUiState(
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,
     val syncSuccessMessage: String? = null,
-    val syncStatistics: AddonSyncStatistics? = null
+    val syncStatistics: AddonSyncStatistics? = null,
+    // IDs ที่กำลังอยู่ระหว่างการลบแบบหลายรายการ เพื่อไม่ให้ UI แสดงไล่ลบทีละอัน
+    val pendingDeleteAddonIds: Set<String> = emptySet()
 )
 

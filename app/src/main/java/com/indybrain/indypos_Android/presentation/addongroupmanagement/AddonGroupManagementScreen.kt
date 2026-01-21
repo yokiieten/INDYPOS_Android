@@ -218,8 +218,9 @@ fun AddonGroupManagementScreen(
                     } else {
                         uiState.addonGroups ?: emptyList()
                     }
-                    // Show loading if data hasn't been loaded yet (addonGroups is null) or isLoading is true
-                    val shouldShowLoading = uiState.isLoading || uiState.addonGroups == null
+                    // Show loading only for initial load when data hasn't been loaded yet (addonGroups is null)
+                    // Avoid showing full-screen loading during actions like delete to prevent flicker
+                    val shouldShowLoading = uiState.isLoading && uiState.addonGroups == null
                     
                     when {
                         shouldShowLoading -> {

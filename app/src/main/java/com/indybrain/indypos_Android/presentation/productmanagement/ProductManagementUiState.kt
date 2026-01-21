@@ -19,6 +19,8 @@ data class ProductManagementUiState(
     val errorMessage: String? = null,
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,
-    val syncStatistics: ProductSyncStatistics? = null
+    val syncStatistics: ProductSyncStatistics? = null,
+    // IDs ที่กำลังอยู่ระหว่างการลบแบบหลายรายการ เพื่อไม่ให้ UI แสดงไล่ลบทีละอัน
+    val pendingDeleteProductIds: Set<String> = emptySet()
 )
 
