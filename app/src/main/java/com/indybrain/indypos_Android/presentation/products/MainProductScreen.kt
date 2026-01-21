@@ -725,7 +725,10 @@ fun MainProductScreen(
                 },
                 text = {
                     Text(
-                        text = stringResource(id = R.string.barcode_scanner_product_not_found_message),
+                        text = stringResource(
+                            id = R.string.barcode_scanner_product_not_found_message,
+                            scannedBarcode ?: "-"
+                        ),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
