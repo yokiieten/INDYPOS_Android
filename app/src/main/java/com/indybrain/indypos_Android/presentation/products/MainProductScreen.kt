@@ -581,12 +581,16 @@ fun MainProductScreen(
                                                     val cartQuantity = cartItems
                                                         .filter { it.productId == product.id }
                                                         .sumOf { it.quantity }
+                                                    val hasSpecialNoteInCart = cartItems.any { 
+                                                        it.productId == product.id && !it.specialRequest.isNullOrBlank() 
+                                                    }
                                                     val isExpanded = uiState.expandedProductId == product.id
                                                     
                                                     ProductCard(
                                                         product = product,
                                                         cartQuantity = cartQuantity,
                                                         isExpanded = isExpanded,
+                                                        hasSpecialNoteInCart = hasSpecialNoteInCart,
                                                         onClick = { 
                                                             onProductClick(product.id, product.name, cartQuantity > 0)
                                                         },
@@ -600,8 +604,10 @@ fun MainProductScreen(
                                                                 if (cartQuantity == 0) {
                                                                     viewModel.addQuickToCart(product)
                                                                 } else {
-                                                                    // Already in cart -> show quantity adjuster
-                                                                    viewModel.showQuantityAdjuster(product.id)
+                                                                    // Already in cart -> show quantity adjuster (only when no special note)
+                                                                    if (!hasSpecialNoteInCart) {
+                                                                        viewModel.showQuantityAdjuster(product.id)
+                                                                    }
                                                                 }
                                                             }
                                                         },
@@ -610,6 +616,9 @@ fun MainProductScreen(
                                                         },
                                                         onDecrease = {
                                                             viewModel.decreaseQuantity(product)
+                                                        },
+                                                        onGoToCart = {
+                                                            onProductClick(product.id, product.name, cartQuantity > 0)
                                                         },
                                                         modifier = Modifier
                                                             .weight(1f)
@@ -633,12 +642,16 @@ fun MainProductScreen(
                                             val cartQuantity = cartItems
                                                 .filter { it.productId == product.id }
                                                 .sumOf { it.quantity }
+                                            val hasSpecialNoteInCart = cartItems.any { 
+                                                it.productId == product.id && !it.specialRequest.isNullOrBlank() 
+                                            }
                                             val isExpanded = uiState.expandedProductId == product.id
                                             
                                             ProductListItem(
                                                 product = product,
                                                 cartQuantity = cartQuantity,
                                                 isExpanded = isExpanded,
+                                                hasSpecialNoteInCart = hasSpecialNoteInCart,
                                                 onClick = { 
                                                     onProductClick(product.id, product.name, cartQuantity > 0)
                                                 },
@@ -652,8 +665,10 @@ fun MainProductScreen(
                                                         if (cartQuantity == 0) {
                                                             viewModel.addQuickToCart(product)
                                                         } else {
-                                                            // Already in cart -> show quantity adjuster
-                                                            viewModel.showQuantityAdjuster(product.id)
+                                                            // Already in cart -> show quantity adjuster (only when no special note)
+                                                            if (!hasSpecialNoteInCart) {
+                                                                viewModel.showQuantityAdjuster(product.id)
+                                                            }
                                                         }
                                                     }
                                                 },
@@ -662,6 +677,9 @@ fun MainProductScreen(
                                                 },
                                                 onDecrease = {
                                                     viewModel.decreaseQuantity(product)
+                                                },
+                                                onGoToCart = {
+                                                    onProductClick(product.id, product.name, cartQuantity > 0)
                                                 },
                                                 modifier = Modifier.fillMaxWidth()
                                             )
@@ -854,10 +872,12 @@ private fun ProductCard(
     product: ProductEntity,
     cartQuantity: Int = 0,
     isExpanded: Boolean = false,
+    hasSpecialNoteInCart: Boolean = false,
     onClick: () -> Unit = {},
     onAddToCart: () -> Unit = {},
     onIncrease: () -> Unit = {},
     onDecrease: () -> Unit = {},
+    onGoToCart: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -965,7 +985,7 @@ private fun ProductCard(
                     
                     // Animated transition between collapsed button and expanded adjuster
                     AnimatedContent(
-                        targetState = isExpanded && cartQuantity > 0,
+                        targetState = isExpanded && cartQuantity > 0 && !hasSpecialNoteInCart,
                         transitionSpec = {
                             // Smooth scale + expand animation
                             scaleIn(
@@ -1083,7 +1103,13 @@ private fun ProductCard(
                                     .background(PrimaryButton)
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        onAddToCart()
+                                        if (hasSpecialNoteInCart && cartQuantity > 0) {
+                                            // If there is an item with special note in cart,
+                                            // tapping the count should navigate to the cart item screen
+                                            onGoToCart()
+                                        } else {
+                                            onAddToCart()
+                                        }
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1118,10 +1144,12 @@ private fun ProductListItem(
     product: ProductEntity,
     cartQuantity: Int = 0,
     isExpanded: Boolean = false,
+    hasSpecialNoteInCart: Boolean = false,
     onClick: () -> Unit = {},
     onAddToCart: () -> Unit = {},
     onIncrease: () -> Unit = {},
     onDecrease: () -> Unit = {},
+    onGoToCart: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -1229,7 +1257,7 @@ private fun ProductListItem(
                 
                 // Animated transition between collapsed button and expanded adjuster
                 AnimatedContent(
-                    targetState = isExpanded && cartQuantity > 0,
+                    targetState = isExpanded && cartQuantity > 0 && !hasSpecialNoteInCart,
                     transitionSpec = {
                         scaleIn(
                             animationSpec = spring(
@@ -1346,7 +1374,13 @@ private fun ProductListItem(
                                 .background(PrimaryButton)
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                if (hasSpecialNoteInCart && cartQuantity > 0) {
+                                    // If there is an item with special note in cart,
+                                    // tapping the count should navigate to the cart item screen
+                                    onGoToCart()
+                                } else {
                                     onAddToCart()
+                                }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
