@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -570,14 +571,28 @@ private fun BottomActionBar(
                     contentColor = Color.White
                 )
             ) {
-                Text(
-                    text = "เพิ่มลงตะกร้า ${formatCurrency(totalPrice)}",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Medium
-                    ),
-                    color = Color.White
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.product_detail_add_to_cart),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        text = formatCurrency(totalPrice),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = Color.White
+                    )
+                }
             }
         }
     }
@@ -615,34 +630,38 @@ private fun AddonGroupSection(
             )
             
                 Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Max selection indicator (hide when maxSelection is 0)
-                if (addonGroup.maxSelection != null && addonGroup.maxSelection > 0) {
-                    Surface(
-                        color = Color(0xFFE3F2FD),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "เลือกได้สูงสุด ${addonGroup.maxSelection} รายการ",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = PrimaryButton,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Max selection indicator (hide when maxSelection is 0)
+                    val maxSelection = addonGroup.maxSelection
+                    if (maxSelection != null && maxSelection > 0) {
+                        Surface(
+                            color = Color(0xFFE3F2FD),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    id = R.string.product_max_selection,
+                                    maxSelection
+                                ),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Small
+                                ),
+                                color = PrimaryButton,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
-                }
-                
-                Icon(
+                    
+                    Icon(
                     imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "ย่อ" else "ขยาย",
-                    tint = PrimaryText,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+                        tint = PrimaryText,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
         }
         
         // Addon Items
@@ -728,7 +747,7 @@ private fun SpecialRequestSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "คำขอพิเศษ",
+                text = stringResource(id = R.string.product_detail_special_request),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Medium

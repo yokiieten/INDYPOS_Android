@@ -308,6 +308,14 @@
     <string name="product_barcode_scanner">สแกนบาร์โค้ด</string>
     <string name="product_detail_required_addon_error">กรุณาเลือก %1$s</string>
     <string name="product_detail_insufficient_stock">สินค้าในสต็อกไม่เพียงพอ</string>
+    <!-- Product Detail -->
+    <string name="product_detail_title">รายละเอียดสินค้า</string>
+    <string name="product_detail_add_to_cart">เพิ่มลงตะกร้า</string>
+    <string name="product_detail_quantity">จำนวน</string>
+    <string name="product_detail_addons">เสริม</string>
+    <string name="product_detail_price">ราคา</string>
+    <string name="product_detail_special_request">คำขอพิเศษ</string>
+    <string name="product_max_selection">เลือกได้สูงสุด %1$d รายการ</string>
     
     <!-- Order Product / Cart -->
     <string name="order_product_empty_cart">ตะกร้าสินค้าว่าง\nเพิ่มสินค้าลงตะกร้าเพื่อเริ่มต้นออเดอร์</string>

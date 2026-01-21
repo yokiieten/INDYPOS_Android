@@ -318,14 +318,28 @@ private fun BottomActionBarLandscape(
                     contentColor = Color.White
                 )
             ) {
-                Text(
-                    text = "เพิ่มลงตะกร้า ${formatCurrency(totalPrice)}",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Large
-                    ),
-                    color = Color.White
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.product_detail_add_to_cart),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        text = formatCurrency(totalPrice),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = Color.White
+                    )
+                }
             }
         }
     }
@@ -360,10 +374,14 @@ private fun AddonGroupSectionLandscape(
                     color = PrimaryText
                 )
                 
-                if (addonGroup.maxSelection != null) {
+                val maxSelection = addonGroup.maxSelection
+                if (maxSelection != null && maxSelection > 0) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "เลือกได้สูงสุด ${addonGroup.maxSelection} รายการ",
+                        text = stringResource(
+                            id = R.string.product_max_selection,
+                            maxSelection
+                        ),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
@@ -462,7 +480,7 @@ private fun SpecialRequestSectionLandscape(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "คำขอพิเศษ",
+                text = stringResource(id = R.string.product_detail_special_request),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Medium

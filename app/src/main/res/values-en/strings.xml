@@ -257,7 +257,15 @@
     <string name="product_view_cart">View Cart (%1$d)</string>
     <string name="product_cart">Cart</string>
     <string name="product_barcode_scanner">Scan Barcode</string>
-    
+    <!-- Product Detail -->
+    <string name="product_detail_title">Product Details</string>
+    <string name="product_detail_add_to_cart">Add to Cart</string>
+    <string name="product_detail_quantity">Quantity</string>
+    <string name="product_detail_addons">Add-ons</string>
+    <string name="product_detail_price">Price</string>
+    <string name="product_detail_special_request">Special Request</string>
+    <string name="product_max_selection">Max %1$d selections</string>
+
     <!-- Order Product / Cart -->
     <string name="order_product_empty_cart">Your cart is empty\nAdd items to start your order</string>
     <string name="order_product_add_product">Add Products</string>
