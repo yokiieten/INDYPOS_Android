@@ -67,6 +67,8 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
+import java.text.NumberFormat
+import java.util.Locale
 
 /**
  * Stock Management Screen
@@ -383,7 +385,7 @@ private fun StockProductItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = stringResource(id = R.string.stock_management_stock_label, stockQuantity),
+                    text = stringResource(id = R.string.stock_management_stock_label, NumberFormat.getNumberInstance(Locale.US).format(stockQuantity)),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -460,7 +462,7 @@ private fun StockUpdateDialog(
                 Text(
                     text = product.name + "\n" + stringResource(
                         id = R.string.stock_management_current_stock,
-                        product.stockQuantity ?: 0
+                        NumberFormat.getNumberInstance(Locale.US).format(product.stockQuantity ?: 0)
                     ),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,

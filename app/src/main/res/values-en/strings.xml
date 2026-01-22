@@ -346,11 +346,11 @@
     <string name="stock_management_no_internet_message">Stock management requires an internet connection</string>
     <string name="stock_management_success_title">Stock updated successfully</string>
     <string name="stock_management_update_title">Update Stock</string>
-    <string name="stock_management_current_stock">Current stock: %1$d pcs</string>
+    <string name="stock_management_current_stock">Current stock: %1$s pcs</string>
     <string name="stock_management_quantity_label">Quantity to increase/decrease (e.g. +10)</string>
     <string name="stock_management_update_button">Update</string>
     <string name="stock_management_cancel_button">Cancel</string>
-    <string name="stock_management_stock_label">Stock: %1$d pcs</string>
+    <string name="stock_management_stock_label">Stock: %1$s pcs</string>
     <string name="stock_management_sync_pending">Pending sync</string>
 </resources>
 

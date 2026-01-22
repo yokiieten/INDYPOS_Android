@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -166,7 +168,7 @@ class StockManagementViewModel @Inject constructor(
                         showStockUpdateDialog = false,
                         selectedProduct = null,
                         stockUpdateQuantity = "",
-                        updateSuccessMessage = "${product.name}: ${oldQuantity} → ${newQuantity} ชิ้น"
+                        updateSuccessMessage = "${product.name}: ${NumberFormat.getNumberInstance(Locale.US).format(oldQuantity)} → ${NumberFormat.getNumberInstance(Locale.US).format(newQuantity)} ชิ้น"
                     )
                 }
                 // Reload products to reflect changes

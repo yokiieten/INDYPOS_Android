@@ -457,10 +457,10 @@
     <string name="stock_management_no_internet_message">การจัดการสต็อกต้องใช้การเชื่อมต่ออินเทอร์เน็ต</string>
     <string name="stock_management_success_title">อัปเดตสต็อกสำเร็จ</string>
     <string name="stock_management_update_title">อัปเดตสต็อก</string>
-    <string name="stock_management_current_stock">สต็อกปัจจุบัน: %1$d ชิ้น</string>
+    <string name="stock_management_current_stock">สต็อกปัจจุบัน: %1$s ชิ้น</string>
     <string name="stock_management_quantity_label">จำนวนที่ต้องการเพิ่ม/ลด (เช่น +10)</string>
     <string name="stock_management_update_button">อัปเดต</string>
     <string name="stock_management_cancel_button">ยกเลิก</string>
-    <string name="stock_management_stock_label">สต็อก: %1$d ชิ้น</string>
+    <string name="stock_management_stock_label">สต็อก: %1$s ชิ้น</string>
     <string name="stock_management_sync_pending">รอซิงค์</string>
 </resources>
