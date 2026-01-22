@@ -514,6 +514,55 @@
     <string name="product_management_confirm_delete_message_multiple">คุณต้องการลบสินค้า %1$d รายการใช่หรือไม่?</string>
     <string name="product_management_items_count">รายการ</string>
     
+    <!-- Add/Edit Product Screen -->
+    <string name="product_edit_title">แก้ไขสินค้า</string>
+    <string name="product_form_name_label">ชื่อสินค้า</string>
+    <string name="product_form_name_placeholder">กรุณากรอกชื่อสินค้า</string>
+    <string name="product_form_code_label">รหัสสินค้า</string>
+    <string name="product_form_code_placeholder">กรุณากรอกรหัสสินค้า</string>
+    <string name="product_form_code_scan_barcode">สแกนบาร์โค้ด</string>
+    <string name="product_form_selling_price_label">ราคาขาย</string>
+    <string name="product_form_cost_price_label">ราคาต้นทุน</string>
+    <string name="product_form_cost_price_placeholder">0 (ไม่บังคับ)</string>
+    <string name="product_form_unit_label">หน่วยนับ</string>
+    <string name="product_form_unit_placeholder">เช่น ชิ้น, แพ็ค, กล่อง</string>
+    <string name="product_form_image_label">ภาพสินค้า</string>
+    <string name="product_form_image_type_image">รูปภาพ</string>
+    <string name="product_form_image_type_color">สี</string>
+    <string name="product_form_image_select">เลือกรูปภาพ</string>
+    <string name="product_form_image_description">รูปภาพสินค้า</string>
+    <string name="product_form_category_label">หมวดหมู่</string>
+    <string name="product_form_category_add">+เพิ่ม</string>
+    <string name="product_form_category_select_placeholder">กรุณาเลือกหมวดหมู่</string>
+    <string name="product_form_category_select_title">เลือกหมวดหมู่ (%1$d รายการ)</string>
+    <string name="product_form_sku_enabled">สินค้า SKU</string>
+    <string name="product_form_sku_code_label">รหัส SKU</string>
+    <string name="product_form_sku_code_placeholder">กรอกรหัส SKU</string>
+    <string name="product_form_stock_enabled">สต็อกสินค้า</string>
+    <string name="product_form_stock_quantity_label">จำนวนสินค้า</string>
+    <string name="product_form_stock_quantity_placeholder">กรอกจำนวนสินค้า</string>
+    <string name="product_form_additional_options_enabled">มีออปชั่นเพิ่มเติม</string>
+    <string name="product_form_addon_groups_label">เลือก AddOn Groups</string>
+    <string name="product_form_addon_groups_empty">ไม่มี AddOn Groups ที่สามารถเลือกได้</string>
+    <string name="product_form_save_button">บันทึกข้อมูล</string>
+    <string name="product_form_save_success_title">สำเร็จ</string>
+    <string name="product_form_save_success_edit">แก้ไขสินค้าสำเร็จ</string>
+    <string name="product_form_save_success_add">เพิ่มสินค้าสำเร็จ</string>
+    <string name="product_form_error_title">เกิดข้อผิดพลาด</string>
+    <string name="product_form_no_internet_title">ไม่สามารถบันทึกได้</string>
+    <string name="product_form_no_internet_message">กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่ออัปโหลดรูปภาพ</string>
+    <string name="product_form_image_upload_error_title">อัปโหลดรูปภาพไม่สำเร็จ</string>
+    <string name="product_form_image_upload_error_message">เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ</string>
+    <string name="product_form_image_upload_error_question">ต้องการบันทึกสินค้าโดยไม่มีรูปภาพหรือไม่?</string>
+    <string name="product_form_image_upload_save_without_image">บันทึกโดยไม่มีรูป</string>
+    <string name="product_form_image_picker_title">เลือกรูปภาพ</string>
+    <string name="product_form_image_picker_camera">ถ่ายรูป</string>
+    <string name="product_form_image_picker_gallery">เลือกรูปจากแกลเลอรี</string>
+    <string name="product_form_add_category_title">เพิ่มหมวดหมู่ใหม่</string>
+    <string name="product_form_add_category_message">กรุณาใส่ชื่อหมวดหมู่</string>
+    <string name="product_form_add_category_placeholder">กรอกชื่อหมวดหมู่</string>
+    <string name="product_form_addon_group_selected">เลือก</string>
+    
     <!-- Printer Settings Screen -->
     <string name="printer_settings_title">ปรินเตอร์</string>
     <string name="printer_connection_type">เลือกประเภทการเชื่อมต่อ</string>

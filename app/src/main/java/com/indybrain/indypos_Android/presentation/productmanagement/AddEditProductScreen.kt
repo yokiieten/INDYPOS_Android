@@ -205,7 +205,7 @@ fun AddEditProductScreen(
                 title = {
                     Text(
                         text = if (isEditMode) 
-                            "แก้ไขสินค้า"
+                            stringResource(id = R.string.product_edit_title)
                         else 
                             stringResource(id = R.string.product_management_add_product),
                         style = FontUtils.mainFont(
@@ -251,12 +251,12 @@ fun AddEditProductScreen(
                         .padding(16.dp)
                 ) {
                     // Product Name
-                    FormFieldLabel("ชื่อสินค้า", required = true)
+                    FormFieldLabel(stringResource(id = R.string.product_form_name_label), required = true)
                     OutlinedTextField(
                         value = uiState.productName,
                         onValueChange = { viewModel.updateProductName(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("กรุณากรอกชื่อสินค้า", color = PlaceholderText) },
+                        placeholder = { Text(stringResource(id = R.string.product_form_name_placeholder), color = PlaceholderText) },
                         singleLine = true,
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -271,18 +271,18 @@ fun AddEditProductScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Product Code
-                    FormFieldLabel("รหัสสินค้า", required = true)
+                    FormFieldLabel(stringResource(id = R.string.product_form_code_label), required = true)
                     OutlinedTextField(
                         value = uiState.productCode,
                         onValueChange = { viewModel.updateProductCode(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("กรุณากรอกรหัสสินค้า", color = PlaceholderText) },
+                        placeholder = { Text(stringResource(id = R.string.product_form_code_placeholder), color = PlaceholderText) },
                         singleLine = true,
                         trailingIcon = {
                             IconButton(onClick = onBarcodeScannerClick) {
                                 Icon(
                                     imageVector = Icons.Filled.QrCodeScanner,
-                                    contentDescription = "สแกนบาร์โค้ด",
+                                    contentDescription = stringResource(id = R.string.product_form_code_scan_barcode),
                                     tint = SecondaryText
                                 )
                             }
@@ -300,7 +300,7 @@ fun AddEditProductScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Selling Price
-                    FormFieldLabel("ราคาขาย", required = true)
+                    FormFieldLabel(stringResource(id = R.string.product_form_selling_price_label), required = true)
                     OutlinedTextField(
                         value = uiState.sellingPrice,
                         onValueChange = { viewModel.updateSellingPrice(it) },
@@ -325,12 +325,12 @@ fun AddEditProductScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Cost Price
-                    FormFieldLabel("ราคาต้นทุน", required = false)
+                    FormFieldLabel(stringResource(id = R.string.product_form_cost_price_label), required = false)
                     OutlinedTextField(
                         value = uiState.costPrice,
                         onValueChange = { viewModel.updateCostPrice(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("0 (ไม่บังคับ)", color = PlaceholderText) },
+                        placeholder = { Text(stringResource(id = R.string.product_form_cost_price_placeholder), color = PlaceholderText) },
                         singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = KeyboardType.Decimal,
@@ -350,12 +350,12 @@ fun AddEditProductScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Unit
-                    FormFieldLabel("หน่วยนับ", required = true)
+                    FormFieldLabel(stringResource(id = R.string.product_form_unit_label), required = true)
                     OutlinedTextField(
                         value = uiState.unit,
                         onValueChange = { viewModel.updateUnit(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("เช่น ชิ้น, แพ็ค, กล่อง", color = PlaceholderText) },
+                        placeholder = { Text(stringResource(id = R.string.product_form_unit_placeholder), color = PlaceholderText) },
                         singleLine = true,
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -370,7 +370,7 @@ fun AddEditProductScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Product Image/Color
-                    FormFieldLabel("ภาพสินค้า", required = true)
+                    FormFieldLabel(stringResource(id = R.string.product_form_image_label), required = true)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -390,7 +390,7 @@ fun AddEditProductScreen(
                                     selectedColor = PrimaryButton
                                 )
                             )
-                            Text("รูปภาพ", style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium))
+                            Text(stringResource(id = R.string.product_form_image_type_image), style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium))
                         }
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -407,7 +407,7 @@ fun AddEditProductScreen(
                                     selectedColor = PrimaryButton
                                 )
                             )
-                            Text("สี", style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium))
+                            Text(stringResource(id = R.string.product_form_image_type_color), style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium))
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -446,7 +446,7 @@ fun AddEditProductScreen(
                                             .data(imageData)
                                             .crossfade(true)
                                             .build(),
-                                        contentDescription = "รูปภาพสินค้า",
+                                        contentDescription = stringResource(id = R.string.product_form_image_description),
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = ContentScale.Crop,
                                         error = painterResource(id = R.drawable.logo_appstore),
@@ -455,7 +455,7 @@ fun AddEditProductScreen(
                                 } else {
                                     // Show placeholder text
                                     Text(
-                                        text = "เลือกรูปภาพ",
+                                        text = stringResource(id = R.string.product_form_image_select),
                                         style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium),
                                         color = PrimaryButton
                                     )
@@ -480,9 +480,9 @@ fun AddEditProductScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        FormFieldLabel("หมวดหมู่", required = true, modifier = Modifier.weight(1f))
+                        FormFieldLabel(stringResource(id = R.string.product_form_category_label), required = true, modifier = Modifier.weight(1f))
                         TextButton(onClick = { viewModel.showAddCategoryDialog() }) {
-                            Text("+เพิ่ม", color = PrimaryButton)
+                            Text(stringResource(id = R.string.product_form_category_add), color = PrimaryButton)
                         }
                     }
                     CategoryDropdown(
@@ -501,7 +501,7 @@ fun AddEditProductScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "สินค้า SKU",
+                            stringResource(id = R.string.product_form_sku_enabled),
                             style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium),
                             color = PrimaryText
                         )
@@ -518,12 +518,12 @@ fun AddEditProductScreen(
                     // SKU Code (if enabled)
                     if (uiState.isSkuEnabled) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        FormFieldLabel("รหัส SKU", required = false)
+                        FormFieldLabel(stringResource(id = R.string.product_form_sku_code_label), required = false)
                         OutlinedTextField(
                             value = uiState.skuCode,
                             onValueChange = { viewModel.updateSkuCode(it) },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("กรอกรหัส SKU", color = PlaceholderText) },
+                            placeholder = { Text(stringResource(id = R.string.product_form_sku_code_placeholder), color = PlaceholderText) },
                             singleLine = true,
                             shape = RoundedCornerShape(8.dp),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -545,7 +545,7 @@ fun AddEditProductScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "สต็อกสินค้า",
+                            stringResource(id = R.string.product_form_stock_enabled),
                             style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium),
                             color = PrimaryText
                         )
@@ -562,12 +562,12 @@ fun AddEditProductScreen(
                     // Stock Quantity (if enabled)
                     if (uiState.isStockEnabled) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        FormFieldLabel("จำนวนสินค้า", required = false)
+                        FormFieldLabel(stringResource(id = R.string.product_form_stock_quantity_label), required = false)
                         OutlinedTextField(
                             value = uiState.stockQuantity,
                             onValueChange = { if (it.all { char -> char.isDigit() }) viewModel.updateStockQuantity(it) },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("กรอกจำนวนสินค้า", color = PlaceholderText) },
+                            placeholder = { Text(stringResource(id = R.string.product_form_stock_quantity_placeholder), color = PlaceholderText) },
                             singleLine = true,
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
                             shape = RoundedCornerShape(8.dp),
@@ -590,7 +590,7 @@ fun AddEditProductScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "มีออปชั่นเพิ่มเติม",
+                            stringResource(id = R.string.product_form_additional_options_enabled),
                             style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Medium),
                             color = PrimaryText
                         )
@@ -607,11 +607,11 @@ fun AddEditProductScreen(
                     // AddOn Groups (if enabled)
                     if (uiState.hasAdditionalOptions) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        FormFieldLabel("เลือก AddOn Groups", required = false)
+                        FormFieldLabel(stringResource(id = R.string.product_form_addon_groups_label), required = false)
                         
                         if (uiState.availableAddonGroups.isEmpty()) {
                             Text(
-                                text = "ไม่มี AddOn Groups ที่สามารถเลือกได้",
+                                text = stringResource(id = R.string.product_form_addon_groups_empty),
                                 style = FontUtils.mainFont(AppFontStyle.Regular, FontSize.Small),
                                 color = SecondaryText,
                                 modifier = Modifier.padding(vertical = 8.dp)
@@ -679,7 +679,7 @@ fun AddEditProductScreen(
                         }
                     } else {
                         Text(
-                            text = "บันทึกข้อมูล",
+                            text = stringResource(id = R.string.product_form_save_button),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Medium
@@ -700,7 +700,7 @@ fun AddEditProductScreen(
                 },
                 title = {
                     Text(
-                        text = "สำเร็จ",
+                        text = stringResource(id = R.string.product_form_save_success_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -710,7 +710,10 @@ fun AddEditProductScreen(
                 },
                 text = {
                     Text(
-                        text = if (isEditMode) "แก้ไขสินค้าสำเร็จ" else "เพิ่มสินค้าสำเร็จ",
+                        text = if (isEditMode) 
+                            stringResource(id = R.string.product_form_save_success_edit) 
+                        else 
+                            stringResource(id = R.string.product_form_save_success_add),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -723,7 +726,7 @@ fun AddEditProductScreen(
                         viewModel.dismissSuccessDialog()
                         onSaveSuccess()
                     }) {
-                        Text("ตกลง", color = PrimaryButton)
+                        Text(stringResource(id = R.string.dialog_button_ok), color = PrimaryButton)
                     }
                 }
             )
@@ -735,7 +738,7 @@ fun AddEditProductScreen(
                 onDismissRequest = { viewModel.clearError() },
                 title = {
                     Text(
-                        text = "เกิดข้อผิดพลาด",
+                        text = stringResource(id = R.string.product_form_error_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium
@@ -753,7 +756,7 @@ fun AddEditProductScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearError() }) {
-                        Text("ตกลง")
+                        Text(stringResource(id = R.string.dialog_button_ok))
                     }
                 }
             )
@@ -779,7 +782,7 @@ fun AddEditProductScreen(
                 },
                 title = {
                     Text(
-                        text = "สำเร็จ",
+                        text = stringResource(id = R.string.product_form_save_success_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -804,7 +807,7 @@ fun AddEditProductScreen(
                         }
                     ) {
                         Text(
-                            text = "ตกลง",
+                            text = stringResource(id = R.string.dialog_button_ok),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -822,7 +825,7 @@ fun AddEditProductScreen(
                 onDismissRequest = { viewModel.dismissNoInternetDialog() },
                 title = {
                     Text(
-                        text = "ไม่สามารถบันทึกได้",
+                        text = stringResource(id = R.string.product_form_no_internet_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -832,7 +835,7 @@ fun AddEditProductScreen(
                 },
                 text = {
                     Text(
-                        text = "กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่ออัปโหลดรูปภาพ",
+                        text = stringResource(id = R.string.product_form_no_internet_message),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -845,7 +848,7 @@ fun AddEditProductScreen(
                         onClick = { viewModel.dismissNoInternetDialog() }
                     ) {
                         Text(
-                            text = "ตกลง",
+                            text = stringResource(id = R.string.dialog_button_ok),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -863,7 +866,7 @@ fun AddEditProductScreen(
                 onDismissRequest = { viewModel.dismissImageUploadErrorDialog() },
                 title = {
                     Text(
-                        text = "อัปโหลดรูปภาพไม่สำเร็จ",
+                        text = stringResource(id = R.string.product_form_image_upload_error_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -874,7 +877,7 @@ fun AddEditProductScreen(
                 text = {
                     Column {
                         Text(
-                            text = uiState.errorMessage ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ",
+                            text = uiState.errorMessage ?: stringResource(id = R.string.product_form_image_upload_error_message),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -883,7 +886,7 @@ fun AddEditProductScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "ต้องการบันทึกสินค้าโดยไม่มีรูปภาพหรือไม่?",
+                            text = stringResource(id = R.string.product_form_image_upload_error_question),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -897,7 +900,7 @@ fun AddEditProductScreen(
                         onClick = { viewModel.saveProductWithoutImage() }
                     ) {
                         Text(
-                            text = "บันทึกโดยไม่มีรูป",
+                            text = stringResource(id = R.string.product_form_image_upload_save_without_image),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -911,7 +914,7 @@ fun AddEditProductScreen(
                         onClick = { viewModel.dismissImageUploadErrorDialog() }
                     ) {
                         Text(
-                            text = "ยกเลิก",
+                            text = stringResource(id = R.string.product_management_cancel),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -979,7 +982,7 @@ private fun ImagePickerDialog(
         onDismissRequest = onDismiss,
         title = {
                 Text(
-                text = "เลือกรูปภาพ",
+                text = stringResource(id = R.string.product_form_image_picker_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -994,7 +997,7 @@ private fun ImagePickerDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "ถ่ายรูป",
+                        text = stringResource(id = R.string.product_form_image_picker_camera),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -1007,7 +1010,7 @@ private fun ImagePickerDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "เลือกรูปจากแกลเลอรี",
+                        text = stringResource(id = R.string.product_form_image_picker_gallery),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -1020,7 +1023,7 @@ private fun ImagePickerDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.product_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -1156,7 +1159,7 @@ private fun AddCategoryDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
         title = {
             Text(
-                text = "เพิ่มหมวดหมู่ใหม่",
+                text = stringResource(id = R.string.product_form_add_category_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -1167,7 +1170,7 @@ private fun AddCategoryDialog(
         text = {
             Column {
                 Text(
-                    text = "กรุณาใส่ชื่อหมวดหมู่",
+                    text = stringResource(id = R.string.product_form_add_category_message),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -1181,7 +1184,7 @@ private fun AddCategoryDialog(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text(
-                            text = "กรอกชื่อหมวดหมู่",
+                            text = stringResource(id = R.string.product_form_add_category_placeholder),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -1213,7 +1216,7 @@ private fun AddCategoryDialog(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "ยกเลิก",
+                        text = stringResource(id = R.string.product_management_cancel),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -1233,7 +1236,7 @@ private fun AddCategoryDialog(
                         )
                     } else {
                         Text(
-                            text = "ตกลง",
+                            text = stringResource(id = R.string.dialog_button_ok),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -1353,7 +1356,7 @@ private fun AddonGroupSelectionItem(
                 if (isSelected) {
                     Icon(
                         imageVector = Icons.Filled.Check,
-                        contentDescription = "เลือก",
+                        contentDescription = stringResource(id = R.string.product_form_addon_group_selected),
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )
@@ -1377,7 +1380,7 @@ private fun CategoryDropdown(
         !hasCategories -> stringResource(id = R.string.product_no_category_title)
         selectedCategoryId != null -> categories.find { it.id == selectedCategoryId }?.name
             ?: stringResource(id = R.string.product_no_category_title)
-        else -> "กรุณาเลือกหมวดหมู่"
+        else -> stringResource(id = R.string.product_form_category_select_placeholder)
     }
 
     Surface(
@@ -1426,7 +1429,7 @@ private fun CategoryDropdown(
             onDismissRequest = { showDropdown = false },
             title = {
                 Text(
-                    text = "เลือกหมวดหมู่ (${categories.size} รายการ)",
+                    text = stringResource(id = R.string.product_form_category_select_title, categories.size),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -1463,7 +1466,7 @@ private fun CategoryDropdown(
             },
             confirmButton = {
                 TextButton(onClick = { showDropdown = false }) {
-                    Text("ยกเลิก", color = PrimaryText)
+                    Text(stringResource(id = R.string.product_management_cancel), color = PrimaryText)
                 }
             }
         )

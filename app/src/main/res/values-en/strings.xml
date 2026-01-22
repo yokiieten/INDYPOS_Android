@@ -487,6 +487,55 @@
     <string name="product_status_inactive">Inactive</string>
     <string name="product_management_items_count">items</string>
     
+    <!-- Add/Edit Product Screen -->
+    <string name="product_edit_title">Edit Product</string>
+    <string name="product_form_name_label">Product Name</string>
+    <string name="product_form_name_placeholder">Enter product name</string>
+    <string name="product_form_code_label">Product Code</string>
+    <string name="product_form_code_placeholder">Enter product code</string>
+    <string name="product_form_code_scan_barcode">Scan barcode</string>
+    <string name="product_form_selling_price_label">Selling Price</string>
+    <string name="product_form_cost_price_label">Cost Price</string>
+    <string name="product_form_cost_price_placeholder">0 (optional)</string>
+    <string name="product_form_unit_label">Unit</string>
+    <string name="product_form_unit_placeholder">e.g., piece, pack, box</string>
+    <string name="product_form_image_label">Product Image</string>
+    <string name="product_form_image_type_image">Image</string>
+    <string name="product_form_image_type_color">Color</string>
+    <string name="product_form_image_select">Select Image</string>
+    <string name="product_form_image_description">Product image</string>
+    <string name="product_form_category_label">Category</string>
+    <string name="product_form_category_add">+Add</string>
+    <string name="product_form_category_select_placeholder">Please select category</string>
+    <string name="product_form_category_select_title">Select Category (%1$d items)</string>
+    <string name="product_form_sku_enabled">SKU Product</string>
+    <string name="product_form_sku_code_label">SKU Code</string>
+    <string name="product_form_sku_code_placeholder">Enter SKU code</string>
+    <string name="product_form_stock_enabled">Stock Management</string>
+    <string name="product_form_stock_quantity_label">Stock Quantity</string>
+    <string name="product_form_stock_quantity_placeholder">Enter stock quantity</string>
+    <string name="product_form_additional_options_enabled">Additional Options</string>
+    <string name="product_form_addon_groups_label">Select AddOn Groups</string>
+    <string name="product_form_addon_groups_empty">No AddOn Groups available</string>
+    <string name="product_form_save_button">Save</string>
+    <string name="product_form_save_success_title">Success</string>
+    <string name="product_form_save_success_edit">Product updated successfully</string>
+    <string name="product_form_save_success_add">Product added successfully</string>
+    <string name="product_form_error_title">Error</string>
+    <string name="product_form_no_internet_title">Cannot Save</string>
+    <string name="product_form_no_internet_message">Please connect to the internet to upload image</string>
+    <string name="product_form_image_upload_error_title">Image Upload Failed</string>
+    <string name="product_form_image_upload_error_message">An error occurred while uploading the image</string>
+    <string name="product_form_image_upload_error_question">Do you want to save the product without an image?</string>
+    <string name="product_form_image_upload_save_without_image">Save without image</string>
+    <string name="product_form_image_picker_title">Select Image</string>
+    <string name="product_form_image_picker_camera">Take Photo</string>
+    <string name="product_form_image_picker_gallery">Choose from Gallery</string>
+    <string name="product_form_add_category_title">Add New Category</string>
+    <string name="product_form_add_category_message">Please enter category name</string>
+    <string name="product_form_add_category_placeholder">Enter category name</string>
+    <string name="product_form_addon_group_selected">Selected</string>
+    
     <!-- Stock Management Screen -->
     <string name="stock_management_title">Stock Management</string>
     <string name="stock_update_title">Update Stock</string>
