@@ -504,4 +504,31 @@
     <string name="order_summary_add_order">เพิ่มออเดอร์</string>
     <string name="order_summary_success">สำเร็จ</string>
     <string name="order_summary_select">เลือก</string>
+    
+    <!-- Receipt Settings -->
+    <string name="receipt_settings_title">ใบเสร็จ</string>
+    <string name="settings_print_shop_logo">พิมพ์โลโก้ร้าน</string>
+    <string name="settings_print_after_finish">พิมพ์หลังเสร็จสิ้น</string>
+    <string name="settings_promptpay_qr_code">QR Code PromptPay</string>
+    <string name="settings_open_cash_drawer">เปิดลิ้นชักเงิน</string>
+    <string name="settings_paper_size">ขนาดกระดาษ</string>
+    <string name="settings_footer">ส่วนท้าย</string>
+    <string name="settings_tax_identification_number">เลขประจำตัวผู้เสียภาษี</string>
+    <string name="settings_tin_description">แสดงเลขประจำตัวผู้เสียภาษีบนใบเสร็จเพื่อการปฏิบัติตามกฎหมายภาษี</string>
+    <string name="settings_tin_placeholder">กรอกเลขประจำตัวผู้เสียภาษี 13 หลัก</string>
+    <string name="settings_tin_invalid">รูปแบบเลขประจำตัวผู้เสียภาษีไม่ถูกต้อง (ต้องมี 13 หลัก)</string>
+    <string name="settings_tin_required">กรุณากรอกเลขประจำตัวผู้เสียภาษีเมื่อเปิดใช้งาน</string>
+    <string name="settings_custom_printing_services">บริการพิมพ์แบบกำหนดเอง</string>
+    <string name="settings_generate_qr_code_description">สร้าง QR Code PromptPay สำหรับการรับชำระเงิน</string>
+    <string name="settings_select_shop_logo">เลือกโลโก้ร้าน</string>
+    <string name="settings_select_qr_code">เลือก QR Code</string>
+    <string name="settings_attach_shop_logo">แนบรูปโลโก้ร้านของคุณ</string>
+    <string name="settings_attach_qr_code">แนบรูป QR Code สำหรับใบเสร็จ</string>
+    <string name="settings_save_success">บันทึกการตั้งค่าเรียบร้อยแล้ว</string>
+    <string name="settings_paper_size_select">เลือกขนาดกระดาษ</string>
+    <string name="settings_cancel">ยกเลิก</string>
+    <string name="settings_saving">กำลังบันทึก...</string>
+    <string name="settings_save_settings">บันทึกการตั้งค่า</string>
+    <string name="settings_paper_size_58mm">58 มม</string>
+    <string name="settings_paper_size_80mm">80 มม</string>
 </resources>

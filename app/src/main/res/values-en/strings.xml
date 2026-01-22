@@ -399,5 +399,32 @@
     <string name="order_summary_add_order">Add Order</string>
     <string name="order_summary_success">Success</string>
     <string name="order_summary_select">Select</string>
+    
+    <!-- Receipt Settings -->
+    <string name="receipt_settings_title">Receipt</string>
+    <string name="settings_print_shop_logo">Print shop logo</string>
+    <string name="settings_print_after_finish">Print after finish</string>
+    <string name="settings_promptpay_qr_code">PromptPay QR Code</string>
+    <string name="settings_open_cash_drawer">Open cash drawer</string>
+    <string name="settings_paper_size">Paper Size</string>
+    <string name="settings_footer">Footer</string>
+    <string name="settings_tax_identification_number">Tax Identification Number</string>
+    <string name="settings_tin_description">Display TIN on receipt for tax compliance</string>
+    <string name="settings_tin_placeholder">Enter 13-digit TIN</string>
+    <string name="settings_tin_invalid">Invalid TIN format (must be 13 digits)</string>
+    <string name="settings_tin_required">Please enter TIN when enabled</string>
+    <string name="settings_custom_printing_services">Custom printing services</string>
+    <string name="settings_generate_qr_code_description">Generate PromptPay QR Code for payment</string>
+    <string name="settings_select_shop_logo">Select Shop Logo</string>
+    <string name="settings_select_qr_code">Select QR Code</string>
+    <string name="settings_attach_shop_logo">Attach your shop logo</string>
+    <string name="settings_attach_qr_code">Attach QR Code for receipt</string>
+    <string name="settings_save_success">Settings saved successfully</string>
+    <string name="settings_paper_size_select">Select Paper Size</string>
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_saving">Saving...</string>
+    <string name="settings_save_settings">Save Settings</string>
+    <string name="settings_paper_size_58mm">58 mm</string>
+    <string name="settings_paper_size_80mm">80 mm</string>
 </resources>
 
