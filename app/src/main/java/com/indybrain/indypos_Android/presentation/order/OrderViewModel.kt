@@ -150,6 +150,9 @@ class OrderViewModel @Inject constructor(
                     )
                 }
                 orderRepository.refreshOrders()
+                _uiState.update {
+                    it.copy(isLoading = false)
+                }
             } catch (e: Exception) {
                 _uiState.update { current ->
                     current.copy(
