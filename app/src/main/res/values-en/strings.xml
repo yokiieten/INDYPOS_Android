@@ -404,6 +404,18 @@
     <!-- Category Error Messages -->
     <string name="category_form_validation_exists">This category already exists</string>
     <string name="category_error_duplicate_name">Duplicate category name</string>
+    
+    <!-- Category Form -->
+    <string name="category_form_name_title">Category Name *</string>
+    <string name="category_form_name_placeholder">Enter category name</string>
+    <string name="category_form_save_button">Add Category</string>
+    <string name="category_form_save_edit_button">Save Changes</string>
+    <string name="category_form_validation_name_required">Please enter category name</string>
+    <string name="category_form_success_add">Category added successfully</string>
+    <string name="category_form_success_add_offline">Category added successfully (saved offline)</string>
+    <string name="category_form_success_edit">Category updated successfully</string>
+    <string name="category_form_success_edit_offline">Category updated successfully (saved offline)</string>
+    <string name="category_form_validation_edit_failed">Failed to edit category</string>
     <string name="category_management_error_title">Error</string>
     <string name="category_management_error_loading">Failed to load data</string>
     <string name="category_management_error_loading_with_reason">Failed to load data: %1$s</string>

@@ -131,7 +131,7 @@ fun AddEditCategoryScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // Category Name Label with red asterisk
-                val labelText = stringResource(id = R.string.category_management_name_label)
+                val labelText = stringResource(id = R.string.category_form_name_title)
                 val annotatedLabel = buildAnnotatedString {
                     // Extract base text (remove asterisk if present)
                     val baseText = if (labelText.endsWith(" *")) {
@@ -161,7 +161,7 @@ fun AddEditCategoryScreen(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text(
-                            text = stringResource(id = R.string.category_management_name_placeholder),
+                            text = stringResource(id = R.string.category_form_name_placeholder),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -211,9 +211,9 @@ fun AddEditCategoryScreen(
                     Text(
                         text = stringResource(
                             id = if (isEditMode) 
-                                R.string.category_management_save_changes 
+                                R.string.category_form_save_edit_button 
                             else 
-                                R.string.category_management_add_category
+                                R.string.category_form_save_button
                         ),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
@@ -243,7 +243,7 @@ fun AddEditCategoryScreen(
                 onDismissRequest = { viewModel.clearError() },
                 title = {
                     Text(
-                        text = "เกิดข้อผิดพลาด",
+                        text = stringResource(id = R.string.category_management_error_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -264,7 +264,7 @@ fun AddEditCategoryScreen(
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearError() }) {
                         Text(
-                            text = "ตกลง",
+                            text = stringResource(id = R.string.dialog_button_ok),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -302,9 +302,9 @@ private fun SuccessDialog(
             Text(
                 text = stringResource(
                     id = if (isEditMode) 
-                        R.string.category_management_edit_success 
+                        R.string.category_form_success_edit 
                     else 
-                        R.string.category_management_add_success
+                        R.string.category_form_success_add
                 ),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,

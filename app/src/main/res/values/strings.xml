@@ -429,6 +429,18 @@
     <string name="category_management_edit_success">อัปเดตหมวดหมู่เรียบร้อยแล้ว</string>
     <string name="category_form_validation_exists">หมวดหมู่นี้มีอยู่แล้ว</string>
     <string name="category_error_duplicate_name">ชื่อหมวดหมู่นี้มีอยู่แล้ว</string>
+    
+    <!-- Category Form -->
+    <string name="category_form_name_title">ชื่อหมวดหมู่ *</string>
+    <string name="category_form_name_placeholder">กรอกชื่อหมวดหมู่</string>
+    <string name="category_form_save_button">เพิ่มหมวดหมู่</string>
+    <string name="category_form_save_edit_button">บันทึกการแก้ไข</string>
+    <string name="category_form_validation_name_required">กรุณาใส่ชื่อหมวดหมู่</string>
+    <string name="category_form_success_add">เพิ่มหมวดหมู่เรียบร้อยแล้ว</string>
+    <string name="category_form_success_add_offline">เพิ่มหมวดหมู่สำเร็จ (บันทึกแบบออฟไลน์)</string>
+    <string name="category_form_success_edit">อัปเดตหมวดหมู่เรียบร้อยแล้ว</string>
+    <string name="category_form_success_edit_offline">แก้ไขหมวดหมู่สำเร็จ (บันทึกแบบออฟไลน์)</string>
+    <string name="category_form_validation_edit_failed">ไม่สามารถแก้ไขหมวดหมู่ได้</string>
     <string name="category_management_error_title">เกิดข้อผิดพลาด</string>
     <string name="category_management_error_loading">เกิดข้อผิดพลาดในการโหลดข้อมูล</string>
     <string name="category_management_error_loading_with_reason">เกิดข้อผิดพลาดในการโหลดข้อมูล: %1$s</string>
