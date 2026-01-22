@@ -23,7 +23,7 @@ android {
         applicationId = "com.indybrain.indypos_Android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
+        versionCode = 15
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
