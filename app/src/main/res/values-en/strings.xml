@@ -252,6 +252,13 @@
     <string name="success_title">Success</string>
     <string name="common_error">Error</string>
     
+    <!-- Account Screen -->
+    <string name="account_title">Account</string>
+    <string name="account_email_label">Email</string>
+    <string name="account_package_label">Plan</string>
+    <string name="account_status_plan">Plan</string>
+    <string name="account_package_basic">Basic</string>
+    
     <!-- Product Screen -->
     <string name="product_title">Products</string>
     <string name="product_back">Back</string>
@@ -379,5 +386,18 @@
     <string name="stock_management_cancel_button">Cancel</string>
     <string name="stock_management_stock_label">Stock: %1$s pcs</string>
     <string name="stock_management_sync_pending">Pending sync</string>
+    
+    <!-- Order Summary Screen -->
+    <string name="order_summary_title">Order Status</string>
+    <string name="order_summary_preparing">Preparing</string>
+    <string name="order_summary_ready">Ready</string>
+    <string name="order_summary_complete">Complete</string>
+    <string name="order_summary_return_home">Return to Home</string>
+    <string name="order_summary_change">Change</string>
+    <string name="order_summary_auto_print_receipt">Auto Print Receipt</string>
+    <string name="order_summary_auto_open_drawer">Auto Open Drawer</string>
+    <string name="order_summary_add_order">Add Order</string>
+    <string name="order_summary_success">Success</string>
+    <string name="order_summary_select">Select</string>
 </resources>
 

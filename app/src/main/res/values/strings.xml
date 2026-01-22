@@ -278,6 +278,7 @@
     <string name="account_title">บัญชี</string>
     <string name="account_email_label">อีเมล</string>
     <string name="account_package_label">แพ็กเกจ</string>
+    <string name="account_status_plan">แพ็กเกจ</string>
     <string name="account_package_basic">Basic</string>
     
     <!-- Change Password Screen -->
@@ -490,4 +491,17 @@
     <string name="stock_management_cancel_button">ยกเลิก</string>
     <string name="stock_management_stock_label">สต็อก: %1$s ชิ้น</string>
     <string name="stock_management_sync_pending">รอซิงค์</string>
+    
+    <!-- Order Summary Screen -->
+    <string name="order_summary_title">สถานะออเดอร์</string>
+    <string name="order_summary_preparing">กำลังเตรียม</string>
+    <string name="order_summary_ready">พร้อมแล้ว</string>
+    <string name="order_summary_complete">เสร็จสิ้น</string>
+    <string name="order_summary_return_home">กลับหน้าหลัก</string>
+    <string name="order_summary_change">ทอน</string>
+    <string name="order_summary_auto_print_receipt">พิมพ์ใบเสร็จอัตโนมัติ</string>
+    <string name="order_summary_auto_open_drawer">เปิดลิ้นชักอัตโนมัติ</string>
+    <string name="order_summary_add_order">เพิ่มออเดอร์</string>
+    <string name="order_summary_success">สำเร็จ</string>
+    <string name="order_summary_select">เลือก</string>
 </resources>

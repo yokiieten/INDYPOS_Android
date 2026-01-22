@@ -143,7 +143,7 @@ fun AccountScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = stringResource(id = R.string.account_package_label),
+                        text = stringResource(id = R.string.account_status_plan),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
