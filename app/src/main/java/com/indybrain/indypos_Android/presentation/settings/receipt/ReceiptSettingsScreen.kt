@@ -1262,7 +1262,7 @@ private fun PaperSizeDialog(
         },
         text = {
             Column {
-                listOf("58", "80").forEach { size ->
+                listOf("58").forEach { size ->
                     val displayText = when (size) {
                         "58" -> stringResource(R.string.settings_paper_size_58mm)
                         "80" -> stringResource(R.string.settings_paper_size_80mm)
