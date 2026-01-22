@@ -436,7 +436,7 @@ fun CategoryManagementScreen(
                 onDismissRequest = { viewModel.clearError() },
                 title = {
                     Text(
-                        text = "เกิดข้อผิดพลาด",
+                        text = stringResource(id = R.string.category_management_error_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -457,7 +457,7 @@ fun CategoryManagementScreen(
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearError() }) {
                         Text(
-                            text = "ตกลง",
+                            text = stringResource(id = R.string.dialog_button_ok),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -484,7 +484,7 @@ private fun CategorySyncStatusDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "สถานะการ Sync",
+                text = stringResource(id = R.string.category_management_sync_status_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -496,7 +496,7 @@ private fun CategorySyncStatusDialog(
             Column {
                 if (statistics != null) {
                     Text(
-                        text = "ทั้งหมด: ${statistics.total}",
+                        text = stringResource(id = R.string.category_management_sync_total, statistics.total),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -505,7 +505,7 @@ private fun CategorySyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Sync แล้ว: ${statistics.synced}",
+                        text = stringResource(id = R.string.category_management_sync_synced, statistics.synced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -514,7 +514,7 @@ private fun CategorySyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "รอ Sync: ${statistics.unsynced}",
+                        text = stringResource(id = R.string.category_management_sync_pending, statistics.unsynced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -523,7 +523,7 @@ private fun CategorySyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "ถูกลบ: ${statistics.deleted}",
+                        text = stringResource(id = R.string.category_management_sync_deleted, statistics.deleted),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -542,7 +542,7 @@ private fun CategorySyncStatusDialog(
             if (statistics != null && statistics.unsynced > 0) {
                 TextButton(onClick = onSyncNow) {
                     Text(
-                        text = "Sync ตอนนี้",
+                        text = stringResource(id = R.string.category_management_sync_now),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -731,7 +731,7 @@ private fun DeleteConfirmationDialog(
         },
         text = {
             Text(
-                text = "คุณต้องการลบหมวดหมู่ '$categoryName' ใช่หรือไม่?",
+                text = stringResource(id = R.string.category_management_delete_confirm_message_single, categoryName),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -794,7 +794,7 @@ private fun MultipleDeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "คุณต้องการลบหมวดหมู่ $selectedCount รายการใช่หรือไม่?",
+                    text = stringResource(id = R.string.category_management_delete_confirm_message_multiple, selectedCount),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

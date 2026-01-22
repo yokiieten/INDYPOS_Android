@@ -429,6 +429,29 @@
     <string name="category_management_edit_success">อัปเดตหมวดหมู่เรียบร้อยแล้ว</string>
     <string name="category_form_validation_exists">หมวดหมู่นี้มีอยู่แล้ว</string>
     <string name="category_error_duplicate_name">ชื่อหมวดหมู่นี้มีอยู่แล้ว</string>
+    <string name="category_management_error_title">เกิดข้อผิดพลาด</string>
+    <string name="category_management_error_loading">เกิดข้อผิดพลาดในการโหลดข้อมูล</string>
+    <string name="category_management_error_loading_with_reason">เกิดข้อผิดพลาดในการโหลดข้อมูล: %1$s</string>
+    <string name="category_management_error_unknown">ไม่ทราบสาเหตุ</string>
+    <string name="category_management_error_updating_status">เกิดข้อผิดพลาดในการอัปเดตสถานะ</string>
+    <string name="category_management_error_deleting">เกิดข้อผิดพลาดในการลบหมวดหมู่</string>
+    <string name="category_management_error_syncing">เกิดข้อผิดพลาดในการ sync หมวดหมู่</string>
+    <string name="category_management_delete_confirm_message_single">คุณต้องการลบหมวดหมู่ \'%1$s\' ใช่หรือไม่?</string>
+    <string name="category_management_delete_confirm_message_multiple">คุณต้องการลบหมวดหมู่ %1$d รายการใช่หรือไม่?</string>
+    <string name="category_management_delete_success_single">ลบหมวดหมู่เรียบร้อยแล้ว</string>
+    <string name="category_management_delete_success_multiple">ลบหมวดหมู่ %1$d รายการเรียบร้อยแล้ว</string>
+    <string name="category_management_delete_success_with_name">ลบหมวดหมู่ \'%1$s\' เรียบร้อยแล้ว</string>
+    <string name="category_management_status_activate">เปิดใช้งาน</string>
+    <string name="category_management_status_deactivate">ปิดใช้งาน</string>
+    <string name="category_management_status_update_success">อัปเดตสถานะหมวดหมู่ \'%1$s\' เป็น \'%2$s\' เรียบร้อยแล้ว</string>
+    <string name="category_management_sync_status_title">สถานะการ Sync</string>
+    <string name="category_management_sync_total">ทั้งหมด: %1$d</string>
+    <string name="category_management_sync_synced">Sync แล้ว: %1$d</string>
+    <string name="category_management_sync_pending">รอ Sync: %1$d</string>
+    <string name="category_management_sync_deleted">ถูกลบ: %1$d</string>
+    <string name="category_management_sync_now">Sync ตอนนี้</string>
+    <string name="category_management_sync_success">Sync หมวดหมู่สำเร็จ</string>
+    <string name="category_management_default_name">หมวดหมู่</string>
     
     <!-- Product Error Messages -->
     <string name="product_error_duplicate_sku">รหัส SKU นี้มีอยู่แล้ว</string>

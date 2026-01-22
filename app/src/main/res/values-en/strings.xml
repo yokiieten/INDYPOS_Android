@@ -404,6 +404,29 @@
     <!-- Category Error Messages -->
     <string name="category_form_validation_exists">This category already exists</string>
     <string name="category_error_duplicate_name">Duplicate category name</string>
+    <string name="category_management_error_title">Error</string>
+    <string name="category_management_error_loading">Failed to load data</string>
+    <string name="category_management_error_loading_with_reason">Failed to load data: %1$s</string>
+    <string name="category_management_error_unknown">Unknown error</string>
+    <string name="category_management_error_updating_status">Failed to update status</string>
+    <string name="category_management_error_deleting">Failed to delete category</string>
+    <string name="category_management_error_syncing">Failed to sync categories</string>
+    <string name="category_management_delete_confirm_message_single">Are you sure you want to delete category \'%1$s\'?</string>
+    <string name="category_management_delete_confirm_message_multiple">Are you sure you want to delete %1$d categories?</string>
+    <string name="category_management_delete_success_single">Category deleted successfully</string>
+    <string name="category_management_delete_success_multiple">%1$d categories deleted successfully</string>
+    <string name="category_management_delete_success_with_name">Category \'%1$s\' deleted successfully</string>
+    <string name="category_management_status_activate">Activate</string>
+    <string name="category_management_status_deactivate">Deactivate</string>
+    <string name="category_management_status_update_success">Category \'%1$s\' status updated to \'%2$s\' successfully</string>
+    <string name="category_management_sync_status_title">Sync Status</string>
+    <string name="category_management_sync_total">Total: %1$d</string>
+    <string name="category_management_sync_synced">Synced: %1$d</string>
+    <string name="category_management_sync_pending">Pending: %1$d</string>
+    <string name="category_management_sync_deleted">Deleted: %1$d</string>
+    <string name="category_management_sync_now">Sync Now</string>
+    <string name="category_management_sync_success">Categories synced successfully</string>
+    <string name="category_management_default_name">Category</string>
     
     <!-- Product Error Messages -->
     <string name="product_error_duplicate_sku">SKU code already exists</string>

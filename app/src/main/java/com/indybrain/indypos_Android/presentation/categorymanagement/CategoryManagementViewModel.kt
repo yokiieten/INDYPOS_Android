@@ -1,10 +1,13 @@
 package com.indybrain.indypos_Android.presentation.categorymanagement
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +21,8 @@ import javax.inject.Inject
 @HiltViewModel
 class CategoryManagementViewModel @Inject constructor(
     private val productRepository: ProductRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(CategoryManagementUiState())
@@ -50,7 +54,7 @@ class CategoryManagementViewModel @Inject constructor(
                         _uiState.update { current ->
                             current.copy(
                                 isLoading = false,
-                                errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                                errorMessage = error.message ?: context.getString(R.string.category_management_error_loading)
                             )
                         }
                     }
@@ -62,7 +66,10 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { current ->
                     current.copy(
                         isLoading = false,
-                        errorMessage = "เกิดข้อผิดพลาด: ${e.message ?: "ไม่ทราบสาเหตุ"}"
+                        errorMessage = context.getString(
+                            R.string.category_management_error_loading_with_reason,
+                            e.message ?: context.getString(R.string.category_management_error_unknown)
+                        )
                     )
                 }
             }
@@ -100,7 +107,10 @@ class CategoryManagementViewModel @Inject constructor(
                     current.copy(
                         categories = emptyList(),
                         isLoading = false,
-                        errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูล: ${e.message}"
+                        errorMessage = context.getString(
+                            R.string.category_management_error_loading_with_reason,
+                            e.message ?: context.getString(R.string.category_management_error_unknown)
+                        )
                     )
                 }
             }
@@ -151,8 +161,16 @@ class CategoryManagementViewModel @Inject constructor(
             result.onSuccess { category ->
                 // Get category name for success message
                 val categoryName = category.name
-                val statusText = if (newStatus) "เปิดใช้งาน" else "ปิดใช้งาน"
-                val successMessage = "อัปเดตสถานะหมวดหมู่ '$categoryName' เป็น '$statusText' เรียบร้อยแล้ว"
+                val statusText = if (newStatus) {
+                    context.getString(R.string.category_management_status_activate)
+                } else {
+                    context.getString(R.string.category_management_status_deactivate)
+                }
+                val successMessage = context.getString(
+                    R.string.category_management_status_update_success,
+                    categoryName,
+                    statusText
+                )
                 
                 _uiState.update { 
                     it.copy(
@@ -164,7 +182,7 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ"
+                        errorMessage = error.message ?: context.getString(R.string.category_management_error_updating_status)
                     )
                 }
             }
@@ -187,12 +205,15 @@ class CategoryManagementViewModel @Inject constructor(
             
             // Get category name before deleting
             val category = productRepository.getCategoryById(categoryId)
-            val categoryName = category?.name ?: "หมวดหมู่"
+            val categoryName = category?.name ?: context.getString(R.string.category_management_default_name)
             
             val result = productRepository.deleteCategory(categoryId)
             
             result.onSuccess {
-                val successMessage = "ลบหมวดหมู่ '$categoryName' เรียบร้อยแล้ว"
+                val successMessage = context.getString(
+                    R.string.category_management_delete_success_with_name,
+                    categoryName
+                )
                 
                 _uiState.update { 
                     it.copy(
@@ -204,7 +225,7 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
+                        errorMessage = error.message ?: context.getString(R.string.category_management_error_deleting)
                     )
                 }
             }
@@ -308,7 +329,7 @@ class CategoryManagementViewModel @Inject constructor(
                     successCount++
                 }.onFailure { error ->
                     // เก็บข้อความ error ไว้ แต่ยังพยายามลบตัวถัดไปต่อ
-                    failureMessage = error.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
+                    failureMessage = error.message ?: context.getString(R.string.category_management_error_deleting)
                 }
             }
             
@@ -322,9 +343,9 @@ class CategoryManagementViewModel @Inject constructor(
                 }
             } else {
                 val successMessage = if (successCount == 1) {
-                    "ลบหมวดหมู่เรียบร้อยแล้ว"
+                    context.getString(R.string.category_management_delete_success_single)
                 } else {
-                    "ลบหมวดหมู่ $successCount รายการเรียบร้อยแล้ว"
+                    context.getString(R.string.category_management_delete_success_multiple, successCount)
                 }
                 _uiState.update { 
                     it.copy(
@@ -350,7 +371,7 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        syncSuccessMessage = "Sync หมวดหมู่สำเร็จ"
+                        syncSuccessMessage = context.getString(R.string.category_management_sync_success)
                     )
                 }
                 // Refresh categories after sync
@@ -359,7 +380,7 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการ sync หมวดหมู่"
+                        errorMessage = error.message ?: context.getString(R.string.category_management_error_syncing)
                     )
                 }
             }
