@@ -361,9 +361,21 @@ private fun OrderDetailContent(
         Spacer(modifier = Modifier.height(12.dp))
         
         // Order Items
-        orderItems.sortedBy { it.productName }.forEach { item ->
-            OrderItemCard(item = item)
-            Spacer(modifier = Modifier.height(12.dp))
+        if (orderItems.isEmpty()) {
+            Text(
+                text = "ไม่มีรายการสินค้า",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = SecondaryText,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+        } else {
+            orderItems.sortedBy { it.productName }.forEach { item ->
+                OrderItemCard(item = item)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
         
         Spacer(modifier = Modifier.height(24.dp))
