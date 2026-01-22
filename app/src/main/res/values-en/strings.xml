@@ -275,12 +275,21 @@
     <string name="addon_group_max_selection_zero_error">Maximum selection must be greater than 0</string>
 
     <!-- Order Product / Cart -->
+    <string name="order_product_my_order">My Order</string>
+    <string name="order_product_add_menu">Add menu</string>
+    <string name="order_product_order_now">Order Now</string>
+    <string name="order_product_payment_type">Payment Type</string>
+    <string name="order_product_cash_payment">Cash Payment</string>
+    <string name="order_product_transfer_payment">Transfer Payment</string>
+    <string name="order_product_discount">Discount</string>
+    <string name="order_product_add_optional">Add (Optional)</string>
+    <string name="order_product_subtotal">Subtotal</string>
+    <string name="order_product_total">Total</string>
+    <string name="order_product_delete">Delete</string>
+    <string name="order_product_discount_applied">Applied discount %1$s (Save ฿%2$s)</string>
     <string name="order_product_empty_cart">Your cart is empty\nAdd items to start your order</string>
     <string name="order_product_add_product">Add Products</string>
     <string name="order_product_clear_all">Clear All</string>
-    <string name="order_product_subtotal">Subtotal</string>
-    <string name="order_product_discount">Discount</string>
-    <string name="order_product_total">Total</string>
     <string name="order_product_checkout">Checkout</string>
     
     <!-- Barcode Scanner Screen -->
@@ -350,6 +359,16 @@
     <string name="product_form_error_edit_failed">Failed to update product</string>
     
     <!-- Stock Management Screen -->
+    <string name="stock_management_title">Stock Management</string>
+    <string name="stock_update_title">Update Stock</string>
+    <string name="stock_update_message">Enter quantity to increase/decrease for %1$s (current: %2$d)</string>
+    <string name="stock_quantity_placeholder">Enter quantity </string>
+    <string name="stock_update_button">Update</string>
+    <string name="stock_cancel_button">Cancel</string>
+    <string name="stock_update_success_title">Success</string>
+    <string name="stock_update_success_message">Stock updated successfully for %1$s: %2$d pcs (was %3$d)</string>
+    <string name="stock_ok_button">OK</string>
+    <string name="stock_quantity_format">Stock: %1$d pcs</string>
     <string name="stock_management_empty_products">No products with stock tracking enabled</string>
     <string name="stock_management_no_internet_message">Stock management requires an internet connection</string>
     <string name="stock_management_success_title">Stock updated successfully</string>

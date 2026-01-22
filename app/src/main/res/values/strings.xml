@@ -326,12 +326,21 @@
     <string name="addon_group_max_selection_zero_error">เลือกได้สูงสุดต้องมากกว่า 0</string>
     
     <!-- Order Product / Cart -->
+    <string name="order_product_my_order">ออเดอร์ของฉัน</string>
+    <string name="order_product_add_menu">เพิ่มเมนู</string>
+    <string name="order_product_order_now">สั่งสินค้า</string>
+    <string name="order_product_payment_type">ประเภทการจ่ายเงิน</string>
+    <string name="order_product_cash_payment">จ่ายเงินสด</string>
+    <string name="order_product_transfer_payment">โอนเงิน</string>
+    <string name="order_product_discount">ส่วนลด</string>
+    <string name="order_product_add_optional">เพิ่ม (ถ้ามี)</string>
+    <string name="order_product_subtotal">ยอดรวม</string>
+    <string name="order_product_total">ยอดรวมทั้งสิ้น</string>
+    <string name="order_product_delete">ลบ</string>
+    <string name="order_product_discount_applied">ใช้ส่วนลด %1$s (ประหยัด ฿%2$s)</string>
     <string name="order_product_empty_cart">ตะกร้าสินค้าว่าง\nเพิ่มสินค้าลงตะกร้าเพื่อเริ่มต้นออเดอร์</string>
     <string name="order_product_add_product">เพิ่มสินค้า</string>
     <string name="order_product_clear_all">ลบทั้งหมด</string>
-    <string name="order_product_subtotal">ยอดรวม</string>
-    <string name="order_product_discount">ส่วนลด</string>
-    <string name="order_product_total">ยอดรวมทั้งสิ้น</string>
     <string name="order_product_checkout">ชำระเงิน</string>
     
     <!-- Search Product Screen -->
@@ -461,6 +470,16 @@
     <string name="printer_scanning">กำลังค้นหา...</string>
     
     <!-- Stock Management Screen -->
+    <string name="stock_management_title">จัดการสต็อก</string>
+    <string name="stock_update_title">อัปเดตสต็อก</string>
+    <string name="stock_update_message">ใส่จำนวนที่ต้องการเพิ่ม/ลดสำหรับ %1$s (ปัจจุบัน: %2$d)</string>
+    <string name="stock_quantity_placeholder">ใส่จำนวน </string>
+    <string name="stock_update_button">อัปเดต</string>
+    <string name="stock_cancel_button">ยกเลิก</string>
+    <string name="stock_update_success_title">สำเร็จ</string>
+    <string name="stock_update_success_message">อัปเดตสต็อกสำเร็จสำหรับ %1$s: %2$d ชิ้น (เดิม %3$d)</string>
+    <string name="stock_ok_button">ตกลง</string>
+    <string name="stock_quantity_format">สต็อก: %1$d ชิ้น</string>
     <string name="stock_management_empty_products">ไม่มีสินค้าที่เปิดใช้งานสต็อก</string>
     <string name="stock_management_no_internet_message">การจัดการสต็อกต้องใช้การเชื่อมต่ออินเทอร์เน็ต</string>
     <string name="stock_management_success_title">อัปเดตสต็อกสำเร็จ</string>
