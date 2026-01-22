@@ -43,15 +43,7 @@ data class HomeShortcut(
     val iconBackground: Color
 ) {
     companion object {
-        fun defaults(): List<HomeShortcut> = listOf(
-            HomeShortcut(
-                id = "start_order",
-                title = "เริ่มออเดอร์",
-                subtitle = "เพิ่มสินค้าเข้าบิล",
-                icon = Icons.Outlined.Add,
-                iconBackground = Color(0xFFEDF5FE)
-            )
-        )
+        fun defaults(): List<HomeShortcut> = emptyList() // Will be created in Composable with string resources
     }
 }
 

@@ -119,18 +119,24 @@
     <string name="register_error_profile_verification">Unable to verify profile</string>
     
     <!-- Home Screen -->
-    <string name="home_default_shop_name">My Shop</string>
+    <string name="home_default_shop_name">Store</string>
+    <string name="home_store_default_name">Store</string>
     <string name="home_edit_shop_cd">Edit shop information</string>
     <string name="home_change_cover">Change cover image</string>
     <string name="home_description_placeholder">Tap to add shop details...</string>
     <string name="home_daily_sales_title">Today\'s Sales</string>
     <string name="home_daily_sales_label">Today\'s Sales</string>
+    <string name="home_daily_orders_title">Today\'s Orders</string>
     <string name="home_orders_today_label">Orders Today</string>
-    <string name="home_orders_unit">items</string>
+    <string name="home_orders_unit">orders</string>
     <string name="home_best_seller_title">Best Seller</string>
     <string name="home_best_seller_empty">No product recommendations yet</string>
     <string name="home_shortcuts_title">Shortcuts</string>
     <string name="home_currency_suffix">THB</string>
+    <string name="home_baht_currency">Baht</string>
+    <string name="home_no_sales_yet">No sales yet</string>
+    <string name="home_create_order">Start Order</string>
+    <string name="home_create_order_subtitle">Add items to cart</string>
     <string name="home_nav_home">Home</string>
     <string name="home_nav_orders">Orders</string>
     <string name="home_nav_charts">Charts</string>

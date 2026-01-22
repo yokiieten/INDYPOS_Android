@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Edit
@@ -241,12 +242,21 @@ fun HomeScreen(
                     )
                 }
                 else -> {
+                    val createOrderTitle = stringResource(id = R.string.home_create_order)
+                    val createOrderSubtitle = stringResource(id = R.string.home_create_order_subtitle)
+                    val shortcuts = remember(createOrderTitle, createOrderSubtitle) {
+                        createHomeShortcuts(
+                            createOrderTitle = createOrderTitle,
+                            createOrderSubtitle = createOrderSubtitle
+                        )
+                    }
                     HomeContent(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding),
                         uiState = uiState,
                         scrollState = scrollState,
+                        shortcuts = shortcuts,
                         onImageClick = {
                             if (!uiState.shopImageUrl.isNullOrBlank()) {
                                 isImageViewerVisible = true
@@ -382,6 +392,7 @@ private fun HomeContent(
     modifier: Modifier = Modifier,
     uiState: HomeUiState,
     scrollState: androidx.compose.foundation.ScrollState,
+    shortcuts: List<HomeShortcut>,
     onImageClick: () -> Unit,
     onChangeImageClick: () -> Unit,
     onDescriptionClick: () -> Unit,
@@ -396,6 +407,7 @@ private fun HomeContent(
             modifier = modifier,
             uiState = uiState,
             scrollState = scrollState,
+            shortcuts = shortcuts,
             onImageClick = onImageClick,
             onChangeImageClick = onChangeImageClick,
             onDescriptionClick = onDescriptionClick,
@@ -406,6 +418,7 @@ private fun HomeContent(
             modifier = modifier,
             uiState = uiState,
             scrollState = scrollState,
+            shortcuts = shortcuts,
             onImageClick = onImageClick,
             onChangeImageClick = onChangeImageClick,
             onDescriptionClick = onDescriptionClick,
@@ -419,6 +432,7 @@ private fun PortraitHomeContent(
     modifier: Modifier = Modifier,
     uiState: HomeUiState,
     scrollState: androidx.compose.foundation.ScrollState,
+    shortcuts: List<HomeShortcut>,
     onImageClick: () -> Unit,
     onChangeImageClick: () -> Unit,
     onDescriptionClick: () -> Unit,
@@ -448,7 +462,7 @@ private fun PortraitHomeContent(
         Spacer(modifier = Modifier.height(32.dp))
         
         ShortcutsSection(
-            shortcuts = uiState.shortcuts,
+            shortcuts = shortcuts,
             onShortcutClick = onShortcutClick
         )
     }
@@ -459,6 +473,7 @@ private fun LandscapeHomeContent(
     modifier: Modifier = Modifier,
     uiState: HomeUiState,
     scrollState: androidx.compose.foundation.ScrollState,
+    shortcuts: List<HomeShortcut>,
     onImageClick: () -> Unit,
     onChangeImageClick: () -> Unit,
     onDescriptionClick: () -> Unit,
@@ -487,7 +502,7 @@ private fun LandscapeHomeContent(
             
             // Shortcuts in grid layout for landscape
             ShortcutsSectionLandscape(
-                shortcuts = uiState.shortcuts,
+                shortcuts = shortcuts,
                 onShortcutClick = onShortcutClick
             )
         }
@@ -1189,6 +1204,24 @@ private fun HomeBottomBar(
 private fun formatCurrency(value: Double): String {
     val formatter = DecimalFormat("#,##0.00")
     return formatter.format(value)
+}
+
+/**
+ * Helper function to create home shortcuts with localized strings
+ */
+private fun createHomeShortcuts(
+    createOrderTitle: String,
+    createOrderSubtitle: String
+): List<HomeShortcut> {
+    return listOf(
+        HomeShortcut(
+            id = "start_order",
+            title = createOrderTitle,
+            subtitle = createOrderSubtitle,
+            icon = Icons.Outlined.Add,
+            iconBackground = Color(0xFFEDF5FE)
+        )
+    )
 }
 
 /**
