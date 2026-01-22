@@ -66,6 +66,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.stringResource
+import com.indybrain.indypos_Android.R
 
 /**
  * Add/Edit Addon Group Screen
@@ -186,7 +188,15 @@ fun AddEditAddonGroupScreen(
                         FormTextFieldSection(
                             title = "เลือกได้สูงสุด",
                             value = uiState.formState.maxSelection,
-                            onValueChange = { if (it.all { char -> char.isDigit() }) viewModel.updateMaxSelection(it) },
+                            onValueChange = { 
+                                // Allow all digits including 0, validation will be done on save
+                                if (it.all { char -> char.isDigit() }) {
+                                    viewModel.updateMaxSelection(it)
+                                } else if (it.isEmpty()) {
+                                    // Allow empty string
+                                    viewModel.updateMaxSelection(it)
+                                }
+                            },
                             placeholder = "1",
                             keyboardType = KeyboardType.Number,
                             isRequired = false
@@ -327,8 +337,13 @@ fun AddEditAddonGroupScreen(
         
         // Error Dialog
         uiState.errorMessage?.let { errorMessage ->
+            val localizedMessage = if (errorMessage == "MAX_SELECTION_ZERO_ERROR") {
+                stringResource(id = R.string.addon_group_max_selection_zero_error)
+            } else {
+                errorMessage
+            }
             ErrorDialog(
-                errorMessage = errorMessage,
+                errorMessage = localizedMessage,
                 onDismiss = {
                     viewModel.clearErrorMessage()
                 }

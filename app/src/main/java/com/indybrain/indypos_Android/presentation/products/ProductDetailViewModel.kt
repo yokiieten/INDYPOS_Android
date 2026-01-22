@@ -140,12 +140,22 @@ class ProductDetailViewModel @Inject constructor(
                 ?: return@update currentState
             
             val currentSelected = currentState.selectedAddons[addonGroupId] ?: emptySet()
+            
+            // Check if maxSelection is 0 - if so, prevent selection and show error
+            val maxSelection = addonGroup.maxSelection
+            if (maxSelection != null && maxSelection == 0) {
+                // Max selection is 0, cannot select any addon
+                // Error message will be localized in the UI layer using string resource
+                return@update currentState.copy(
+                    errorMessage = "MAX_SELECTION_ZERO" // Special error code for localization
+                )
+            }
+            
             val newSelected = if (currentSelected.contains(addonId)) {
                 // Deselect
                 currentSelected - addonId
             } else {
                 // Select
-                val maxSelection = addonGroup.maxSelection
                 if (addonGroup.isSingleSelection) {
                     // Single selection - replace current selection
                     setOf(addonId)

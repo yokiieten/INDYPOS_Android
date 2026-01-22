@@ -152,6 +152,14 @@ class AddEditAddonGroupViewModel @Inject constructor(
             return "กรุณาเลือก Addon อย่างน้อย 1 รายการ"
         }
         
+        // Validate maxSelection - cannot be 0
+        if (formState.maxSelection.isNotEmpty()) {
+            val maxSelectionValue = formState.maxSelection.toIntOrNull()
+            if (maxSelectionValue != null && maxSelectionValue == 0) {
+                return "MAX_SELECTION_ZERO_ERROR" // Will be localized in UI
+            }
+        }
+        
         return null
     }
     

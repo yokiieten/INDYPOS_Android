@@ -265,6 +265,8 @@
     <string name="product_detail_price">Price</string>
     <string name="product_detail_special_request">Special Request</string>
     <string name="product_max_selection">Max %1$d selections</string>
+    <string name="product_addon_max_selection_zero_error">Cannot select Addon because this Addon group has maximum selection set to 0</string>
+    <string name="addon_group_max_selection_zero_error">Maximum selection must be greater than 0</string>
 
     <!-- Order Product / Cart -->
     <string name="order_product_empty_cart">Your cart is empty\nAdd items to start your order</string>

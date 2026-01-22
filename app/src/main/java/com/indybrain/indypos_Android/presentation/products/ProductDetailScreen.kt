@@ -326,9 +326,16 @@ fun ProductDetailScreen(
                     
                     // Show error as snackbar (toast without icon)
                     uiState.errorMessage?.let { errorMessage ->
+                        // Get localized message in composable context
+                        val localizedMessage = if (errorMessage == "MAX_SELECTION_ZERO") {
+                            stringResource(id = R.string.product_addon_max_selection_zero_error)
+                        } else {
+                            errorMessage
+                        }
+                        
                         LaunchedEffect(errorMessage) {
                             snackbarHostState.showSnackbar(
-                                message = errorMessage,
+                                message = localizedMessage,
                                 duration = androidx.compose.material3.SnackbarDuration.Short
                             )
                             viewModel.clearErrorMessage()
