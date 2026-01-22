@@ -511,6 +511,47 @@
 -keep enum com.indybrain.indypos_Android.data.export.ExportFormat { *; }
 -keep enum com.indybrain.indypos_Android.data.export.ExportDataType { *; }
 
+# ============================================
+# Language/Locale Management - CRITICAL FOR LANGUAGE SWITCHING
+# ============================================
+# Keep LocaleHelper object class (used for locale management)
+-keep class com.indybrain.indypos_Android.core.locale.LocaleHelper { *; }
+-keepclassmembers class com.indybrain.indypos_Android.core.locale.LocaleHelper {
+    <methods>;
+    <fields>;
+}
+
+# Keep LanguageLocalDataSource (used for storing language preference)
+-keep class com.indybrain.indypos_Android.data.local.LanguageLocalDataSource { *; }
+-keepclassmembers class com.indybrain.indypos_Android.data.local.LanguageLocalDataSource {
+    <methods>;
+    <fields>;
+    <init>(...);
+}
+
+# Keep LanguageOption enum (used for language selection)
+-keep enum com.indybrain.indypos_Android.data.local.LanguageOption {
+    <fields>;
+    <methods>;
+    public static ** valueOf(...);
+    public static **[] values();
+}
+
+# Keep LanguageSettingsViewModel (ViewModel for language settings)
+-keep class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsViewModel { *; }
+-keepclassmembers class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsViewModel {
+    <methods>;
+    <fields>;
+    <init>(...);
+}
+
+# Keep LanguageSettingsUiState data class
+-keep class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsUiState { *; }
+-keepclassmembers class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsUiState {
+    <fields>;
+    <init>(...);
+}
+
 # JavaParser classes (optional dependency for XMLBeans code generation)
 -dontwarn com.github.javaparser.**
 
