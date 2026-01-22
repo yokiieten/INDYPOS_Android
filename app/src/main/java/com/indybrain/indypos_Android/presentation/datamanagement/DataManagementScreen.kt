@@ -164,7 +164,7 @@ private fun shareFiles(context: android.content.Context, uris: List<android.net.
             putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Share exported files"))
+        context.startActivity(Intent.createChooser(intent, context.getString(R.string.data_export_share_files)))
     } catch (e: Exception) {
         // Handle error
     }
@@ -372,7 +372,7 @@ private fun DataExportSection(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = stringResource(R.string.data_export_title),
+                    text = stringResource(R.string.data_export),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

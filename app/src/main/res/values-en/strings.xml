@@ -229,6 +229,52 @@
     <string name="contact_line_format">LINE: %1$s</string>
     <string name="contact_time">Mon-Fri 09:30 - 20:00</string>
     
+    <!-- Data Management Screen -->
+    <string name="data_management_title">Data Management</string>
+    <string name="data_export">Export Data</string>
+    <string name="data_export_subtitle">Export various data as files</string>
+    <string name="data_export_share_files">Share exported files</string>
+    
+    <!-- Data Stats -->
+    <string name="data_stats_title">System Data Summary</string>
+    <string name="data_stats_products">Products</string>
+    <string name="data_stats_categories">Categories</string>
+    <string name="data_stats_addons">Add-ons</string>
+    <string name="data_stats_addon_groups">Add-on Groups</string>
+    <string name="data_stats_orders">Order History</string>
+    <string name="data_stats_storage">Storage Space</string>
+    
+    <!-- Data Export/Import Dialogs -->
+    <string name="data_export_select_type">Select data type to export</string>
+    <string name="data_import_select_type">Select data type to import</string>
+    <string name="data_export_format_title">Select file format</string>
+    <string name="data_export_format_message">Select the file format you want to export</string>
+    <string name="data_export_product_type_title">Select product export type</string>
+    <string name="data_export_product_type_message">Select the type of product export you want</string>
+    <string name="data_export_zip_package">📦 ZIP Package (with images)</string>
+    <string name="data_export_data_only">📄 Data only</string>
+    <string name="data_export_zip_format_title">Select data file format</string>
+    <string name="data_export_zip_format_message">Select the data file format inside ZIP package</string>
+    
+    <!-- Export Data Types -->
+    <string name="export_data_type_categories">Product Categories</string>
+    <string name="export_data_type_products">Products</string>
+    <string name="export_data_type_addon_groups">Add-on Groups</string>
+    <string name="export_data_type_addons">Add-ons</string>
+    <string name="export_data_type_orders">Order History</string>
+    <string name="export_data_type_sales_report">Sales Report</string>
+    <string name="export_data_type_stock_report">Stock Report</string>
+    
+    <!-- Export Formats -->
+    <string name="export_format_excel">Excel (.xlsx)</string>
+    <string name="export_format_csv">CSV (.csv)</string>
+    
+    <!-- Export Error Messages -->
+    <string name="data_export_error_failed">Export failed</string>
+    
+    <!-- Common -->
+    <string name="common_cancel">Cancel</string>
+    
     <!-- Logout Dialogs -->
     <string name="logout_confirm_title">Confirm Logout</string>
     <string name="logout_confirm_message">Are you sure you want to logout?</string>

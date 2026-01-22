@@ -52,7 +52,7 @@ fun ExportDataTypeDialog(
             ) {
                 // Title
                 Text(
-                    text = stringResource(R.string.export_data_type_dialog_title),
+                    text = stringResource(R.string.data_export_select_type),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -139,7 +139,7 @@ fun ExportDataTypeDialog(
                 
                 // Cancel Button
                 Text(
-                    text = stringResource(R.string.home_cancel),
+                    text = stringResource(R.string.common_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

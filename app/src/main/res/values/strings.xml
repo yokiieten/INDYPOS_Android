@@ -252,19 +252,32 @@
     
     <!-- Data Management Screen -->
     <string name="data_management_title">จัดการข้อมูล</string>
+    <string name="data_export">ส่งออกข้อมูล</string>
+    <string name="data_export_subtitle">Export ข้อมูลต่างๆ เป็นไฟล์</string>
+    <string name="data_export_share_files">แชร์ไฟล์ที่ส่งออก</string>
+    
+    <!-- Data Stats -->
     <string name="data_stats_title">สรุปข้อมูลระบบ</string>
     <string name="data_stats_products">สินค้า</string>
     <string name="data_stats_categories">หมวดหมู่</string>
     <string name="data_stats_addons">ตัวเลือกเพิ่มเติม</string>
     <string name="data_stats_addon_groups">กลุ่มตัวเลือก</string>
     <string name="data_stats_orders">ประวัติการสั่งซื้อ</string>
-    <string name="data_export_title">ส่งออกข้อมูล</string>
-    <string name="data_export_subtitle">Export ข้อมูลต่างๆ เป็นไฟล์</string>
-    <string name="export_data_type_dialog_title">เลือกประเภทข้อมูลที่ต้องการส่งออก</string>
-    <string name="export_format_dialog_title">เลือกรูปแบบไฟล์</string>
-    <string name="export_format_dialog_subtitle">เลือกรูปแบบไฟล์ที่ต้องการส่งออก</string>
-    <string name="export_format_excel">Excel (.xlsx)</string>
-    <string name="export_format_csv">CSV (.csv)</string>
+    <string name="data_stats_storage">พื้นที่เก็บข้อมูล</string>
+    
+    <!-- Data Export/Import Dialogs -->
+    <string name="data_export_select_type">เลือกประเภทข้อมูลที่ต้องการส่งออก</string>
+    <string name="data_import_select_type">เลือกประเภทข้อมูลที่ต้องการนำเข้า</string>
+    <string name="data_export_format_title">เลือกรูปแบบไฟล์</string>
+    <string name="data_export_format_message">เลือกรูปแบบไฟล์ที่ต้องการส่งออก</string>
+    <string name="data_export_product_type_title">เลือกประเภทการส่งออกสินค้า</string>
+    <string name="data_export_product_type_message">เลือกประเภทการส่งออกสินค้าที่ต้องการ</string>
+    <string name="data_export_zip_package">📦 ZIP Package (รวมรูปภาพ)</string>
+    <string name="data_export_data_only">📄 ข้อมูลอย่างเดียว</string>
+    <string name="data_export_zip_format_title">เลือกรูปแบบไฟล์ข้อมูล</string>
+    <string name="data_export_zip_format_message">เลือกรูปแบบไฟล์ข้อมูลภายใน ZIP Package</string>
+    
+    <!-- Export Data Types -->
     <string name="export_data_type_categories">หมวดหมู่สินค้า</string>
     <string name="export_data_type_products">สินค้า</string>
     <string name="export_data_type_addon_groups">กลุ่มตัวเลือกเพิ่มเติม</string>
@@ -272,7 +285,17 @@
     <string name="export_data_type_orders">ประวัติการสั่งซื้อ</string>
     <string name="export_data_type_sales_report">รายงานยอดขาย</string>
     <string name="export_data_type_stock_report">รายงานสต็อก</string>
+    
+    <!-- Export Formats -->
+    <string name="export_format_excel">Excel (.xlsx)</string>
+    <string name="export_format_csv">CSV (.csv)</string>
+    
+    <!-- Export Error Messages -->
+    <string name="data_export_error_failed">การส่งออกข้อมูลล้มเหลว</string>
+    
+    <!-- Common -->
     <string name="common_back">กลับ</string>
+    <string name="common_cancel">ยกเลิก</string>
     
     <!-- Account Screen -->
     <string name="account_title">บัญชี</string>
