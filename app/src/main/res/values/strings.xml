@@ -507,6 +507,12 @@
     <string name="product_management_sync_success">ซิงค์สำเร็จ</string>
     <string name="product_management_sync_error">เกิดข้อผิดพลาดในการซิงค์</string>
     <string name="product_management_toggle_success_title">สำเร็จ</string>
+    <string name="product_default_name">สินค้า</string>
+    <string name="product_status_active">ใช้งาน</string>
+    <string name="product_status_inactive">ไม่ใช้งาน</string>
+    <string name="product_management_confirm_delete_message_single">คุณต้องการลบสินค้า \'%1$s\' ใช่หรือไม่?</string>
+    <string name="product_management_confirm_delete_message_multiple">คุณต้องการลบสินค้า %1$d รายการใช่หรือไม่?</string>
+    <string name="product_management_items_count">รายการ</string>
     
     <!-- Printer Settings Screen -->
     <string name="printer_settings_title">ปรินเตอร์</string>

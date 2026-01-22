@@ -446,6 +446,47 @@
     <string name="product_error_duplicate_code">Product code already exists</string>
     <string name="product_form_error_edit_failed">Failed to update product</string>
     
+    <!-- Product Management Screen -->
+    <string name="product_management_title">Product Management</string>
+    <string name="product_management_edit">Edit</string>
+    <string name="product_management_cancel">Cancel</string>
+    <string name="product_management_search_placeholder">Search products…</string>
+    <string name="product_management_all_categories">All Categories</string>
+    <string name="product_management_add_product">Add New Product</string>
+    <string name="product_management_empty">No products</string>
+    <string name="product_management_loading">Loading...</string>
+    <string name="product_management_select_products">Select Products</string>
+    <string name="product_management_select_all">Select all</string>
+    <string name="product_management_deselect_all">Deselect all</string>
+    <string name="product_management_select_items">Select %1$d items</string>
+    <string name="product_management_delete">Delete</string>
+    <string name="product_management_action_title">Product Actions</string>
+    <string name="product_management_action_subtitle">What would you like to do?</string>
+    <string name="product_management_action_activate">Activate</string>
+    <string name="product_management_action_deactivate">Deactivate</string>
+    <string name="product_management_action_edit">Edit Product</string>
+    <string name="product_management_action_delete">Delete Product</string>
+    <string name="product_management_confirm_delete_title">Confirm Deletion</string>
+    <string name="product_management_confirm_delete_message">Are you sure you want to delete this product?</string>
+    <string name="product_management_confirm_delete_warning">This action cannot be undone</string>
+    <string name="product_management_confirm_delete_message_single">Are you sure you want to delete product \'%1$s\'?</string>
+    <string name="product_management_confirm_delete_message_multiple">Are you sure you want to delete %1$d products?</string>
+    <string name="product_management_sync">Sync</string>
+    <string name="product_management_refresh">Refresh</string>
+    <string name="product_management_sync_status_title">Sync Status</string>
+    <string name="product_management_sync_total">Total products: %1$d</string>
+    <string name="product_management_sync_synced">Synced: %1$d</string>
+    <string name="product_management_sync_pending">Pending: %1$d</string>
+    <string name="product_management_sync_deleted">Deleted: %1$d</string>
+    <string name="product_management_sync_now">Sync Now</string>
+    <string name="product_management_sync_success">Sync successful</string>
+    <string name="product_management_sync_error">Failed to sync</string>
+    <string name="product_management_toggle_success_title">Success</string>
+    <string name="product_default_name">Product</string>
+    <string name="product_status_active">Active</string>
+    <string name="product_status_inactive">Inactive</string>
+    <string name="product_management_items_count">items</string>
+    
     <!-- Stock Management Screen -->
     <string name="stock_management_title">Stock Management</string>
     <string name="stock_update_title">Update Stock</string>

@@ -396,7 +396,7 @@ fun ProductManagementScreen(
         // Delete Confirmation Dialog (Single)
         if (showDeleteConfirmation && productToDelete != null) {
             DeleteConfirmationDialog(
-                productName = productToDelete!!.name ?: "สินค้า",
+                productName = productToDelete!!.name ?: stringResource(id = R.string.product_default_name),
                 onConfirm = {
                     productToDelete?.id?.let { productId ->
                         viewModel.deleteProduct(productId)
@@ -453,7 +453,7 @@ fun ProductManagementScreen(
                 onDismissRequest = { viewModel.clearDeleteSuccessMessage() },
                 title = {
                     Text(
-                        text = "สำเร็จ",
+                        text = stringResource(id = R.string.success_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -473,7 +473,7 @@ fun ProductManagementScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearDeleteSuccessMessage() }) {
-                        Text("ตกลง", color = PrimaryButton)
+                        Text(stringResource(id = R.string.dialog_button_ok), color = PrimaryButton)
                     }
                 }
             )
@@ -485,7 +485,7 @@ fun ProductManagementScreen(
                 onDismissRequest = { viewModel.clearError() },
                 title = {
                     Text(
-                        text = "เกิดข้อผิดพลาด",
+                        text = stringResource(id = R.string.dialog_error_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -505,7 +505,7 @@ fun ProductManagementScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearError() }) {
-                        Text("ตกลง", color = PrimaryButton)
+                        Text(stringResource(id = R.string.dialog_button_ok), color = PrimaryButton)
                     }
                 }
             )
@@ -570,7 +570,7 @@ private fun CategoryDropdown(
             onDismissRequest = { showDropdown = false },
             title = {
                 Text(
-                    text = "${stringResource(id = R.string.product_management_all_categories)} (${categories.size + 1} รายการ)",
+                    text = "${stringResource(id = R.string.product_management_all_categories)} (${categories.size + 1} ${stringResource(id = R.string.product_management_items_count)})",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -785,7 +785,10 @@ private fun ProductItem(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = if (product.isActive == true) "ใช้งาน" else "ไม่ใช้งาน",
+                        text = if (product.isActive == true) 
+                            stringResource(id = R.string.product_status_active) 
+                        else 
+                            stringResource(id = R.string.product_status_inactive),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
@@ -1033,7 +1036,7 @@ private fun DeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "คุณต้องการลบสินค้า '$productName' ใช่หรือไม่?",
+                    text = stringResource(id = R.string.product_management_confirm_delete_message_single, productName),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -1102,7 +1105,7 @@ private fun MultipleDeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "คุณต้องการลบสินค้า $selectedCount รายการใช่หรือไม่?",
+                    text = stringResource(id = R.string.product_management_confirm_delete_message_multiple, selectedCount),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
