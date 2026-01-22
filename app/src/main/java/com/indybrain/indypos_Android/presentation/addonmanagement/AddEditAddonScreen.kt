@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
@@ -119,9 +120,9 @@ fun AddEditAddonScreen(
                 title = {
                     Text(
                         text = if (isEditMode) 
-                            "แก้ไข Addon"
+                            stringResource(id = R.string.addon_edit_title)
                         else 
-                            "เพิ่ม Addon",
+                            stringResource(id = R.string.addon_add_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -133,7 +134,7 @@ fun AddEditAddonScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "กลับ",
+                            contentDescription = stringResource(id = R.string.product_back),
                             tint = PrimaryText
                         )
                     }
@@ -166,7 +167,7 @@ fun AddEditAddonScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Addon Name Label with red asterisk
-                    val nameLabelText = "ชื่อ Addon"
+                    val nameLabelText = stringResource(id = R.string.addon_form_name_label)
                     val annotatedNameLabel = buildAnnotatedString {
                         append(nameLabelText)
                         append(" ")
@@ -190,7 +191,7 @@ fun AddEditAddonScreen(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = {
                             Text(
-                                text = "กรุณากรอกชื่อ Addon",
+                                text = stringResource(id = R.string.addon_form_name_placeholder),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -213,7 +214,7 @@ fun AddEditAddonScreen(
                     
                     // Addon Price Label (no asterisk - optional)
                     Text(
-                        text = "ราคา",
+                        text = stringResource(id = R.string.addon_form_price_label),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -242,7 +243,7 @@ fun AddEditAddonScreen(
                             .fillMaxWidth(),
                         placeholder = {
                             Text(
-                                text = "กรุณากรอกราคา",
+                                text = stringResource(id = R.string.addon_form_price_placeholder),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -302,9 +303,9 @@ fun AddEditAddonScreen(
                     } else {
                         Text(
                             text = if (isEditMode) 
-                                "บันทึกการแก้ไข"
+                                stringResource(id = R.string.addon_form_save_edit)
                             else 
-                                "เพิ่ม Addon",
+                                stringResource(id = R.string.addon_form_save_add),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Medium
@@ -371,7 +372,7 @@ private fun SuccessDialog(
         onDismissRequest = { /* Prevent dismissing by clicking outside */ },
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -382,10 +383,10 @@ private fun SuccessDialog(
         text = {
             Text(
                 text = when {
-                    isEditMode && isOffline -> "แก้ไข Addon สำเร็จ (บันทึกในเครื่อง)"
-                    isEditMode && !isOffline -> "แก้ไข Addon สำเร็จ"
-                    !isEditMode && isOffline -> "เพิ่ม Addon สำเร็จ (บันทึกในเครื่อง)"
-                    else -> "เพิ่ม Addon สำเร็จ"
+                    isEditMode && isOffline -> stringResource(id = R.string.addon_form_success_edit_offline)
+                    isEditMode && !isOffline -> stringResource(id = R.string.addon_form_success_edit)
+                    !isEditMode && isOffline -> stringResource(id = R.string.addon_form_success_add_offline)
+                    else -> stringResource(id = R.string.addon_form_success_add)
                 },
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
@@ -399,7 +400,7 @@ private fun SuccessDialog(
                 onClick = onOkClick
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -423,7 +424,7 @@ private fun ErrorDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "เกิดข้อผิดพลาด",
+                text = stringResource(id = R.string.dialog_error_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -446,7 +447,7 @@ private fun ErrorDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -492,7 +493,7 @@ private fun FreePlanLimitDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "ถึงขีดจำกัด",
+                text = stringResource(id = R.string.addon_form_free_plan_limit_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -502,7 +503,7 @@ private fun FreePlanLimitDialog(
         },
         text = {
             Text(
-                text = "คุณถึงขีดจำกัดของแผนฟรีแล้ว กรุณาติดต่อเราเพื่ออัปเกรดแผน",
+                text = stringResource(id = R.string.addon_form_free_plan_limit_message),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -515,7 +516,7 @@ private fun FreePlanLimitDialog(
                 onClick = onContactUs
             ) {
                 Text(
-                    text = "ติดต่อเรา",
+                    text = stringResource(id = R.string.addon_form_contact_us),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -529,7 +530,7 @@ private fun FreePlanLimitDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.addon_group_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium

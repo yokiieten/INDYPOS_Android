@@ -123,7 +123,10 @@ fun AddEditAddonGroupScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (isEditMode) "แก้ไขแอดออนกรุ๊ป" else "เพิ่มแอดออนกรุ๊ป",
+                        text = if (isEditMode) 
+                            stringResource(id = R.string.addon_group_edit_title) 
+                        else 
+                            stringResource(id = R.string.addon_group_add_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -135,7 +138,7 @@ fun AddEditAddonGroupScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "กลับ",
+                            contentDescription = stringResource(id = R.string.product_back),
                             tint = PrimaryText
                         )
                     }
@@ -173,10 +176,10 @@ fun AddEditAddonGroupScreen(
                     // Group Name Section
                     item {
                         FormTextFieldSection(
-                            title = "ชื่อกลุ่ม",
+                            title = stringResource(id = R.string.addon_group_form_name_label),
                             value = uiState.formState.groupName,
                             onValueChange = viewModel::updateGroupName,
-                            placeholder = "ความเผ็ด",
+                            placeholder = stringResource(id = R.string.addon_group_form_name_placeholder),
                             isRequired = true
                         )
                     }
@@ -184,7 +187,7 @@ fun AddEditAddonGroupScreen(
                     // Is Required Section
                     item {
                         RequiredCheckboxSection(
-                            title = "จำเป็นต้องเลือก",
+                            title = stringResource(id = R.string.addon_group_form_required_label),
                             isChecked = uiState.formState.isRequired,
                             onCheckedChange = { viewModel.toggleIsRequired() }
                         )
@@ -193,7 +196,7 @@ fun AddEditAddonGroupScreen(
                     // Max Selection Section
                     item {
                         FormTextFieldSection(
-                            title = "เลือกได้สูงสุด",
+                            title = stringResource(id = R.string.addon_group_form_max_selection_label),
                             value = uiState.formState.maxSelection,
                             onValueChange = { 
                                 // Allow all digits including 0, validation will be done on save
@@ -213,7 +216,7 @@ fun AddEditAddonGroupScreen(
                     // Addons Section Header
                     item {
                         AddonsSectionHeader(
-                            title = "แอดออน",
+                            title = stringResource(id = R.string.addon_group_form_addons_label),
                             onAddNewAddonClick = { showAddAddonDialog = true }
                         )
                     }
@@ -232,7 +235,7 @@ fun AddEditAddonGroupScreen(
                     if (uiState.availableAddons.isEmpty()) {
                         item {
                             Text(
-                                text = "ไม่มี Addon",
+                                text = stringResource(id = R.string.addon_group_form_addons_empty),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Small
@@ -277,7 +280,10 @@ fun AddEditAddonGroupScreen(
                         )
                     } else {
                         Text(
-                            text = if (isEditMode) "บันทึกการแก้ไข" else "เพิ่มแอดออนกรุ๊ป",
+                            text = if (isEditMode) 
+                                stringResource(id = R.string.addon_group_form_save_edit) 
+                            else 
+                                stringResource(id = R.string.addon_group_form_save_add),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Medium
@@ -307,7 +313,7 @@ fun AddEditAddonGroupScreen(
                 onDismissRequest = { /* Prevent dismissing */ },
                 title = {
                     Text(
-                        text = "สำเร็จ",
+                        text = stringResource(id = R.string.success_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -330,7 +336,7 @@ fun AddEditAddonGroupScreen(
                         viewModel.clearSuccessMessage()
                     }) {
                         Text(
-                            text = "ตกลง",
+                            text = stringResource(id = R.string.dialog_button_ok),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -522,7 +528,7 @@ private fun AddonsSectionHeader(
         
         TextButton(onClick = onAddNewAddonClick) {
             Text(
-                text = "+ เพิ่ม",
+                text = stringResource(id = R.string.addon_group_form_add_addon),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Medium,
                     size = FontSize.Medium
@@ -583,7 +589,7 @@ private fun SuccessDialog(
         onDismissRequest = { /* Prevent dismissing */ },
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -594,10 +600,10 @@ private fun SuccessDialog(
         text = {
             Text(
                 text = when {
-                    isEditMode && isOffline -> "แก้ไขกลุ่ม Addon สำเร็จ (บันทึกในเครื่อง)"
-                    isEditMode && !isOffline -> "แก้ไขกลุ่ม Addon สำเร็จ"
-                    !isEditMode && isOffline -> "เพิ่มกลุ่ม Addon สำเร็จ (บันทึกในเครื่อง)"
-                    else -> "เพิ่มกลุ่ม Addon สำเร็จ"
+                    isEditMode && isOffline -> stringResource(id = R.string.addon_group_form_success_edit_offline)
+                    isEditMode && !isOffline -> stringResource(id = R.string.addon_group_form_success_edit)
+                    !isEditMode && isOffline -> stringResource(id = R.string.addon_group_form_success_add_offline)
+                    else -> stringResource(id = R.string.addon_group_form_success_add)
                 },
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
@@ -609,7 +615,7 @@ private fun SuccessDialog(
         confirmButton = {
             TextButton(onClick = onOkClick) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -633,7 +639,7 @@ private fun ErrorDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "เกิดข้อผิดพลาด",
+                text = stringResource(id = R.string.dialog_error_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -654,7 +660,7 @@ private fun ErrorDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -687,7 +693,7 @@ private fun AddAddonDialog(
             onDismissRequest = { showValidationError = false },
             title = {
                 Text(
-                    text = "เกิดข้อผิดพลาด",
+                    text = stringResource(id = R.string.dialog_error_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -697,7 +703,7 @@ private fun AddAddonDialog(
             },
             text = {
                 Text(
-                    text = "กรุณากรอกข้อมูลให้ครบ",
+                    text = stringResource(id = R.string.addon_group_form_validation_required),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -708,7 +714,7 @@ private fun AddAddonDialog(
             confirmButton = {
                 TextButton(onClick = { showValidationError = false }) {
                     Text(
-                        text = "ตกลง",
+                        text = stringResource(id = R.string.dialog_button_ok),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -724,7 +730,7 @@ private fun AddAddonDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "เพิ่ม Addon",
+                text = stringResource(id = R.string.addon_group_form_add_addon_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -736,7 +742,7 @@ private fun AddAddonDialog(
             Column {
                 // Secondary instruction text
                 Text(
-                    text = "กรุณาใส่ชื่อและราคาแอดออน",
+                    text = stringResource(id = R.string.addon_group_form_add_addon_message),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -750,7 +756,7 @@ private fun AddAddonDialog(
                     onValueChange = { addonName = it },
                     placeholder = {
                         Text(
-                            text = "ระบุชื่อแอดออน",
+                            text = stringResource(id = R.string.addon_group_form_add_addon_name_placeholder),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -789,7 +795,7 @@ private fun AddAddonDialog(
                         .fillMaxWidth(),
                     placeholder = {
                         Text(
-                            text = "ราคา",
+                            text = stringResource(id = R.string.addon_group_form_add_addon_price_placeholder),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -840,7 +846,7 @@ private fun AddAddonDialog(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
                 } else {
                     Text(
-                        text = "เพิ่ม",
+                        text = stringResource(id = R.string.addon_group_form_add_addon_button),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -853,7 +859,7 @@ private fun AddAddonDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.addon_group_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium

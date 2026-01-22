@@ -108,9 +108,9 @@ fun AddonGroupManagementScreen(
                 title = {
                     Text(
                         text = if (uiState.isEditMode) 
-                            "เลือกกลุ่ม Addon"
+                            stringResource(id = R.string.addon_group_management_select_title)
                         else 
-                            "จัดการกลุ่ม Addon",
+                            stringResource(id = R.string.addon_group_management_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -122,7 +122,7 @@ fun AddonGroupManagementScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "กลับ",
+                            contentDescription = stringResource(id = R.string.product_back),
                             tint = PrimaryText
                         )
                     }
@@ -144,9 +144,9 @@ fun AddonGroupManagementScreen(
                     ) {
                         Text(
                             text = if (uiState.isEditMode) 
-                                "ยกเลิก"
+                                stringResource(id = R.string.addon_group_management_cancel)
                             else 
-                                "แก้ไข",
+                                stringResource(id = R.string.addon_group_management_edit),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -180,7 +180,7 @@ fun AddonGroupManagementScreen(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         placeholder = {
                             Text(
-                                text = "ค้นหากลุ่ม Addon",
+                                text = stringResource(id = R.string.addon_group_management_search_placeholder),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -238,7 +238,7 @@ fun AddonGroupManagementScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "ไม่มีกลุ่ม Addon",
+                                    text = stringResource(id = R.string.addon_group_management_empty),
                                     style = FontUtils.mainFont(
                                         style = AppFontStyle.Regular,
                                         size = FontSize.Medium
@@ -326,7 +326,7 @@ fun AddonGroupManagementScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "เพิ่มกลุ่ม Addon",
+                            text = stringResource(id = R.string.addon_group_management_add),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Medium
@@ -442,7 +442,7 @@ fun AddonGroupManagementScreen(
                 onDismissRequest = { viewModel.clearError() },
                 title = {
                     Text(
-                        text = "เกิดข้อผิดพลาด",
+                        text = stringResource(id = R.string.dialog_error_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -463,7 +463,7 @@ fun AddonGroupManagementScreen(
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearError() }) {
                         Text(
-                            text = "ตกลง",
+                            text = stringResource(id = R.string.dialog_button_ok),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -490,7 +490,7 @@ private fun AddonGroupSyncStatusDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "สถานะการ Sync",
+                text = stringResource(id = R.string.addon_group_management_sync_status_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -502,7 +502,7 @@ private fun AddonGroupSyncStatusDialog(
             Column {
                 if (statistics != null) {
                     Text(
-                        text = "ทั้งหมด: ${statistics.total}",
+                        text = stringResource(id = R.string.addon_group_management_sync_total, statistics.total),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -511,7 +511,7 @@ private fun AddonGroupSyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Sync แล้ว: ${statistics.synced}",
+                        text = stringResource(id = R.string.addon_group_management_sync_synced, statistics.synced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -520,7 +520,7 @@ private fun AddonGroupSyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "รอ Sync: ${statistics.unsynced}",
+                        text = stringResource(id = R.string.addon_group_management_sync_pending, statistics.unsynced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -529,7 +529,7 @@ private fun AddonGroupSyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "ถูกลบ: ${statistics.deleted}",
+                        text = stringResource(id = R.string.addon_group_management_sync_deleted, statistics.deleted),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -548,7 +548,7 @@ private fun AddonGroupSyncStatusDialog(
             if (statistics != null && statistics.unsynced > 0) {
                 TextButton(onClick = onSyncNow) {
                     Text(
-                        text = "Sync ตอนนี้",
+                        text = stringResource(id = R.string.addon_group_management_sync_now),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -561,7 +561,7 @@ private fun AddonGroupSyncStatusDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -585,7 +585,7 @@ private fun SyncSuccessDialog(
         onDismissRequest = { /* Prevent dismissing by clicking outside */ },
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -608,7 +608,7 @@ private fun SyncSuccessDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -632,7 +632,7 @@ private fun ToggleStatusSuccessDialog(
         onDismissRequest = { /* Prevent dismissing by clicking outside */ },
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -655,7 +655,7 @@ private fun ToggleStatusSuccessDialog(
                 onClick = onOkClick
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -679,7 +679,7 @@ private fun DeleteSuccessDialog(
         onDismissRequest = { /* Prevent dismissing by clicking outside */ },
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -702,7 +702,7 @@ private fun DeleteSuccessDialog(
                 onClick = onOkClick
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -727,7 +727,7 @@ private fun DeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "ลบ",
+                text = stringResource(id = R.string.addon_group_management_delete_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -737,7 +737,7 @@ private fun DeleteConfirmationDialog(
         },
         text = {
             Text(
-                text = "คุณต้องการลบกลุ่ม Addon '$addonGroupName' ใช่หรือไม่?",
+                text = stringResource(id = R.string.addon_group_management_delete_confirm_single, addonGroupName),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -750,7 +750,7 @@ private fun DeleteConfirmationDialog(
                 onClick = onConfirm
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -764,7 +764,7 @@ private fun DeleteConfirmationDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.addon_group_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -789,7 +789,7 @@ private fun MultipleDeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "ยืนยันการลบ",
+                text = stringResource(id = R.string.product_management_confirm_delete_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -800,7 +800,7 @@ private fun MultipleDeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "คุณต้องการลบกลุ่ม Addon $selectedCount รายการใช่หรือไม่?",
+                    text = stringResource(id = R.string.addon_group_management_delete_confirm_multiple, selectedCount),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -809,7 +809,7 @@ private fun MultipleDeleteConfirmationDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "การลบนี้ไม่สามารถยกเลิกได้",
+                    text = stringResource(id = R.string.addon_group_management_delete_warning),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -823,7 +823,7 @@ private fun MultipleDeleteConfirmationDialog(
                 onClick = onConfirm
             ) {
                 Text(
-                    text = "ลบ",
+                    text = stringResource(id = R.string.addon_group_management_action_delete),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -837,7 +837,7 @@ private fun MultipleDeleteConfirmationDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.addon_group_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -879,7 +879,10 @@ private fun EditModeBottomBar(
                 onClick = onSelectAll
             ) {
                 Text(
-                    text = if (allSelected) "ยกเลิกเลือกทั้งหมด" else "เลือกทั้งหมด",
+                    text = if (allSelected) 
+                        stringResource(id = R.string.category_management_deselect_all) 
+                    else 
+                        stringResource(id = R.string.category_management_select_all),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -890,7 +893,7 @@ private fun EditModeBottomBar(
             
             // Selected Count
             Text(
-                text = "เลือก $selectedCount รายการ",
+                text = stringResource(id = R.string.addon_group_management_select_items, selectedCount),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -904,7 +907,7 @@ private fun EditModeBottomBar(
                 enabled = selectedCount > 0
             ) {
                 Text(
-                    text = "ลบ",
+                    text = stringResource(id = R.string.addon_group_management_action_delete),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -1020,7 +1023,7 @@ private fun AddonGroupItem(
                         color = GreenComplete
                     ) {
                         Text(
-                            text = "ใช้งาน",
+                            text = stringResource(id = R.string.addon_group_management_status_active),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Small
@@ -1037,7 +1040,7 @@ private fun AddonGroupItem(
                         color = RedFailure
                     ) {
                         Text(
-                            text = "ไม่ใช้งาน",
+                            text = stringResource(id = R.string.addon_group_management_status_inactive),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Small
@@ -1087,7 +1090,7 @@ private fun AddonGroupActionSheet(
             ) {
                 // Title
                 Text(
-                    text = "ตัวเลือก",
+                    text = stringResource(id = R.string.addon_group_management_action_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -1100,7 +1103,7 @@ private fun AddonGroupActionSheet(
                 
                 // Subtitle
                 Text(
-                    text = "เลือกการดำเนินการที่ต้องการ",
+                    text = stringResource(id = R.string.addon_group_management_action_subtitle),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -1123,9 +1126,9 @@ private fun AddonGroupActionSheet(
                     ) {
                         Text(
                             text = if (addonGroup.isActive) 
-                                "ปิดใช้งาน"
+                                stringResource(id = R.string.addon_group_management_action_deactivate)
                             else 
-                                "เปิดใช้งาน",
+                                stringResource(id = R.string.addon_group_management_action_activate),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -1140,7 +1143,7 @@ private fun AddonGroupActionSheet(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "แก้ไข",
+                            text = stringResource(id = R.string.addon_group_management_action_edit),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -1155,7 +1158,7 @@ private fun AddonGroupActionSheet(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "ลบ",
+                            text = stringResource(id = R.string.addon_group_management_action_delete),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -1180,7 +1183,7 @@ private fun AddonGroupActionSheet(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "ยกเลิก",
+                                text = stringResource(id = R.string.addon_group_management_cancel),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Bold,
                                     size = FontSize.Medium

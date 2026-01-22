@@ -563,6 +563,93 @@
     <string name="product_form_add_category_placeholder">กรอกชื่อหมวดหมู่</string>
     <string name="product_form_addon_group_selected">เลือก</string>
     
+    <!-- Addon Group Management Screen -->
+    <string name="addon_group_management_title">จัดการกลุ่ม Addon</string>
+    <string name="addon_group_management_select_title">เลือกกลุ่ม Addon</string>
+    <string name="addon_group_management_edit">แก้ไข</string>
+    <string name="addon_group_management_cancel">ยกเลิก</string>
+    <string name="addon_group_management_search_placeholder">ค้นหากลุ่ม Addon</string>
+    <string name="addon_group_management_empty">ไม่มีกลุ่ม Addon</string>
+    <string name="addon_group_management_add">เพิ่มกลุ่ม Addon</string>
+    <string name="addon_group_management_sync_status_title">สถานะการ Sync</string>
+    <string name="addon_group_management_sync_total">ทั้งหมด: %1$d</string>
+    <string name="addon_group_management_sync_synced">Sync แล้ว: %1$d</string>
+    <string name="addon_group_management_sync_pending">รอ Sync: %1$d</string>
+    <string name="addon_group_management_sync_deleted">ถูกลบ: %1$d</string>
+    <string name="addon_group_management_sync_now">Sync ตอนนี้</string>
+    <string name="addon_group_management_delete_title">ลบ</string>
+    <string name="addon_group_management_delete_confirm_single">คุณต้องการลบกลุ่ม Addon \'%1$s\' ใช่หรือไม่?</string>
+    <string name="addon_group_management_delete_confirm_multiple">คุณต้องการลบกลุ่ม Addon %1$d รายการใช่หรือไม่?</string>
+    <string name="addon_group_management_delete_warning">การลบนี้ไม่สามารถยกเลิกได้</string>
+    <string name="addon_group_management_select_items">เลือก %1$d รายการ</string>
+    <string name="addon_group_management_action_title">ตัวเลือก</string>
+    <string name="addon_group_management_action_subtitle">เลือกการดำเนินการที่ต้องการ</string>
+    <string name="addon_group_management_action_deactivate">ปิดใช้งาน</string>
+    <string name="addon_group_management_action_activate">เปิดใช้งาน</string>
+    <string name="addon_group_management_action_edit">แก้ไข</string>
+    <string name="addon_group_management_action_delete">ลบ</string>
+    <string name="addon_group_management_status_active">ใช้งาน</string>
+    <string name="addon_group_management_status_inactive">ไม่ใช้งาน</string>
+    
+    <!-- Add/Edit Addon Group Screen -->
+    <string name="addon_group_edit_title">แก้ไขแอดออนกรุ๊ป</string>
+    <string name="addon_group_add_title">เพิ่มแอดออนกรุ๊ป</string>
+    <string name="addon_group_form_name_label">ชื่อกลุ่ม</string>
+    <string name="addon_group_form_name_placeholder">ความเผ็ด</string>
+    <string name="addon_group_form_required_label">จำเป็นต้องเลือก</string>
+    <string name="addon_group_form_max_selection_label">เลือกได้สูงสุด</string>
+    <string name="addon_group_form_addons_label">แอดออน</string>
+    <string name="addon_group_form_addons_empty">ไม่มี Addon</string>
+    <string name="addon_group_form_save_edit">บันทึกการแก้ไข</string>
+    <string name="addon_group_form_save_add">เพิ่มแอดออนกรุ๊ป</string>
+    <string name="addon_group_form_add_addon">+ เพิ่ม</string>
+    <string name="addon_group_form_success_edit_offline">แก้ไขกลุ่ม Addon สำเร็จ (บันทึกในเครื่อง)</string>
+    <string name="addon_group_form_success_edit">แก้ไขกลุ่ม Addon สำเร็จ</string>
+    <string name="addon_group_form_success_add_offline">เพิ่มกลุ่ม Addon สำเร็จ (บันทึกในเครื่อง)</string>
+    <string name="addon_group_form_success_add">เพิ่มกลุ่ม Addon สำเร็จ</string>
+    <string name="addon_group_form_add_addon_title">เพิ่ม Addon</string>
+    <string name="addon_group_form_add_addon_message">กรุณาใส่ชื่อและราคาแอดออน</string>
+    <string name="addon_group_form_add_addon_name_placeholder">ระบุชื่อแอดออน</string>
+    <string name="addon_group_form_add_addon_price_placeholder">ราคา</string>
+    <string name="addon_group_form_add_addon_button">เพิ่ม</string>
+    <string name="addon_group_form_validation_required">กรุณากรอกข้อมูลให้ครบ</string>
+    
+    <!-- Addon Management Screen -->
+    <string name="addon_management_title">จัดการ Addon</string>
+    <string name="addon_management_select_title">เลือก Addon</string>
+    <string name="addon_management_search_placeholder">ค้นหา Addon</string>
+    <string name="addon_management_empty">ไม่มี Addon</string>
+    <string name="addon_management_add">เพิ่ม Addon</string>
+    <string name="addon_management_sync_status_title">สถานะการ Sync</string>
+    <string name="addon_management_sync_total">ทั้งหมด: %1$d</string>
+    <string name="addon_management_sync_synced">Sync แล้ว: %1$d</string>
+    <string name="addon_management_sync_pending">รอ Sync: %1$d</string>
+    <string name="addon_management_sync_deleted">ถูกลบ: %1$d</string>
+    <string name="addon_management_sync_now">Sync ตอนนี้</string>
+    <string name="addon_management_action_title">เลือกการดำเนินการ</string>
+    <string name="addon_management_action_subtitle">เลือกการดำเนินการที่ต้องการ</string>
+    <string name="addon_management_delete_confirm_single">คุณต้องการลบ Addon \'%1$s\' ใช่หรือไม่?</string>
+    <string name="addon_management_delete_confirm_multiple">คุณต้องการลบ Addon %1$d รายการใช่หรือไม่?</string>
+    <string name="addon_management_delete_warning">การดำเนินการนี้ไม่สามารถยกเลิกได้</string>
+    <string name="addon_management_select_items">เลือก %1$d รายการ</string>
+    
+    <!-- Add/Edit Addon Screen -->
+    <string name="addon_edit_title">แก้ไข Addon</string>
+    <string name="addon_add_title">เพิ่ม Addon</string>
+    <string name="addon_form_name_label">ชื่อ Addon</string>
+    <string name="addon_form_name_placeholder">กรุณากรอกชื่อ Addon</string>
+    <string name="addon_form_price_label">ราคา</string>
+    <string name="addon_form_price_placeholder">กรุณากรอกราคา</string>
+    <string name="addon_form_save_edit">บันทึกการแก้ไข</string>
+    <string name="addon_form_save_add">เพิ่ม Addon</string>
+    <string name="addon_form_success_edit_offline">แก้ไข Addon สำเร็จ (บันทึกในเครื่อง)</string>
+    <string name="addon_form_success_edit">แก้ไข Addon สำเร็จ</string>
+    <string name="addon_form_success_add_offline">เพิ่ม Addon สำเร็จ (บันทึกในเครื่อง)</string>
+    <string name="addon_form_success_add">เพิ่ม Addon สำเร็จ</string>
+    <string name="addon_form_free_plan_limit_title">ถึงขีดจำกัด</string>
+    <string name="addon_form_free_plan_limit_message">คุณถึงขีดจำกัดของแผนฟรีแล้ว กรุณาติดต่อเราเพื่ออัปเกรดแผน</string>
+    <string name="addon_form_contact_us">ติดต่อเรา</string>
+    
     <!-- Printer Settings Screen -->
     <string name="printer_settings_title">ปรินเตอร์</string>
     <string name="printer_connection_type">เลือกประเภทการเชื่อมต่อ</string>

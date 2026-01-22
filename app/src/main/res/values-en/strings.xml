@@ -536,6 +536,93 @@
     <string name="product_form_add_category_placeholder">Enter category name</string>
     <string name="product_form_addon_group_selected">Selected</string>
     
+    <!-- Addon Group Management Screen -->
+    <string name="addon_group_management_title">Addon Group Management</string>
+    <string name="addon_group_management_select_title">Select Addon Group</string>
+    <string name="addon_group_management_edit">Edit</string>
+    <string name="addon_group_management_cancel">Cancel</string>
+    <string name="addon_group_management_search_placeholder">Search addon groups</string>
+    <string name="addon_group_management_empty">No addon groups</string>
+    <string name="addon_group_management_add">Add Addon Group</string>
+    <string name="addon_group_management_sync_status_title">Sync Status</string>
+    <string name="addon_group_management_sync_total">Total: %1$d</string>
+    <string name="addon_group_management_sync_synced">Synced: %1$d</string>
+    <string name="addon_group_management_sync_pending">Pending: %1$d</string>
+    <string name="addon_group_management_sync_deleted">Deleted: %1$d</string>
+    <string name="addon_group_management_sync_now">Sync Now</string>
+    <string name="addon_group_management_delete_title">Delete</string>
+    <string name="addon_group_management_delete_confirm_single">Are you sure you want to delete addon group \'%1$s\'?</string>
+    <string name="addon_group_management_delete_confirm_multiple">Are you sure you want to delete %1$d addon groups?</string>
+    <string name="addon_group_management_delete_warning">This action cannot be undone</string>
+    <string name="addon_group_management_select_items">Select %1$d items</string>
+    <string name="addon_group_management_action_title">Options</string>
+    <string name="addon_group_management_action_subtitle">Select the action you want</string>
+    <string name="addon_group_management_action_deactivate">Deactivate</string>
+    <string name="addon_group_management_action_activate">Activate</string>
+    <string name="addon_group_management_action_edit">Edit</string>
+    <string name="addon_group_management_action_delete">Delete</string>
+    <string name="addon_group_management_status_active">Active</string>
+    <string name="addon_group_management_status_inactive">Inactive</string>
+    
+    <!-- Add/Edit Addon Group Screen -->
+    <string name="addon_group_edit_title">Edit Addon Group</string>
+    <string name="addon_group_add_title">Add Addon Group</string>
+    <string name="addon_group_form_name_label">Group Name</string>
+    <string name="addon_group_form_name_placeholder">Spicy level</string>
+    <string name="addon_group_form_required_label">Required</string>
+    <string name="addon_group_form_max_selection_label">Max Selection</string>
+    <string name="addon_group_form_addons_label">Addons</string>
+    <string name="addon_group_form_addons_empty">No Addons</string>
+    <string name="addon_group_form_save_edit">Save Changes</string>
+    <string name="addon_group_form_save_add">Add Addon Group</string>
+    <string name="addon_group_form_add_addon">+ Add</string>
+    <string name="addon_group_form_success_edit_offline">Addon group updated successfully (saved offline)</string>
+    <string name="addon_group_form_success_edit">Addon group updated successfully</string>
+    <string name="addon_group_form_success_add_offline">Addon group added successfully (saved offline)</string>
+    <string name="addon_group_form_success_add">Addon group added successfully</string>
+    <string name="addon_group_form_add_addon_title">Add Addon</string>
+    <string name="addon_group_form_add_addon_message">Please enter addon name and price</string>
+    <string name="addon_group_form_add_addon_name_placeholder">Enter addon name</string>
+    <string name="addon_group_form_add_addon_price_placeholder">Price</string>
+    <string name="addon_group_form_add_addon_button">Add</string>
+    <string name="addon_group_form_validation_required">Please fill in all required fields</string>
+    
+    <!-- Addon Management Screen -->
+    <string name="addon_management_title">Addon Management</string>
+    <string name="addon_management_select_title">Select Addon</string>
+    <string name="addon_management_search_placeholder">Search addons</string>
+    <string name="addon_management_empty">No addons</string>
+    <string name="addon_management_add">Add Addon</string>
+    <string name="addon_management_sync_status_title">Sync Status</string>
+    <string name="addon_management_sync_total">Total: %1$d</string>
+    <string name="addon_management_sync_synced">Synced: %1$d</string>
+    <string name="addon_management_sync_pending">Pending: %1$d</string>
+    <string name="addon_management_sync_deleted">Deleted: %1$d</string>
+    <string name="addon_management_sync_now">Sync Now</string>
+    <string name="addon_management_action_title">Select Action</string>
+    <string name="addon_management_action_subtitle">Select the action you want</string>
+    <string name="addon_management_delete_confirm_single">Are you sure you want to delete addon \'%1$s\'?</string>
+    <string name="addon_management_delete_confirm_multiple">Are you sure you want to delete %1$d addons?</string>
+    <string name="addon_management_delete_warning">This action cannot be undone</string>
+    <string name="addon_management_select_items">Select %1$d items</string>
+    
+    <!-- Add/Edit Addon Screen -->
+    <string name="addon_edit_title">Edit Addon</string>
+    <string name="addon_add_title">Add Addon</string>
+    <string name="addon_form_name_label">Addon Name</string>
+    <string name="addon_form_name_placeholder">Enter addon name</string>
+    <string name="addon_form_price_label">Price</string>
+    <string name="addon_form_price_placeholder">Enter price</string>
+    <string name="addon_form_save_edit">Save Changes</string>
+    <string name="addon_form_save_add">Add Addon</string>
+    <string name="addon_form_success_edit_offline">Addon updated successfully (saved offline)</string>
+    <string name="addon_form_success_edit">Addon updated successfully</string>
+    <string name="addon_form_success_add_offline">Addon added successfully (saved offline)</string>
+    <string name="addon_form_success_add">Addon added successfully</string>
+    <string name="addon_form_free_plan_limit_title">Limit Reached</string>
+    <string name="addon_form_free_plan_limit_message">You have reached the free plan limit. Please contact us to upgrade your plan.</string>
+    <string name="addon_form_contact_us">Contact Us</string>
+    
     <!-- Stock Management Screen -->
     <string name="stock_management_title">Stock Management</string>
     <string name="stock_update_title">Update Stock</string>
