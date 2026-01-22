@@ -123,7 +123,12 @@ class AddEditAddonGroupViewModel @Inject constructor(
     }
     
     fun updateMaxSelection(maxSelection: String) {
-        _uiState.update { it.copy(formState = it.formState.copy(maxSelection = maxSelection)) }
+        _uiState.update { 
+            it.copy(
+                formState = it.formState.copy(maxSelection = maxSelection),
+                errorMessage = null // Clear error when user updates the field
+            ) 
+        }
     }
     
     fun toggleAddonSelection(addonId: String) {

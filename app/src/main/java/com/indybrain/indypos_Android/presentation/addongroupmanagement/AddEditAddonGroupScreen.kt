@@ -110,6 +110,13 @@ fun AddEditAddonGroupScreen(
         }
     }
     
+    // Reset save-in-progress flag when error occurs
+    LaunchedEffect(uiState.errorMessage) {
+        if (uiState.errorMessage != null) {
+            isSaveInProgress = false
+        }
+    }
+    
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
@@ -346,6 +353,7 @@ fun AddEditAddonGroupScreen(
                 errorMessage = localizedMessage,
                 onDismiss = {
                     viewModel.clearErrorMessage()
+                    isSaveInProgress = false
                 }
             )
         }
