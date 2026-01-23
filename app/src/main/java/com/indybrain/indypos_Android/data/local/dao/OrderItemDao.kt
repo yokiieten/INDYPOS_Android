@@ -18,7 +18,8 @@ interface OrderItemDao {
     
     /**
      * Sum of today's cost of goods sold (COGS) based on unitCost * quantity
-     * for all order items whose parent order is created "today" (local time).
+     * for all order items whose parent order is created "today" (local time),
+     * excluding cancelled orders (statusRaw == 5).
      */
     @Query(
         """
@@ -27,6 +28,7 @@ interface OrderItemDao {
         FROM order_items AS oi
         INNER JOIN orders AS o ON o.id = oi.orderId
         WHERE DATE(o.orderDate/1000, 'unixepoch') = DATE(datetime('now', 'localtime'))
+          AND o.statusRaw != 5
         """
     )
     suspend fun getTodayCostOfExpenses(): Double?

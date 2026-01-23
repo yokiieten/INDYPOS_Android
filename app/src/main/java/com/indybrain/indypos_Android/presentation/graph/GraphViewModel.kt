@@ -108,6 +108,16 @@ class GraphViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * รีโหลดข้อมูลตามช่วงเวลาที่เลือกปัจจุบัน
+     * ใช้เมื่อเข้าหน้ากราฟใหม่เพื่อให้ข้อมูลอัปเดตจาก Room ล่าสุด
+     */
+    fun refreshCurrentPeriod() {
+        val currentPeriod = _uiState.value.selectedPeriod
+        _uiState.update { it.copy(isLoading = true) }
+        loadData(currentPeriod)
+    }
     
     /**
      * ดึงข้อมูลจริงจาก Room สำหรับช่วง "วันนี้"
@@ -306,9 +316,9 @@ class GraphViewModel @Inject constructor(
         val totalSales = activeWeekOrders.sumOf { it.total }
         val orderCount = activeWeekOrders.size
         
-        // คำนวณต้นทุนจาก order items (unitCost * quantity)
+        // คำนวณต้นทุนจาก order items (unitCost * quantity) เฉพาะออเดอร์ที่ไม่ถูกยกเลิก
         var totalCost = 0.0
-        for (order in weekOrders) {
+        for (order in activeWeekOrders) {
             val items = orderRepository.getOrderItems(order.id)
             totalCost += items.sumOf { (it.unitCost ?: 0.0) * it.quantity }
         }
