@@ -21,6 +21,9 @@ interface OrderAddonDao {
     @Query("DELETE FROM order_addons WHERE orderItemId = :orderItemId")
     suspend fun deleteOrderAddons(orderItemId: String)
     
+    @Query("DELETE FROM order_addons WHERE addonId = :addonId")
+    suspend fun deleteOrderAddonsByAddonId(addonId: String)
+    
     @Query("DELETE FROM order_addons")
     suspend fun deleteAllOrderAddons()
 }

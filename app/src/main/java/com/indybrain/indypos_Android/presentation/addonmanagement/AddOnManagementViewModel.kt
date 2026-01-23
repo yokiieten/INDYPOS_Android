@@ -262,9 +262,9 @@ class AddOnManagementViewModel @Inject constructor(
             }
             
             // ตั้งสถานะให้รู้ว่ารายการเหล่านี้กำลังถูกลบ และซ่อนออกจาก UI เลย
+            // ไม่ตั้ง isLoading = true เพื่อป้องกันการกระพริบของ UI
             _uiState.update { current ->
                 current.copy(
-                    isLoading = true,
                     errorMessage = null,
                     deleteSuccessMessage = null,
                     pendingDeleteAddonIds = selectedIds.toSet(),
@@ -286,7 +286,6 @@ class AddOnManagementViewModel @Inject constructor(
                 
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
                         deleteSuccessMessage = successMessage,
                         errorMessage = null,
                         pendingDeleteAddonIds = emptySet()
@@ -295,7 +294,6 @@ class AddOnManagementViewModel @Inject constructor(
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
                         errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบ Addon",
                         deleteSuccessMessage = null,
                         pendingDeleteAddonIds = emptySet()

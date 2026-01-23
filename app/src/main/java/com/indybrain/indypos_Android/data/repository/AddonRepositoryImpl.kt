@@ -4,6 +4,10 @@ import android.content.Context
 import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
+import com.indybrain.indypos_Android.data.local.dao.SelectedAddonJunctionDao
+import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
+import com.indybrain.indypos_Android.data.local.dao.CartDao
+import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
 import com.indybrain.indypos_Android.data.remote.dto.AddonDto
@@ -23,6 +27,10 @@ import javax.inject.Inject
 class AddonRepositoryImpl @Inject constructor(
     private val productsApi: ProductsApi,
     private val addonDao: AddonDao,
+    private val selectedAddonJunctionDao: SelectedAddonJunctionDao,
+    private val addonGroupAddonJunctionDao: AddonGroupAddonJunctionDao,
+    private val cartDao: CartDao,
+    private val orderAddonDao: OrderAddonDao,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val gson: Gson,
     @ApplicationContext private val context: Context
@@ -429,6 +437,12 @@ class AddonRepositoryImpl @Inject constructor(
     }
     
     override suspend fun permanentlyDeleteAddon(addonId: String) {
+        // ลบความสัมพันธ์ทั้งหมดก่อน
+        selectedAddonJunctionDao.deleteByAddonId(addonId)
+        addonGroupAddonJunctionDao.deleteByAddonId(addonId)
+        cartDao.deleteCartAddonsByAddonId(addonId)
+        orderAddonDao.deleteOrderAddonsByAddonId(addonId)
+        // แล้วค่อยลบ addon
         addonDao.permanentlyDeleteAddon(addonId)
     }
     

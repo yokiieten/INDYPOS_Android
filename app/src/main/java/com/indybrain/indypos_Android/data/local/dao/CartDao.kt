@@ -103,5 +103,8 @@ interface CartDao {
         specialRequest: String?,
         unitPrice: Double
     )
+    
+    @Query("DELETE FROM cart_addons WHERE addonId = :addonId")
+    suspend fun deleteCartAddonsByAddonId(addonId: String)
 }
 

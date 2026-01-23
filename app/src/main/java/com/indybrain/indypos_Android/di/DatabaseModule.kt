@@ -70,6 +70,11 @@ object DatabaseModule {
     }
     
     @Provides
+    fun provideSelectedAddonJunctionDao(database: IndyPosDatabase): SelectedAddonJunctionDao {
+        return database.selectedAddonJunctionDao()
+    }
+    
+    @Provides
     fun provideProductAddonGroupJunctionDao(database: IndyPosDatabase): ProductAddonGroupJunctionDao {
         return database.productAddonGroupJunctionDao()
     }
