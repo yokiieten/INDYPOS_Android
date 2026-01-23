@@ -319,6 +319,7 @@
     <!-- Product Detail -->
     <string name="product_detail_title">Product Details</string>
     <string name="product_detail_add_to_cart">Add to Cart</string>
+    <string name="product_detail_save_edit">Save Changes</string>
     <string name="product_detail_quantity">Quantity</string>
     <string name="product_detail_addons">Add-ons</string>
     <string name="product_detail_price">Price</string>

@@ -209,6 +209,7 @@ fun ProductDetailScreen(
                                 selectedAddons = uiState.selectedAddons,
                                 quantity = uiState.quantity,
                                 specialRequest = uiState.specialRequest,
+                                isEditing = uiState.editingCartItemId != null,
                                 onAddonToggle = { addonGroupId, addonId ->
                                     viewModel.toggleAddon(addonGroupId, addonId)
                                 },
@@ -240,6 +241,7 @@ fun ProductDetailScreen(
                             selectedAddons = uiState.selectedAddons,
                             quantity = uiState.quantity,
                             specialRequest = uiState.specialRequest,
+                            isEditing = uiState.editingCartItemId != null,
                             onAddonToggle = { addonGroupId, addonId ->
                                 viewModel.toggleAddon(addonGroupId, addonId)
                             },
@@ -271,6 +273,7 @@ fun ProductDetailScreen(
                             selectedAddons = uiState.selectedAddons,
                             quantity = uiState.quantity,
                             specialRequest = uiState.specialRequest,
+                            isEditing = uiState.editingCartItemId != null,
                             onAddonToggle = { addonGroupId, addonId ->
                                 viewModel.toggleAddon(addonGroupId, addonId)
                             },
@@ -355,6 +358,7 @@ private fun ProductDetailContent(
     selectedAddons: Map<String, Set<String>>,
     quantity: Int,
     specialRequest: String,
+    isEditing: Boolean,
     onAddonToggle: (String, String) -> Unit,
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
@@ -479,13 +483,14 @@ private fun ProductDetailContent(
             Spacer(modifier = Modifier.height(100.dp)) // Space for bottom bar
         }
         
-        // Bottom Bar with Quantity and Add to Cart
+        // Bottom Bar with Quantity and Add to Cart / Save Edit
         BottomActionBar(
             quantity = quantity,
             totalPrice = totalPrice,
             onQuantityIncrease = onQuantityIncrease,
             onQuantityDecrease = onQuantityDecrease,
             onAddToCart = onAddToCart,
+            isEditing = isEditing,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
@@ -498,6 +503,7 @@ private fun BottomActionBar(
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
     onAddToCart: () -> Unit,
+    isEditing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -584,7 +590,11 @@ private fun BottomActionBar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(id = R.string.product_detail_add_to_cart),
+                        text = if (isEditing) {
+                            stringResource(id = R.string.product_detail_save_edit)
+                        } else {
+                            stringResource(id = R.string.product_detail_add_to_cart)
+                        },
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium

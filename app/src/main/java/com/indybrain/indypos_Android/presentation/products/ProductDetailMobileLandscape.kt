@@ -73,6 +73,7 @@ fun ProductDetailContentMobileLandscape(
     selectedAddons: Map<String, Set<String>>,
     quantity: Int,
     specialRequest: String,
+    isEditing: Boolean,
     onAddonToggle: (String, String) -> Unit,
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
@@ -218,7 +219,8 @@ fun ProductDetailContentMobileLandscape(
                 totalPrice = totalPrice,
                 onQuantityIncrease = onQuantityIncrease,
                 onQuantityDecrease = onQuantityDecrease,
-                onAddToCart = onAddToCart
+                onAddToCart = onAddToCart,
+                isEditing = isEditing
             )
         }
     }
@@ -230,7 +232,8 @@ private fun BottomActionBarMobile(
     totalPrice: Double,
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
-    onAddToCart: () -> Unit
+    onAddToCart: () -> Unit,
+    isEditing: Boolean = false
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -297,7 +300,7 @@ private fun BottomActionBarMobile(
                 }
             }
             
-            // Add to Cart Button - Compact
+            // Add to Cart / Save Edit Button - Compact
             TextButton(
                 onClick = onAddToCart,
                 modifier = Modifier
@@ -316,7 +319,11 @@ private fun BottomActionBarMobile(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(id = R.string.product_detail_add_to_cart),
+                        text = if (isEditing) {
+                            stringResource(id = R.string.product_detail_save_edit)
+                        } else {
+                            stringResource(id = R.string.product_detail_add_to_cart)
+                        },
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium

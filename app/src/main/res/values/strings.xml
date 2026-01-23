@@ -341,6 +341,7 @@
     <!-- Product Detail -->
     <string name="product_detail_title">รายละเอียดสินค้า</string>
     <string name="product_detail_add_to_cart">เพิ่มลงตะกร้า</string>
+    <string name="product_detail_save_edit">บันทึกการแก้ไข</string>
     <string name="product_detail_quantity">จำนวน</string>
     <string name="product_detail_addons">เสริม</string>
     <string name="product_detail_price">ราคา</string>
