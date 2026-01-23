@@ -385,8 +385,11 @@ fun MainProductScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Observe cart count once for both list padding and cart button
+            // Observe cart items and derive total quantity for "ดูสินค้า" button
             val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle(initialValue = 0)
+            val totalCartQuantity = remember(cartItems) {
+                cartItems.sumOf { it.quantity }
+            }
             
             Column(
                 modifier = Modifier.fillMaxSize()
@@ -716,9 +719,10 @@ fun MainProductScreen(
             }
             
             // Cart Button - Floating at bottom
-            if (cartItemCount > 0) {
+            // Show and count by total quantity of products in cart
+            if (totalCartQuantity > 0) {
                 CartButton(
-                    itemCount = cartItemCount,
+                    itemCount = totalCartQuantity,
                     onClick = onCartClick,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
