@@ -1,11 +1,16 @@
 package com.indybrain.indypos_Android.presentation.stockmanagement
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +26,9 @@ import javax.inject.Inject
 @HiltViewModel
 class StockManagementViewModel @Inject constructor(
     private val productRepository: ProductRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    @ApplicationContext private val context: Context,
+    private val languageLocalDataSource: LanguageLocalDataSource
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(StockManagementUiState())
@@ -162,13 +169,17 @@ class StockManagementViewModel @Inject constructor(
             val result = productRepository.updateProductStock(product.id, quantityChange)
             
             result.onSuccess {
+                // Get localized context with current locale
+                val localeCode = languageLocalDataSource.getLanguageLocale()
+                val localizedContext = LocaleHelper.setLocale(context, localeCode)
+                val unitText = localizedContext.getString(R.string.stock_unit_piece)
                 _uiState.update {
                     it.copy(
                         isUpdatingStock = false,
                         showStockUpdateDialog = false,
                         selectedProduct = null,
                         stockUpdateQuantity = "",
-                        updateSuccessMessage = "${product.name}: ${NumberFormat.getNumberInstance(Locale.US).format(oldQuantity)} → ${NumberFormat.getNumberInstance(Locale.US).format(newQuantity)} ชิ้น"
+                        updateSuccessMessage = "${product.name}: ${NumberFormat.getNumberInstance(Locale.US).format(oldQuantity)} → ${NumberFormat.getNumberInstance(Locale.US).format(newQuantity)} $unitText"
                     )
                 }
                 // Reload products to reflect changes

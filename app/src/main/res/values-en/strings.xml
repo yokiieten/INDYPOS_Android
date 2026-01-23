@@ -644,6 +644,7 @@
     <string name="stock_management_cancel_button">Cancel</string>
     <string name="stock_management_stock_label">Stock: %1$s pcs</string>
     <string name="stock_management_sync_pending">Pending sync</string>
+    <string name="stock_unit_piece">pcs</string>
     
     <!-- Order Summary Screen -->
     <string name="order_summary_title">Order Status</string>

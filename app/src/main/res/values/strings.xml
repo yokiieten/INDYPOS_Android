@@ -691,6 +691,7 @@
     <string name="stock_management_cancel_button">ยกเลิก</string>
     <string name="stock_management_stock_label">สต็อก: %1$s ชิ้น</string>
     <string name="stock_management_sync_pending">รอซิงค์</string>
+    <string name="stock_unit_piece">ชิ้น</string>
     
     <!-- Order Summary Screen -->
     <string name="order_summary_title">สถานะออเดอร์</string>
