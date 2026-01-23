@@ -78,7 +78,7 @@ fun AddEditAddonScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isEditMode = addonId != null
-    var priceText by remember { mutableStateOf(uiState.addonPrice) }
+    val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
     var isSaveInProgress by remember { mutableStateOf(false) }
 
@@ -87,11 +87,6 @@ fun AddEditAddonScreen(
         if (addonId != null) {
             viewModel.loadAddon(addonId)
         }
-    }
-    
-    // Update price text when state changes
-    LaunchedEffect(uiState.addonPrice) {
-        priceText = uiState.addonPrice
     }
     
     // Track if user clicked OK on success dialog
@@ -223,24 +218,19 @@ fun AddEditAddonScreen(
                     )
                     
                     OutlinedTextField(
-                        value = priceText,
+                        value = uiState.addonPrice,
                         onValueChange = { newValue ->
-                            // Allow only numbers and decimal point
-                            val filtered = newValue.filter { 
-                                it.isDigit() || it == '.' 
-                            }
-                            // Ensure only one decimal point
-                            val parts = filtered.split('.')
-                            val finalValue = if (parts.size > 2) {
-                                parts[0] + "." + parts.drop(1).joinToString("")
-                            } else {
-                                filtered
-                            }
-                            priceText = finalValue
-                            viewModel.updateAddonPrice(finalValue)
+                            // Use ViewModel's filterPriceInput function
+                            viewModel.updateAddonPrice(newValue)
                         },
                         modifier = Modifier
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                // Format price when field loses focus
+                                if (!focusState.isFocused && uiState.addonPrice.isNotBlank()) {
+                                    viewModel.formatAddonPriceOnUnfocus()
+                                }
+                            },
                         placeholder = {
                             Text(
                                 text = stringResource(id = R.string.addon_form_price_placeholder),
@@ -256,7 +246,16 @@ fun AddEditAddonScreen(
                             keyboardType = KeyboardType.Decimal,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // Format price when Done is pressed
+                                if (uiState.addonPrice.isNotBlank()) {
+                                    viewModel.formatAddonPriceOnUnfocus()
+                                }
+                                // Hide keyboard
+                                focusManager.clearFocus()
+                            }
+                        ),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = Color.White,
