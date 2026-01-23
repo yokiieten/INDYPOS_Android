@@ -89,22 +89,18 @@ fun AddEditAddonScreen(
         }
     }
     
-    // Track if user clicked OK on success dialog
-    var shouldNavigateBack by remember { mutableStateOf(false) }
+    // Track if navigation has been triggered to prevent multiple navigations
+    var hasNavigated by remember { mutableStateOf(false) }
+
+    // Reset hasNavigated when addonId changes (new add/edit session)
+    LaunchedEffect(addonId) {
+        hasNavigated = false
+    }
 
     // Reset save-in-progress flag when loading finishes
     LaunchedEffect(uiState.isLoading) {
         if (!uiState.isLoading) {
             isSaveInProgress = false
-        }
-    }
-
-    // Navigate back when user clicks OK
-    LaunchedEffect(shouldNavigateBack) {
-        if (shouldNavigateBack) {
-            onSaveSuccess()
-            viewModel.dismissSuccessDialog()
-            shouldNavigateBack = false
         }
     }
     
@@ -318,13 +314,17 @@ fun AddEditAddonScreen(
         }
         
         // Success Dialog - Outside Box but inside Scaffold
-        if (uiState.isSuccess) {
+        if (uiState.isSuccess && !hasNavigated) {
             SuccessDialog(
                 isEditMode = isEditMode,
                 isOffline = uiState.isOfflineSuccess,
                 onOkClick = {
-                    // Trigger navigation via LaunchedEffect
-                    shouldNavigateBack = true
+                    // Prevent multiple navigations
+                    if (!hasNavigated) {
+                        hasNavigated = true
+                        viewModel.dismissSuccessDialog()
+                        onSaveSuccess()
+                    }
                 }
             )
         }
