@@ -81,7 +81,7 @@ fun AddEditAddonScreen(
     var priceText by remember { mutableStateOf(uiState.addonPrice) }
     val coroutineScope = rememberCoroutineScope()
     var isSaveInProgress by remember { mutableStateOf(false) }
-    
+
     // Load addon data if in edit mode
     LaunchedEffect(addonId) {
         if (addonId != null) {
@@ -338,6 +338,7 @@ fun AddEditAddonScreen(
                 errorMessage = errorMessage,
                 onDismiss = {
                     viewModel.clearError()
+                    isSaveInProgress = false
                 }
             )
         }
@@ -349,10 +350,12 @@ fun AddEditAddonScreen(
             FreePlanLimitDialog(
                 onDismiss = {
                     viewModel.clearError()
+                    isSaveInProgress = false
                 },
                 onContactUs = {
                     // TODO: Navigate to contact us screen
                     viewModel.clearError()
+                    isSaveInProgress = false
                 }
             )
         }

@@ -68,7 +68,7 @@ fun AddEditCategoryScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isEditMode = categoryId != null
     var isSaveInProgress by remember { mutableStateOf(false) }
-    
+
     // Load category data if in edit mode
     LaunchedEffect(categoryId) {
         if (categoryId != null) {
@@ -82,7 +82,7 @@ fun AddEditCategoryScreen(
             isSaveInProgress = false
         }
     }
-    
+
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
@@ -240,7 +240,10 @@ fun AddEditCategoryScreen(
         // Error Dialog - Show API errors as popup
         uiState.errorMessage?.let { error ->
             AlertDialog(
-                onDismissRequest = { viewModel.clearError() },
+                onDismissRequest = { 
+                    viewModel.clearError()
+                    isSaveInProgress = false
+                },
                 title = {
                     Text(
                         text = stringResource(id = R.string.category_management_error_title),
@@ -262,7 +265,10 @@ fun AddEditCategoryScreen(
                     )
                 },
                 confirmButton = {
-                    TextButton(onClick = { viewModel.clearError() }) {
+                    TextButton(onClick = { 
+                        viewModel.clearError()
+                        isSaveInProgress = false
+                    }) {
                         Text(
                             text = stringResource(id = R.string.dialog_button_ok),
                             style = FontUtils.mainFont(

@@ -116,7 +116,7 @@ fun AddEditProductScreen(
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     var processedBarcode by remember { mutableStateOf<String?>(null) }
     var isSaveInProgress by remember { mutableStateOf(false) }
-    
+
     // Load product data if in edit mode
     LaunchedEffect(productId) {
         if (productId != null) {
@@ -130,7 +130,7 @@ fun AddEditProductScreen(
             isSaveInProgress = false
         }
     }
-    
+
     // Handle scanned barcode
     // Wait for loading to complete in edit mode, then update productCode
     LaunchedEffect(scannedBarcode, uiState.isLoading) {
@@ -735,7 +735,10 @@ fun AddEditProductScreen(
         // Error dialog
         uiState.errorMessage?.let { error ->
             AlertDialog(
-                onDismissRequest = { viewModel.clearError() },
+                onDismissRequest = { 
+                    viewModel.clearError()
+                    isSaveInProgress = false
+                },
                 title = {
                     Text(
                         text = stringResource(id = R.string.product_form_error_title),
@@ -755,7 +758,10 @@ fun AddEditProductScreen(
                     )
                 },
                 confirmButton = {
-                    TextButton(onClick = { viewModel.clearError() }) {
+                    TextButton(onClick = { 
+                        viewModel.clearError()
+                        isSaveInProgress = false
+                    }) {
                         Text(stringResource(id = R.string.dialog_button_ok))
                     }
                 }
