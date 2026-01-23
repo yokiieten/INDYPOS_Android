@@ -646,39 +646,62 @@ private fun AddonGroupSection(
                 color = PrimaryText
             )
             
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Max selection indicator (hide when maxSelection is 0)
-                    val maxSelection = addonGroup.maxSelection
-                    if (maxSelection != null && maxSelection > 0) {
-                        Surface(
-                            color = Color(0xFFE3F2FD),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    id = R.string.product_max_selection,
-                                    maxSelection
-                                ),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Small
-                                ),
-                                color = PrimaryButton,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Required / Optional badge
+                val requiredLabel = stringResource(
+                    id = if (addonGroup.isRequired) {
+                        R.string.addon_group_required
+                    } else {
+                        R.string.addon_group_optional
                     }
-                    
-                    Icon(
-                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                    contentDescription = if (isExpanded) "ย่อ" else "ขยาย",
-                        tint = PrimaryText,
-                        modifier = Modifier.size(20.dp)
+                )
+                Surface(
+                    color = Color(0xFFE3F2FD),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = requiredLabel,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = PrimaryButton,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
+
+                // Max selection indicator (hide when maxSelection is 0)
+                val maxSelection = addonGroup.maxSelection
+                if (maxSelection != null && maxSelection > 0) {
+                    Surface(
+                        color = Color(0xFFE3F2FD),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(
+                                id = R.string.product_max_selection,
+                                maxSelection
+                            ),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = PrimaryButton,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "ย่อ" else "ขยาย",
+                    tint = PrimaryText,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
         
         // Addon Items

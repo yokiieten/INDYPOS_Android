@@ -381,21 +381,36 @@ private fun AddonGroupSectionLandscape(
                     color = PrimaryText
                 )
                 
+                // Required / Optional + Max selection info
+                val requiredText = stringResource(
+                    id = if (addonGroup.isRequired) {
+                        R.string.addon_group_required
+                    } else {
+                        R.string.addon_group_optional
+                    }
+                )
                 val maxSelection = addonGroup.maxSelection
-                if (maxSelection != null && maxSelection > 0) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(
-                            id = R.string.product_max_selection,
-                            maxSelection
-                        ),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = PrimaryButton
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                val infoText = if (maxSelection != null && maxSelection > 0) {
+                    val selectionText = stringResource(
+                        id = R.string.product_max_selection,
+                        maxSelection
                     )
+                    "$requiredText \u2022 $selectionText"
+                } else {
+                    requiredText
                 }
+
+                Text(
+                    text = infoText,
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = PrimaryButton
+                )
             }
             
             Icon(
