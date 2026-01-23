@@ -112,6 +112,7 @@ fun AddEditProductScreen(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val isEditMode = productId != null
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     var showImagePickerDialog by remember { mutableStateOf(false) }
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     var processedBarcode by remember { mutableStateOf<String?>(null) }
@@ -304,14 +305,30 @@ fun AddEditProductScreen(
                     OutlinedTextField(
                         value = uiState.sellingPrice,
                         onValueChange = { viewModel.updateSellingPrice(it) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                // Format price when field loses focus
+                                if (!focusState.isFocused && uiState.sellingPrice.isNotBlank()) {
+                                    viewModel.formatSellingPriceOnUnfocus()
+                                }
+                            },
                         placeholder = { Text("0", color = PlaceholderText) },
                         singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = KeyboardType.Decimal,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // Format price when Done is pressed
+                                if (uiState.sellingPrice.isNotBlank()) {
+                                    viewModel.formatSellingPriceOnUnfocus()
+                                }
+                                // Hide keyboard
+                                focusManager.clearFocus()
+                            }
+                        ),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = Color.White,
@@ -329,14 +346,30 @@ fun AddEditProductScreen(
                     OutlinedTextField(
                         value = uiState.costPrice,
                         onValueChange = { viewModel.updateCostPrice(it) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                // Format price when field loses focus
+                                if (!focusState.isFocused && uiState.costPrice.isNotBlank()) {
+                                    viewModel.formatCostPriceOnUnfocus()
+                                }
+                            },
                         placeholder = { Text(stringResource(id = R.string.product_form_cost_price_placeholder), color = PlaceholderText) },
                         singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = KeyboardType.Decimal,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // Format price when Done is pressed
+                                if (uiState.costPrice.isNotBlank()) {
+                                    viewModel.formatCostPriceOnUnfocus()
+                                }
+                                // Hide keyboard
+                                focusManager.clearFocus()
+                            }
+                        ),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = Color.White,

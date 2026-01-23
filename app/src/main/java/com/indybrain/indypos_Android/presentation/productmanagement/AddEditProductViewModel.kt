@@ -210,35 +210,78 @@ class AddEditProductViewModel @Inject constructor(
     }
     
     /**
-     * Update selling price (allow free typing, no formatting during input)
+     * Filter price input to only allow numbers and decimal point
+     * No limit on decimal places while typing - user can type unlimited digits
+     * Rounding to 2 decimal places happens when user finishes input (on unfocus or Done)
+     * Example: User can type 5000.533555, rounding (5000.533555 -> 5000.53, 5000.535555 -> 5000.54) happens on unfocus
+     */
+    private fun filterPriceInput(input: String): String {
+        if (input.isBlank()) return input
+        
+        // Allow only digits and one decimal point
+        val filtered = input.filter { it.isDigit() || it == '.' }
+        
+        // If empty after filtering, return empty
+        if (filtered.isEmpty()) return ""
+        
+        // Check for multiple decimal points - keep only the first one
+        val parts = filtered.split('.')
+        val result = if (parts.size > 2) {
+            // Multiple decimal points - keep first part + first decimal point + second part
+            parts[0] + "." + parts[1]
+        } else {
+            filtered
+        }
+        
+        // No limit on decimal places while typing - allow unlimited digits
+        // Rounding will happen in formatPriceOnUnfocus() when user finishes input
+        return result
+    }
+    
+    /**
+     * Update selling price with input filtering and automatic rounding
      */
     fun updateSellingPrice(price: String) {
-        _uiState.update { it.copy(sellingPrice = price, errorMessage = null) }
+        val filtered = filterPriceInput(price)
+        _uiState.update { it.copy(sellingPrice = filtered, errorMessage = null) }
     }
     
     /**
      * Format selling price when user finishes input
+     * Rounds to 2 decimal places and applies display formatting (hides .00 in edit mode)
      */
     fun formatSellingPriceOnUnfocus() {
         val currentPrice = _uiState.value.sellingPrice
-        val formatted = formatPriceOnUnfocus(currentPrice)
-        _uiState.update { it.copy(sellingPrice = formatted, errorMessage = null) }
+        if (currentPrice.isBlank()) return
+        
+        // First round to 2 decimal places
+        val rounded = formatPriceOnUnfocus(currentPrice)
+        // Then apply display formatting (hide .00 if applicable)
+        val displayFormatted = formatPriceForDisplay(rounded)
+        _uiState.update { it.copy(sellingPrice = displayFormatted, errorMessage = null) }
     }
     
     /**
-     * Update cost price (allow free typing, no formatting during input)
+     * Update cost price with input filtering and automatic rounding
      */
     fun updateCostPrice(price: String) {
-        _uiState.update { it.copy(costPrice = price, errorMessage = null) }
+        val filtered = filterPriceInput(price)
+        _uiState.update { it.copy(costPrice = filtered, errorMessage = null) }
     }
     
     /**
      * Format cost price when user finishes input
+     * Rounds to 2 decimal places and applies display formatting (hides .00 in edit mode)
      */
     fun formatCostPriceOnUnfocus() {
         val currentPrice = _uiState.value.costPrice
-        val formatted = formatPriceOnUnfocus(currentPrice)
-        _uiState.update { it.copy(costPrice = formatted, errorMessage = null) }
+        if (currentPrice.isBlank()) return
+        
+        // First round to 2 decimal places
+        val rounded = formatPriceOnUnfocus(currentPrice)
+        // Then apply display formatting (hide .00 if applicable)
+        val displayFormatted = formatPriceForDisplay(rounded)
+        _uiState.update { it.copy(costPrice = displayFormatted, errorMessage = null) }
     }
     
     /**
