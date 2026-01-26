@@ -858,6 +858,51 @@ fun AddEditProductScreen(
             )
         }
         
+        // Category Error Dialog
+        uiState.categoryError?.let { error ->
+            AlertDialog(
+                onDismissRequest = { 
+                    viewModel.clearCategoryError()
+                },
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.product_form_error_title),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = error,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { 
+                            viewModel.clearCategoryError()
+                        }
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.dialog_button_ok),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                }
+            )
+        }
+        
         // No Internet Dialog (when trying to save with image but no network)
         if (uiState.showNoInternetDialog) {
             AlertDialog(
@@ -1265,7 +1310,7 @@ private fun AddCategoryDialog(
                 }
                 TextButton(
                     onClick = onConfirm,
-                    enabled = !isLoading && categoryName.trim().isNotBlank(),
+                    enabled = !isLoading,
                     modifier = Modifier.weight(1f)
                 ) {
                     if (isLoading) {

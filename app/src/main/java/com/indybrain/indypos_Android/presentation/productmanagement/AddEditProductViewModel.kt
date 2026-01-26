@@ -474,6 +474,15 @@ class AddEditProductViewModel @Inject constructor(
     }
     
     /**
+     * Clear category error message
+     */
+    fun clearCategoryError() {
+        _uiState.update { 
+            it.copy(categoryError = null) 
+        }
+    }
+    
+    /**
      * Update category name in dialog
      */
     fun updateCategoryName(name: String) {
@@ -492,13 +501,10 @@ class AddEditProductViewModel @Inject constructor(
         val categoryName = _uiState.value.categoryName.trim()
         
         if (categoryName.isBlank()) {
-            // Validation error - close dialog and show as popup
+            // Validation error - keep dialog open and show error message
             _uiState.update { 
                 it.copy(
-                    showAddCategoryDialog = false,
-                    categoryName = "",
-                    categoryError = null,
-                    errorMessage = "กรุณาใส่ชื่อหมวดหมู่"
+                    categoryError = "กรุณาใส่ชื่อหมวดหมู่"
                 )
             }
             return
