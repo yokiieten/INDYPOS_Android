@@ -165,8 +165,14 @@
     <string name="graph_select_period">เลือกช่วงเวลา</string>
     <string name="graph_summary_title">สรุป</string>
     <string name="graph_today_sales">ยอดขายวันนี้</string>
+    <string name="graph_week_sales">ยอดขาย 1 สัปดาห์</string>
+    <string name="graph_month_sales">ยอดขาย 1 เดือน</string>
+    <string name="graph_period_sales">ยอดขายช่วงที่เลือก</string>
     <string name="graph_cost_expenses">ค่าใช้จ่ายต้นทุน</string>
     <string name="graph_orders_today">ออเดอร์วันนี้</string>
+    <string name="graph_orders_week">ออเดอร์ 1 สัปดาห์</string>
+    <string name="graph_orders_month">ออเดอร์ 1 เดือน</string>
+    <string name="graph_orders_period">ออเดอร์ช่วงที่เลือก</string>
     <string name="graph_cancelled_orders">ออเดอร์ยกเลิก</string>
     <string name="graph_chart_title">กราฟ</string>
     <string name="graph_total_sales">ผลรวมการขาย</string>
@@ -178,6 +184,37 @@
     <string name="graph_no_data_available">ไม่มีข้อมูล</string>
     <string name="graph_no_bestseller">ไม่มีข้อมูลสินค้าขายดี</string>
     <string name="graph_currency_baht">บาท</string>
+    <string name="graph_currency_symbol">฿</string>
+    
+    <!-- Time Period Labels -->
+    <string name="graph_period_today">วันนี้</string>
+    <string name="graph_period_week">1 สัปดาห์</string>
+    <string name="graph_period_month">1 เดือน</string>
+    <string name="graph_period_custom">กำหนดเอง</string>
+    
+    <!-- Day Labels -->
+    <string name="graph_day_monday">จ.</string>
+    <string name="graph_day_tuesday">อ.</string>
+    <string name="graph_day_wednesday">พ.</string>
+    <string name="graph_day_thursday">พฤ.</string>
+    <string name="graph_day_friday">ศ.</string>
+    <string name="graph_day_saturday">ส.</string>
+    <string name="graph_day_sunday">อา.</string>
+    
+    <!-- Week Labels -->
+    <string name="graph_week_1">W1</string>
+    <string name="graph_week_2">W2</string>
+    <string name="graph_week_3">W3</string>
+    <string name="graph_week_4">W4</string>
+    
+    <!-- Custom Date Range -->
+    <string name="graph_custom_range_cancel">ยกเลิก</string>
+    <string name="graph_custom_range_title">เลือกช่วงวันที่</string>
+    <string name="graph_custom_range_done">เสร็จสิ้น</string>
+    <string name="graph_custom_range_start_date">วันที่เริ่มต้น:</string>
+    <string name="graph_custom_range_end_date">วันที่สิ้นสุด:</string>
+    <string name="graph_custom_range_warning">หมายเหตุ: การเลือกช่วงเวลาเกิน 1 ปี อาจทำให้แอปโหลดช้า</string>
+    <string name="graph_error_loading">เกิดข้อผิดพลาดในการโหลดข้อมูลกราฟ</string>
     
     <!-- Order Screen -->
     <string name="order_history_title">ประวัติออเดอร์</string>

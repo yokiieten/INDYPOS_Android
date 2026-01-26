@@ -152,11 +152,56 @@
     <string name="graph_select_period">Select Period</string>
     <string name="graph_summary_title">Summary</string>
     <string name="graph_today_sales">Today\'s Sales</string>
+    <string name="graph_week_sales">1 Week Sales</string>
+    <string name="graph_month_sales">1 Month Sales</string>
+    <string name="graph_period_sales">Selected Period Sales</string>
     <string name="graph_cost_expenses">Cost Expenses</string>
     <string name="graph_orders_today">Orders Today</string>
+    <string name="graph_orders_week">1 Week Orders</string>
+    <string name="graph_orders_month">1 Month Orders</string>
+    <string name="graph_orders_period">Selected Period Orders</string>
     <string name="graph_cancelled_orders">Cancelled Orders</string>
     <string name="graph_chart_title">Chart</string>
     <string name="graph_total_sales">Total Sales</string>
+    <string name="graph_revenue_comparison_title">Revenue by Payment Method</string>
+    <string name="graph_transfer_payment">Transfer</string>
+    <string name="graph_cash_payment">Cash</string>
+    <string name="graph_product_stats_title">Top Revenue Products</string>
+    <string name="graph_bestseller_title">Top 3 Best Sellers</string>
+    <string name="graph_no_data_available">No data available</string>
+    <string name="graph_no_bestseller">No bestseller data</string>
+    <string name="graph_currency_baht">Baht</string>
+    <string name="graph_currency_symbol">฿</string>
+    
+    <!-- Time Period Labels -->
+    <string name="graph_period_today">Today</string>
+    <string name="graph_period_week">1 Week</string>
+    <string name="graph_period_month">1 Month</string>
+    <string name="graph_period_custom">Custom</string>
+    
+    <!-- Day Labels -->
+    <string name="graph_day_monday">Mon</string>
+    <string name="graph_day_tuesday">Tue</string>
+    <string name="graph_day_wednesday">Wed</string>
+    <string name="graph_day_thursday">Thu</string>
+    <string name="graph_day_friday">Fri</string>
+    <string name="graph_day_saturday">Sat</string>
+    <string name="graph_day_sunday">Sun</string>
+    
+    <!-- Week Labels -->
+    <string name="graph_week_1">W1</string>
+    <string name="graph_week_2">W2</string>
+    <string name="graph_week_3">W3</string>
+    <string name="graph_week_4">W4</string>
+    
+    <!-- Custom Date Range -->
+    <string name="graph_custom_range_cancel">Cancel</string>
+    <string name="graph_custom_range_title">Select Date Range</string>
+    <string name="graph_custom_range_done">Done</string>
+    <string name="graph_custom_range_start_date">Start Date:</string>
+    <string name="graph_custom_range_end_date">End Date:</string>
+    <string name="graph_custom_range_warning">Note: Selecting a period longer than 1 year may cause the app to load slowly</string>
+    <string name="graph_error_loading">Error loading graph data</string>
     
     <!-- Order Screen -->
     <string name="order_history_title">Order History</string>

@@ -29,11 +29,11 @@ data class ChartDataPoint(
     val value: Double
 )
 
-enum class TimePeriod(val displayName: String) {
-    Today("วันนี้"),
-    Week("1 สัปดาห์"),
-    Month("1 เดือน"),
-    Custom("กำหนดเอง")
+enum class TimePeriod(val stringResId: Int) {
+    Today(com.indybrain.indypos_Android.R.string.graph_period_today),
+    Week(com.indybrain.indypos_Android.R.string.graph_period_week),
+    Month(com.indybrain.indypos_Android.R.string.graph_period_month),
+    Custom(com.indybrain.indypos_Android.R.string.graph_period_custom)
 }
 
 data class RevenueComparison(

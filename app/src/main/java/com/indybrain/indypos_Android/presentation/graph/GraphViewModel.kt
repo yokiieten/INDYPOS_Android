@@ -1,10 +1,13 @@
 package com.indybrain.indypos_Android.presentation.graph
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,14 +21,17 @@ import javax.inject.Inject
 @HiltViewModel
 class GraphViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
-    private val productDao: ProductDao
+    private val productDao: ProductDao,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(GraphUiState(isLoading = true))
     val uiState: StateFlow<GraphUiState> = _uiState.asStateFlow()
     
     init {
-        loadData(TimePeriod.Today)
+        // Initialize with Today period, but don't fetch yet
+        // Fetch will be triggered when screen opens via refreshOrdersFromApi()
+        _uiState.update { it.copy(selectedPeriod = TimePeriod.Today) }
     }
     
     fun selectPeriod(period: TimePeriod) {
@@ -55,12 +61,12 @@ class GraphViewModel @Inject constructor(
             try {
                 loadCustomRangeData(normalizedStart, normalizedEnd)
             } catch (e: Exception) {
-                _uiState.update { current ->
-                    current.copy(
-                        isLoading = false,
-                        errorMessage = e.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลกราฟ"
-                    )
-                }
+                    _uiState.update { current ->
+                        current.copy(
+                            isLoading = false,
+                            errorMessage = e.message ?: context.getString(R.string.graph_error_loading)
+                        )
+                    }
             }
         }
     }
@@ -99,16 +105,35 @@ class GraphViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update { current ->
-                    current.copy(
-                        isLoading = false,
-                        errorMessage = e.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลกราฟ"
-                    )
-                }
+                    _uiState.update { current ->
+                        current.copy(
+                            isLoading = false,
+                            errorMessage = e.message ?: context.getString(R.string.graph_error_loading)
+                        )
+                    }
             }
         }
     }
 
+    /**
+     * Fetch orders from API and save to Room, then refresh current period data
+     * Called when GraphScreen opens
+     */
+    fun refreshOrdersFromApi() {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                // Fetch orders from API and save to Room
+                orderRepository.refreshOrdersList()
+                // After fetching, refresh current period data
+                refreshCurrentPeriod()
+            } catch (e: Exception) {
+                // If API call fails, still try to load from Room
+                refreshCurrentPeriod()
+            }
+        }
+    }
+    
     /**
      * รีโหลดข้อมูลตามช่วงเวลาที่เลือกปัจจุบัน
      * ใช้เมื่อเข้าหน้ากราฟใหม่เพื่อให้ข้อมูลอัปเดตจาก Room ล่าสุด
@@ -253,8 +278,8 @@ class GraphViewModel @Inject constructor(
 
     /**
      * ดึงข้อมูลจริงจาก Room สำหรับช่วง "1 สัปดาห์"
-     * - ใช้สัปดาห์ปัจจุบัน (จันทร์ - เสาร์)
-     * - กราฟผลรวมยอดขาย: แสดงตามวันในสัปดาห์ (จ. อ. พ. พฤ. ศ. ส.)
+     * - ใช้ 7 วันย้อนหลังจากวันนี้ (ไม่ใช่สัปดาห์ปฏิทิน)
+     * - กราฟผลรวมยอดขาย: แสดงตามวันในสัปดาห์ (จ. อ. พ. พฤ. ศ. ส. อา.)
      * - กราฟอื่น ๆ (ช่องทาง, สินค้า, Best seller) ใช้ข้อมูลจริงของสัปดาห์เดียวกัน
      */
     private suspend fun loadWeekDataFromRoom() {
@@ -277,18 +302,20 @@ class GraphViewModel @Inject constructor(
         }
         
         val calendar = Calendar.getInstance()
-        // หา Monday ของสัปดาห์ปัจจุบัน
-        calendar.firstDayOfWeek = Calendar.MONDAY
+        // ตั้งค่าเป็นวันนี้เวลา 00:00:00
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endDate = calendar.time // วันนี้เวลา 23:59:59
+        
+        // 7 วันย้อนหลัง
+        calendar.add(Calendar.DAY_OF_YEAR, -6) // -6 เพราะรวมวันนี้ด้วย = 7 วัน
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
-        while (calendar.get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) {
-            calendar.add(Calendar.DAY_OF_YEAR, -1)
-        }
-        val startDate = calendar.time // จันทร์
-        calendar.add(Calendar.DAY_OF_YEAR, 5)
-        val endDate = calendar.time   // เสาร์
+        val startDate = calendar.time // 7 วันก่อนเวลา 00:00:00
         
         val weekOrders = orders.filter { order ->
             order.orderDate >= startDate && order.orderDate <= endDate
@@ -339,12 +366,32 @@ class GraphViewModel @Inject constructor(
             dayOrders.sumOf { it.total }
         }
         
-        // แกน X: จ. อ. พ. พฤ. ศ. ส. (6 วันทำการหลัก)
-        val dayLabels = listOf("จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.")
+        // แกน X: แสดงตามวันจริงในสัปดาห์ (7 วัน)
+        val dayLabels = listOf(
+            context.getString(R.string.graph_day_monday),
+            context.getString(R.string.graph_day_tuesday),
+            context.getString(R.string.graph_day_wednesday),
+            context.getString(R.string.graph_day_thursday),
+            context.getString(R.string.graph_day_friday),
+            context.getString(R.string.graph_day_saturday),
+            context.getString(R.string.graph_day_sunday)
+        )
         val chartData = mutableListOf<ChartDataPoint>()
         calendar.time = startDate
-        for (i in 0..5) {
-            val label = dayLabels[i]
+        for (i in 0..6) {
+            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+            // แปลง Calendar.DAY_OF_WEEK (1=Sunday, 2=Monday, ..., 7=Saturday) เป็น index (0=Monday, 6=Sunday)
+            val dayIndex = when (dayOfWeek) {
+                Calendar.SUNDAY -> 6
+                Calendar.MONDAY -> 0
+                Calendar.TUESDAY -> 1
+                Calendar.WEDNESDAY -> 2
+                Calendar.THURSDAY -> 3
+                Calendar.FRIDAY -> 4
+                Calendar.SATURDAY -> 5
+                else -> i
+            }
+            val label = dayLabels[dayIndex]
             val key = dayKeyFormatter.format(calendar.time)
             val value = salesByDayKey[key] ?: 0.0
             chartData.add(ChartDataPoint(label, value))
@@ -497,24 +544,41 @@ class GraphViewModel @Inject constructor(
             totalSales = totalSales
         )
         
-        // กราฟ W1-W4 แบ่งตามวันที่ภายในเดือน (exclude cancelled)
+        // กราฟ W1-W4 แบ่งตามสัปดาห์ภายในเดือน (exclude cancelled)
+        // หาวันแรกและวันสุดท้ายของเดือน
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val monthStart = calendar.time
+        
+        calendar.add(Calendar.MONTH, 1)
+        calendar.add(Calendar.DAY_OF_MONTH, -1)
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val monthEnd = calendar.time
+        
+        // แบ่งเดือนเป็น 4 สัปดาห์ (แต่ละสัปดาห์ประมาณ 7-8 วัน)
+        val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val daysPerWeek = daysInMonth / 4.0
+        
         val salesByWeekIndex = DoubleArray(4) { 0.0 }
-        if (activeMonthOrders.isNotEmpty()) {
-            calendar.time = activeMonthOrders.first().orderDate
-            activeMonthOrders.forEach { order ->
-                calendar.time = order.orderDate
-                val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
-                var weekIndex = (dayOfMonth - 1) / 7 // 0-based
-                if (weekIndex > 3) weekIndex = 3
-                salesByWeekIndex[weekIndex] += order.total
-            }
+        activeMonthOrders.forEach { order ->
+            calendar.time = order.orderDate
+            val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+            var weekIndex = ((dayOfMonth - 1) / daysPerWeek).toInt()
+            if (weekIndex > 3) weekIndex = 3
+            salesByWeekIndex[weekIndex] += order.total
         }
         
         val chartData = listOf(
-            ChartDataPoint("W1", salesByWeekIndex[0]),
-            ChartDataPoint("W2", salesByWeekIndex[1]),
-            ChartDataPoint("W3", salesByWeekIndex[2]),
-            ChartDataPoint("W4", salesByWeekIndex[3])
+            ChartDataPoint(context.getString(R.string.graph_week_1), salesByWeekIndex[0]),
+            ChartDataPoint(context.getString(R.string.graph_week_2), salesByWeekIndex[1]),
+            ChartDataPoint(context.getString(R.string.graph_week_3), salesByWeekIndex[2]),
+            ChartDataPoint(context.getString(R.string.graph_week_4), salesByWeekIndex[3])
         )
         
         // ยอดตามช่องทางของทั้งเดือน (exclude cancelled)
