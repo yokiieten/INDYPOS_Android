@@ -103,8 +103,23 @@ class ProductDetailViewModel @Inject constructor(
                 }
                 
                 // Load existing cart data if available
-                // กรณีแก้ไขจากตะกร้า ให้จำนวนเริ่มต้นตรงกับจำนวนจริงในตะกร้า
-                val existingQuantity = existingCartItem?.quantity ?: 1
+                // กรณีแก้ไขจากตะกร้า ให้จำนวนเริ่มต้นตรงกับ "จำนวนรวม" ของ group เดียวกัน
+                // ไม่ใช่แค่จำนวนของ CartItem ตัวเดียว (เช่น กด + จาก ProductEditScreen / OrderProductScreen)
+                val existingQuantity = when {
+                    // โหมดเพิ่มใหม่แบบบังคับ ("เพิ่มอีก") → เริ่มที่ 1 เสมอ
+                    isExplicitNew || existingCartItem == null -> 1
+                    
+                    // โหมดแก้ไข: รวมจำนวนของ cart items ทุกตัวที่ config เหมือนกัน (specialRequest + addons)
+                    else -> {
+                        val targetKey = createGroupKeyForCartItem(existingCartItem)
+                        val groupedTotal = existingCartItems
+                            .filter { createGroupKeyForCartItem(it) == targetKey }
+                            .sumOf { it.quantity }
+                        
+                        // กันกรณีผิดปกติ (เผื่อ grouping พลาด) ให้ fallback เป็น quantity เดิม
+                        if (groupedTotal > 0) groupedTotal else existingCartItem.quantity
+                    }
+                }
                 val existingSpecialRequest = existingCartItem?.specialRequest ?: ""
                 
                 // Load existing addons from cart
@@ -405,16 +420,26 @@ class ProductDetailViewModel @Inject constructor(
             val editingCartItemId = currentState.editingCartItemId
             
             if (editingCartItemId != null) {
-                // EDIT MODE: replace the original cart item (ทั้งบรรทัด)
+                // EDIT MODE: อัปเดตทั้งกรุ๊ป (ไม่ใช่แค่ cart item เดียว)
                 val originalItem = existingCartItems.find { it.id == editingCartItemId }
                 
                 if (originalItem == null) {
                     // ถ้าไม่เจอ item เดิม ให้ fallback เป็นโหมดปกติ
                     _uiState.update { it.copy(editingCartItemId = null) }
                 } else {
-                    // หา item อื่นที่ config เดียวกับของใหม่ (ไว้ merge)
+                    // หา cart items ทั้งหมดที่อยู่ในกรุ๊ปเดียวกันกับ originalItem (ใช้ key เดิม)
+                    val originalKey = createGroupKeyForCartItem(originalItem)
+                    val itemsInOriginalGroup = existingCartItems.filter { cartItem ->
+                        createGroupKeyForCartItem(cartItem) == originalKey
+                    }
+                    
+                    // คำนวณจำนวนรวมของกรุ๊ปเดิม
+                    val totalQuantityFromOriginalGroup = itemsInOriginalGroup.sumOf { it.quantity }
+                    
+                    // หา item อื่นที่ config ใหม่เหมือนกับของใหม่ (ไว้ merge)
                     val matchingOtherItem = existingCartItems.find { cartItem ->
-                        if (cartItem.id == editingCartItemId) return@find false
+                        // ไม่นับ items ที่อยู่ในกรุ๊ปเดิม (จะลบทิ้งอยู่แล้ว)
+                        if (itemsInOriginalGroup.any { it.id == cartItem.id }) return@find false
                         
                         val itemSpecialRequest = cartItem.specialRequest ?: ""
                         val itemSortedGroups = cartItem.selectedAddons.keys.sorted()
@@ -429,80 +454,88 @@ class ProductDetailViewModel @Inject constructor(
                         itemKey == currentKey
                     }
                     
-                    // จำนวนรวมในตะกร้าที่ยกเว้น item เดิมที่กำลังแก้
-                    val totalQuantityExcludingOriginal = existingCartItems
-                        .filter { it.id != editingCartItemId }
+                    // จำนวนรวมในตะกร้าที่ยกเว้นกรุ๊ปเดิมทั้งหมด
+                    val totalQuantityExcludingOriginalGroup = existingCartItems
+                        .filter { !itemsInOriginalGroup.any { original -> original.id == it.id } }
                         .sumOf { it.quantity }
                     
-                    if (matchingOtherItem != null) {
-                        // กรณี config ใหม่เหมือนกับ item อื่น -> merge จำนวนเข้าไป
-                        val newQuantityForMatching = matchingOtherItem.quantity + currentState.quantity
-                        val totalQuantityAfterChange = totalQuantityExcludingOriginal + newQuantityForMatching
-                        
-                        val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
-                        if (!hasStock) {
-                            val stockQuantity = product.stockQuantity ?: 0
-                            val availableStock = stockQuantity - totalQuantityExcludingOriginal
-                            val errorMessage = if (availableStock > 0) {
-                                "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                            } else {
-                                "สินค้าในสต็อกไม่เพียงพอ"
-                            }
-                            _uiState.update { it.copy(errorMessage = errorMessage) }
-                            return@launch
-                        }
-                        
-                        // อัปเดตจำนวนของ item ที่ match แล้วลบตัวเดิมทิ้ง
-                        cartRepository.updateCartItemQuantity(matchingOtherItem.id, newQuantityForMatching)
-                        cartRepository.deleteCartItems(listOf(editingCartItemId))
-                    } else {
-                        // กรณี config ใหม่ไม่ตรงกับ item ไหนเลย -> อัปเดต item เดิม "ทั้งบรรทัด"
-                        val totalQuantityAfterChange = totalQuantityExcludingOriginal + currentState.quantity
-                        val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
-                        if (!hasStock) {
-                            val stockQuantity = product.stockQuantity ?: 0
-                            val availableStock = stockQuantity - totalQuantityExcludingOriginal
-                            val errorMessage = if (availableStock > 0) {
-                                "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                            } else {
-                                "สินค้าในสต็อกไม่เพียงพอ"
-                            }
-                            _uiState.update { it.copy(errorMessage = errorMessage) }
-                            return@launch
-                        }
-                        
-                        // เตรียม config ใหม่ (price + addons) ให้ item เดิม
-                        val addonPrice = calculateAddonPrice()
-                        val unitPrice = product.price + addonPrice
-                        
-                        val cartAddons = mutableListOf<CartAddonEntity>()
-                        currentState.selectedAddons.forEach { (groupId, addonIds) ->
-                            val addonGroup = currentState.addonGroups.find { it.id == groupId }
-                            addonIds.forEach { addonId ->
-                                val addon = currentState.addonsByGroup[groupId]?.find { it.id == addonId }
-                                if (addon != null && addonGroup != null) {
-                                    cartAddons.add(
-                                        CartAddonEntity(
-                                            cartItemId = editingCartItemId,
-                                            addonId = addon.id,
-                                            addonName = addon.name,
-                                            addonPrice = addon.price,
-                                            addonGroupId = addonGroup.id,
-                                            addonGroupName = addonGroup.name
-                                        )
+                    // เตรียม config ใหม่ (price + addons)
+                    val addonPrice = calculateAddonPrice()
+                    val unitPrice = product.price + addonPrice
+                    
+                    val cartAddons = mutableListOf<CartAddonEntity>()
+                    currentState.selectedAddons.forEach { (groupId, addonIds) ->
+                        val addonGroup = currentState.addonGroups.find { it.id == groupId }
+                        addonIds.forEach { addonId ->
+                            val addon = currentState.addonsByGroup[groupId]?.find { it.id == addonId }
+                            if (addon != null && addonGroup != null) {
+                                cartAddons.add(
+                                    CartAddonEntity(
+                                        cartItemId = "", // Will be set when creating new item
+                                        addonId = addon.id,
+                                        addonName = addon.name,
+                                        addonPrice = addon.price,
+                                        addonGroupId = addonGroup.id,
+                                        addonGroupName = addonGroup.name
                                     )
-                                }
+                                )
                             }
                         }
+                    }
+                    
+                    if (matchingOtherItem != null) {
+                        // กรณี config ใหม่เหมือนกับ item อื่น -> merge จำนวนรวมของกรุ๊ปเดิมเข้าไป
+                        val newQuantityForMatching = matchingOtherItem.quantity + totalQuantityFromOriginalGroup
+                        val totalQuantityAfterChange = totalQuantityExcludingOriginalGroup + newQuantityForMatching
                         
-                        // อัปเดต config + จำนวน ของ item เดิม
-                        cartRepository.updateCartItemConfiguration(
-                            cartItemId = editingCartItemId,
-                            specialRequest = currentState.specialRequest.takeIf { it.isNotBlank() },
+                        val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
+                        if (!hasStock) {
+                            val stockQuantity = product.stockQuantity ?: 0
+                            val availableStock = stockQuantity - totalQuantityExcludingOriginalGroup
+                            val errorMessage = if (availableStock > 0) {
+                                "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
+                            } else {
+                                "สินค้าในสต็อกไม่เพียงพอ"
+                            }
+                            _uiState.update { it.copy(errorMessage = errorMessage) }
+                            return@launch
+                        }
+                        
+                        // อัปเดตจำนวนของ item ที่ match แล้วลบกรุ๊ปเดิมทั้งหมดทิ้ง
+                        cartRepository.updateCartItemQuantity(matchingOtherItem.id, newQuantityForMatching)
+                        val originalGroupItemIds = itemsInOriginalGroup.map { it.id }
+                        cartRepository.deleteCartItems(originalGroupItemIds)
+                    } else {
+                        // กรณี config ใหม่ไม่ตรงกับ item ไหนเลย -> ลบกรุ๊ปเดิมทั้งหมด แล้วสร้าง cart item ใหม่ด้วย config ใหม่ + จำนวนรวมของกรุ๊ปเดิม
+                        val totalQuantityAfterChange = totalQuantityExcludingOriginalGroup + totalQuantityFromOriginalGroup
+                        val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
+                        if (!hasStock) {
+                            val stockQuantity = product.stockQuantity ?: 0
+                            val availableStock = stockQuantity - totalQuantityExcludingOriginalGroup
+                            val errorMessage = if (availableStock > 0) {
+                                "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
+                            } else {
+                                "สินค้าในสต็อกไม่เพียงพอ"
+                            }
+                            _uiState.update { it.copy(errorMessage = errorMessage) }
+                            return@launch
+                        }
+                        
+                        // ลบ cart items ทั้งหมดในกรุ๊ปเดิม
+                        val originalGroupItemIds = itemsInOriginalGroup.map { it.id }
+                        cartRepository.deleteCartItems(originalGroupItemIds)
+                        
+                        // สร้าง cart item ใหม่ด้วย config ใหม่ + จำนวนรวมของกรุ๊ปเดิม
+                        cartRepository.addToCart(
+                            productId = product.id,
+                            productName = product.name,
+                            productImageUrl = product.imageUrl,
+                            productColorHex = product.selectedColorHex,
                             unitPrice = unitPrice,
+                            quantity = totalQuantityFromOriginalGroup, // ใช้จำนวนรวมของกรุ๊ปเดิม
+                            specialRequest = currentState.specialRequest.takeIf { it.isNotBlank() },
                             addons = cartAddons
                         )
-                        cartRepository.updateCartItemQuantity(editingCartItemId, currentState.quantity)
                     }
                 }
                 
@@ -612,6 +645,30 @@ class ProductDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+    
+    /**
+     * สร้าง key สำหรับ grouping CartItem ให้ตรงกับ logic ใน GetGroupedCartItemsByProductUseCase
+     * รูปแบบ: "specialRequest|groupId1:addonId1,addonId2|groupId2:addonId3"
+     */
+    private fun createGroupKeyForCartItem(
+        item: com.indybrain.indypos_Android.domain.model.CartItem
+    ): String {
+        val specialRequest = item.specialRequest ?: ""
+        
+        // Sort addon groups by groupId
+        val sortedGroups = item.selectedAddons.keys.sorted()
+        
+        // Create addons key: "groupId1:addonId1,addonId2|groupId2:addonId3"
+        val addonsKey = sortedGroups.joinToString("|") { groupId ->
+            val addonIds = item.selectedAddons[groupId]
+                ?.map { it.id }
+                ?.sorted()
+                ?.joinToString(",") ?: ""
+            "$groupId:$addonIds"
+        }
+        
+        return "$specialRequest|$addonsKey"
     }
 }
 
