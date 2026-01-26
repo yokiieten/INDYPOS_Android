@@ -40,11 +40,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,6 +100,26 @@ fun AddonGroupManagementScreen(
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     
+    // Refresh addon groups when screen becomes visible (returns from AddEditAddonGroupScreen)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var lastResumeTime by remember { mutableStateOf(0L) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val currentTime = System.currentTimeMillis()
+                // Only refresh if it's been more than 1 second since last refresh
+                // This prevents multiple refreshes but allows refresh when returning from AddEditAddonGroupScreen
+                if (currentTime - lastResumeTime > 1000) {
+                    viewModel.refreshAddonGroups()
+                    lastResumeTime = currentTime
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     
     // Update search when query changes
     LaunchedEffect(searchQuery) {

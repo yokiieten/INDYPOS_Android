@@ -31,8 +31,7 @@ class CategoryManagementViewModel @Inject constructor(
     init {
         // Observe categories from Room database
         observeCategories()
-        // Load categories when ViewModel is created
-        loadCategories()
+        // Load categories will be called from screen's ON_RESUME lifecycle
     }
     
     /**

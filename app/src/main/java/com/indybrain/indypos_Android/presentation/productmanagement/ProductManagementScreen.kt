@@ -134,17 +134,10 @@ fun ProductManagementScreen(
     
     // Refresh products when screen becomes visible (returns from AddEditProductScreen)
     val lifecycleOwner = LocalLifecycleOwner.current
-    var lastResumeTime by remember { mutableStateOf(0L) }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                val currentTime = System.currentTimeMillis()
-                // Only refresh if it's been more than 1 second since last refresh
-                // This prevents multiple refreshes but allows refresh when returning from AddEditProductScreen
-                if (currentTime - lastResumeTime > 1000) {
-                    viewModel.refreshProducts()
-                    lastResumeTime = currentTime
-                }
+                viewModel.refreshProducts()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

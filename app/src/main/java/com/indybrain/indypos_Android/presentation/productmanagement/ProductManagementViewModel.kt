@@ -33,8 +33,7 @@ class ProductManagementViewModel @Inject constructor(
         // Observe products and categories from Room database
         observeProducts()
         observeCategories()
-        // Load products when ViewModel is created
-        loadProducts()
+        // Load products will be called from screen's ON_RESUME lifecycle
     }
     
     /**

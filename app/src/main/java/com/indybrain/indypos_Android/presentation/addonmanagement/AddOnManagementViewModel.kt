@@ -31,8 +31,7 @@ class AddOnManagementViewModel @Inject constructor(
     init {
         // Observe addons from Room database
         observeAddons()
-        // Load addons when ViewModel is created
-        loadAddons()
+        // Load addons will be called from screen's ON_RESUME lifecycle
     }
     
     /**
