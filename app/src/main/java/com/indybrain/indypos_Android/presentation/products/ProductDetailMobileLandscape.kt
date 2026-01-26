@@ -377,27 +377,23 @@ private fun AddonGroupSectionMobile(
                     color = PrimaryText
                 )
                 
-                // Required / Optional badge
-                val requiredLabel = stringResource(
-                    id = if (addonGroup.isRequired) {
-                        R.string.addon_group_required
-                    } else {
-                        R.string.addon_group_optional
+                // Required badge (only show when required)
+                if (addonGroup.isRequired) {
+                    val requiredLabel = stringResource(id = R.string.addon_group_required)
+                    Surface(
+                        color = Color(0xFFE3F2FD),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = requiredLabel,
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = PrimaryButton,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
                     }
-                )
-                Surface(
-                    color = Color(0xFFE3F2FD),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = requiredLabel,
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = PrimaryButton,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
                 }
 
                 // แสดงข้อความจำนวนเลือกได้สูงสุด โดยใช้ string resource ตาม locale

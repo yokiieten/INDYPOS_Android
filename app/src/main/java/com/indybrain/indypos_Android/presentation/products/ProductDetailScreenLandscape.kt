@@ -381,36 +381,44 @@ private fun AddonGroupSectionLandscape(
                     color = PrimaryText
                 )
                 
-                // Required / Optional + Max selection info
-                val requiredText = stringResource(
-                    id = if (addonGroup.isRequired) {
-                        R.string.addon_group_required
-                    } else {
-                        R.string.addon_group_optional
-                    }
-                )
+                // Required + Max selection info (only show required text when required)
                 val maxSelection = addonGroup.maxSelection
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                val infoText = if (maxSelection != null && maxSelection > 0) {
-                    val selectionText = stringResource(
-                        id = R.string.product_max_selection,
-                        maxSelection
-                    )
-                    "$requiredText \u2022 $selectionText"
+                val infoText = if (addonGroup.isRequired) {
+                    val requiredText = stringResource(id = R.string.addon_group_required)
+                    if (maxSelection != null && maxSelection > 0) {
+                        val selectionText = stringResource(
+                            id = R.string.product_max_selection,
+                            maxSelection
+                        )
+                        "$requiredText \u2022 $selectionText"
+                    } else {
+                        requiredText
+                    }
                 } else {
-                    requiredText
+                    // Only show max selection if not required
+                    if (maxSelection != null && maxSelection > 0) {
+                        stringResource(
+                            id = R.string.product_max_selection,
+                            maxSelection
+                        )
+                    } else {
+                        null
+                    }
                 }
 
-                Text(
-                    text = infoText,
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Small
-                    ),
-                    color = PrimaryButton
-                )
+                if (infoText != null) {
+                    Text(
+                        text = infoText,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = PrimaryButton
+                    )
+                }
             }
             
             Icon(
