@@ -94,8 +94,18 @@ class CategoryManagementViewModel @Inject constructor(
                             .sortedBy { it.createdAt }
                             .filterNot { pendingDeleteIds.contains(it.id) }
 
+                        // Re-apply search filter if there's an active search query
+                        val filteredCategories = if (current.searchQuery.isNotBlank()) {
+                            visibleCategories.filter { 
+                                it.name.contains(current.searchQuery, ignoreCase = true) 
+                            }
+                        } else {
+                            null // Clear filter when query is blank
+                        }
+
                         current.copy(
                             categories = visibleCategories,
+                            filteredCategories = filteredCategories,
                             isLoading = false // Clear loading state once we have data from Room
                         )
                     }

@@ -74,8 +74,18 @@ class AddonGroupManagementViewModel @Inject constructor(
                     val pendingDeleteIds = current.pendingDeleteAddonGroupIds
                     val visibleAddonGroups = addonGroups.filterNot { pendingDeleteIds.contains(it.id) }
                     
+                    // Re-apply search filter if there's an active search query
+                    val filteredAddonGroups = if (current.searchQuery.isNotBlank()) {
+                        visibleAddonGroups.filter { 
+                            it.name.contains(current.searchQuery, ignoreCase = true) 
+                        }
+                    } else {
+                        null // Clear filter when query is blank
+                    }
+                    
                     current.copy(
                         addonGroups = visibleAddonGroups,
+                        filteredAddonGroups = filteredAddonGroups,
                         addonCounts = counts,
                         isLoading = false // Clear loading state once we have data from Room
                     )
