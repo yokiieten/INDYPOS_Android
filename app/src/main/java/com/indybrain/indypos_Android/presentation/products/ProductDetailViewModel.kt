@@ -483,9 +483,12 @@ class ProductDetailViewModel @Inject constructor(
                         }
                     }
                     
+                    // ใช้จำนวนที่ผู้ใช้แก้ไข (currentState.quantity) แทนจำนวนเดิม
+                    val newQuantity = currentState.quantity
+                    
                     if (matchingOtherItem != null) {
-                        // กรณี config ใหม่เหมือนกับ item อื่น -> merge จำนวนรวมของกรุ๊ปเดิมเข้าไป
-                        val newQuantityForMatching = matchingOtherItem.quantity + totalQuantityFromOriginalGroup
+                        // กรณี config ใหม่เหมือนกับ item อื่น -> merge จำนวนใหม่เข้าไป
+                        val newQuantityForMatching = matchingOtherItem.quantity + newQuantity
                         val totalQuantityAfterChange = totalQuantityExcludingOriginalGroup + newQuantityForMatching
                         
                         val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
@@ -506,8 +509,8 @@ class ProductDetailViewModel @Inject constructor(
                         val originalGroupItemIds = itemsInOriginalGroup.map { it.id }
                         cartRepository.deleteCartItems(originalGroupItemIds)
                     } else {
-                        // กรณี config ใหม่ไม่ตรงกับ item ไหนเลย -> ลบกรุ๊ปเดิมทั้งหมด แล้วสร้าง cart item ใหม่ด้วย config ใหม่ + จำนวนรวมของกรุ๊ปเดิม
-                        val totalQuantityAfterChange = totalQuantityExcludingOriginalGroup + totalQuantityFromOriginalGroup
+                        // กรณี config ใหม่ไม่ตรงกับ item ไหนเลย -> ลบกรุ๊ปเดิมทั้งหมด แล้วสร้าง cart item ใหม่ด้วย config ใหม่ + จำนวนใหม่
+                        val totalQuantityAfterChange = totalQuantityExcludingOriginalGroup + newQuantity
                         val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
                         if (!hasStock) {
                             val stockQuantity = product.stockQuantity ?: 0
@@ -525,14 +528,14 @@ class ProductDetailViewModel @Inject constructor(
                         val originalGroupItemIds = itemsInOriginalGroup.map { it.id }
                         cartRepository.deleteCartItems(originalGroupItemIds)
                         
-                        // สร้าง cart item ใหม่ด้วย config ใหม่ + จำนวนรวมของกรุ๊ปเดิม
+                        // สร้าง cart item ใหม่ด้วย config ใหม่ + จำนวนใหม่ที่ผู้ใช้แก้ไข
                         cartRepository.addToCart(
                             productId = product.id,
                             productName = product.name,
                             productImageUrl = product.imageUrl,
                             productColorHex = product.selectedColorHex,
                             unitPrice = unitPrice,
-                            quantity = totalQuantityFromOriginalGroup, // ใช้จำนวนรวมของกรุ๊ปเดิม
+                            quantity = newQuantity, // ใช้จำนวนใหม่ที่ผู้ใช้แก้ไข
                             specialRequest = currentState.specialRequest.takeIf { it.isNotBlank() },
                             addons = cartAddons
                         )
