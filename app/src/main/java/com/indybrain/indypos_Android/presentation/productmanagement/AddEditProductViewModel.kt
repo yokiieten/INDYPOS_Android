@@ -1,9 +1,11 @@
 package com.indybrain.indypos_Android.presentation.productmanagement
 
 import android.net.Uri
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
@@ -12,6 +14,7 @@ import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.presentation.productmanagement.ProductConstants.SELECTED_UNIT_COLOR
 import com.indybrain.indypos_Android.presentation.productmanagement.ProductConstants.SELECTED_UNIT_IMAGE
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +33,8 @@ class AddEditProductViewModel @Inject constructor(
     private val productRepository: ProductRepository,
     private val addonGroupRepository: AddonGroupRepository,
     private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(AddEditProductUiState())
@@ -140,15 +144,16 @@ class AddEditProductViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            errorMessage = "ไม่พบสินค้าที่ต้องการแก้ไข"
+                            errorMessage = context.getString(R.string.product_form_error_load_not_found)
                         )
                     }
                 }
             } catch (e: Exception) {
+                val reason = e.message ?: context.getString(R.string.product_form_error_unknown_reason)
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูล: ${e.message ?: "ไม่ทราบสาเหตุ"}"
+                        errorMessage = context.getString(R.string.product_form_error_load_with_reason, reason)
                     )
                 }
             }
@@ -401,14 +406,13 @@ class AddEditProductViewModel @Inject constructor(
      * Save product without image (when image upload fails)
      */
     fun saveProductWithoutImage() {
-        val state = _uiState.value
         // Update state to remove image
         _uiState.update { 
             it.copy(
                 imageUrl = null,
                 isImageSelected = false,
                 showImageUploadErrorDialog = false,
-                loadingMessage = "กำลังบันทึกสินค้า..."
+                loadingMessage = context.getString(R.string.product_form_loading_saving_product)
             )
         }
         // Retry save product
@@ -568,14 +572,14 @@ class AddEditProductViewModel @Inject constructor(
         // Validation
         if (state.productName.trim().isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณากรอกชื่อสินค้า")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_name_required))
             }
             return
         }
         
         if (state.productCode.trim().isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณากรอกรหัสสินค้า")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_code_required))
             }
             return
         }
@@ -588,7 +592,7 @@ class AddEditProductViewModel @Inject constructor(
         
         if (sellingPrice <= 0) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณากรอกราคาขาย")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_selling_price_required))
             }
             return
         }
@@ -601,21 +605,21 @@ class AddEditProductViewModel @Inject constructor(
         }
         if (tempCostPrice != null && tempCostPrice > sellingPrice) {
             _uiState.update {
-                it.copy(errorMessage = "ราคาต้นทุนต้องไม่มากกว่าราคาขาย")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_cost_price_greater_than_selling))
             }
             return
         }
         
         if (state.unit.trim().isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณากรอกหน่วยนับ")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_unit_required))
             }
             return
         }
         
         if (state.categoryId == null) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณาเลือกหมวดหมู่")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_category_required))
             }
             return
         }
@@ -623,14 +627,14 @@ class AddEditProductViewModel @Inject constructor(
         // Check if image/color is selected
         if (state.isImageSelected && state.imageUrl == null && state.selectedColorHex == null) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณาเลือกรูปภาพหรือสี")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_image_or_color_required))
             }
             return
         }
         
         if (!state.isImageSelected && state.selectedColorHex == null) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณาเลือกสี")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_color_required))
             }
             return
         }
@@ -638,7 +642,7 @@ class AddEditProductViewModel @Inject constructor(
         // Validate AddOn Groups if hasAdditionalOptions is enabled
         if (state.hasAdditionalOptions && state.addonGroupIds.isEmpty()) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณาเลือก AddOn Groups อย่างน้อย 1 รายการ")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_addon_groups_required))
             }
             return
         }
@@ -646,7 +650,7 @@ class AddEditProductViewModel @Inject constructor(
         // Validate SKU Code if SKU is enabled
         if (state.isSkuEnabled && state.skuCode.trim().isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณากรอกรหัส SKU")
+                it.copy(errorMessage = context.getString(R.string.product_form_validation_sku_required))
             }
             return
         }
@@ -660,7 +664,7 @@ class AddEditProductViewModel @Inject constructor(
             }
             if (stockQuantity == null || stockQuantity < 0) {
                 _uiState.update { 
-                    it.copy(errorMessage = "กรุณากรอกจำนวนสินค้า")
+                    it.copy(errorMessage = context.getString(R.string.product_form_validation_stock_quantity_required))
                 }
                 return
             }
@@ -697,7 +701,7 @@ class AddEditProductViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         loadingMessage = null,
-                        errorMessage = "ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่"
+                        errorMessage = context.getString(R.string.product_form_error_user_not_found)
                     )
                 }
                 return@launch
@@ -714,7 +718,7 @@ class AddEditProductViewModel @Inject constructor(
                     if (isLocalUri) {
                         // Show uploading image message
                         _uiState.update { 
-                            it.copy(loadingMessage = "กำลังอัปโหลดรูปภาพ...")
+                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_uploading_image))
                         }
                         
                         try {
@@ -737,7 +741,7 @@ class AddEditProductViewModel @Inject constructor(
                             finalImageUrl = uploadedUrl
                             // Change loading message to saving product
                             _uiState.update { 
-                                it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                                it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
                             }
                         } catch (e: Exception) {
                             _uiState.update { 
@@ -745,7 +749,9 @@ class AddEditProductViewModel @Inject constructor(
                                     isLoading = false,
                                     loadingMessage = null,
                                     showImageUploadErrorDialog = true,
-                                    errorMessage = "ไม่สามารถอัปโหลดรูปภาพได้: ${e.message}"
+                                    errorMessage = context.getString(
+                                        R.string.product_form_image_upload_error_message
+                                    )
                                 )
                             }
                             return@launch
@@ -753,14 +759,14 @@ class AddEditProductViewModel @Inject constructor(
                     } else {
                         // Image URL is already uploaded, show saving message
                         _uiState.update { 
-                            it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
                         }
                     }
                 } else {
                     // No image or offline, show saving message
                     if (hasNetwork) {
                         _uiState.update { 
-                            it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
                         }
                     }
                 }
@@ -817,7 +823,7 @@ class AddEditProductViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการบันทึก"
+                            errorMessage = error.message ?: context.getString(R.string.product_form_error_save_generic)
                         )
                     }
                 }
@@ -852,7 +858,7 @@ class AddEditProductViewModel @Inject constructor(
                             }
                             finalImageUrl = uploadedUrl
                             _uiState.update { 
-                                it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                                it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
                             }
                         } catch (e: Exception) {
                             _uiState.update { 
@@ -860,7 +866,9 @@ class AddEditProductViewModel @Inject constructor(
                                     isLoading = false,
                                     loadingMessage = null,
                                     showImageUploadErrorDialog = true,
-                                    errorMessage = "ไม่สามารถอัปโหลดรูปภาพได้: ${e.message}"
+                                    errorMessage = context.getString(
+                                        R.string.product_form_image_upload_error_message
+                                    )
                                 )
                             }
                             return@launch
@@ -932,7 +940,7 @@ class AddEditProductViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             loadingMessage = null,
-                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการบันทึก"
+                            errorMessage = error.message ?: context.getString(R.string.product_form_error_save_generic)
                         )
                     }
                 }

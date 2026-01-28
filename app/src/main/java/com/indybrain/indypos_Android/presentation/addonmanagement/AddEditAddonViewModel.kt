@@ -1,9 +1,12 @@
 package com.indybrain.indypos_Android.presentation.addonmanagement
 
 import androidx.lifecycle.ViewModel
+import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
+import com.indybrain.indypos_Android.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +21,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AddEditAddonViewModel @Inject constructor(
-    private val addonRepository: AddonRepository
+    private val addonRepository: AddonRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(AddEditAddonUiState())
@@ -172,7 +176,7 @@ class AddEditAddonViewModel @Inject constructor(
         // Validation
         if (name.isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = "กรุณากรอกชื่อ Addon")
+                it.copy(errorMessage = context.getString(R.string.addon_form_validation_name_required))
             }
             return
         }
@@ -185,14 +189,14 @@ class AddEditAddonViewModel @Inject constructor(
                 val parsedPrice = priceString.toDouble()
                 if (parsedPrice < 0) {
                     _uiState.update { 
-                        it.copy(errorMessage = "ราคาต้องเป็นตัวเลขที่มากกว่าหรือเท่ากับ 0")
+                        it.copy(errorMessage = context.getString(R.string.addon_form_validation_price_non_negative))
                     }
                     return
                 }
                 parsedPrice
             } catch (e: NumberFormatException) {
                 _uiState.update { 
-                    it.copy(errorMessage = "กรุณากรอกราคาเป็นตัวเลขที่ถูกต้อง")
+                    it.copy(errorMessage = context.getString(R.string.addon_form_validation_price_invalid))
                 }
                 return
             }
@@ -222,14 +226,14 @@ class AddEditAddonViewModel @Inject constructor(
                 }
                 // Don't call onSuccess() here - let the dialog handle navigation
             }.onFailure { error ->
-                val errorMessage = error.message ?: "เกิดข้อผิดพลาดในการบันทึก"
+                val errorMessage = error.message ?: context.getString(R.string.addon_form_error_save_generic)
                 // Handle special error codes
                 val finalErrorMessage = when {
                     errorMessage.contains("free_plan_limit_exceeded", ignoreCase = true) -> {
                         "free_plan_limit_exceeded"
                     }
                     errorMessage.contains("ชื่อ Addon นี้มีอยู่แล้ว") -> {
-                        "ชื่อ Addon นี้มีอยู่แล้ว"
+                        context.getString(R.string.addon_form_error_duplicate_name)
                     }
                     else -> errorMessage
                 }

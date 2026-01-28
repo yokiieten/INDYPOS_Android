@@ -508,6 +508,9 @@
     <string name="product_error_duplicate_name">ชื่อนี้มีอยู่แล้ว</string>
     <string name="product_error_duplicate_code">รหัสสินค้านี้มีอยู่แล้ว</string>
     <string name="product_form_error_edit_failed">เกิดข้อผิดพลาดในการแก้ไขสินค้า</string>
+    <string name="product_form_error_load_not_found">ไม่พบสินค้าที่ต้องการแก้ไข</string>
+    <string name="product_form_error_load_with_reason">เกิดข้อผิดพลาดในการโหลดข้อมูล: %1$s</string>
+    <string name="product_form_error_unknown_reason">ไม่ทราบสาเหตุ</string>
     
     <!-- Product Management Screen -->
     <string name="product_management_title">จัดการสินค้า</string>
@@ -600,6 +603,21 @@
     <string name="product_form_add_category_message">กรุณาใส่ชื่อหมวดหมู่</string>
     <string name="product_form_add_category_placeholder">กรอกชื่อหมวดหมู่</string>
     <string name="product_form_addon_group_selected">เลือก</string>
+    <string name="product_form_validation_name_required">กรุณากรอกชื่อสินค้า</string>
+    <string name="product_form_validation_code_required">กรุณากรอกรหัสสินค้า</string>
+    <string name="product_form_validation_selling_price_required">กรุณากรอกราคาขาย</string>
+    <string name="product_form_validation_cost_price_greater_than_selling">ราคาต้นทุนต้องไม่มากกว่าราคาขาย</string>
+    <string name="product_form_validation_unit_required">กรุณากรอกหน่วยนับ</string>
+    <string name="product_form_validation_category_required">กรุณาเลือกหมวดหมู่</string>
+    <string name="product_form_validation_image_or_color_required">กรุณาเลือกรูปภาพหรือสี</string>
+    <string name="product_form_validation_color_required">กรุณาเลือกสี</string>
+    <string name="product_form_validation_addon_groups_required">กรุณาเลือก AddOn Groups อย่างน้อย 1 รายการ</string>
+    <string name="product_form_validation_sku_required">กรุณากรอกรหัส SKU</string>
+    <string name="product_form_validation_stock_quantity_required">กรุณากรอกจำนวนสินค้า</string>
+    <string name="product_form_error_user_not_found">ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่</string>
+    <string name="product_form_error_save_generic">เกิดข้อผิดพลาดในการบันทึก</string>
+    <string name="product_form_loading_saving_product">กำลังบันทึกสินค้า...</string>
+    <string name="product_form_loading_uploading_image">กำลังอัปโหลดรูปภาพ...</string>
     
     <!-- Addon Group Management Screen -->
     <string name="addon_group_management_title">จัดการกลุ่ม Addon</string>
@@ -651,6 +669,14 @@
     <string name="addon_group_form_add_addon_price_placeholder">ราคา</string>
     <string name="addon_group_form_add_addon_button">เพิ่ม</string>
     <string name="addon_group_form_validation_required">กรุณากรอกข้อมูลให้ครบ</string>
+    <string name="addon_group_form_error_not_found">ไม่พบกลุ่ม Addon ที่ต้องการแก้ไข</string>
+    <string name="addon_group_form_validation_name_required">กรุณากรอกชื่อกลุ่ม Addon</string>
+    <string name="addon_group_form_validation_addons_required">กรุณาเลือก Addon อย่างน้อย 1 รายการ</string>
+    <string name="addon_group_form_error_duplicate_name">ชื่อกลุ่ม Addon นี้มีอยู่แล้ว</string>
+    <string name="addon_group_form_error_create">เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon</string>
+    <string name="addon_group_form_error_update">เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon</string>
+    <string name="addon_group_form_error_create_addon">เกิดข้อผิดพลาดในการสร้าง Addon</string>
+    <string name="addon_group_form_error_load_addons_with_reason">เกิดข้อผิดพลาดในการโหลด Addon: %1$s</string>
     
     <!-- Addon Management Screen -->
     <string name="addon_management_title">จัดการ Addon</string>
@@ -687,6 +713,13 @@
     <string name="addon_form_free_plan_limit_title">ถึงขีดจำกัด</string>
     <string name="addon_form_free_plan_limit_message">คุณถึงขีดจำกัดของแผนฟรีแล้ว กรุณาติดต่อเราเพื่ออัปเกรดแผน</string>
     <string name="addon_form_contact_us">ติดต่อเรา</string>
+    <string name="addon_form_validation_name_required">กรุณากรอกชื่อ Addon</string>
+    <string name="addon_form_validation_price_non_negative">ราคาต้องเป็นตัวเลขที่มากกว่าหรือเท่ากับ 0</string>
+    <string name="addon_form_validation_price_invalid">กรุณากรอกราคาเป็นตัวเลขที่ถูกต้อง</string>
+    <string name="addon_form_error_save_generic">เกิดข้อผิดพลาดในการบันทึก</string>
+    <string name="addon_form_error_duplicate_name">ชื่อ Addon นี้มีอยู่แล้ว</string>
+    <string name="addon_form_error_create_addon">เกิดข้อผิดพลาดในการสร้าง Addon</string>
+    <string name="addon_form_success_add_single">เพิ่ม Addon สำเร็จ</string>
     
     <!-- Printer Settings Screen -->
     <string name="printer_settings_title">ปรินเตอร์</string>

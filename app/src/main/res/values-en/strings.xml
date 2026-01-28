@@ -491,6 +491,9 @@
     <string name="product_error_duplicate_name">Product name already exists</string>
     <string name="product_error_duplicate_code">Product code already exists</string>
     <string name="product_form_error_edit_failed">Failed to update product</string>
+    <string name="product_form_error_load_not_found">Product to edit was not found</string>
+    <string name="product_form_error_load_with_reason">Failed to load data: %1$s</string>
+    <string name="product_form_error_unknown_reason">Unknown reason</string>
     
     <!-- Product Management Screen -->
     <string name="product_management_title">Product Management</string>
@@ -581,6 +584,21 @@
     <string name="product_form_add_category_message">Please enter category name</string>
     <string name="product_form_add_category_placeholder">Enter category name</string>
     <string name="product_form_addon_group_selected">Selected</string>
+    <string name="product_form_validation_name_required">Please enter product name</string>
+    <string name="product_form_validation_code_required">Please enter product code</string>
+    <string name="product_form_validation_selling_price_required">Please enter selling price</string>
+    <string name="product_form_validation_cost_price_greater_than_selling">Cost price must not be greater than selling price</string>
+    <string name="product_form_validation_unit_required">Please enter unit</string>
+    <string name="product_form_validation_category_required">Please select category</string>
+    <string name="product_form_validation_image_or_color_required">Please select an image or a color</string>
+    <string name="product_form_validation_color_required">Please select a color</string>
+    <string name="product_form_validation_addon_groups_required">Please select at least 1 AddOn Group</string>
+    <string name="product_form_validation_sku_required">Please enter SKU code</string>
+    <string name="product_form_validation_stock_quantity_required">Please enter stock quantity</string>
+    <string name="product_form_error_user_not_found">User not found. Please log in again.</string>
+    <string name="product_form_error_save_generic">An error occurred while saving</string>
+    <string name="product_form_loading_saving_product">Saving product...</string>
+    <string name="product_form_loading_uploading_image">Uploading image...</string>
     
     <!-- Addon Group Management Screen -->
     <string name="addon_group_management_title">Addon Group Management</string>
@@ -632,6 +650,14 @@
     <string name="addon_group_form_add_addon_price_placeholder">Price</string>
     <string name="addon_group_form_add_addon_button">Add</string>
     <string name="addon_group_form_validation_required">Please fill in all required fields</string>
+    <string name="addon_group_form_error_not_found">Addon group to edit was not found</string>
+    <string name="addon_group_form_validation_name_required">Please enter addon group name</string>
+    <string name="addon_group_form_validation_addons_required">Please select at least 1 addon</string>
+    <string name="addon_group_form_error_duplicate_name">This addon group name already exists</string>
+    <string name="addon_group_form_error_create">An error occurred while creating addon group</string>
+    <string name="addon_group_form_error_update">An error occurred while updating addon group</string>
+    <string name="addon_group_form_error_create_addon">An error occurred while creating addon</string>
+    <string name="addon_group_form_error_load_addons_with_reason">Failed to load addons: %1$s</string>
     
     <!-- Addon Management Screen -->
     <string name="addon_management_title">Addon Management</string>
@@ -668,6 +694,13 @@
     <string name="addon_form_free_plan_limit_title">Limit Reached</string>
     <string name="addon_form_free_plan_limit_message">You have reached the free plan limit. Please contact us to upgrade your plan.</string>
     <string name="addon_form_contact_us">Contact Us</string>
+    <string name="addon_form_validation_name_required">Please enter addon name</string>
+    <string name="addon_form_validation_price_non_negative">Price must be a number greater than or equal to 0</string>
+    <string name="addon_form_validation_price_invalid">Please enter a valid numeric price</string>
+    <string name="addon_form_error_save_generic">An error occurred while saving</string>
+    <string name="addon_form_error_duplicate_name">This addon name already exists</string>
+    <string name="addon_form_error_create_addon">An error occurred while creating addon</string>
+    <string name="addon_form_success_add_single">Addon added successfully</string>
     
     <!-- Stock Management Screen -->
     <string name="stock_management_title">Stock Management</string>
