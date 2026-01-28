@@ -205,6 +205,35 @@ fun GraphScreen(
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val context = LocalContext.current
         
+        // Initialize default dates (current month) when sheet opens and dates are null
+        LaunchedEffect(showCustomRangeSheet) {
+            if (customStartDateMillis == null || customEndDateMillis == null) {
+                val calendar = Calendar.getInstance()
+                // Set start date to first day of current month
+                val startCalendar = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                // Set end date to last day of current month
+                val endCalendar = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }
+                if (customStartDateMillis == null) {
+                    customStartDateMillis = startCalendar.timeInMillis
+                }
+                if (customEndDateMillis == null) {
+                    customEndDateMillis = endCalendar.timeInMillis
+                }
+            }
+        }
+        
         fun openDatePicker(isStart: Boolean) {
             val calendar = Calendar.getInstance()
             val currentMillis = if (isStart) customStartDateMillis else customEndDateMillis
