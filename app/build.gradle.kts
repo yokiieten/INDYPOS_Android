@@ -23,7 +23,7 @@ android {
         applicationId = "com.indybrain.indypos_Android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20
+        versionCode = 21
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -74,6 +74,12 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/INDEX.LIST"
             excludes += "/META-INF/DEPENDENCIES"
+        }
+    }
+    
+    bundle {
+        language {
+            enableSplit = false
         }
     }
     
