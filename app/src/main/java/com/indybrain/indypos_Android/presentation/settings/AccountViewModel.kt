@@ -2,7 +2,9 @@ package com.indybrain.indypos_Android.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.domain.model.Employee
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
+import com.indybrain.indypos_Android.domain.repository.EmployeeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +15,8 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class AccountViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val employeeRepository: EmployeeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AccountUiState())
@@ -21,6 +24,7 @@ class AccountViewModel @Inject constructor(
 
     init {
         observeUser()
+        loadEmployees()
     }
 
     private fun observeUser() {
@@ -47,12 +51,43 @@ class AccountViewModel @Inject constructor(
             }
         }
     }
+
+    fun loadEmployees() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingEmployees = true, employeesError = null) }
+
+            employeeRepository.getEmployees()
+                .onSuccess { employees ->
+                    _uiState.update {
+                        it.copy(
+                            employees = employees,
+                            isLoadingEmployees = false
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoadingEmployees = false,
+                            employeesError = error.message ?: "ไม่สามารถโหลดรายการพนักงานได้"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun clearEmployeesError() {
+        _uiState.update { it.copy(employeesError = null) }
+    }
 }
 
 data class AccountUiState(
     val displayName: String = "",
     val email: String = "",
-    val packageName: String = "Basic"
+    val packageName: String = "Basic",
+    val employees: List<Employee> = emptyList(),
+    val isLoadingEmployees: Boolean = false,
+    val employeesError: String? = null
 )
 
 

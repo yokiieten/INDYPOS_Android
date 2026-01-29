@@ -11,14 +11,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,177 +91,316 @@ fun AccountScreen(
             )
         }
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFEFF3F9)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.AccountCircle,
-                    contentDescription = null,
-                    tint = PrimaryText,
-                    modifier = Modifier.size(72.dp)
+            item {
+                // Avatar
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEFF3F9)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AccountCircle,
+                        contentDescription = null,
+                        tint = PrimaryText,
+                        modifier = Modifier.size(72.dp)
+                    )
+                }
+            }
+
+            item {
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Name
+                Text(
+                    text = uiState.displayName,
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Email
+                Text(
+                    text = uiState.email,
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Package row
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFFE5F0FF),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.account_package_label),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+
+                        Text(
+                            text = uiState.packageName,
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryText
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = stringResource(id = R.string.account_employee_section_title),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryText,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            item {
 
-            // Name
+                // Create Employee Card
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFFF5F5F7)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.PersonAdd,
+                                    contentDescription = null,
+                                    tint = PrimaryText,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 12.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.account_employee_section_action_title),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Medium,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = PrimaryText
+                                )
+                                Text(
+                                    text = stringResource(id = R.string.account_employee_section_action_desc),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Small
+                                    ),
+                                    color = SecondaryText
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = onCreateEmployeeClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PrimaryButton,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.account_employee_action_button),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Bold,
+                                    size = FontSize.Medium
+                                ),
+                                modifier = Modifier.padding(vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Employee List
+            if (uiState.isLoadingEmployees) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = PrimaryButton)
+                    }
+                }
+            } else if (uiState.employeesError != null) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xFFFFF3E0),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = uiState.employeesError ?: "",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color(0xFFE65100),
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+            } else if (uiState.employees.isNotEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            uiState.employees.forEachIndexed { index, employee ->
+                                EmployeeItem(employee = employee)
+                                if (index < uiState.employees.size - 1) {
+                                    Divider(
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        color = Color(0xFFF0F0F0)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmployeeItem(employee: com.indybrain.indypos_Android.domain.model.Employee) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFEFF3F9)),
+            contentAlignment = Alignment.Center
+        ) {
             Text(
-                text = uiState.displayName,
+                text = employee.firstName.firstOrNull()?.uppercase() ?: "?",
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
                 ),
                 color = PrimaryText
             )
+        }
 
-            Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
-            // Email
+        // Employee Info
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
             Text(
-                text = uiState.email,
+                text = "${employee.firstName} ${employee.lastName}",
                 style = FontUtils.mainFont(
-                    style = AppFontStyle.Regular,
-                    size = FontSize.Medium
-                ),
-                color = SecondaryText
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Package row
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFE5F0FF),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.account_package_label),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = PrimaryText
-                    )
-
-                    Text(
-                        text = uiState.packageName,
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Medium,
-                            size = FontSize.Medium
-                        ),
-                        color = PrimaryText
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = stringResource(id = R.string.account_employee_section_title),
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
+                    style = AppFontStyle.Medium,
                     size = FontSize.Medium
                 ),
                 color = PrimaryText,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.White,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFF5F5F7)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.PersonAdd,
-                                contentDescription = null,
-                                tint = PrimaryText,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(start = 12.dp)
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.account_employee_section_action_title),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Medium,
-                                    size = FontSize.Medium
-                                ),
-                                color = PrimaryText
-                            )
-                            Text(
-                                text = stringResource(id = R.string.account_employee_section_action_desc),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Small
-                                ),
-                                color = SecondaryText
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = onCreateEmployeeClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = PrimaryButton,
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.account_employee_action_button),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Bold,
-                                size = FontSize.Medium
-                            ),
-                            modifier = Modifier.padding(vertical = 6.dp)
-                        )
-                    }
-                }
+            Text(
+                text = employee.email,
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Small
+                ),
+                color = SecondaryText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (employee.roleName.isNotBlank()) {
+                Text(
+                    text = employee.roleName,
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = SecondaryText
+                )
             }
+        }
+
+        // Status Icon
+        if (employee.isActivated) {
+            Icon(
+                imageVector = Icons.Outlined.CheckCircle,
+                contentDescription = "Active",
+                tint = Color(0xFF4CAF50),
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }

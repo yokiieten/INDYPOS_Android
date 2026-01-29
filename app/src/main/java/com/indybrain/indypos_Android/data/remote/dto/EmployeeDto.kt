@@ -25,10 +25,16 @@ data class EmployeeDto(
     val email: String?,
     val phone: String?,
     val role: String?,
-    @SerializedName("owner_id")
-    val ownerId: Int?,
     @SerializedName("role_id")
     val roleId: Int?,
+    @SerializedName("role_name")
+    val roleName: String?,
+    @SerializedName("owner_id")
+    val ownerId: Int?,
+    @SerializedName("owner_name")
+    val ownerName: String?,
+    @SerializedName("owner_shop_name")
+    val ownerShopName: String?,
     @SerializedName("shop_name")
     val shopName: String?,
     @SerializedName("shop_description")

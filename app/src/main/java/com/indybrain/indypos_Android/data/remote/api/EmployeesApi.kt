@@ -4,6 +4,7 @@ import com.indybrain.indypos_Android.data.remote.dto.ApiResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.CreateEmployeeRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.EmployeeDto
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 
 /**
@@ -14,4 +15,7 @@ interface EmployeesApi {
     suspend fun createEmployee(
         @Body request: CreateEmployeeRequestDto
     ): ApiResponseDto<EmployeeDto>
+
+    @GET("protected/employees")
+    suspend fun getEmployees(): ApiResponseDto<List<EmployeeDto>>
 }
