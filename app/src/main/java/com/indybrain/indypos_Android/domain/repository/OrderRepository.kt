@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface OrderRepository {
     fun getOrders(): Flow<Result<List<OrderEntity>>>
+    /** One-shot get of all orders (e.g. after refresh to avoid race with order items). */
+    suspend fun getOrdersSync(): Result<List<OrderEntity>>
     suspend fun refreshOrders()
     
     /**
@@ -46,5 +48,11 @@ interface OrderRepository {
     suspend fun getOrderById(orderId: String): OrderEntity?
     suspend fun getOrderItems(orderId: String): List<OrderItemEntity>
     suspend fun updateOrderStatus(orderId: String, status: Int): Result<OrderEntity>
+
+    /**
+     * Top-selling product for today (by quantity).
+     * Returns (productName, quantity, amount) or null if no items today.
+     */
+    suspend fun getTodayTopProduct(): Triple<String, Int, Double>?
 }
 
