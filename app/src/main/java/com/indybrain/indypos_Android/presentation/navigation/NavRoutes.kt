@@ -36,9 +36,15 @@ sealed class NavRoutes(val route: String) {
     data object ReceiptSettings : NavRoutes("receipt_settings")
     data object PrinterSettings : NavRoutes("printer_settings")
     data object BluetoothPrinterScan : NavRoutes("bluetooth_printer_scan")
-    data object CreateEmployee : NavRoutes("create_employee")
+    data object AddEditEmployee : NavRoutes("add_edit_employee")
     
     companion object {
+        const val ADD_EDIT_EMPLOYEE_ROUTE = "add_edit_employee?employeeId={employeeId}"
+        fun addEditEmployee(employeeId: Int? = null) = if (employeeId != null) {
+            "add_edit_employee?employeeId=$employeeId"
+        } else {
+            "add_edit_employee"
+        }
         const val ADD_EDIT_PRODUCT_ROUTE = "add_edit_product/{productId}"
         fun addEditProduct(productId: String?) = if (productId != null) {
             "add_edit_product/$productId"

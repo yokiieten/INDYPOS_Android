@@ -53,6 +53,7 @@ import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.domain.model.CreateEmployeeRequest
+import com.indybrain.indypos_Android.domain.model.UpdateEmployeeRequest
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
@@ -63,10 +64,11 @@ private data class RoleOption(val id: Int, val label: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateEmployeeScreen(
+fun AddEditEmployeeScreen(
+    employeeId: Int? = null,
     onBackClick: () -> Unit = {},
     onCreateSuccess: () -> Unit = {},
-    viewModel: CreateEmployeeViewModel = hiltViewModel()
+    viewModel: AddEditEmployeeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -79,18 +81,47 @@ fun CreateEmployeeScreen(
     var isPasswordVisible by rememberSaveable { mutableStateOf(false) }
     var roleExpanded by remember { mutableStateOf(false) }
     var selectedRoleIndex by rememberSaveable { mutableStateOf(0) }
+    var hasLoadedEmployee by remember { mutableStateOf(false) }
+
+    // Load employee data when in edit mode
+    if (uiState.isEditMode && !hasLoadedEmployee) {
+        uiState.employee?.let { employee ->
+            username = employee.username
+            firstName = employee.firstName
+            lastName = employee.lastName
+            email = employee.email
+            phone = employee.phone
+            // Find matching role index
+            val roleOptions = listOf(
+                RoleOption(2, ""),
+                RoleOption(1, "")
+            )
+            selectedRoleIndex = roleOptions.indexOfFirst { it.id == employee.roleId }.coerceAtLeast(0)
+            hasLoadedEmployee = true
+        }
+    }
 
     val roleOptions = listOf(
         RoleOption(2, stringResource(id = R.string.create_employee_role_staff)),
         RoleOption(1, stringResource(id = R.string.create_employee_role_manager))
     )
     val selectedRole = roleOptions[selectedRoleIndex.coerceIn(roleOptions.indices)]
-    val isFormValid = username.isNotBlank() &&
+    
+    val isFormValid = if (uiState.isEditMode) {
+        // For edit mode, password is optional
+        firstName.isNotBlank() &&
+        lastName.isNotBlank() &&
+        email.isNotBlank() &&
+        phone.isNotBlank()
+    } else {
+        // For create mode, all fields including password required
+        username.isNotBlank() &&
         firstName.isNotBlank() &&
         lastName.isNotBlank() &&
         email.isNotBlank() &&
         phone.isNotBlank() &&
         password.isNotBlank()
+    }
 
     Scaffold(
         containerColor = BaseBackground,
@@ -98,7 +129,11 @@ fun CreateEmployeeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(id = R.string.create_employee_title),
+                        text = if (uiState.isEditMode) {
+                            "แก้ไขพนักงาน"
+                        } else {
+                            stringResource(id = R.string.create_employee_title)
+                        },
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -169,17 +204,21 @@ fun CreateEmployeeScreen(
                         value = username,
                         onValueChange = { username = it },
                         placeholder = stringResource(id = R.string.create_employee_username_placeholder),
-                        isRequired = true
+                        isRequired = true,
+                        enabled = !uiState.isEditMode
                     )
 
-                    PasswordField(
-                        label = stringResource(id = R.string.create_employee_password_label),
-                        value = password,
-                        onValueChange = { password = it },
-                        placeholder = stringResource(id = R.string.create_employee_password_placeholder),
-                        isPasswordVisible = isPasswordVisible,
-                        onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible }
-                    )
+                    // Password field only shown in create mode
+                    if (!uiState.isEditMode) {
+                        PasswordField(
+                            label = stringResource(id = R.string.create_employee_password_label),
+                            value = password,
+                            onValueChange = { password = it },
+                            placeholder = stringResource(id = R.string.create_employee_password_placeholder),
+                            isPasswordVisible = isPasswordVisible,
+                            onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible }
+                        )
+                    }
                 }
             }
 
@@ -317,17 +356,30 @@ fun CreateEmployeeScreen(
             Button(
                 onClick = {
                     if (isFormValid) {
-                        viewModel.createEmployee(
-                            CreateEmployeeRequest(
-                                username = username,
-                                firstName = firstName,
-                                lastName = lastName,
-                                email = email,
-                                phone = phone,
-                                password = password,
-                                roleId = selectedRole.id
+                        if (uiState.isEditMode) {
+                            viewModel.updateEmployee(
+                                UpdateEmployeeRequest(
+                                    firstName = firstName,
+                                    lastName = lastName,
+                                    email = email,
+                                    phone = phone,
+                                    roleId = selectedRole.id,
+                                    isActivated = true
+                                )
                             )
-                        )
+                        } else {
+                            viewModel.createEmployee(
+                                CreateEmployeeRequest(
+                                    username = username,
+                                    firstName = firstName,
+                                    lastName = lastName,
+                                    email = email,
+                                    phone = phone,
+                                    password = password,
+                                    roleId = selectedRole.id
+                                )
+                            )
+                        }
                     }
                 },
                 enabled = isFormValid && !uiState.isLoading,
@@ -341,7 +393,11 @@ fun CreateEmployeeScreen(
                 )
             ) {
                 Text(
-                    text = stringResource(id = R.string.create_employee_submit),
+                    text = if (uiState.isEditMode) {
+                        "บันทึกการแก้ไข"
+                    } else {
+                        stringResource(id = R.string.create_employee_submit)
+                    },
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Medium
@@ -394,19 +450,29 @@ fun CreateEmployeeScreen(
 
     if (uiState.showSuccessDialog) {
         AlertDialog(
-            onDismissRequest = { viewModel.dismissSuccess() },
+            onDismissRequest = { 
+                viewModel.dismissSuccess()
+                onBackClick()
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.dismissSuccess()
-                        username = ""
-                        firstName = ""
-                        lastName = ""
-                        email = ""
-                        phone = ""
-                        password = ""
-                        selectedRoleIndex = 0
-                        onCreateSuccess()
+                        if (uiState.isEditMode) {
+                            // For edit mode, just go back
+                            onBackClick()
+                        } else {
+                            // For create mode, clear form and call success callback
+                            username = ""
+                            firstName = ""
+                            lastName = ""
+                            email = ""
+                            phone = ""
+                            password = ""
+                            selectedRoleIndex = 0
+                            onCreateSuccess()
+                            onBackClick()
+                        }
                     }
                 ) {
                     Text(
@@ -431,7 +497,11 @@ fun CreateEmployeeScreen(
             },
             text = {
                 Text(
-                    text = stringResource(id = R.string.create_employee_success_message),
+                    text = if (uiState.isEditMode) {
+                        "แก้ไขข้อมูลพนักงานสำเร็จ"
+                    } else {
+                        stringResource(id = R.string.create_employee_success_message)
+                    },
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -476,7 +546,8 @@ private fun FormField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     isRequired: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Column(modifier = modifier) {
         if (isRequired) {
@@ -507,13 +578,16 @@ private fun FormField(
                 )
             },
             singleLine = true,
+            enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = PrimaryText,
                 unfocusedTextColor = PrimaryText,
+                disabledTextColor = SecondaryText,
                 focusedBorderColor = PrimaryButton,
                 unfocusedBorderColor = Color(0xFFE0E0E0),
+                disabledBorderColor = Color(0xFFE0E0E0),
                 focusedLabelColor = PrimaryText,
                 unfocusedLabelColor = PrimaryText
             ),

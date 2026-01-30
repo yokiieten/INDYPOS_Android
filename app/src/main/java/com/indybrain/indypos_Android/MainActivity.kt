@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
@@ -51,7 +52,7 @@ import com.indybrain.indypos_Android.presentation.products.ProductDetailScreen
 import com.indybrain.indypos_Android.presentation.products.SearchProductScreen
 import com.indybrain.indypos_Android.presentation.settings.LanguageSettingsScreen
 import com.indybrain.indypos_Android.presentation.settings.AccountScreen
-import com.indybrain.indypos_Android.presentation.settings.CreateEmployeeScreen
+import com.indybrain.indypos_Android.presentation.settings.AddEditEmployeeScreen
 import com.indybrain.indypos_Android.presentation.settings.ChangePasswordScreen
 import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.stockmanagement.StockManagementScreen
@@ -819,13 +820,29 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onCreateEmployeeClick = {
-                                    navController.navigate(NavRoutes.CreateEmployee.route)
+                                    navController.navigate(NavRoutes.addEditEmployee())
+                                },
+                                onEditEmployeeClick = { employeeId ->
+                                    navController.navigate(NavRoutes.addEditEmployee(employeeId))
                                 }
                             )
                         }
 
-                        composable(NavRoutes.CreateEmployee.route) {
-                            CreateEmployeeScreen(
+                        composable(
+                            route = NavRoutes.ADD_EDIT_EMPLOYEE_ROUTE,
+                            arguments = listOf(
+                                navArgument("employeeId") {
+                                    type = NavType.StringType
+                                    nullable = true
+                                    defaultValue = null
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val employeeIdString = backStackEntry.arguments?.getString("employeeId")
+                            val employeeId = employeeIdString?.toIntOrNull()
+                            
+                            AddEditEmployeeScreen(
+                                employeeId = employeeId,
                                 onBackClick = {
                                     navController.popBackStack()
                                 }

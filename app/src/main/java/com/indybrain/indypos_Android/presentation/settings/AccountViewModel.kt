@@ -24,7 +24,6 @@ class AccountViewModel @Inject constructor(
 
     init {
         observeUser()
-        loadEmployees()
     }
 
     private fun observeUser() {
@@ -79,6 +78,61 @@ class AccountViewModel @Inject constructor(
     fun clearEmployeesError() {
         _uiState.update { it.copy(employeesError = null) }
     }
+
+    fun selectEmployee(employee: Employee) {
+        _uiState.update { it.copy(selectedEmployee = employee, showEmployeeActionsSheet = true) }
+    }
+
+    fun dismissEmployeeActionsSheet() {
+        _uiState.update { it.copy(showEmployeeActionsSheet = false) }
+    }
+
+    fun showDeleteConfirmation() {
+        _uiState.update { 
+            it.copy(
+                showEmployeeActionsSheet = false, 
+                showDeleteConfirmation = true
+            ) 
+        }
+    }
+
+    fun dismissDeleteConfirmation() {
+        _uiState.update { it.copy(showDeleteConfirmation = false, selectedEmployee = null) }
+    }
+
+    fun deleteEmployee() {
+        val employeeId = _uiState.value.selectedEmployee?.id ?: return
+        
+        viewModelScope.launch {
+            _uiState.update { 
+                it.copy(
+                    isDeletingEmployee = true, 
+                    showDeleteConfirmation = false
+                ) 
+            }
+
+            employeeRepository.deleteEmployee(employeeId)
+                .onSuccess {
+                    _uiState.update { 
+                        it.copy(
+                            isDeletingEmployee = false,
+                            selectedEmployee = null
+                        )
+                    }
+                    // Reload employees after deletion
+                    loadEmployees()
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isDeletingEmployee = false,
+                            employeesError = error.message ?: "ไม่สามารถลบพนักงานได้",
+                            selectedEmployee = null
+                        )
+                    }
+                }
+        }
+    }
 }
 
 data class AccountUiState(
@@ -87,7 +141,11 @@ data class AccountUiState(
     val packageName: String = "Basic",
     val employees: List<Employee> = emptyList(),
     val isLoadingEmployees: Boolean = false,
-    val employeesError: String? = null
+    val employeesError: String? = null,
+    val selectedEmployee: Employee? = null,
+    val showEmployeeActionsSheet: Boolean = false,
+    val showDeleteConfirmation: Boolean = false,
+    val isDeletingEmployee: Boolean = false
 )
 
 

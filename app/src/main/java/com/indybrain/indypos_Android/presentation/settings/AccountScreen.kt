@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.presentation.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,21 +31,29 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
@@ -57,9 +69,25 @@ import com.indybrain.indypos_Android.ui.theme.SecondaryText
 fun AccountScreen(
     onBackClick: () -> Unit = {},
     onCreateEmployeeClick: () -> Unit = {},
+    onEditEmployeeClick: (Int) -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val sheetState = rememberModalBottomSheetState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Refresh employee list when screen resumes
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadEmployees()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         containerColor = BaseBackground,
@@ -313,7 +341,10 @@ fun AccountScreen(
                     ) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             uiState.employees.forEachIndexed { index, employee ->
-                                EmployeeItem(employee = employee)
+                                EmployeeItem(
+                                    employee = employee,
+                                    onClick = { viewModel.selectEmployee(employee) }
+                                )
                                 if (index < uiState.employees.size - 1) {
                                     Divider(
                                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -327,13 +358,181 @@ fun AccountScreen(
             }
         }
     }
+
+    // Employee Actions Bottom Sheet
+    if (uiState.showEmployeeActionsSheet && uiState.selectedEmployee != null) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.dismissEmployeeActionsSheet() },
+            sheetState = sheetState,
+            containerColor = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    text = "${uiState.selectedEmployee?.firstName} ${uiState.selectedEmployee?.lastName}",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                )
+
+                Divider(color = Color(0xFFF0F0F0))
+
+                // Edit Action
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            viewModel.dismissEmployeeActionsSheet()
+                            uiState.selectedEmployee?.let { onEditEmployeeClick(it.id) }
+                        }
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = null,
+                        tint = PrimaryButton,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "แก้ไขข้อมูล",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                }
+
+                Divider(color = Color(0xFFF0F0F0))
+
+                // Delete Action
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.showDeleteConfirmation() }
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = null,
+                        tint = Color(0xFFE53935),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "ลบพนักงาน",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = Color(0xFFE53935)
+                    )
+                }
+            }
+        }
+    }
+
+    // Delete Confirmation Dialog
+    if (uiState.showDeleteConfirmation && uiState.selectedEmployee != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissDeleteConfirmation() },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = Color(0xFFE53935),
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "ยืนยันการลบพนักงาน",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText,
+                    textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                Text(
+                    text = "คุณต้องการลบพนักงาน ${uiState.selectedEmployee?.firstName} ${uiState.selectedEmployee?.lastName} ใช่หรือไม่?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText,
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.deleteEmployee() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE53935),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    enabled = !uiState.isDeletingEmployee
+                ) {
+                    if (uiState.isDeletingEmployee) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "ลบ",
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Medium
+                            )
+                        )
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.dismissDeleteConfirmation() },
+                    enabled = !uiState.isDeletingEmployee
+                ) {
+                    Text(
+                        text = "ยกเลิก",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                }
+            },
+            containerColor = Color.White
+        )
+    }
 }
 
 @Composable
-private fun EmployeeItem(employee: com.indybrain.indypos_Android.domain.model.Employee) {
+private fun EmployeeItem(
+    employee: com.indybrain.indypos_Android.domain.model.Employee,
+    onClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
