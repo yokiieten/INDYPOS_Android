@@ -170,6 +170,32 @@ class ProductRepositoryImpl @Inject constructor(
                 }
             }
             
+            // Remove local items that are no longer in API (e.g. deleted on another device)
+            // Order: addons -> addon groups -> products -> categories (respect potential FK/cache)
+            val apiAddonIds = addonsMap.keys.toSet()
+            val existingAddonIds = addonDao.getAllAddons().map { it.id }.toSet()
+            (existingAddonIds - apiAddonIds).forEach { id ->
+                addonGroupAddonJunctionDao.deleteByAddonId(id)
+                addonDao.permanentlyDeleteAddon(id)
+            }
+            val apiAddonGroupIds = addonGroupsMap.keys.toSet()
+            val existingAddonGroupIds = addonGroupDao.getAllAddonGroups().map { it.id }.toSet()
+            (existingAddonGroupIds - apiAddonGroupIds).forEach { id ->
+                addonGroupAddonJunctionDao.deleteByAddonGroupId(id)
+                addonGroupDao.permanentlyDeleteAddonGroup(id)
+            }
+            val apiProductIds = productsList.map { it.id }.toSet()
+            val existingProductIds = productDao.getAllProducts().mapNotNull { it.id }.toSet()
+            (existingProductIds - apiProductIds).forEach { id ->
+                productAddonGroupJunctionDao.deleteByProductId(id)
+                productDao.deleteProductById(id)
+            }
+            val apiCategoryIdsFromSync = allCategoriesMap.keys.toSet()
+            val existingCategoryIdsFromSync = categoryDao.getAllCategories().map { it.id }.toSet()
+            (existingCategoryIdsFromSync - apiCategoryIdsFromSync).forEach { id ->
+                categoryDao.deleteCategoryById(id)
+            }
+            
             Result.success(Unit)
         } catch (e: HttpException) {
             val errorMessage = when (e.code()) {
@@ -346,6 +372,11 @@ class ProductRepositoryImpl @Inject constructor(
             if (apiCategories.isNotEmpty()) {
                 categoryDao.insertAll(apiCategories)
             }
+            
+            // Remove local categories that are no longer in API (e.g. deleted on another device)
+            val apiCategoryIds = apiCategories.map { it.id }.toSet()
+            val idsToRemove = existingCategoryIds - apiCategoryIds
+            idsToRemove.forEach { categoryDao.deleteCategoryById(it) }
             
             Result.success(Unit)
         } catch (e: HttpException) {

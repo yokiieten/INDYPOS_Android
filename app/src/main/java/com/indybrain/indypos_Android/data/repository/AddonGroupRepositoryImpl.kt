@@ -584,6 +584,13 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         }
                     }
                 }
+                // Remove local addon groups that are no longer in API (e.g. deleted on another device)
+                val apiAddonGroupIds = addonGroupsList.map { it.id }.toSet()
+                val existingAddonGroupIds = addonGroupDao.getAllAddonGroups().map { it.id }.toSet()
+                (existingAddonGroupIds - apiAddonGroupIds).forEach { id ->
+                    junctionDao.deleteByAddonGroupId(id)
+                    addonGroupDao.permanentlyDeleteAddonGroup(id)
+                }
                 Result.success(Unit)
             } else {
                 Result.failure(Exception(response.message ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"))

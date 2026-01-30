@@ -261,6 +261,13 @@ class AddonRepositoryImpl @Inject constructor(
                 // Use REPLACE strategy to update existing addons
                 addonDao.insertAll(addons)
             }
+            // Remove local addons that are no longer in API (e.g. deleted on another device)
+            val apiAddonIds = addonsList.map { it.id }.toSet()
+            val existingAddonIds = addonDao.getAllAddons().map { it.id }.toSet()
+            (existingAddonIds - apiAddonIds).forEach { id ->
+                addonGroupAddonJunctionDao.deleteByAddonId(id)
+                addonDao.permanentlyDeleteAddon(id)
+            }
             
             Result.success(Unit)
         } catch (e: HttpException) {
