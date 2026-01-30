@@ -549,21 +549,21 @@ private fun SummaryCardsSection(
             )
         }
         
-        // Middle row: Orders (full width)
+        // Middle row: ออเดอร์ตามช่วงเวลา (เหมือนเดิม) + ทั้งหมด
         SummaryCard(
-            title = ordersLabel,
-            value = "${summary.ordersToday} ${stringResource(id = R.string.home_orders_unit)}",
+            title = "$ordersLabel ${stringResource(id = R.string.order_filter_all)}",
+            value = "${summary.ordersToday + summary.cancelledOrders} ${stringResource(id = R.string.home_orders_unit)}",
             valueColor = GreenComplete,
             modifier = Modifier.fillMaxWidth()
         )
         
-        // Bottom row: Orders and Cancelled Orders
+        // Bottom row: ออเดอร์สำเร็จ (กรองแค่สำเร็จตามช่วง) และ ออเดอร์ยกเลิก
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             SummaryCard(
-                title = ordersLabel,
+                title = stringResource(id = R.string.graph_orders_success),
                 value = "${summary.ordersToday} ${stringResource(id = R.string.home_orders_unit)}",
                 valueColor = GreenComplete,
                 modifier = Modifier.weight(1f)

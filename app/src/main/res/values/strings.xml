@@ -173,6 +173,8 @@
     <string name="graph_orders_week">ออเดอร์ 1 สัปดาห์</string>
     <string name="graph_orders_month">ออเดอร์ 1 เดือน</string>
     <string name="graph_orders_period">ออเดอร์ช่วงที่เลือก</string>
+    <string name="graph_orders_period_all">ออเดอร์ตามช่วงเวลาทั้งหมด</string>
+    <string name="graph_orders_success">ออเดอร์สำเร็จ</string>
     <string name="graph_cancelled_orders">ออเดอร์ยกเลิก</string>
     <string name="graph_chart_title">กราฟ</string>
     <string name="graph_total_sales">ผลรวมการขาย</string>

@@ -160,6 +160,8 @@
     <string name="graph_orders_week">1 Week Orders</string>
     <string name="graph_orders_month">1 Month Orders</string>
     <string name="graph_orders_period">Selected Period Orders</string>
+    <string name="graph_orders_period_all">All Orders in Period</string>
+    <string name="graph_orders_success">Successful Orders</string>
     <string name="graph_cancelled_orders">Cancelled Orders</string>
     <string name="graph_chart_title">Chart</string>
     <string name="graph_total_sales">Total Sales</string>
