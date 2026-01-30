@@ -240,15 +240,15 @@ class GraphViewModel @Inject constructor(
         
         val topProducts = productMap
             .entries
-            .sortedByDescending { it.value.amount }
+            .sortedByDescending { it.value.quantity }
             .take(3)
         
-        val maxAmount = topProducts.maxOfOrNull { it.value.amount } ?: 1.0
+        val maxQuantity = topProducts.maxOfOrNull { it.value.quantity } ?: 1
         val productStats = topProducts.map { (_, agg) ->
             ProductStatsData(
                 name = agg.name,
                 amount = agg.amount,
-                progress = (agg.amount / maxAmount).coerceIn(0.0, 1.0)
+                progress = (agg.quantity.toDouble() / maxQuantity).coerceIn(0.0, 1.0)
             )
         }
         
@@ -438,15 +438,15 @@ class GraphViewModel @Inject constructor(
         
         val topProducts = productMap
             .entries
-            .sortedByDescending { it.value.amount }
+            .sortedByDescending { it.value.quantity }
             .take(3)
         
-        val maxAmount = topProducts.maxOfOrNull { it.value.amount } ?: 1.0
+        val maxQuantity = topProducts.maxOfOrNull { it.value.quantity } ?: 1
         val productStats = topProducts.map { (_, agg) ->
             ProductStatsData(
                 name = agg.name,
                 amount = agg.amount,
-                progress = (agg.amount / maxAmount).coerceIn(0.0, 1.0)
+                progress = (agg.quantity.toDouble() / maxQuantity).coerceIn(0.0, 1.0)
             )
         }
         
@@ -621,15 +621,15 @@ class GraphViewModel @Inject constructor(
         
         val topProducts = productMap
             .entries
-            .sortedByDescending { it.value.amount }
+            .sortedByDescending { it.value.quantity }
             .take(3)
         
-        val maxAmount = topProducts.maxOfOrNull { it.value.amount } ?: 1.0
+        val maxQuantity = topProducts.maxOfOrNull { it.value.quantity } ?: 1
         val productStats = topProducts.map { (_, agg) ->
             ProductStatsData(
                 name = agg.name,
                 amount = agg.amount,
-                progress = (agg.amount / maxAmount).coerceIn(0.0, 1.0)
+                progress = (agg.quantity.toDouble() / maxQuantity).coerceIn(0.0, 1.0)
             )
         }
         
@@ -794,15 +794,15 @@ class GraphViewModel @Inject constructor(
         
         val topProducts = productMap
             .entries
-            .sortedByDescending { it.value.amount }
+            .sortedByDescending { it.value.quantity }
             .take(3)
         
-        val maxAmount = topProducts.maxOfOrNull { it.value.amount } ?: 1.0
+        val maxQuantity = topProducts.maxOfOrNull { it.value.quantity } ?: 1
         val productStats = topProducts.map { (_, agg) ->
             ProductStatsData(
                 name = agg.name,
                 amount = agg.amount,
-                progress = (agg.amount / maxAmount).coerceIn(0.0, 1.0)
+                progress = (agg.quantity.toDouble() / maxQuantity).coerceIn(0.0, 1.0)
             )
         }
         
