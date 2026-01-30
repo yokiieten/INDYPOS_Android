@@ -105,7 +105,7 @@ fun OrderProductScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "ออเดอร์",
+                        text = stringResource(R.string.order_product_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -277,7 +277,7 @@ fun OrderProductScreen(
             },
             text = {
                 Text(
-                    text = "ต้องการลบสินค้าออกจากออเดอร์ทั้งหมดหรือไม่?",
+                    text = stringResource(R.string.order_product_clear_all_confirm),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

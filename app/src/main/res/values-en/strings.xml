@@ -375,7 +375,8 @@
     <string name="addon_group_max_selection_zero_error">Maximum selection must be greater than 0</string>
 
     <!-- Order Product / Cart -->
-    <string name="order_product_my_order">My Order</string>
+    <string name="order_product_title">Shopping Cart</string>
+    <string name="order_product_my_order">My Cart</string>
     <string name="order_product_add_menu">Add menu</string>
     <string name="order_product_order_now">Order Now</string>
     <string name="order_product_payment_type">Payment Type</string>
@@ -387,9 +388,10 @@
     <string name="order_product_total">Total</string>
     <string name="order_product_delete">Delete</string>
     <string name="order_product_discount_applied">Applied discount %1$s (Save ฿%2$s)</string>
-    <string name="order_product_empty_cart">Your cart is empty\nAdd items to start your order</string>
+    <string name="order_product_empty_cart">Your cart is empty\nAdd items to your cart to get started</string>
     <string name="order_product_add_product">Add Products</string>
     <string name="order_product_clear_all">Clear All</string>
+    <string name="order_product_clear_all_confirm">Remove all items from your cart?</string>
     <string name="order_product_checkout">Checkout</string>
     
     <!-- Barcode Scanner Screen -->

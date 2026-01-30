@@ -389,7 +389,8 @@
     <string name="addon_group_max_selection_zero_error">เลือกได้สูงสุดต้องมากกว่า 0</string>
     
     <!-- Order Product / Cart -->
-    <string name="order_product_my_order">ออเดอร์ของฉัน</string>
+    <string name="order_product_title">ตะกร้าสินค้า</string>
+    <string name="order_product_my_order">ตะกร้าสินค้าของฉัน</string>
     <string name="order_product_add_menu">เพิ่มเมนู</string>
     <string name="order_product_order_now">สั่งสินค้า</string>
     <string name="order_product_payment_type">ประเภทการจ่ายเงิน</string>
@@ -401,9 +402,10 @@
     <string name="order_product_total">ยอดรวมทั้งสิ้น</string>
     <string name="order_product_delete">ลบ</string>
     <string name="order_product_discount_applied">ใช้ส่วนลด %1$s (ประหยัด ฿%2$s)</string>
-    <string name="order_product_empty_cart">ตะกร้าสินค้าว่าง\nเพิ่มสินค้าลงตะกร้าเพื่อเริ่มต้นออเดอร์</string>
+    <string name="order_product_empty_cart">ตะกร้าสินค้าว่าง\nเพิ่มสินค้าลงตะกร้าเพื่อเริ่มต้น</string>
     <string name="order_product_add_product">เพิ่มสินค้า</string>
     <string name="order_product_clear_all">ลบทั้งหมด</string>
+    <string name="order_product_clear_all_confirm">ต้องการลบสินค้าออกจากตะกร้าสินค้าทั้งหมดหรือไม่?</string>
     <string name="order_product_checkout">ชำระเงิน</string>
     
     <!-- Search Product Screen -->
