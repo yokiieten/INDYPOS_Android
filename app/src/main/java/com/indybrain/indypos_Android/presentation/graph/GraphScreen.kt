@@ -72,6 +72,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.config.AppConfig
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -267,6 +268,9 @@ fun GraphScreen(
             onDismissRequest = { showCustomRangeSheet = false },
             sheetState = sheetState
         ) {
+            val context = LocalContext.current
+            val locale = LocaleHelper.getCurrentLocale(context)
+            val buddhistEraLabel = stringResource(id = R.string.graph_date_buddhist_era)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -348,7 +352,7 @@ fun GraphScreen(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
-                            text = formatCustomDate(customStartDateMillis),
+                            text = formatCustomDate(customStartDateMillis, locale, buddhistEraLabel),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -375,7 +379,7 @@ fun GraphScreen(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
-                            text = formatCustomDate(customEndDateMillis),
+                            text = formatCustomDate(customEndDateMillis, locale, buddhistEraLabel),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -480,22 +484,24 @@ private fun TimePeriodSelector(
     }
 }
 
-private fun formatCustomDate(millis: Long?): String {
+private fun formatCustomDate(millis: Long?, locale: Locale, buddhistEraLabel: String): String {
     if (millis == null) return ""
     val calendar = Calendar.getInstance().apply {
         timeInMillis = millis
     }
     val day = calendar.get(Calendar.DAY_OF_MONTH)
-    val monthFormat = SimpleDateFormat("MMM", Locale.ENGLISH)
+    val monthFormat = SimpleDateFormat("MMM", locale)
     val monthStr = monthFormat.format(calendar.time)
     val yearBE = calendar.get(Calendar.YEAR) + 543
-    return String.format("%02d %s BE %d", day, monthStr, yearBE)
+    return String.format("%02d %s %s %d", day, monthStr, buddhistEraLabel, yearBE)
 }
 
 @Composable
 private fun formatCustomRange(startMillis: Long?, endMillis: Long?): String {
     if (startMillis == null || endMillis == null) return stringResource(id = TimePeriod.Custom.stringResId)
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val context = LocalContext.current
+    val locale = LocaleHelper.getCurrentLocale(context)
+    val sdf = SimpleDateFormat("dd/MM/yyyy", locale)
     val start = java.util.Date(minOf(startMillis, endMillis))
     val end = java.util.Date(maxOf(startMillis, endMillis))
     return "${sdf.format(start)} - ${sdf.format(end)}"
