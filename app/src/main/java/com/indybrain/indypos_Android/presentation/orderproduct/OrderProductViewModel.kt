@@ -552,6 +552,9 @@ class OrderProductViewModel @Inject constructor(
             
             // 2. Check if label printer is enabled and print stickers
             if (labelPrinterSettings?.enabled == true) {
+                android.util.Log.d("OrderProductViewModel", "📝 Label printer enabled - starting sticker printing")
+                android.util.Log.d("OrderProductViewModel", "   Items: ${cartItems.size}, Shop: $shopName")
+                
                 // Print labels for each item based on quantity
                 val printSuccess = labelPrinterService.printLabels(
                     cartItems = cartItems,
@@ -559,10 +562,13 @@ class OrderProductViewModel @Inject constructor(
                     shopName = shopName
                 )
                 
-                if (!printSuccess) {
-                    // Log error but don't fail the order
-                    android.util.Log.e("OrderProductViewModel", "Failed to print some labels")
+                if (printSuccess) {
+                    android.util.Log.d("OrderProductViewModel", "✅ All stickers printed successfully")
+                } else {
+                    android.util.Log.e("OrderProductViewModel", "⚠️ Some stickers failed to print (order still completed)")
                 }
+            } else {
+                android.util.Log.d("OrderProductViewModel", "ℹ️ Label printer disabled - skipping sticker printing")
             }
         } catch (e: Exception) {
             e.printStackTrace()

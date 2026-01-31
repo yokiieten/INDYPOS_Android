@@ -516,6 +516,9 @@ class CashPaymentViewModel @Inject constructor(
                 
                 // 2. Check if label printer is enabled and print stickers
                 if (labelPrinterSettings?.enabled == true) {
+                    android.util.Log.d("CashPaymentViewModel", "📝 Label printer enabled - starting sticker printing")
+                    android.util.Log.d("CashPaymentViewModel", "   Items: ${cartItems.size}, Shop: $shopName")
+                    
                     // Print labels for each item based on quantity
                     val printSuccess = labelPrinterService.printLabels(
                         cartItems = cartItems,
@@ -523,10 +526,13 @@ class CashPaymentViewModel @Inject constructor(
                         shopName = shopName
                     )
                     
-                    if (!printSuccess) {
-                        // Log error but don't fail the order
-                        android.util.Log.e("CashPaymentViewModel", "Failed to print some labels")
+                    if (printSuccess) {
+                        android.util.Log.d("CashPaymentViewModel", "✅ All stickers printed successfully")
+                    } else {
+                        android.util.Log.e("CashPaymentViewModel", "⚠️ Some stickers failed to print (order still completed)")
                     }
+                } else {
+                    android.util.Log.d("CashPaymentViewModel", "ℹ️ Label printer disabled - skipping sticker printing")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

@@ -11,6 +11,9 @@ import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import net.posprinter.POSPrinter
 import net.posprinter.POSConst
+import net.posprinter.TSPLPrinter
+import net.posprinter.TSPLConst
+import net.posprinter.model.AlgorithmType
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,19 +30,26 @@ class LabelPrinterService @Inject constructor(
     
     companion object {
         // Label size constants (in mm)
-        private const val LABEL_WIDTH = 40  // 40mm width
-        private const val LABEL_HEIGHT = 30 // 30mm height
+        private const val LABEL_WIDTH = 40.0  // 40mm width
+        private const val LABEL_HEIGHT = 30.0 // 30mm height
         
-        // DPI for XP 420B (203 DPI)
+        // DPI for XP 420B and similar TSPL printers (203 DPI)
         private const val DPI = 203
         
-        // Convert mm to dots
-        private fun mmToDots(mm: Int): Int = (mm * DPI) / 25
+        // Gap between labels (in mm)
+        private const val LABEL_GAP = 3.0
+        
+        // Printer settings
+        private const val PRINT_DENSITY = 8  // 0-15, 8 is medium (default)
+        private const val PRINT_SPEED = 4.0  // Speed in inches per second
+        
+        // Convert mm to dots (1 inch = 25.4mm)
+        private fun mmToDots(mm: Double): Int = (mm * DPI / 25.4).toInt()
     }
     
     /**
      * Print label for a single cart item
-     * Uses BITMAP method to support Thai language
+     * Uses TSPLPrinter API with BITMAP method to support Thai language
      * Format:
      * - Shop name
      * - Product name (bold, large)
@@ -54,33 +64,42 @@ class LabelPrinterService @Inject constructor(
     ): Boolean {
         val connection = printerManager.getCurrentConnection(PrinterType.LABEL)
         if (connection?.isConnect != true) {
-            android.util.Log.e("LabelPrinter", "Printer not connected")
+            android.util.Log.e("LabelPrinter", "❌ Printer not connected")
             return false
         }
         
         return try {
-            val posPrinter = POSPrinter(connection)
+            android.util.Log.d("LabelPrinter", "📄 Preparing label: ${cartItem.productName}")
+            
+            // Use TSPLPrinter API from SDK
+            val tsplPrinter = TSPLPrinter(connection)
             
             // Create bitmap with Thai text
             val bitmap = createLabelBitmap(cartItem, addons, shopName)
             
-            android.util.Log.d("LabelPrinter", "Printing label for: ${cartItem.productName}")
-            android.util.Log.d("LabelPrinter", "Bitmap size: ${bitmap.width}x${bitmap.height}")
+            android.util.Log.d("LabelPrinter", "  Bitmap: ${bitmap.width}x${bitmap.height}px")
+            android.util.Log.d("LabelPrinter", "  Addons: ${addons.size}, Special: ${!cartItem.specialRequest.isNullOrEmpty()}")
             
-            // Convert bitmap to TSPL BITMAP command manually
-            val tsplCommands = buildTSPLCommandsWithBitmap(bitmap)
+            // Configure and print using TSPLPrinter API
+            tsplPrinter
+                .sizeMm(LABEL_WIDTH, LABEL_HEIGHT)  // Set label size to 40x30mm
+                .gapMm(LABEL_GAP, 0.0)              // Set gap between labels (3mm gap, 0mm offset)
+                .direction(TSPLConst.DIRECTION_FORWARD, false)  // Direction: forward, no mirror
+                .reference(0, 0)                    // Set reference point to (0,0)
+                .cls()                              // Clear image buffer
+                .density(PRINT_DENSITY)             // Set print darkness (0-15, 8 is medium)
+                .speed(PRINT_SPEED)                 // Set print speed (4 ips)
+                .bitmap(0, 0, TSPLConst.BMP_MODE_OVERWRITE, mmToDots(LABEL_WIDTH), bitmap, AlgorithmType.Threshold)
+                .print(1)                           // Print 1 copy
             
-            android.util.Log.d("LabelPrinter", "TSPL commands length: ${tsplCommands.length} bytes")
-            
-            // Send all TSPL commands as one string
-            posPrinter.printString(tsplCommands)
+            android.util.Log.d("LabelPrinter", "  ✓ Print command sent successfully")
             
             // Clean up
             bitmap.recycle()
             
             true
         } catch (e: Exception) {
-            android.util.Log.e("LabelPrinter", "Error printing label", e)
+            android.util.Log.e("LabelPrinter", "❌ Error printing label: ${cartItem.productName}", e)
             e.printStackTrace()
             false
         }
@@ -89,6 +108,7 @@ class LabelPrinterService @Inject constructor(
     /**
      * Create bitmap for label with Thai language support
      * Uses Android Canvas to render Thai text properly
+     * Size: 40x30mm (approximately 315x236 pixels at 203 DPI)
      */
     private fun createLabelBitmap(
         cartItem: CartItemEntity,
@@ -98,7 +118,7 @@ class LabelPrinterService @Inject constructor(
         val widthPixels = mmToDots(LABEL_WIDTH)
         val heightPixels = mmToDots(LABEL_HEIGHT)
         
-        android.util.Log.d("LabelPrinter", "Creating label bitmap ${widthPixels}x${heightPixels}px")
+        android.util.Log.d("LabelPrinter", "Creating label bitmap ${widthPixels}x${heightPixels}px (40x30mm)")
         android.util.Log.d("LabelPrinter", "Product: ${cartItem.productName}, Qty: ${cartItem.quantity}")
         
         val bitmap = Bitmap.createBitmap(widthPixels, heightPixels, Bitmap.Config.ARGB_8888)
@@ -113,39 +133,55 @@ class LabelPrinterService @Inject constructor(
             color = Color.BLACK
             // Use SANS_SERIF for better Thai font support
             typeface = Typeface.SANS_SERIF
+            flags = 0  // Clear all flags
+            isUnderlineText = false  // Explicitly disable underline
+            isStrikeThruText = false  // Explicitly disable strikethrough
+            style = Paint.Style.FILL  // Use fill style for text
         }
         
-        val margin = 15f
-        var yPosition = 25f
+        val margin = 10f
+        var yPosition = 22f
         val maxWidth = widthPixels - (margin * 2)
         
         // Shop name (small)
-        paint.textSize = 20f
+        paint.textSize = 18f
         paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+        paint.flags = 0  // Reset flags
+        paint.isUnderlineText = false
+        paint.isStrikeThruText = false
+        paint.style = Paint.Style.FILL  // Ensure fill style
         drawTextWithWrap(canvas, shopName, margin, yPosition, maxWidth, paint)
-        yPosition += 30f
-        
-        // Separator line
-        paint.strokeWidth = 2f
-        canvas.drawLine(margin, yPosition, widthPixels - margin, yPosition, paint)
-        yPosition += 15f
+        yPosition += 30f  // ลบเส้นแบ่งออก เพิ่มระยะห่างแทน
         
         // Product name (large, bold) - รองรับภาษาไทย
-        paint.textSize = 36f
+        paint.textSize = 34f
         paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+        paint.flags = 0  // Reset all paint flags
+        paint.isUnderlineText = false  // Explicitly disable underline
+        paint.isStrikeThruText = false  // Explicitly disable strikethrough
+        paint.style = Paint.Style.FILL  // Ensure fill style
         val productName = cartItem.productName ?: "Unknown"
         val productHeight = drawTextWithWrap(canvas, productName, margin, yPosition, maxWidth, paint)
-        yPosition += productHeight + 10f
+        yPosition += productHeight + 8f
         
         // Quantity (medium)
-        paint.textSize = 28f
+        paint.textSize = 26f
         paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+        paint.flags = 0  // Reset flags
+        paint.isUnderlineText = false
+        paint.isStrikeThruText = false
+        paint.style = Paint.Style.FILL
         canvas.drawText("จำนวน: ${cartItem.quantity}", margin, yPosition, paint)
-        yPosition += 35f
+        yPosition += 32f
         
         // Addons (small) - รองรับภาษาไทย
         if (addons.isNotEmpty()) {
-            paint.textSize = 22f
+            paint.textSize = 20f
+            paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+            paint.flags = 0  // Reset flags
+            paint.isUnderlineText = false
+            paint.isStrikeThruText = false
+            paint.style = Paint.Style.FILL
             val addonCounts = addons.groupBy { it.addonName }
                 .mapValues { (_, list) -> list.size }
             val addonTexts = addonCounts.map { (name, count) ->
@@ -158,8 +194,12 @@ class LabelPrinterService @Inject constructor(
         
         // Special request - รองรับภาษาไทย
         if (!cartItem.specialRequest.isNullOrEmpty()) {
-            paint.textSize = 20f
+            paint.textSize = 18f
             paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.ITALIC)
+            paint.flags = 0  // Reset flags
+            paint.isUnderlineText = false
+            paint.isStrikeThruText = false
+            paint.style = Paint.Style.FILL
             val noteText = "หมายเหตุ: ${cartItem.specialRequest}"
             drawTextWithWrap(canvas, noteText, margin, yPosition, maxWidth, paint)
         }
@@ -169,6 +209,7 @@ class LabelPrinterService @Inject constructor(
     
     /**
      * Draw text with word wrap support for long text
+     * Supports Thai language and mixed Thai-English text
      * Returns the total height used
      */
     private fun drawTextWithWrap(
@@ -179,19 +220,54 @@ class LabelPrinterService @Inject constructor(
         maxWidth: Float,
         paint: Paint
     ): Float {
+        if (text.isEmpty()) return 0f
+        
         var currentY = y
-        val words = text.split(" ")
+        val lineSpacing = 5f
+        
+        // Split by spaces first (for English words)
+        val segments = text.split(" ")
         var currentLine = ""
         
-        for (word in words) {
-            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+        for (segment in segments) {
+            val testLine = if (currentLine.isEmpty()) segment else "$currentLine $segment"
             val textWidth = paint.measureText(testLine)
             
-            if (textWidth > maxWidth && currentLine.isNotEmpty()) {
-                // Draw current line and move to next
-                canvas.drawText(currentLine, x, currentY, paint)
-                currentY += paint.textSize + 5f
-                currentLine = word
+            if (textWidth > maxWidth) {
+                if (currentLine.isNotEmpty()) {
+                    // Draw current line
+                    canvas.drawText(currentLine, x, currentY, paint)
+                    currentY += paint.textSize + lineSpacing
+                    currentLine = segment
+                    
+                    // Check if even the single segment is too long
+                    if (paint.measureText(segment) > maxWidth) {
+                        // Break segment character by character
+                        currentLine = ""
+                        for (char in segment) {
+                            val testChar = currentLine + char
+                            if (paint.measureText(testChar) > maxWidth && currentLine.isNotEmpty()) {
+                                canvas.drawText(currentLine, x, currentY, paint)
+                                currentY += paint.textSize + lineSpacing
+                                currentLine = char.toString()
+                            } else {
+                                currentLine = testChar
+                            }
+                        }
+                    }
+                } else {
+                    // First segment is too long, break it character by character
+                    for (char in segment) {
+                        val testChar = currentLine + char
+                        if (paint.measureText(testChar) > maxWidth && currentLine.isNotEmpty()) {
+                            canvas.drawText(currentLine, x, currentY, paint)
+                            currentY += paint.textSize + lineSpacing
+                            currentLine = char.toString()
+                        } else {
+                            currentLine = testChar
+                        }
+                    }
+                }
             } else {
                 currentLine = testLine
             }
@@ -210,25 +286,42 @@ class LabelPrinterService @Inject constructor(
     /**
      * Print labels for multiple cart items
      * Prints one label per item based on quantity
+     * Uses TSPLPrinter API for reliable printing
      */
     fun printLabels(
         cartItems: List<CartItemEntity>,
         cartAddonsMap: Map<String, List<CartAddonEntity>>,
         shopName: String
     ): Boolean {
+        android.util.Log.d("LabelPrinter", "=== Starting batch label printing ===")
+        android.util.Log.d("LabelPrinter", "Total cart items: ${cartItems.size}")
+        android.util.Log.d("LabelPrinter", "Shop name: $shopName")
+        
         var allSuccess = true
+        var totalLabels = 0
+        var successCount = 0
         
         cartItems.forEach { cartItem ->
             val addons = cartAddonsMap[cartItem.id] ?: emptyList()
+            val quantity = cartItem.quantity
+            totalLabels += quantity
+            
+            android.util.Log.d("LabelPrinter", "Printing ${quantity}x labels for: ${cartItem.productName}")
             
             // Print label for each quantity
-            repeat(cartItem.quantity) {
+            repeat(quantity) { index ->
                 val success = printLabel(cartItem, addons, shopName)
-                if (!success) {
+                if (success) {
+                    successCount++
+                    android.util.Log.d("LabelPrinter", "  ✓ Label ${index + 1}/${quantity} printed")
+                } else {
                     allSuccess = false
+                    android.util.Log.e("LabelPrinter", "  ✗ Label ${index + 1}/${quantity} failed")
                 }
             }
         }
+        
+        android.util.Log.d("LabelPrinter", "=== Batch printing completed: $successCount/$totalLabels successful ===")
         
         return allSuccess
     }
@@ -236,7 +329,7 @@ class LabelPrinterService @Inject constructor(
     
     /**
      * Test print - print a test label with Thai language support
-     * Uses BITMAP method to ensure Thai text displays correctly
+     * Uses TSPLPrinter API with BITMAP method to ensure Thai text displays correctly
      */
     fun testPrint(shopName: String): Boolean {
         val connection = printerManager.getCurrentConnection(PrinterType.LABEL)
@@ -246,7 +339,8 @@ class LabelPrinterService @Inject constructor(
         }
         
         return try {
-            val posPrinter = POSPrinter(connection)
+            // Use TSPLPrinter API from SDK instead of manual commands
+            val tsplPrinter = TSPLPrinter(connection)
             
             // Create test label bitmap with Thai text
             val bitmap = createTestLabelBitmap(shopName)
@@ -254,13 +348,17 @@ class LabelPrinterService @Inject constructor(
             android.util.Log.d("LabelPrinter", "Sending test print...")
             android.util.Log.d("LabelPrinter", "Bitmap size: ${bitmap.width}x${bitmap.height}")
             
-            // Convert bitmap to complete TSPL commands
-            val tsplCommands = buildTSPLCommandsWithBitmap(bitmap)
-            
-            android.util.Log.d("LabelPrinter", "TSPL commands length: ${tsplCommands.length} bytes")
-            
-            // Send all TSPL commands as one string
-            posPrinter.printString(tsplCommands)
+            // Configure and print using TSPLPrinter API
+            tsplPrinter
+                .sizeMm(LABEL_WIDTH, LABEL_HEIGHT)  // Set label size to 40x30mm
+                .gapMm(LABEL_GAP, 0.0)              // Set gap between labels (3mm gap, 0mm offset)
+                .direction(TSPLConst.DIRECTION_FORWARD, false)  // Direction: forward, no mirror
+                .reference(0, 0)                    // Set reference point to (0,0)
+                .cls()                              // Clear image buffer
+                .density(PRINT_DENSITY)             // Set print darkness (0-15, 8 is medium)
+                .speed(PRINT_SPEED)                 // Set print speed (4 ips)
+                .bitmap(0, 0, TSPLConst.BMP_MODE_OVERWRITE, mmToDots(LABEL_WIDTH), bitmap, AlgorithmType.Threshold)
+                .print(1)                           // Print 1 copy
             
             android.util.Log.d("LabelPrinter", "Test print completed successfully")
             
@@ -276,75 +374,17 @@ class LabelPrinterService @Inject constructor(
     }
     
     /**
-     * Build complete TSPL commands with embedded bitmap
-     * This is the most basic and reliable method
-     */
-    private fun buildTSPLCommandsWithBitmap(bitmap: Bitmap): String {
-        val width = bitmap.width
-        val height = bitmap.height
-        val widthBytes = (width + 7) / 8 // Round up to nearest byte
-        
-        android.util.Log.d("LabelPrinter", "Converting bitmap: ${width}x${height}, widthBytes=$widthBytes")
-        
-        // Convert bitmap to monochrome byte array
-        val bitmapData = StringBuilder()
-        
-        for (y in 0 until height) {
-            for (xByte in 0 until widthBytes) {
-                var byteValue = 0
-                for (bit in 0 until 8) {
-                    val x = xByte * 8 + bit
-                    if (x < width) {
-                        val pixel = bitmap.getPixel(x, y)
-                        val r = Color.red(pixel)
-                        val g = Color.green(pixel)
-                        val b = Color.blue(pixel)
-                        
-                        // Calculate brightness (0-255)
-                        val brightness = (r + g + b) / 3
-                        
-                        // If dark (less than 128), set bit to 1
-                        if (brightness < 128) {
-                            byteValue = byteValue or (0x80 shr bit)
-                        }
-                    }
-                }
-                bitmapData.append(String.format("%02X", byteValue))
-            }
-        }
-        
-        android.util.Log.d("LabelPrinter", "Bitmap data hex length: ${bitmapData.length}")
-        
-        // Build complete TSPL command
-        return buildString {
-            // Setup commands
-            append("SIZE $LABEL_WIDTH mm,$LABEL_HEIGHT mm\r\n")
-            append("GAP 3 mm,0 mm\r\n")
-            append("DIRECTION 1,0\r\n")
-            append("REFERENCE 0,0\r\n")
-            append("OFFSET 0 mm\r\n")
-            append("SET TEAR ON\r\n")
-            append("CLS\r\n")
-            
-            // BITMAP command
-            // Format: BITMAP x, y, width_bytes, height, mode, bitmap_data
-            // mode 0 = OVERWRITE, mode 1 = OR, mode 2 = XOR
-            append("BITMAP 0,0,$widthBytes,$height,0,")
-            append(bitmapData)
-            append("\r\n")
-            
-            // Print command
-            append("PRINT 1,1\r\n")
-        }
-    }
-    
-    /**
      * Create test label bitmap with Thai language
+     * Size: 40x30mm (approximately 315x236 pixels at 203 DPI)
      */
     private fun createTestLabelBitmap(shopName: String): Bitmap {
         val widthPixels = mmToDots(LABEL_WIDTH)
         val heightPixels = mmToDots(LABEL_HEIGHT)
         
+        android.util.Log.d("LabelPrinter", "Creating test bitmap: ${widthPixels}x${heightPixels}px for 40x30mm label")
+        android.util.Log.d("LabelPrinter", "DPI: $DPI, Label: ${LABEL_WIDTH}x${LABEL_HEIGHT}mm")
+        
+        // Create bitmap with ARGB_8888 for best quality
         val bitmap = Bitmap.createBitmap(widthPixels, heightPixels, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         
@@ -353,34 +393,59 @@ class LabelPrinterService @Inject constructor(
         
         val paint = Paint().apply {
             isAntiAlias = true
-            textAlign = Paint.Align.LEFT
+            textAlign = Paint.Align.CENTER  // Center align for better appearance
             color = Color.BLACK
-            typeface = Typeface.DEFAULT
+            // Use SANS_SERIF for better Thai language support
+            typeface = Typeface.SANS_SERIF
+            flags = 0  // Clear all flags
+            isUnderlineText = false  // Explicitly disable underline
+            isStrikeThruText = false  // Explicitly disable strikethrough
+            style = Paint.Style.FILL  // Use fill style for text
         }
         
-        var yPosition = 30f
+        val centerX = widthPixels / 2f
+        var yPosition = 35f
         
-        // Shop name
-        paint.textSize = 24f
-        paint.typeface = Typeface.DEFAULT_BOLD
-        canvas.drawText(shopName, 10f, yPosition, paint)
-        yPosition += 40f
+        // Shop name (top)
+        paint.textSize = 22f
+        paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+        paint.flags = 0  // Reset flags
+        paint.isUnderlineText = false
+        paint.isStrikeThruText = false
+        paint.style = Paint.Style.FILL  // Ensure fill style
+        canvas.drawText(shopName, centerX, yPosition, paint)
+        yPosition += 45f  // ลบเส้นแบ่งออก เพิ่มระยะห่างแทน
         
-        // Test label title
-        paint.textSize = 36f
-        paint.typeface = Typeface.DEFAULT_BOLD
-        canvas.drawText("TEST LABEL", 10f, yPosition, paint)
+        // Main Thai text (large and bold)
+        paint.textSize = 40f
+        paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+        paint.flags = 0  // Reset all paint flags
+        paint.isUnderlineText = false
+        paint.isStrikeThruText = false
+        paint.style = Paint.Style.FILL  // Ensure fill style
+        canvas.drawText("ทดสอบพิมพ์", centerX, yPosition, paint)
         yPosition += 50f
         
-        // Thai test text
-        paint.textSize = 28f
-        paint.typeface = Typeface.DEFAULT
-        canvas.drawText("ทดสอบภาษาไทย", 10f, yPosition, paint)
+        // Thai text example
+        paint.textSize = 32f
+        paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+        paint.flags = 0  // Reset flags
+        paint.isUnderlineText = false
+        paint.isStrikeThruText = false
+        paint.style = Paint.Style.FILL  // Ensure fill style
+        canvas.drawText("กาแฟร้อน", centerX, yPosition, paint)
         yPosition += 40f
         
-        // Additional Thai text
-        paint.textSize = 20f
-        canvas.drawText("กาแฟร้อน + นมสด", 10f, yPosition, paint)
+        // Label size info
+        paint.textSize = 24f
+        paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+        paint.flags = 0  // Reset flags
+        paint.isUnderlineText = false
+        paint.isStrikeThruText = false
+        paint.style = Paint.Style.FILL  // Ensure fill style
+        canvas.drawText("40 x 30 mm", centerX, yPosition, paint)
+        
+        android.util.Log.d("LabelPrinter", "Test bitmap created successfully")
         
         return bitmap
     }
