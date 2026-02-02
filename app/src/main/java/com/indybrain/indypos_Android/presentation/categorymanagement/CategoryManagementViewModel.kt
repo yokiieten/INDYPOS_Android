@@ -1,10 +1,13 @@
 package com.indybrain.indypos_Android.presentation.categorymanagement
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +21,8 @@ import javax.inject.Inject
 @HiltViewModel
 class CategoryManagementViewModel @Inject constructor(
     private val productRepository: ProductRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(CategoryManagementUiState())
@@ -27,8 +31,7 @@ class CategoryManagementViewModel @Inject constructor(
     init {
         // Observe categories from Room database
         observeCategories()
-        // Load categories when ViewModel is created
-        loadCategories()
+        // Load categories will be called from screen's ON_RESUME lifecycle
     }
     
     /**
@@ -36,25 +39,38 @@ class CategoryManagementViewModel @Inject constructor(
      */
     fun loadCategories() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            // Check internet connectivity
-            if (networkConnectivityChecker.isConnected()) {
-                // Has internet - fetch from API and sync with Room
-                val result = productRepository.fetchAndSyncCategories()
-                result.onSuccess {
-                    // Data will be updated via observeCategories() Flow
-                }.onFailure { error ->
-                    _uiState.update { current ->
-                        current.copy(
-                            isLoading = false,
-                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
-                        )
+            try {
+                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+                
+                // Check internet connectivity
+                if (networkConnectivityChecker.isConnected()) {
+                    // Has internet - fetch from API and sync with Room
+                    val result = productRepository.fetchAndSyncCategories()
+                    result.onSuccess {
+                        // Data will be updated via observeCategories() Flow
+                        // isLoading will be set to false when Flow emits data
+                    }.onFailure { error ->
+                        _uiState.update { current ->
+                            current.copy(
+                                isLoading = false,
+                                errorMessage = error.message ?: context.getString(R.string.category_management_error_loading)
+                            )
+                        }
                     }
+                } else {
+                    // No internet - data will be loaded from Room via Flow
+                    // isLoading will be set to false by observeCategories() when data arrives
                 }
-            } else {
-                // No internet - data will be loaded from Room via Flow
-                // isLoading will be set to false by observeCategories() when data arrives
+            } catch (e: Exception) {
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        errorMessage = context.getString(
+                            R.string.category_management_error_loading_with_reason,
+                            e.message ?: context.getString(R.string.category_management_error_unknown)
+                        )
+                    )
+                }
             }
         }
     }
@@ -64,11 +80,46 @@ class CategoryManagementViewModel @Inject constructor(
      */
     private fun observeCategories() {
         viewModelScope.launch {
-            productRepository.getAllCategoriesFlow().collect { categories ->
+            try {
+                productRepository.getAllCategoriesFlow().collect { categories ->
+                    // Always keep the visual order of categories stable and
+                    // independent from server-side sort changes (e.g. when
+                    // toggling active/inactive status). We therefore rely on
+                    // createdAt instead of sortOrder so that enabling/disabling
+                    // a category does not move it to the bottom of the list.
+                    _uiState.update { current ->
+                        // ถ้ามีหมวดหมู่ที่กำลังถูกลบหลายรายการอยู่ ให้ซ่อนออกจาก UI ทันที
+                        val pendingDeleteIds = current.pendingDeleteCategoryIds
+                        val visibleCategories = categories
+                            .sortedBy { it.createdAt }
+                            .filterNot { pendingDeleteIds.contains(it.id) }
+
+                        // Re-apply search filter if there's an active search query
+                        val filteredCategories = if (current.searchQuery.isNotBlank()) {
+                            visibleCategories.filter { 
+                                it.name.contains(current.searchQuery, ignoreCase = true) 
+                            }
+                        } else {
+                            null // Clear filter when query is blank
+                        }
+
+                        current.copy(
+                            categories = visibleCategories,
+                            filteredCategories = filteredCategories,
+                            isLoading = false // Clear loading state once we have data from Room
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle any exceptions during collection
                 _uiState.update { current ->
                     current.copy(
-                        categories = categories.sortedBy { it.sortOrder },
-                        isLoading = false // Clear loading state once we have data from Room
+                        categories = emptyList(),
+                        isLoading = false,
+                        errorMessage = context.getString(
+                            R.string.category_management_error_loading_with_reason,
+                            e.message ?: context.getString(R.string.category_management_error_unknown)
+                        )
                     )
                 }
             }
@@ -87,10 +138,11 @@ class CategoryManagementViewModel @Inject constructor(
      */
     fun searchCategories(query: String) {
         _uiState.update { current ->
+            val categories = current.categories ?: emptyList()
             val filteredCategories = if (query.isBlank()) {
-                current.categories
+                null // Clear filter when query is blank
             } else {
-                current.categories.filter { 
+                categories.filter { 
                     it.name.contains(query, ignoreCase = true) 
                 }
             }
@@ -102,7 +154,7 @@ class CategoryManagementViewModel @Inject constructor(
      * Clear search
      */
     fun clearSearch() {
-        _uiState.update { it.copy(searchQuery = "", filteredCategories = emptyList()) }
+        _uiState.update { it.copy(searchQuery = "", filteredCategories = null) }
     }
     
     /**
@@ -118,8 +170,16 @@ class CategoryManagementViewModel @Inject constructor(
             result.onSuccess { category ->
                 // Get category name for success message
                 val categoryName = category.name
-                val statusText = if (newStatus) "เปิดใช้งาน" else "ปิดใช้งาน"
-                val successMessage = "อัปเดตสถานะหมวดหมู่ '$categoryName' เป็น '$statusText' เรียบร้อยแล้ว"
+                val statusText = if (newStatus) {
+                    context.getString(R.string.category_management_status_activate)
+                } else {
+                    context.getString(R.string.category_management_status_deactivate)
+                }
+                val successMessage = context.getString(
+                    R.string.category_management_status_update_success,
+                    categoryName,
+                    statusText
+                )
                 
                 _uiState.update { 
                     it.copy(
@@ -131,7 +191,7 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ"
+                        errorMessage = error.message ?: context.getString(R.string.category_management_error_updating_status)
                     )
                 }
             }
@@ -154,12 +214,15 @@ class CategoryManagementViewModel @Inject constructor(
             
             // Get category name before deleting
             val category = productRepository.getCategoryById(categoryId)
-            val categoryName = category?.name ?: "หมวดหมู่"
+            val categoryName = category?.name ?: context.getString(R.string.category_management_default_name)
             
             val result = productRepository.deleteCategory(categoryId)
             
             result.onSuccess {
-                val successMessage = "ลบหมวดหมู่ '$categoryName' เรียบร้อยแล้ว"
+                val successMessage = context.getString(
+                    R.string.category_management_delete_success_with_name,
+                    categoryName
+                )
                 
                 _uiState.update { 
                     it.copy(
@@ -171,7 +234,7 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
+                        errorMessage = error.message ?: context.getString(R.string.category_management_error_deleting)
                     )
                 }
             }
@@ -222,8 +285,27 @@ class CategoryManagementViewModel @Inject constructor(
      */
     fun selectAllCategories() {
         _uiState.update { current ->
-            val allCategoryIds = current.categories.map { it.id }.toSet()
+            val categories = current.categories ?: emptyList()
+            val allCategoryIds = categories.map { it.id }.toSet()
             current.copy(selectedCategoryIds = allCategoryIds)
+        }
+    }
+    
+    /**
+     * Select specific categories by IDs
+     */
+    fun selectCategories(categoryIds: Set<String>) {
+        _uiState.update { current ->
+            current.copy(selectedCategoryIds = categoryIds)
+        }
+    }
+    
+    /**
+     * Deselect all categories
+     */
+    fun deselectAllCategories() {
+        _uiState.update { current ->
+            current.copy(selectedCategoryIds = emptySet())
         }
     }
     
@@ -235,7 +317,17 @@ class CategoryManagementViewModel @Inject constructor(
             val selectedIds = _uiState.value.selectedCategoryIds.toList()
             if (selectedIds.isEmpty()) return@launch
             
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            // ตั้งสถานะให้รู้ว่ารายการเหล่านี้กำลังถูกลบ และซ่อนออกจาก UI เลย
+            _uiState.update { current ->
+                current.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    pendingDeleteCategoryIds = selectedIds.toSet(),
+                    // ออกจากโหมดแก้ไขและล้าง selection ทันที
+                    selectedCategoryIds = emptySet(),
+                    isEditMode = false
+                )
+            }
             
             var successCount = 0
             var failureMessage: String? = null
@@ -245,7 +337,8 @@ class CategoryManagementViewModel @Inject constructor(
                 result.onSuccess {
                     successCount++
                 }.onFailure { error ->
-                    failureMessage = error.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
+                    // เก็บข้อความ error ไว้ แต่ยังพยายามลบตัวถัดไปต่อ
+                    failureMessage = error.message ?: context.getString(R.string.category_management_error_deleting)
                 }
             }
             
@@ -253,21 +346,21 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = failureMessage
+                        errorMessage = failureMessage,
+                        pendingDeleteCategoryIds = emptySet()
                     )
                 }
             } else {
                 val successMessage = if (successCount == 1) {
-                    "ลบหมวดหมู่เรียบร้อยแล้ว"
+                    context.getString(R.string.category_management_delete_success_single)
                 } else {
-                    "ลบหมวดหมู่ $successCount รายการเรียบร้อยแล้ว"
+                    context.getString(R.string.category_management_delete_success_multiple, successCount)
                 }
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
                         deleteSuccessMessage = successMessage,
-                        selectedCategoryIds = emptySet(),
-                        isEditMode = false
+                        pendingDeleteCategoryIds = emptySet()
                     )
                 }
             }
@@ -287,7 +380,7 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        syncSuccessMessage = "Sync หมวดหมู่สำเร็จ"
+                        syncSuccessMessage = context.getString(R.string.category_management_sync_success)
                     )
                 }
                 // Refresh categories after sync
@@ -296,7 +389,7 @@ class CategoryManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการ sync หมวดหมู่"
+                        errorMessage = error.message ?: context.getString(R.string.category_management_error_syncing)
                     )
                 }
             }
@@ -308,6 +401,13 @@ class CategoryManagementViewModel @Inject constructor(
      */
     fun dismissSyncSuccess() {
         _uiState.update { it.copy(syncSuccessMessage = null) }
+    }
+    
+    /**
+     * Clear error message
+     */
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
     
     /**

@@ -34,39 +34,66 @@ class OrderViewModel @Inject constructor(
      */
     private fun observeOrders() {
         viewModelScope.launch {
-            orderRepository.getOrders().collect { result ->
-                result.onSuccess { entities ->
-                    val orders = entities.map { entity ->
-                        val status = OrderStatus.fromCode(entity.statusRaw) // Changed from orderStatus to statusRaw
-                        Order(
-                            id = entity.id,
-                            orderId = entity.orderNumber,
-                            createdAt = entity.createdAt ?: entity.orderDate, // Use createdAt if available, fallback to orderDate
-                            cancelledAt = if (status == OrderStatus.CANCELLED) entity.updatedAt else null, // Use updatedAt for cancelled orders
-                            status = status,
-                            totalAmount = entity.total
-                        )
+            try {
+                orderRepository.getOrders().collect { result ->
+                    result.onSuccess { entities ->
+                        if (entities != null) {
+                            val orders = entities.mapNotNull { entity ->
+                                try {
+                                    val status = OrderStatus.fromCode(entity.statusRaw) // Changed from orderStatus to statusRaw
+                                    Order(
+                                        id = entity.id,
+                                        orderId = entity.orderNumber ?: "",
+                                        createdAt = entity.createdAt ?: entity.orderDate ?: Date(), // Use createdAt if available, fallback to orderDate
+                                        cancelledAt = if (status == OrderStatus.CANCELLED) entity.updatedAt else null, // Use updatedAt for cancelled orders
+                                        status = status,
+                                        totalAmount = entity.total ?: 0.0
+                                    )
+                                } catch (e: Exception) {
+                                    null // Skip invalid entities
+                                }
+                            }
+                            
+                            _uiState.update { current ->
+                                val (completed, cancelled) = filterAndSortOrders(
+                                    orders = orders,
+                                    filter = current.filterOption,
+                                    sort = current.sortOption,
+                                    customStartMillis = current.customStartDateMillis,
+                                    customEndMillis = current.customEndDateMillis
+                                )
+                                current.copy(
+                                    isLoading = false,
+                                    allOrders = orders,
+                                    completedOrders = completed,
+                                    cancelledOrders = cancelled
+                                )
+                            }
+                        } else {
+                            _uiState.update { current ->
+                                current.copy(
+                                    isLoading = false,
+                                    allOrders = emptyList(),
+                                    completedOrders = emptyList(),
+                                    cancelledOrders = emptyList()
+                                )
+                            }
+                        }
+                    }.onFailure { error ->
+                        _uiState.update { current ->
+                            current.copy(
+                                isLoading = false,
+                                errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                            )
+                        }
                     }
-                    
-                    _uiState.update { current ->
-                        val (completed, cancelled) = filterAndSortOrders(
-                            orders = orders,
-                            filter = current.filterOption,
-                            sort = current.sortOption,
-                            customStartMillis = current.customStartDateMillis,
-                            customEndMillis = current.customEndDateMillis
-                        )
-                        current.copy(
-                            isLoading = false,
-                            allOrders = orders,
-                            completedOrders = completed,
-                            cancelledOrders = cancelled
-                        )
-                    }
-                }.onFailure {
-                    _uiState.update { current ->
-                        current.copy(isLoading = false)
-                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        errorMessage = "เกิดข้อผิดพลาด: ${e.message ?: "ไม่ทราบสาเหตุ"}"
+                    )
                 }
             }
         }
@@ -112,15 +139,28 @@ class OrderViewModel @Inject constructor(
     
     fun refreshOrders() {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    isLoadingMore = false,
-                    currentPage = 1,
-                    hasMore = true
-                )
+            try {
+                _uiState.update {
+                    it.copy(
+                        isLoading = true,
+                        isLoadingMore = false,
+                        currentPage = 1,
+                        hasMore = true,
+                        errorMessage = null
+                    )
+                }
+                orderRepository.refreshOrders()
+                _uiState.update {
+                    it.copy(isLoading = false)
+                }
+            } catch (e: Exception) {
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        errorMessage = "เกิดข้อผิดพลาดในการรีเฟรช: ${e.message ?: "ไม่ทราบสาเหตุ"}"
+                    )
+                }
             }
-            orderRepository.refreshOrders()
         }
     }
 
@@ -131,15 +171,24 @@ class OrderViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val nextPage = state.currentPage + 1
-            _uiState.update { it.copy(isLoadingMore = true) }
-            val hasMore = orderRepository.loadMoreOrders(page = nextPage, pageSize = 10)
-            _uiState.update {
-                it.copy(
-                    isLoadingMore = false,
-                    currentPage = if (hasMore) nextPage else nextPage,
-                    hasMore = hasMore
-                )
+            try {
+                val nextPage = state.currentPage + 1
+                _uiState.update { it.copy(isLoadingMore = true) }
+                val hasMore = orderRepository.loadMoreOrders(page = nextPage, pageSize = 10)
+                _uiState.update {
+                    it.copy(
+                        isLoadingMore = false,
+                        currentPage = if (hasMore) nextPage else nextPage,
+                        hasMore = hasMore
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { current ->
+                    current.copy(
+                        isLoadingMore = false,
+                        errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูลเพิ่ม: ${e.message ?: "ไม่ทราบสาเหตุ"}"
+                    )
+                }
             }
         }
     }

@@ -1,12 +1,15 @@
 package com.indybrain.indypos_Android.presentation.addongroupmanagement
 
 import androidx.lifecycle.ViewModel
+import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.entity.AddonEntity
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +26,8 @@ import javax.inject.Inject
 class AddEditAddonGroupViewModel @Inject constructor(
     private val addonGroupRepository: AddonGroupRepository,
     private val addonRepository: AddonRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     data class FormState(
@@ -49,6 +53,16 @@ class AddEditAddonGroupViewModel @Inject constructor(
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
     
     init {
+        // ดึงรายการ Addon ล่าสุดจาก API -> Sync ลง Room ก่อน
+        // จากนั้นค่อยให้ UI subscribe จาก Room ผ่าน Flow
+        viewModelScope.launch {
+            try {
+                addonRepository.fetchAndSyncAddons()
+                // ถ้า fail (เช่น ไม่มีเน็ต) ก็ยังให้ UI ใช้ข้อมูลใน Room ต่อได้ตามปกติ
+            } catch (_: Exception) {
+                // ไม่ต้องโชว์ error ที่นี่ ปล่อยให้ flow ใน Room ทำงานต่อไป
+            }
+        }
         loadAvailableAddons()
     }
     
@@ -79,7 +93,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = "ไม่พบกลุ่ม Addon ที่ต้องการแก้ไข"
+                        errorMessage = context.getString(R.string.addon_group_form_error_not_found)
                     )
                 }
             }
@@ -93,7 +107,15 @@ class AddEditAddonGroupViewModel @Inject constructor(
         viewModelScope.launch {
             addonRepository.getAllAddonsForManagementFlow()
                 .catch { e ->
-                    _uiState.update { it.copy(errorMessage = "Failed to load addons: ${e.message}") }
+                    val reason = e.message ?: context.getString(R.string.common_error)
+                    _uiState.update { 
+                        it.copy(
+                            errorMessage = context.getString(
+                                R.string.addon_group_form_error_load_addons_with_reason,
+                                reason
+                            )
+                        ) 
+                    }
                 }
                 .collect { addons ->
                     _uiState.update { it.copy(availableAddons = addons) }
@@ -113,7 +135,12 @@ class AddEditAddonGroupViewModel @Inject constructor(
     }
     
     fun updateMaxSelection(maxSelection: String) {
-        _uiState.update { it.copy(formState = it.formState.copy(maxSelection = maxSelection)) }
+        _uiState.update { 
+            it.copy(
+                formState = it.formState.copy(maxSelection = maxSelection),
+                errorMessage = null // Clear error when user updates the field
+            ) 
+        }
     }
     
     fun toggleAddonSelection(addonId: String) {
@@ -135,11 +162,19 @@ class AddEditAddonGroupViewModel @Inject constructor(
         val formState = _uiState.value.formState
         
         if (formState.groupName.trim().isEmpty()) {
-            return "กรุณากรอกชื่อกลุ่ม Addon"
+            return context.getString(R.string.addon_group_form_validation_name_required)
         }
         
         if (formState.selectedAddonIds.isEmpty()) {
-            return "กรุณาเลือก Addon อย่างน้อย 1 รายการ"
+            return context.getString(R.string.addon_group_form_validation_addons_required)
+        }
+        
+        // Validate maxSelection - cannot be 0
+        if (formState.maxSelection.isNotEmpty()) {
+            val maxSelectionValue = formState.maxSelection.toIntOrNull()
+            if (maxSelectionValue != null && maxSelectionValue == 0) {
+                return "MAX_SELECTION_ZERO_ERROR" // Will be localized in UI
+            }
         }
         
         return null
@@ -167,7 +202,11 @@ class AddEditAddonGroupViewModel @Inject constructor(
             }
             
             if (addonGroupRepository.isDuplicateName(formState.groupName, excludeId)) {
-                _uiState.update { it.copy(errorMessage = "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว") }
+                _uiState.update { 
+                    it.copy(
+                        errorMessage = context.getString(R.string.addon_group_form_error_duplicate_name)
+                    ) 
+                }
                 return@launch
             }
             
@@ -206,9 +245,9 @@ class AddEditAddonGroupViewModel @Inject constructor(
                         isSuccess = true,
                         isOfflineSuccess = isOffline,
                         successMessage = if (isOffline) {
-                            "เพิ่มกลุ่ม Addon สำเร็จ (บันทึกในเครื่อง)"
+                            context.getString(R.string.addon_group_form_success_add_offline)
                         } else {
-                            "เพิ่มกลุ่ม Addon สำเร็จ"
+                            context.getString(R.string.addon_group_form_success_add)
                         }
                     )
                 }
@@ -263,7 +302,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
      * Handle create error
      */
     private fun handleCreateError(error: Throwable) {
-        val errorMessage = error.message ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+        val errorMessage = error.message ?: context.getString(R.string.addon_group_form_error_create)
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -276,7 +315,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
      * Handle update error
      */
     private fun handleUpdateError(error: Throwable) {
-        val errorMessage = error.message ?: "เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon"
+        val errorMessage = error.message ?: context.getString(R.string.addon_group_form_error_update)
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -289,6 +328,17 @@ class AddEditAddonGroupViewModel @Inject constructor(
      * Create new addon
      */
     fun createAddon(name: String, price: Double) {
+        // Validation - close dialog and show as popup
+        if (name.trim().isBlank()) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = context.getString(R.string.addon_form_validation_name_required)
+                )
+            }
+            return
+        }
+        
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
@@ -299,16 +349,18 @@ class AddEditAddonGroupViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            successMessage = "เพิ่ม Addon สำเร็จ"
+                            successMessage = context.getString(R.string.addon_form_success_add_single)
                         )
                     }
                 },
                 onFailure = { error ->
-                    val errorMessage = error.message ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
+                    // API error - close dialog and show as popup
+                    val errorMessage = error.message ?: context.getString(R.string.addon_form_error_create_addon)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = errorMessage
+                            errorMessage = errorMessage,
+                            successMessage = null // Clear success message if any
                         )
                     }
                 }

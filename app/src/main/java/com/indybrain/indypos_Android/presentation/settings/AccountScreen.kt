@@ -384,11 +384,13 @@ fun AccountScreen(
                         .padding(horizontal = 24.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Edit,
-                        contentDescription = null,
-                        tint = PrimaryButton,
-                        modifier = Modifier.size(24.dp)
+                    Text(
+                        text = stringResource(id = R.string.account_status_plan),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(

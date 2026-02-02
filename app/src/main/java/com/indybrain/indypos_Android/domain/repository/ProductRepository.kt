@@ -230,6 +230,12 @@ interface ProductRepository {
      * If network is not available, updates in Room only (isSynced = false)
      */
     suspend fun updateProductStock(productId: String, delta: Int): Result<ProductEntity>
+    
+    /**
+     * Clear all products, categories, addon groups, addons and their junctions from Room database
+     * This is used before fetching fresh data from API
+     */
+    suspend fun clearAllProductsAndCategories()
 }
 
 /**

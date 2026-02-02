@@ -1,5 +1,7 @@
 package com.indybrain.indypos_Android.data.repository
 
+import android.content.Context
+import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
@@ -10,8 +12,10 @@ import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
 import com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -25,11 +29,17 @@ class AddonGroupRepositoryImpl @Inject constructor(
     private val addonGroupDao: AddonGroupDao,
     private val addonDao: AddonDao,
     private val junctionDao: AddonGroupAddonJunctionDao,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val gson: Gson,
+    @ApplicationContext private val context: Context
 ) : AddonGroupRepository {
     
     override fun getAllAddonGroupsFlow(): Flow<List<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity>> {
         return addonGroupDao.getAllAddonGroupsForManagementFlow()
+    }
+
+    override fun getAllAddonGroupsWithCountFlow(): Flow<List<com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddonCount>> {
+        return addonGroupDao.getAddonGroupsWithAddonCountForManagementFlow()
     }
     
     override suspend fun getAddonGroupById(id: String): com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity? {
@@ -111,18 +121,37 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        403 -> {
-                            val errorBody = e.response()?.errorBody()?.string()
-                            if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
-                                "free_plan_limit_exceeded"
+                        400 -> {
+                            // Bad Request - parse error message
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        401 -> {
+                            // Unauthorized - parse specific error
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
                             } else {
-                                e.message() ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+                                parsed
                             }
                         }
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+                        403 -> {
+                            // Forbidden - Free plan limit exceeded
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        409 -> {
+                            // Conflict - Duplicate addon group name
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        500 -> {
+                            // Internal Server Error
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        else -> {
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -252,11 +281,41 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        404 -> "ไม่พบกลุ่ม Addon ที่ต้องการแก้ไข"
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon"
+                        400 -> {
+                            // Bad Request - parse error message
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        401 -> {
+                            // Unauthorized - parse specific error
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> {
+                            // Forbidden - Access denied
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        404 -> {
+                            // Not Found - Addon group not found
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        409 -> {
+                            // Conflict - Duplicate addon group name
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        500 -> {
+                            // Internal Server Error
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        else -> {
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -332,11 +391,22 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        404 -> "ไม่พบกลุ่ม Addon ที่ต้องการอัปเดต"
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะกลุ่ม Addon"
+                        400 -> parseApiErrorResponse(errorBody, e.code())
+                        401 -> {
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> parseApiErrorResponse(errorBody, e.code())
+                        404 -> parseApiErrorResponse(errorBody, e.code())
+                        500 -> parseApiErrorResponse(errorBody, e.code())
+                        else -> parseApiErrorResponse(errorBody, e.code())
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -372,11 +442,22 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        404 -> "ไม่พบกลุ่ม Addon ที่ต้องการลบ"
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
+                        400 -> parseApiErrorResponse(errorBody, e.code())
+                        401 -> {
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> parseApiErrorResponse(errorBody, e.code())
+                        404 -> parseApiErrorResponse(errorBody, e.code())
+                        500 -> parseApiErrorResponse(errorBody, e.code())
+                        else -> parseApiErrorResponse(errorBody, e.code())
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -426,10 +507,22 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
+                        400 -> parseApiErrorResponse(errorBody, e.code())
+                        401 -> {
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> parseApiErrorResponse(errorBody, e.code())
+                        404 -> parseApiErrorResponse(errorBody, e.code())
+                        500 -> parseApiErrorResponse(errorBody, e.code())
+                        else -> parseApiErrorResponse(errorBody, e.code())
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -457,26 +550,66 @@ class AddonGroupRepositoryImpl @Inject constructor(
             if (!networkConnectivityChecker.isConnected()) {
                 return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
             }
-            
+
             val response = productsApi.getAddonGroups()
-            
+
             if (response.status == 200) {
                 // If status is 200, treat as success even if data is null or empty (new user might have no data)
                 val addonGroupsList = response.data ?: emptyList()
-                // Convert and save addon groups
+                // Convert and save addon groups + their addons + junctions
                 if (addonGroupsList.isNotEmpty()) {
+                    // 1) Save groups themselves
                     val addonGroups = addonGroupsList.map { ProductMapper.toEntity(it) }
                     addonGroupDao.insertAll(addonGroups)
+
+                    // 2) Optionally refresh junctions ONLY when server actually sends addons list
+                    //    (บาง environment อาจไม่ส่ง field addons มาเลย ถ้าลบทุกครั้งจะทำให้ความสัมพันธ์ใน Room หาย)
+                    addonGroupsList.forEach { groupDto ->
+                        val serverAddons = groupDto.addons
+                        if (serverAddons != null) {
+                            // Server บอกความสัมพันธ์มาอย่างชัดเจน → sync ตาม server
+                            junctionDao.deleteByAddonGroupId(groupDto.id)
+
+                            serverAddons.forEachIndexed { index, addonDto ->
+                                val addonEntity = ProductMapper.toEntity(addonDto, groupDto.id)
+                                addonDao.insert(addonEntity)
+                                junctionDao.insert(
+                                    AddonGroupAddonJunctionEntity(
+                                        addonGroupId = groupDto.id,
+                                        addonId = addonEntity.id,
+                                        sortOrder = index + 1
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+                // Remove local addon groups that are no longer in API (e.g. deleted on another device)
+                val apiAddonGroupIds = addonGroupsList.map { it.id }.toSet()
+                val existingAddonGroupIds = addonGroupDao.getAllAddonGroups().map { it.id }.toSet()
+                (existingAddonGroupIds - apiAddonGroupIds).forEach { id ->
+                    junctionDao.deleteByAddonGroupId(id)
+                    addonGroupDao.permanentlyDeleteAddonGroup(id)
                 }
                 Result.success(Unit)
             } else {
                 Result.failure(Exception(response.message ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"))
             }
         } catch (e: HttpException) {
+            // Handle HTTP errors
+            val errorBody = e.response()?.errorBody()
             val errorMessage = when (e.code()) {
-                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                else -> e.message() ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+                400 -> parseApiErrorResponse(errorBody, e.code())
+                401 -> {
+                    val parsed = parseApiErrorResponse(errorBody, e.code())
+                    if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                        "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                    } else {
+                        parsed
+                    }
+                }
+                500 -> parseApiErrorResponse(errorBody, e.code())
+                else -> parseApiErrorResponse(errorBody, e.code())
             }
             Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
@@ -534,7 +667,7 @@ class AddonGroupRepositoryImpl @Inject constructor(
             
             val request = SyncAddonGroupsRequestDto(addonGroups = syncItems)
             val response = productsApi.syncAddonGroups(request)
-            
+
             // Process sync results
             response.data?.forEach { result ->
                 when {
@@ -545,9 +678,29 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         }
                     }
                     result.serverData != null -> {
-                        // Update with server data
-                        val serverEntity = ProductMapper.toEntity(result.serverData)
+                        // Update with server data (group + optional addons + junctions)
+                        val serverGroupDto = result.serverData
+                        val serverEntity = ProductMapper.toEntity(serverGroupDto)
                         addonGroupDao.insertAddonGroup(serverEntity)
+
+                        val groupId = serverEntity.id
+                        val serverAddons = serverGroupDto.addons
+                        if (serverAddons != null) {
+                            // มีข้อมูล addons ชัดเจน → sync junctions ตาม server
+                            junctionDao.deleteByAddonGroupId(groupId)
+
+                            serverAddons.forEachIndexed { index, addonDto ->
+                                val addonEntity = ProductMapper.toEntity(addonDto, groupId)
+                                addonDao.insert(addonEntity)
+                                junctionDao.insert(
+                                    AddonGroupAddonJunctionEntity(
+                                        addonGroupId = groupId,
+                                        addonId = addonEntity.id,
+                                        sortOrder = index + 1
+                                    )
+                                )
+                            }
+                        }
                     }
                     else -> {
                         // Mark as synced
@@ -560,22 +713,162 @@ class AddonGroupRepositoryImpl @Inject constructor(
             
             Result.success(Unit)
         } catch (e: HttpException) {
+            // Handle HTTP errors
+            val errorBody = e.response()?.errorBody()
             val errorMessage = when (e.code()) {
-                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                403 -> {
-                    val errorBody = e.response()?.errorBody()?.string()
-                    if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
-                        "คุณใช้กลุ่มตัวเลือกเพิ่มเติมครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                400 -> parseApiErrorResponse(errorBody, e.code())
+                401 -> {
+                    val parsed = parseApiErrorResponse(errorBody, e.code())
+                    if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                        "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
                     } else {
-                        e.message() ?: "เกิดข้อผิดพลาดในการ sync"
+                        parsed
                     }
                 }
-                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                else -> e.message() ?: "เกิดข้อผิดพลาดในการ sync"
+                403 -> parseApiErrorResponse(errorBody, e.code())
+                500 -> parseApiErrorResponse(errorBody, e.code())
+                else -> parseApiErrorResponse(errorBody, e.code())
             }
             Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
+        }
+    }
+    
+    /**
+     * Parse API error response body
+     */
+    private fun parseApiErrorResponse(errorBody: ResponseBody?, statusCode: Int): String {
+        return try {
+            if (errorBody == null) {
+                return getDefaultErrorMessage(statusCode)
+            }
+            
+            val errorJson = errorBody.string()
+            if (errorJson.isBlank()) {
+                return getDefaultErrorMessage(statusCode)
+            }
+            
+            // Try to parse as error response
+            try {
+                val errorResponse = gson.fromJson(errorJson, AddonGroupErrorResponse::class.java)
+                val errorText = errorResponse.error?.lowercase() ?: ""
+                val messageText = errorResponse.message?.lowercase() ?: ""
+                
+                // Check for specific error keys first
+                val errorKey = errorResponse.error?.takeIf { it.isNotBlank() }
+                val messageKey = errorResponse.message?.takeIf { it.isNotBlank() }
+                val combinedErrorText = "$errorText $messageText"
+                
+                // Handle specific status codes
+                when (statusCode) {
+                    400 -> {
+                        // Bad Request - return message or error field
+                        // Check for specific error messages
+                        when {
+                            messageText.contains("addon group name is required", ignoreCase = true) -> {
+                                "กรุณากรอกชื่อกลุ่ม Addon"
+                            }
+                            messageText.contains("addon id is required", ignoreCase = true) ||
+                            messageText.contains("all addons must have an addon_id", ignoreCase = true) -> {
+                                "กรุณาเลือก Addon"
+                            }
+                            else -> {
+                                errorResponse.message?.takeIf { it.isNotBlank() }
+                                    ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                                    ?: "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
+                            }
+                        }
+                    }
+                    401 -> {
+                        // Unauthorized - return message or error field
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                    }
+                    403 -> {
+                        // Forbidden - Free plan limit exceeded or Access denied
+                        val message = errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: ""
+                        
+                        when {
+                            message.contains("free_plan_limit", ignoreCase = true) -> {
+                                "คุณใช้กลุ่มตัวเลือกเพิ่มเติมครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                            }
+                            message.contains("access denied", ignoreCase = true) -> {
+                                "คุณไม่มีสิทธิ์แก้ไขกลุ่ม Addon นี้"
+                            }
+                            else -> {
+                                message.ifBlank { "คุณไม่มีสิทธิ์เข้าถึงกลุ่ม Addon นี้" }
+                            }
+                        }
+                    }
+                    404 -> {
+                        // Not Found - Addon group not found
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "ไม่พบกลุ่ม Addon ที่ต้องการ"
+                    }
+                    409 -> {
+                        // Conflict - Duplicate addon group name
+                        when {
+                            combinedErrorText.contains("duplicate addon group name") || 
+                            combinedErrorText.contains("duplicate name") -> {
+                                "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว"
+                            }
+                            errorKey != null && messageKey != null -> "$errorKey ($messageKey)"
+                            errorKey != null -> errorKey
+                            messageKey != null -> messageKey
+                            else -> "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว"
+                        }
+                    }
+                    500 -> {
+                        // Internal Server Error
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "Server error - กรุณาลองใหม่อีกครั้ง"
+                    }
+                    else -> {
+                        // Return error or message if available
+                        errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+                    }
+                }
+            } catch (e: Exception) {
+                // If parsing fails, check raw string
+                val errorLower = errorJson.lowercase()
+                
+                when {
+                    statusCode == 409 && errorLower.contains("duplicate addon group name") -> {
+                        "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว"
+                    }
+                    statusCode == 403 && errorLower.contains("free_plan_limit_exceeded") -> {
+                        "คุณใช้กลุ่มตัวเลือกเพิ่มเติมครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                    }
+                    else -> {
+                        getDefaultErrorMessage(statusCode)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            getDefaultErrorMessage(statusCode)
+        }
+    }
+    
+    /**
+     * Get default error message for status code
+     */
+    private fun getDefaultErrorMessage(statusCode: Int): String {
+        return when (statusCode) {
+            400 -> "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
+            401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+            403 -> "คุณไม่มีสิทธิ์เข้าถึงกลุ่ม Addon นี้"
+            404 -> "ไม่พบกลุ่ม Addon ที่ต้องการ"
+            409 -> "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว"
+            500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+            else -> "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
         }
     }
     
@@ -598,3 +891,10 @@ class AddonGroupRepositoryImpl @Inject constructor(
     }
 }
 
+/**
+ * Error response DTO for parsing API errors
+ */
+private data class AddonGroupErrorResponse(
+    val error: String?,
+    val message: String?
+)

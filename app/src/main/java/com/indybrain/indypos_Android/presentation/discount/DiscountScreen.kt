@@ -86,11 +86,7 @@ fun DiscountScreen(
     
     LaunchedEffect(discount) {
         if (discount.value > 0) {
-            valueText = if (discount.type == DiscountType.PERCENTAGE) {
-                discount.value.toInt().toString()
-            } else {
-                discount.value.toString()
-            }
+            valueText = discount.value.toInt().toString()
         }
     }
     
@@ -134,7 +130,7 @@ fun DiscountScreen(
                 valueText = valueText,
                 quickOptions = viewModel.getQuickDiscountOptions(),
                 onValueTextChange = { newValue ->
-                    val filtered = newValue.filter { it.isDigit() || it == '.' }
+                    val filtered = newValue.filter { it.isDigit() }
                     valueText = filtered
                     val doubleValue = filtered.toDoubleOrNull() ?: 0.0
                     viewModel.setDiscountValue(doubleValue)
@@ -147,11 +143,7 @@ fun DiscountScreen(
                 onQuickOptionClick = { option ->
                     viewModel.setDiscountType(option.type)
                     viewModel.setDiscountValue(option.value)
-                    valueText = if (option.type == DiscountType.PERCENTAGE) {
-                        option.value.toInt().toString()
-                    } else {
-                        option.value.toString()
-                    }
+                    valueText = option.value.toInt().toString()
                     keyboardController?.hide()
                 },
                 onCancel = onCancel,
@@ -297,7 +289,7 @@ fun DiscountScreen(
                                 androidx.compose.foundation.text.BasicTextField(
                                     value = valueText,
                                     onValueChange = { newValue ->
-                                        val filtered = newValue.filter { it.isDigit() || it == '.' }
+                                        val filtered = newValue.filter { it.isDigit() }
                                         valueText = filtered
                                         val doubleValue = filtered.toDoubleOrNull() ?: 0.0
                                         viewModel.setDiscountValue(doubleValue)
@@ -307,7 +299,7 @@ fun DiscountScreen(
                                         style = AppFontStyle.SemiBold,
                                         size = FontSize.Large
                                     ).copy(textAlign = TextAlign.Center),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     singleLine = true,
                                     decorationBox = { innerTextField ->
                                         if (valueText.isEmpty()) {
@@ -382,11 +374,7 @@ fun DiscountScreen(
                                             onClick = {
                                                 viewModel.setDiscountType(option.type)
                                                 viewModel.setDiscountValue(option.value)
-                                                valueText = if (option.type == DiscountType.PERCENTAGE) {
-                                                    option.value.toInt().toString()
-                                                } else {
-                                                    option.value.toString()
-                                                }
+                                                valueText = option.value.toInt().toString()
                                                 keyboardController?.hide()
                                             },
                                             modifier = Modifier.weight(1f)
@@ -404,7 +392,7 @@ fun DiscountScreen(
                 
                 // Preview Section
                 item {
-                    val discountAmount = viewModel.calculateDiscountAmount(subtotal)
+                    val discountAmount = calculateDiscountAmount(subtotal, discount)
                     val finalPrice = subtotal - discountAmount
                     
                     Card(
@@ -595,5 +583,12 @@ private fun QuickDiscountOption(
 private fun formatCurrency(value: Double): String {
     val formatter = DecimalFormat("#,##0.00")
     return "฿${formatter.format(value)}"
+}
+
+private fun calculateDiscountAmount(subtotal: Double, discount: DiscountModel): Double {
+    return when (discount.type) {
+        DiscountType.PERCENTAGE -> (subtotal * discount.value / 100.0).coerceAtMost(subtotal)
+        DiscountType.FIXED_AMOUNT -> discount.value.coerceAtMost(subtotal)
+    }
 }
 

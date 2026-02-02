@@ -8,9 +8,9 @@ import com.indybrain.indypos_Android.domain.repository.ProductSyncStatistics
  * UI state for Product Management Screen
  */
 data class ProductManagementUiState(
-    val isLoading: Boolean = false,
-    val products: List<ProductEntity> = emptyList(),
-    val filteredProducts: List<ProductEntity> = emptyList(),
+    val isLoading: Boolean = true, // Start with loading = true
+    val products: List<ProductEntity>? = null, // null means data hasn't been loaded yet
+    val filteredProducts: List<ProductEntity>? = null,
     val categories: List<CategoryEntity> = emptyList(),
     val searchQuery: String = "",
     val selectedCategoryId: String? = null,
@@ -19,6 +19,8 @@ data class ProductManagementUiState(
     val errorMessage: String? = null,
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,
-    val syncStatistics: ProductSyncStatistics? = null
+    val syncStatistics: ProductSyncStatistics? = null,
+    // IDs ที่กำลังอยู่ระหว่างการลบแบบหลายรายการ เพื่อไม่ให้ UI แสดงไล่ลบทีละอัน
+    val pendingDeleteProductIds: Set<String> = emptySet()
 )
 

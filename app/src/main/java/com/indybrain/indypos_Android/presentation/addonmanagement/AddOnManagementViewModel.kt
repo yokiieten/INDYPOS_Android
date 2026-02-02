@@ -31,8 +31,7 @@ class AddOnManagementViewModel @Inject constructor(
     init {
         // Observe addons from Room database
         observeAddons()
-        // Load addons when ViewModel is created
-        loadAddons()
+        // Load addons will be called from screen's ON_RESUME lifecycle
     }
     
     /**
@@ -84,9 +83,18 @@ class AddOnManagementViewModel @Inject constructor(
                 Pair(addons, sorted)
             }.collect { (allAddons, filteredAddons) ->
                 _uiState.update { current ->
+                    // ซ่อน Addon ใน UI ทันทีถ้ากำลังถูกลบหลายรายการอยู่
+                    val pendingDeleteIds = current.pendingDeleteAddonIds
+                    val visibleAllAddons = allAddons.filter { addon ->
+                        !pendingDeleteIds.contains(addon.id)
+                    }
+                    val visibleFilteredAddons = filteredAddons.filter { addon ->
+                        !pendingDeleteIds.contains(addon.id)
+                    }
+
                     current.copy(
-                        addons = allAddons,
-                        filteredAddons = filteredAddons,
+                        addons = visibleAllAddons,
+                        filteredAddons = visibleFilteredAddons,
                         searchQuery = searchQueryFlow.value,
                         isLoading = false // Clear loading state once we have data from Room
                     )
@@ -154,7 +162,8 @@ class AddOnManagementViewModel @Inject constructor(
      */
     fun selectAllAddons() {
         _uiState.update { current ->
-            val allAddonIds = current.filteredAddons.map { it.id }.toSet()
+            val addons = current.filteredAddons ?: emptyList()
+            val allAddonIds = addons.map { it.id }.toSet()
             current.copy(selectedAddonIds = allAddonIds)
         }
     }
@@ -251,7 +260,18 @@ class AddOnManagementViewModel @Inject constructor(
                 return@launch
             }
             
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, deleteSuccessMessage = null) }
+            // ตั้งสถานะให้รู้ว่ารายการเหล่านี้กำลังถูกลบ และซ่อนออกจาก UI เลย
+            // ไม่ตั้ง isLoading = true เพื่อป้องกันการกระพริบของ UI
+            _uiState.update { current ->
+                current.copy(
+                    errorMessage = null,
+                    deleteSuccessMessage = null,
+                    pendingDeleteAddonIds = selectedIds.toSet(),
+                    // ออกจากโหมดเลือกและล้าง selection ทันที
+                    selectedAddonIds = emptySet(),
+                    isSelectionMode = false
+                )
+            }
             
             val result = addonRepository.deleteMultipleAddons(selectedIds)
             
@@ -265,19 +285,17 @@ class AddOnManagementViewModel @Inject constructor(
                 
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
-                        selectedAddonIds = emptySet(),
-                        isSelectionMode = false,
                         deleteSuccessMessage = successMessage,
-                        errorMessage = null
+                        errorMessage = null,
+                        pendingDeleteAddonIds = emptySet()
                     )
                 }
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
                         errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบ Addon",
-                        deleteSuccessMessage = null
+                        deleteSuccessMessage = null,
+                        pendingDeleteAddonIds = emptySet()
                     )
                 }
             }

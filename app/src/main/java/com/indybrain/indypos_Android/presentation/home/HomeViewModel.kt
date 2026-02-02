@@ -31,12 +31,23 @@ class HomeViewModel @Inject constructor(
     
     /**
      * Refresh data when screen appears (like viewWillAppear in iOS)
-     * Uses the new orders list endpoint (non-paginated)
+     * Uses the new orders list endpoint (non-paginated).
+     * After refresh, we update statistics from DB so top product is correct (avoids race with order items insert).
      */
     fun refreshData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             orderRepository.refreshOrdersList()
+            // Update statistics after insert so getTodayTopProduct() sees order items
+            orderRepository.getOrdersSync().onSuccess { orders ->
+                val topProduct = orderRepository.getTodayTopProduct()
+                val statistics = buildStatistics(orders, topProduct)
+                _uiState.update { current ->
+                    current.copy(statistics = statistics, isLoading = false)
+                }
+            }.onFailure {
+                _uiState.update { it.copy(isLoading = false) }
+            }
         }
     }
     
@@ -66,7 +77,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             orderRepository.getOrders().collect { result ->
                 result.onSuccess { orders ->
-                    val statistics = buildStatistics(orders)
+                    val topProduct = orderRepository.getTodayTopProduct()
+                    val statistics = buildStatistics(orders, topProduct)
                     _uiState.update { current ->
                         current.copy(
                             statistics = statistics,
@@ -85,7 +97,10 @@ class HomeViewModel @Inject constructor(
         }
     }
     
-    private fun buildStatistics(orders: List<com.indybrain.indypos_Android.data.local.entity.OrderEntity>): HomeStatistics {
+    private fun buildStatistics(
+        orders: List<com.indybrain.indypos_Android.data.local.entity.OrderEntity>,
+        todayTopProduct: Triple<String, Int, Double>?
+    ): HomeStatistics {
         val calendar = Calendar.getInstance()
         val today = calendar.get(Calendar.DAY_OF_YEAR)
         val year = calendar.get(Calendar.YEAR)
@@ -103,21 +118,17 @@ class HomeViewModel @Inject constructor(
         val todaysSales = todayOrders.sumOf { it.total }
         val ordersToday = todayOrders.size
         
-        // Find top product
-        val productMap = mutableMapOf<String, ProductStats>()
-        todayOrders.forEach { order ->
-            // Note: We'd need to fetch order items to get product details
-            // For now, using order data as placeholder
+        val (topProductName, topProductQuantity, topProductAmount) = when {
+            todayTopProduct != null -> Triple(todayTopProduct.first, todayTopProduct.second, todayTopProduct.third)
+            else -> Triple("", 0, 0.0)
         }
-        
-        val topProduct = productMap.values.maxByOrNull { it.quantity }
         
         return HomeStatistics(
             todaysSales = todaysSales,
             ordersToday = ordersToday,
-            topProductName = topProduct?.name ?: "",
-            topProductQuantity = topProduct?.quantity ?: 0,
-            topProductAmount = topProduct?.amount ?: 0.0
+            topProductName = topProductName,
+            topProductQuantity = topProductQuantity,
+            topProductAmount = topProductAmount
         )
     }
     
@@ -235,11 +246,5 @@ class HomeViewModel @Inject constructor(
                 }
         }
     }
-    
-    private data class ProductStats(
-        val name: String,
-        var quantity: Int = 0,
-        var amount: Double = 0.0
-    )
 }
 

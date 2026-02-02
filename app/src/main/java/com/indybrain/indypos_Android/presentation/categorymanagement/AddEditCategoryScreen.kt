@@ -27,6 +27,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,14 +67,22 @@ fun AddEditCategoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isEditMode = categoryId != null
-    
+    var isSaveInProgress by remember { mutableStateOf(false) }
+
     // Load category data if in edit mode
     LaunchedEffect(categoryId) {
         if (categoryId != null) {
             viewModel.loadCategory(categoryId)
         }
     }
-    
+
+    // Reset save-in-progress flag when loading finishes
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            isSaveInProgress = false
+        }
+    }
+
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
@@ -120,7 +131,7 @@ fun AddEditCategoryScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // Category Name Label with red asterisk
-                val labelText = stringResource(id = R.string.category_management_name_label)
+                val labelText = stringResource(id = R.string.category_form_name_title)
                 val annotatedLabel = buildAnnotatedString {
                     // Extract base text (remove asterisk if present)
                     val baseText = if (labelText.endsWith(" *")) {
@@ -150,7 +161,7 @@ fun AddEditCategoryScreen(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text(
-                            text = stringResource(id = R.string.category_management_name_placeholder),
+                            text = stringResource(id = R.string.category_form_name_placeholder),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -161,27 +172,14 @@ fun AddEditCategoryScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF5F5F5),
+                        unfocusedContainerColor = Color.White,
                         focusedContainerColor = Color.White,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = Color.Transparent
+                        unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
+                        focusedBorderColor = PrimaryButton
                     ),
                     enabled = !uiState.isLoading
                 )
                 
-                // Error Message
-                uiState.errorMessage?.let { errorMessage ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = errorMessage,
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color(0xFFE83808), // Red color
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
             }
             
             // Save Button - Fixed at bottom
@@ -193,8 +191,13 @@ fun AddEditCategoryScreen(
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .clickable(
-                        enabled = !uiState.isLoading,
-                        onClick = { viewModel.saveCategory {} }
+                        enabled = !uiState.isLoading && !isSaveInProgress,
+                        onClick = {
+                            if (!isSaveInProgress) {
+                                isSaveInProgress = true
+                                viewModel.saveCategory {}
+                            }
+                        }
                     ),
                 color = if (uiState.isLoading) 
                     PrimaryButton.copy(alpha = 0.6f) 
@@ -208,9 +211,9 @@ fun AddEditCategoryScreen(
                     Text(
                         text = stringResource(
                             id = if (isEditMode) 
-                                R.string.category_management_save_changes 
+                                R.string.category_form_save_edit_button 
                             else 
-                                R.string.category_management_add_category
+                                R.string.category_form_save_button
                         ),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
@@ -230,6 +233,51 @@ fun AddEditCategoryScreen(
                 onOkClick = {
                     viewModel.dismissSuccessDialog()
                     onSaveSuccess()
+                }
+            )
+        }
+        
+        // Error Dialog - Show API errors as popup
+        uiState.errorMessage?.let { error ->
+            AlertDialog(
+                onDismissRequest = { 
+                    viewModel.clearError()
+                    isSaveInProgress = false
+                },
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.category_management_error_title),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = error,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { 
+                        viewModel.clearError()
+                        isSaveInProgress = false
+                    }) {
+                        Text(
+                            text = stringResource(id = R.string.dialog_button_ok),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
                 }
             )
         }
@@ -260,9 +308,9 @@ private fun SuccessDialog(
             Text(
                 text = stringResource(
                     id = if (isEditMode) 
-                        R.string.category_management_edit_success 
+                        R.string.category_form_success_edit 
                     else 
-                        R.string.category_management_add_success
+                        R.string.category_form_success_add
                 ),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,

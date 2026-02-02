@@ -135,7 +135,7 @@ fun ReceiptSettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "ใบเสร็จ",
+                        text = stringResource(R.string.receipt_settings_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -174,8 +174,8 @@ fun ReceiptSettingsScreen(
             ) {
                 // Print Shop Logo
                 SwitchSettingItem(
-                    title = "พิมพ์โลโก้ร้าน",
-                    subtitle = "บริการพิมพ์แบบกำหนดเอง",
+                    title = stringResource(R.string.settings_print_shop_logo),
+                    subtitle = stringResource(R.string.settings_custom_printing_services),
                     checked = uiState.printShopLogo,
                     onCheckedChange = { viewModel.updatePrintShopLogo(it) }
                 )
@@ -183,8 +183,8 @@ fun ReceiptSettingsScreen(
                 // Shop Logo Image (shown when printShopLogo is enabled)
                 if (uiState.printShopLogo) {
                     ImagePickerItem(
-                        title = "เลือกโลโก้ร้าน",
-                        subtitle = "แนบรูปโลโก้ร้านของคุณ",
+                        title = stringResource(R.string.settings_select_shop_logo),
+                        subtitle = stringResource(R.string.settings_attach_shop_logo),
                         imageBitmap = uiState.shopLogoBitmap,
                         onClick = { showImagePickerDialog = true }
                     )
@@ -192,15 +192,15 @@ fun ReceiptSettingsScreen(
                 
                 // Print After Finish
                 SwitchSettingItem(
-                    title = "พิมพ์ใบเสร็จอัตโนมัติ",
+                    title = stringResource(R.string.settings_print_after_finish),
                     checked = uiState.printAfterFinish,
                     onCheckedChange = { viewModel.updatePrintAfterFinish(it) }
                 )
                 
                 // QR Code PromptPay
                 SwitchSettingItem(
-                    title = "QR Code PromptPay",
-                    subtitle = "สร้าง QR Code PromptPay สำหรับการรับชำระเงิน",
+                    title = stringResource(R.string.settings_promptpay_qr_code),
+                    subtitle = stringResource(R.string.settings_generate_qr_code_description),
                     checked = uiState.showQRCode,
                     onCheckedChange = { viewModel.updateShowQRCode(it) }
                 )
@@ -219,25 +219,25 @@ fun ReceiptSettingsScreen(
                 
                 // Open Cash Drawer
                 SwitchSettingItem(
-                    title = "เปิดลิ้นชักอัตโนมัติ",
+                    title = stringResource(R.string.settings_open_cash_drawer),
                     checked = uiState.openCashDrawer,
                     onCheckedChange = { viewModel.updateOpenCashDrawer(it) }
                 )
                 
                 // Paper Size
                 PickerSettingItem(
-                    title = "ขนาดกระดาษ",
+                    title = stringResource(R.string.settings_paper_size),
                     value = when (uiState.paperSize) {
-                        "58" -> "58 มม"
-                        "80" -> "80 มม"
-                        else -> "58 มม"
+                        "58" -> stringResource(R.string.settings_paper_size_58mm)
+                        "80" -> stringResource(R.string.settings_paper_size_80mm)
+                        else -> stringResource(R.string.settings_paper_size_58mm)
                     },
                     onClick = { showPaperSizeDialog = true }
                 )
                 
                 // Footer
                 TextFieldSettingItem(
-                    title = "ส่วนท้าย",
+                    title = stringResource(R.string.settings_footer),
                     value = uiState.footer,
                     placeholder = "กรอกข้อความ...",
                     onValueChange = { viewModel.updateFooter(it) }
@@ -245,8 +245,8 @@ fun ReceiptSettingsScreen(
                 
                 // Tax Identification Number
                 SwitchSettingItem(
-                    title = "เลขประจำตัวผู้เสียภาษีอากร",
-                    subtitle = "แสดงเลขประจำตัวผู้เสียภาษีอากรบนใบเสร็จเพื่อการปฏิบัติตามกฎหมายภาษี",
+                    title = stringResource(R.string.settings_tax_identification_number),
+                    subtitle = stringResource(R.string.settings_tin_description),
                     checked = uiState.taxIdentificationNumber,
                     onCheckedChange = { viewModel.updateTaxIdentificationNumber(it) }
                 )
@@ -256,7 +256,7 @@ fun ReceiptSettingsScreen(
                     TextFieldSettingItem(
                         title = null,
                         value = uiState.tinNumber,
-                        placeholder = "กรอกเลขประจำตัวผู้เสียภาษีอากร 13 หลัก",
+                        placeholder = stringResource(R.string.settings_tin_placeholder),
                         errorMessage = uiState.tinNumberError,
                         keyboardType = KeyboardType.Number,
                         onValueChange = { viewModel.updateTINNumber(it) }
@@ -290,7 +290,7 @@ fun ReceiptSettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "กำลังบันทึก...",
+                        text = stringResource(R.string.settings_saving),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.SemiBold,
                             size = FontSize.Large
@@ -299,7 +299,7 @@ fun ReceiptSettingsScreen(
                     )
                 } else {
                     Text(
-                        text = "บันทึกการตั้งค่า",
+                        text = stringResource(R.string.settings_save_settings),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.SemiBold,
                             size = FontSize.Large
@@ -376,7 +376,7 @@ fun ReceiptSettingsScreen(
             onDismissRequest = { viewModel.clearSuccessMessage() },
             title = {
                 Text(
-                    text = "สำเร็จ",
+                    text = stringResource(R.string.success_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -400,7 +400,7 @@ fun ReceiptSettingsScreen(
                     onBackClick()
                 }) {
                     Text(
-                        text = "ตกลง",
+                        text = stringResource(R.string.dialog_button_ok),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -418,7 +418,7 @@ fun ReceiptSettingsScreen(
             onDismissRequest = { viewModel.clearErrorMessage() },
             title = {
                 Text(
-                    text = "เกิดข้อผิดพลาด",
+                    text = stringResource(R.string.common_error),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -439,7 +439,7 @@ fun ReceiptSettingsScreen(
             confirmButton = {
                 TextButton(onClick = { viewModel.clearErrorMessage() }) {
                     Text(
-                        text = "ตกลง",
+                        text = stringResource(R.string.dialog_button_ok),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -877,7 +877,7 @@ private fun ImagePickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "เลือกรูปภาพ",
+                text = stringResource(R.string.home_edit_cover_image),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -892,7 +892,7 @@ private fun ImagePickerDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "ถ่ายรูป",
+                        text = stringResource(R.string.home_take_photo),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -905,7 +905,7 @@ private fun ImagePickerDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "เลือกรูปจากแกลเลอรี",
+                        text = stringResource(R.string.home_choose_from_gallery),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -933,7 +933,7 @@ private fun ImagePickerDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(R.string.settings_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -995,7 +995,7 @@ private fun QRCodePreviewDialog(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         imageVector = Icons.Filled.Close,
-                        contentDescription = "ปิด",
+                        contentDescription = stringResource(R.string.settings_cancel),
                         tint = PrimaryText
                     )
                 }
@@ -1067,7 +1067,7 @@ private fun QRCodePreviewDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ปิด",
+                    text = stringResource(R.string.settings_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -1252,7 +1252,7 @@ private fun PaperSizeDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "เลือกขนาดกระดาษ",
+                text = stringResource(R.string.settings_paper_size_select),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -1262,10 +1262,10 @@ private fun PaperSizeDialog(
         },
         text = {
             Column {
-                listOf("58", "80").forEach { size ->
+                listOf("58").forEach { size ->
                     val displayText = when (size) {
-                        "58" -> "58 มม"
-                        "80" -> "80 มม"
+                        "58" -> stringResource(R.string.settings_paper_size_58mm)
+                        "80" -> stringResource(R.string.settings_paper_size_80mm)
                         else -> size
                     }
                     TextButton(
@@ -1289,7 +1289,7 @@ private fun PaperSizeDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(R.string.settings_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

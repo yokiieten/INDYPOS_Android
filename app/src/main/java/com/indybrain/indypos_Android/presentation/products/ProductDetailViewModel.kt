@@ -103,7 +103,23 @@ class ProductDetailViewModel @Inject constructor(
                 }
                 
                 // Load existing cart data if available
-                val existingQuantity = existingCartItem?.quantity ?: 1
+                // กรณีแก้ไขจากตะกร้า ให้จำนวนเริ่มต้นตรงกับ "จำนวนรวม" ของ group เดียวกัน
+                // ไม่ใช่แค่จำนวนของ CartItem ตัวเดียว (เช่น กด + จาก ProductEditScreen / OrderProductScreen)
+                val existingQuantity = when {
+                    // โหมดเพิ่มใหม่แบบบังคับ ("เพิ่มอีก") → เริ่มที่ 1 เสมอ
+                    isExplicitNew || existingCartItem == null -> 1
+                    
+                    // โหมดแก้ไข: รวมจำนวนของ cart items ทุกตัวที่ config เหมือนกัน (specialRequest + addons)
+                    else -> {
+                        val targetKey = createGroupKeyForCartItem(existingCartItem)
+                        val groupedTotal = existingCartItems
+                            .filter { createGroupKeyForCartItem(it) == targetKey }
+                            .sumOf { it.quantity }
+                        
+                        // กันกรณีผิดปกติ (เผื่อ grouping พลาด) ให้ fallback เป็น quantity เดิม
+                        if (groupedTotal > 0) groupedTotal else existingCartItem.quantity
+                    }
+                }
                 val existingSpecialRequest = existingCartItem?.specialRequest ?: ""
                 
                 // Load existing addons from cart
@@ -140,12 +156,22 @@ class ProductDetailViewModel @Inject constructor(
                 ?: return@update currentState
             
             val currentSelected = currentState.selectedAddons[addonGroupId] ?: emptySet()
+            
+            // Check if maxSelection is 0 - if so, prevent selection and show error
+            val maxSelection = addonGroup.maxSelection
+            if (maxSelection != null && maxSelection == 0) {
+                // Max selection is 0, cannot select any addon
+                // Error message will be localized in the UI layer using string resource
+                return@update currentState.copy(
+                    errorMessage = "MAX_SELECTION_ZERO" // Special error code for localization
+                )
+            }
+            
             val newSelected = if (currentSelected.contains(addonId)) {
                 // Deselect
                 currentSelected - addonId
             } else {
                 // Select
-                val maxSelection = addonGroup.maxSelection
                 if (addonGroup.isSingleSelection) {
                     // Single selection - replace current selection
                     setOf(addonId)
@@ -394,70 +420,46 @@ class ProductDetailViewModel @Inject constructor(
             val editingCartItemId = currentState.editingCartItemId
             
             if (editingCartItemId != null) {
-                // EDIT MODE: replace the original cart item
+                // EDIT MODE: อัปเดตทั้งกรุ๊ป (ไม่ใช่แค่ cart item เดียว)
                 val originalItem = existingCartItems.find { it.id == editingCartItemId }
                 
-                // Find matching item with the same key BUT different id (for merging)
-                val matchingOtherItem = existingCartItems.find { cartItem ->
-                    if (cartItem.id == editingCartItemId) return@find false
-                    
-                    val itemSpecialRequest = cartItem.specialRequest ?: ""
-                    val itemSortedGroups = cartItem.selectedAddons.keys.sorted()
-                    val itemAddonsKey = itemSortedGroups.joinToString("|") { groupId ->
-                        val addonIds = cartItem.selectedAddons[groupId]
-                            ?.map { it.id }
-                            ?.sorted()
-                            ?.joinToString(",") ?: ""
-                        "$groupId:$addonIds"
-                    }
-                    val itemKey = "${cartItem.product.id}|$itemSpecialRequest|$itemAddonsKey"
-                    itemKey == currentKey
-                }
-                
-                // Total quantity in cart excluding the original item we are editing
-                val totalQuantityExcludingOriginal = existingCartItems
-                    .filter { it.id != editingCartItemId }
-                    .sumOf { it.quantity }
-                
-                if (matchingOtherItem != null) {
-                    // Case 1: New config matches another existing item -> merge into that item
-                    val newQuantityForMatching = matchingOtherItem.quantity + currentState.quantity
-                    val totalQuantityAfterChange = totalQuantityExcludingOriginal + newQuantityForMatching
-                    
-                    val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
-                    if (!hasStock) {
-                        val stockQuantity = product.stockQuantity ?: 0
-                        val availableStock = stockQuantity - totalQuantityExcludingOriginal
-                        val errorMessage = if (availableStock > 0) {
-                            "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                        } else {
-                            "สินค้าในสต็อกไม่เพียงพอ"
-                        }
-                        _uiState.update { it.copy(errorMessage = errorMessage) }
-                        return@launch
-                    }
-                    
-                    // Update matching item quantity and remove original item
-                    cartRepository.updateCartItemQuantity(matchingOtherItem.id, newQuantityForMatching)
-                    cartRepository.deleteCartItems(listOf(editingCartItemId))
+                if (originalItem == null) {
+                    // ถ้าไม่เจอ item เดิม ให้ fallback เป็นโหมดปกติ
+                    _uiState.update { it.copy(editingCartItemId = null) }
                 } else {
-                    // Case 2: New config doesn't match any other item -> update original item IN PLACE
-                    // so that its createdAt (and list position) is preserved
-                    val totalQuantityAfterChange = totalQuantityExcludingOriginal + currentState.quantity
-                    val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
-                    if (!hasStock) {
-                        val stockQuantity = product.stockQuantity ?: 0
-                        val availableStock = stockQuantity - totalQuantityExcludingOriginal
-                        val errorMessage = if (availableStock > 0) {
-                            "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                        } else {
-                            "สินค้าในสต็อกไม่เพียงพอ"
-                        }
-                        _uiState.update { it.copy(errorMessage = errorMessage) }
-                        return@launch
+                    // หา cart items ทั้งหมดที่อยู่ในกรุ๊ปเดียวกันกับ originalItem (ใช้ key เดิม)
+                    val originalKey = createGroupKeyForCartItem(originalItem)
+                    val itemsInOriginalGroup = existingCartItems.filter { cartItem ->
+                        createGroupKeyForCartItem(cartItem) == originalKey
                     }
                     
-                    // Prepare updated configuration data (price + addons) for the original item
+                    // คำนวณจำนวนรวมของกรุ๊ปเดิม
+                    val totalQuantityFromOriginalGroup = itemsInOriginalGroup.sumOf { it.quantity }
+                    
+                    // หา item อื่นที่ config ใหม่เหมือนกับของใหม่ (ไว้ merge)
+                    val matchingOtherItem = existingCartItems.find { cartItem ->
+                        // ไม่นับ items ที่อยู่ในกรุ๊ปเดิม (จะลบทิ้งอยู่แล้ว)
+                        if (itemsInOriginalGroup.any { it.id == cartItem.id }) return@find false
+                        
+                        val itemSpecialRequest = cartItem.specialRequest ?: ""
+                        val itemSortedGroups = cartItem.selectedAddons.keys.sorted()
+                        val itemAddonsKey = itemSortedGroups.joinToString("|") { groupId ->
+                            val addonIds = cartItem.selectedAddons[groupId]
+                                ?.map { it.id }
+                                ?.sorted()
+                                ?.joinToString(",") ?: ""
+                            "$groupId:$addonIds"
+                        }
+                        val itemKey = "${cartItem.product.id}|$itemSpecialRequest|$itemAddonsKey"
+                        itemKey == currentKey
+                    }
+                    
+                    // จำนวนรวมในตะกร้าที่ยกเว้นกรุ๊ปเดิมทั้งหมด
+                    val totalQuantityExcludingOriginalGroup = existingCartItems
+                        .filter { !itemsInOriginalGroup.any { original -> original.id == it.id } }
+                        .sumOf { it.quantity }
+                    
+                    // เตรียม config ใหม่ (price + addons)
                     val addonPrice = calculateAddonPrice()
                     val unitPrice = product.price + addonPrice
                     
@@ -469,7 +471,7 @@ class ProductDetailViewModel @Inject constructor(
                             if (addon != null && addonGroup != null) {
                                 cartAddons.add(
                                     CartAddonEntity(
-                                        cartItemId = editingCartItemId, // Will be overwritten in repository, kept for clarity
+                                        cartItemId = "", // Will be set when creating new item
                                         addonId = addon.id,
                                         addonName = addon.name,
                                         addonPrice = addon.price,
@@ -481,15 +483,63 @@ class ProductDetailViewModel @Inject constructor(
                         }
                     }
                     
-                    // Update the original cart item configuration (specialRequest, unitPrice, addons, quantity)
-                    cartRepository.updateCartItemConfiguration(
-                        cartItemId = editingCartItemId,
-                        specialRequest = currentState.specialRequest.takeIf { it.isNotBlank() },
-                        unitPrice = unitPrice,
-                        addons = cartAddons
-                    )
-                    // Also update quantity (so both config and quantity are changed on the same item)
-                    cartRepository.updateCartItemQuantity(editingCartItemId, currentState.quantity)
+                    // ใช้จำนวนที่ผู้ใช้แก้ไข (currentState.quantity) แทนจำนวนเดิม
+                    val newQuantity = currentState.quantity
+                    
+                    if (matchingOtherItem != null) {
+                        // กรณี config ใหม่เหมือนกับ item อื่น -> merge จำนวนใหม่เข้าไป
+                        val newQuantityForMatching = matchingOtherItem.quantity + newQuantity
+                        val totalQuantityAfterChange = totalQuantityExcludingOriginalGroup + newQuantityForMatching
+                        
+                        val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
+                        if (!hasStock) {
+                            val stockQuantity = product.stockQuantity ?: 0
+                            val availableStock = stockQuantity - totalQuantityExcludingOriginalGroup
+                            val errorMessage = if (availableStock > 0) {
+                                "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
+                            } else {
+                                "สินค้าในสต็อกไม่เพียงพอ"
+                            }
+                            _uiState.update { it.copy(errorMessage = errorMessage) }
+                            return@launch
+                        }
+                        
+                        // อัปเดตจำนวนของ item ที่ match แล้วลบกรุ๊ปเดิมทั้งหมดทิ้ง
+                        cartRepository.updateCartItemQuantity(matchingOtherItem.id, newQuantityForMatching)
+                        val originalGroupItemIds = itemsInOriginalGroup.map { it.id }
+                        cartRepository.deleteCartItems(originalGroupItemIds)
+                    } else {
+                        // กรณี config ใหม่ไม่ตรงกับ item ไหนเลย -> ลบกรุ๊ปเดิมทั้งหมด แล้วสร้าง cart item ใหม่ด้วย config ใหม่ + จำนวนใหม่
+                        val totalQuantityAfterChange = totalQuantityExcludingOriginalGroup + newQuantity
+                        val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
+                        if (!hasStock) {
+                            val stockQuantity = product.stockQuantity ?: 0
+                            val availableStock = stockQuantity - totalQuantityExcludingOriginalGroup
+                            val errorMessage = if (availableStock > 0) {
+                                "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
+                            } else {
+                                "สินค้าในสต็อกไม่เพียงพอ"
+                            }
+                            _uiState.update { it.copy(errorMessage = errorMessage) }
+                            return@launch
+                        }
+                        
+                        // ลบ cart items ทั้งหมดในกรุ๊ปเดิม
+                        val originalGroupItemIds = itemsInOriginalGroup.map { it.id }
+                        cartRepository.deleteCartItems(originalGroupItemIds)
+                        
+                        // สร้าง cart item ใหม่ด้วย config ใหม่ + จำนวนใหม่ที่ผู้ใช้แก้ไข
+                        cartRepository.addToCart(
+                            productId = product.id,
+                            productName = product.name,
+                            productImageUrl = product.imageUrl,
+                            productColorHex = product.selectedColorHex,
+                            unitPrice = unitPrice,
+                            quantity = newQuantity, // ใช้จำนวนใหม่ที่ผู้ใช้แก้ไข
+                            specialRequest = currentState.specialRequest.takeIf { it.isNotBlank() },
+                            addons = cartAddons
+                        )
+                    }
                 }
                 
                 // Mark as success (and clear edit state)
@@ -598,6 +648,30 @@ class ProductDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+    
+    /**
+     * สร้าง key สำหรับ grouping CartItem ให้ตรงกับ logic ใน GetGroupedCartItemsByProductUseCase
+     * รูปแบบ: "specialRequest|groupId1:addonId1,addonId2|groupId2:addonId3"
+     */
+    private fun createGroupKeyForCartItem(
+        item: com.indybrain.indypos_Android.domain.model.CartItem
+    ): String {
+        val specialRequest = item.specialRequest ?: ""
+        
+        // Sort addon groups by groupId
+        val sortedGroups = item.selectedAddons.keys.sorted()
+        
+        // Create addons key: "groupId1:addonId1,addonId2|groupId2:addonId3"
+        val addonsKey = sortedGroups.joinToString("|") { groupId ->
+            val addonIds = item.selectedAddons[groupId]
+                ?.map { it.id }
+                ?.sorted()
+                ?.joinToString(",") ?: ""
+            "$groupId:$addonIds"
+        }
+        
+        return "$specialRequest|$addonsKey"
     }
 }
 

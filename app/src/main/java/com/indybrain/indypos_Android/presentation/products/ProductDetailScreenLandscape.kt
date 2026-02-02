@@ -76,6 +76,7 @@ fun ProductDetailContentLandscape(
     selectedAddons: Map<String, Set<String>>,
     quantity: Int,
     specialRequest: String,
+    isEditing: Boolean,
     onAddonToggle: (String, String) -> Unit,
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
@@ -213,7 +214,8 @@ fun ProductDetailContentLandscape(
                 totalPrice = totalPrice,
                 onQuantityIncrease = onQuantityIncrease,
                 onQuantityDecrease = onQuantityDecrease,
-                onAddToCart = onAddToCart
+                onAddToCart = onAddToCart,
+                isEditing = isEditing
             )
         }
     }
@@ -225,7 +227,8 @@ private fun BottomActionBarLandscape(
     totalPrice: Double,
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
-    onAddToCart: () -> Unit
+    onAddToCart: () -> Unit,
+    isEditing: Boolean = false
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -306,7 +309,7 @@ private fun BottomActionBarLandscape(
                 }
             }
             
-            // Add to Cart Button
+            // Add to Cart / Save Edit Button
             TextButton(
                 onClick = onAddToCart,
                 modifier = Modifier
@@ -318,14 +321,32 @@ private fun BottomActionBarLandscape(
                     contentColor = Color.White
                 )
             ) {
-                Text(
-                    text = "เพิ่มลงตะกร้า ${formatCurrency(totalPrice)}",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Large
-                    ),
-                    color = Color.White
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isEditing) {
+                            stringResource(id = R.string.product_detail_save_edit)
+                        } else {
+                            stringResource(id = R.string.product_detail_add_to_cart)
+                        },
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        text = formatCurrency(totalPrice),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = Color.White
+                    )
+                }
             }
         }
     }
@@ -360,10 +381,37 @@ private fun AddonGroupSectionLandscape(
                     color = PrimaryText
                 )
                 
-                if (addonGroup.maxSelection != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                // Required + Max selection info (only show required text when required)
+                val maxSelection = addonGroup.maxSelection
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                val infoText = if (addonGroup.isRequired) {
+                    val requiredText = stringResource(id = R.string.addon_group_required)
+                    if (maxSelection != null && maxSelection > 0) {
+                        val selectionText = stringResource(
+                            id = R.string.product_max_selection,
+                            maxSelection
+                        )
+                        "$requiredText \u2022 $selectionText"
+                    } else {
+                        requiredText
+                    }
+                } else {
+                    // Only show max selection if not required
+                    if (maxSelection != null && maxSelection > 0) {
+                        stringResource(
+                            id = R.string.product_max_selection,
+                            maxSelection
+                        )
+                    } else {
+                        null
+                    }
+                }
+
+                if (infoText != null) {
                     Text(
-                        text = "เลือกได้สูงสุด ${addonGroup.maxSelection} รายการ",
+                        text = infoText,
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
@@ -462,7 +510,7 @@ private fun SpecialRequestSectionLandscape(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "คำขอพิเศษ",
+                text = stringResource(id = R.string.product_detail_special_request),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Medium

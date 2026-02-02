@@ -268,7 +268,7 @@ private fun DiscountScreenLandscapeTablet(
                                 style = AppFontStyle.SemiBold,
                                 size = FontSize.Large
                             ).copy(textAlign = TextAlign.Center),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
                             decorationBox = { innerTextField ->
                                 if (valueText.isEmpty()) {
@@ -671,7 +671,7 @@ private fun DiscountScreenLandscapeMobile(
                                     style = AppFontStyle.SemiBold,
                                     size = FontSize.Medium
                                 ).copy(textAlign = TextAlign.Center),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 decorationBox = { innerTextField ->
                                     if (valueText.isEmpty()) {

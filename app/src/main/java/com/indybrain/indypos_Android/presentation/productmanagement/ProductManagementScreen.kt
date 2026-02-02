@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,11 +44,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -125,6 +131,20 @@ fun ProductManagementScreen(
     
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
+    
+    // Refresh products when screen becomes visible (returns from AddEditProductScreen)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshProducts()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     
     // Load sync statistics when dialog opens
     LaunchedEffect(showSyncDialog) {
@@ -261,45 +281,63 @@ fun ProductManagementScreen(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshProducts() }
                 ) {
-                    if (uiState.filteredProducts.isEmpty() && !uiState.isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.product_management_empty),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
+                    // Calculate products to show
+                    val productsToShow = uiState.filteredProducts ?: emptyList()
+                    // Show loading only for initial load when data hasn't been loaded yet (products is null)
+                    // Avoid showing full-screen loading during actions like delete to prevent flicker
+                    val shouldShowLoading = uiState.isLoading && uiState.products == null
+                    
+                    when {
+                        shouldShowLoading -> {
+                            // Show loading indicator when loading or data hasn't been loaded yet
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryButton)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                top = 8.dp,
-                                end = 16.dp,
-                                bottom = if (uiState.isSelectionMode) 80.dp else 80.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(uiState.filteredProducts) { product ->
-                                ProductItem(
-                                    product = product,
-                                    categories = uiState.categories,
-                                    isSelectionMode = uiState.isSelectionMode,
-                                    isSelected = uiState.selectedProductIds.contains(product.id),
-                                    onClick = { 
-                                        if (uiState.isSelectionMode) {
-                                            viewModel.toggleProductSelection(product.id ?: "")
-                                        } else {
-                                            selectedProduct = product
-                                        }
-                                    }
+                        productsToShow.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.product_management_empty),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = SecondaryText
                                 )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    top = 8.dp,
+                                    end = 16.dp,
+                                    bottom = if (uiState.isSelectionMode) 80.dp else 80.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(productsToShow) { product ->
+                                    ProductItem(
+                                        product = product,
+                                        categories = uiState.categories,
+                                        isSelectionMode = uiState.isSelectionMode,
+                                        isSelected = uiState.selectedProductIds.contains(product.id),
+                                        onClick = { 
+                                            if (uiState.isSelectionMode) {
+                                                viewModel.toggleProductSelection(product.id ?: "")
+                                            } else {
+                                                selectedProduct = product
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -309,9 +347,10 @@ fun ProductManagementScreen(
             // Bottom Action Bar - Show different UI based on selection mode
             if (uiState.isSelectionMode) {
                 // Selection Mode - Show selection actions
+                val productsToShow = uiState.filteredProducts ?: emptyList()
                 SelectionModeBottomBar(
                     selectedCount = uiState.selectedProductIds.size,
-                    totalCount = uiState.filteredProducts.size,
+                    totalCount = productsToShow.size,
                     onSelectAll = { viewModel.selectAllProducts() },
                     onDeselectAll = { viewModel.deselectAllProducts() },
                     onDelete = {
@@ -376,7 +415,7 @@ fun ProductManagementScreen(
         // Delete Confirmation Dialog (Single)
         if (showDeleteConfirmation && productToDelete != null) {
             DeleteConfirmationDialog(
-                productName = productToDelete!!.name ?: "สินค้า",
+                productName = productToDelete!!.name ?: stringResource(id = R.string.product_default_name),
                 onConfirm = {
                     productToDelete?.id?.let { productId ->
                         viewModel.deleteProduct(productId)
@@ -433,7 +472,7 @@ fun ProductManagementScreen(
                 onDismissRequest = { viewModel.clearDeleteSuccessMessage() },
                 title = {
                     Text(
-                        text = "สำเร็จ",
+                        text = stringResource(id = R.string.success_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -453,7 +492,7 @@ fun ProductManagementScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearDeleteSuccessMessage() }) {
-                        Text("ตกลง", color = PrimaryButton)
+                        Text(stringResource(id = R.string.dialog_button_ok), color = PrimaryButton)
                     }
                 }
             )
@@ -465,7 +504,7 @@ fun ProductManagementScreen(
                 onDismissRequest = { viewModel.clearError() },
                 title = {
                     Text(
-                        text = "เกิดข้อผิดพลาด",
+                        text = stringResource(id = R.string.dialog_error_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -485,7 +524,7 @@ fun ProductManagementScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearError() }) {
-                        Text("ตกลง", color = PrimaryButton)
+                        Text(stringResource(id = R.string.dialog_button_ok), color = PrimaryButton)
                     }
                 }
             )
@@ -550,7 +589,7 @@ private fun CategoryDropdown(
             onDismissRequest = { showDropdown = false },
             title = {
                 Text(
-                    text = stringResource(id = R.string.product_management_all_categories),
+                    text = "${stringResource(id = R.string.product_management_all_categories)} (${categories.size + 1} ${stringResource(id = R.string.product_management_items_count)})",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -559,26 +598,33 @@ private fun CategoryDropdown(
                 )
             },
             text = {
-                Column {
+                // Use LazyColumn for scrollable list
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp) // Limit max height for scrolling
+                ) {
                     // All Categories option
-                    TextButton(
-                        onClick = {
-                            onCategorySelected(null)
-                            showDropdown = false
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.product_management_all_categories),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = if (selectedCategoryId == null) PrimaryButton else PrimaryText
-                        )
+                    item {
+                        TextButton(
+                            onClick = {
+                                onCategorySelected(null)
+                                showDropdown = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.product_management_all_categories),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = if (selectedCategoryId == null) PrimaryButton else PrimaryText
+                            )
+                        }
                     }
                     // Category options
-                    categories.forEach { category ->
+                    items(categories) { category ->
                         TextButton(
                             onClick = {
                                 onCategorySelected(category.id)
@@ -740,9 +786,9 @@ private fun ProductItem(
                 // Category and Price
                 val categoryName = product.categoryId?.let { categoryId ->
                     categories.find { it.id == categoryId }?.name
-                } ?: ""
+                } ?: stringResource(id = R.string.product_no_category_title)
                 Text(
-                    text = "${if (categoryName.isNotBlank()) "$categoryName - " else ""}${formatCurrency(product.price ?: 0.0)}",
+                    text = "$categoryName - ${formatCurrency(product.price ?: 0.0)}",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -758,7 +804,10 @@ private fun ProductItem(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = if (product.isActive == true) "ใช้งาน" else "ไม่ใช้งาน",
+                        text = if (product.isActive == true) 
+                            stringResource(id = R.string.product_status_active) 
+                        else 
+                            stringResource(id = R.string.product_status_inactive),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
@@ -1006,7 +1055,7 @@ private fun DeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "คุณต้องการลบสินค้า '$productName' ใช่หรือไม่?",
+                    text = stringResource(id = R.string.product_management_confirm_delete_message_single, productName),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -1075,7 +1124,7 @@ private fun MultipleDeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "คุณต้องการลบสินค้า $selectedCount รายการใช่หรือไม่?",
+                    text = stringResource(id = R.string.product_management_confirm_delete_message_multiple, selectedCount),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

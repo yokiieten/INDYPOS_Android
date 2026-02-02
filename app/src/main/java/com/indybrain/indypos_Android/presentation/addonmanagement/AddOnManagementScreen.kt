@@ -37,11 +37,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,6 +94,20 @@ fun AddOnManagementScreen(
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     
+    // Refresh addons when screen becomes visible (returns from AddEditAddonScreen)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshAddons()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    
     // Load sync statistics when dialog opens
     LaunchedEffect(showSyncDialog) {
         if (showSyncDialog) {
@@ -108,9 +127,9 @@ fun AddOnManagementScreen(
                 title = {
                     Text(
                         text = if (uiState.isSelectionMode) 
-                            "เลือก Addon"
+                            stringResource(id = R.string.addon_management_select_title)
                         else 
-                            "จัดการ Addon",
+                            stringResource(id = R.string.addon_management_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -122,7 +141,7 @@ fun AddOnManagementScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "กลับ",
+                            contentDescription = stringResource(id = R.string.product_back),
                             tint = PrimaryText
                         )
                     }
@@ -144,9 +163,9 @@ fun AddOnManagementScreen(
                     ) {
                         Text(
                             text = if (uiState.isSelectionMode) 
-                                "ยกเลิก"
+                                stringResource(id = R.string.addon_group_management_cancel)
                             else 
-                                "แก้ไข",
+                                stringResource(id = R.string.addon_group_management_edit),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -180,7 +199,7 @@ fun AddOnManagementScreen(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         placeholder = {
                             Text(
-                                text = "ค้นหา Addon",
+                                text = stringResource(id = R.string.addon_management_search_placeholder),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -212,44 +231,62 @@ fun AddOnManagementScreen(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshAddons() }
                 ) {
-                    if (uiState.filteredAddons.isEmpty() && !uiState.isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "ไม่มี Addon",
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
+                    // Calculate addons to show
+                    val addonsToShow = uiState.filteredAddons ?: emptyList()
+                    // Show loading only for initial load when data hasn't been loaded yet (addons is null)
+                    // Avoid showing full-screen loading during actions like delete to prevent flicker
+                    val shouldShowLoading = uiState.isLoading && uiState.addons == null
+                    
+                    when {
+                        shouldShowLoading -> {
+                            // Show loading indicator when loading or data hasn't been loaded yet
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryButton)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                top = 8.dp,
-                                end = 16.dp,
-                                bottom = if (uiState.isSelectionMode) 80.dp else 80.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(uiState.filteredAddons) { addon ->
-                                AddonItem(
-                                    addon = addon,
-                                    isSelectionMode = uiState.isSelectionMode,
-                                    isSelected = uiState.selectedAddonIds.contains(addon.id),
-                                    onClick = { 
-                                        if (uiState.isSelectionMode) {
-                                            viewModel.toggleAddonSelection(addon.id)
-                                        } else {
-                                            selectedAddon = addon
-                                        }
-                                    }
+                        addonsToShow.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.addon_management_empty),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = SecondaryText
                                 )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    top = 8.dp,
+                                    end = 16.dp,
+                                    bottom = if (uiState.isSelectionMode) 80.dp else 80.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(addonsToShow) { addon ->
+                                    AddonItem(
+                                        addon = addon,
+                                        isSelectionMode = uiState.isSelectionMode,
+                                        isSelected = uiState.selectedAddonIds.contains(addon.id),
+                                        onClick = { 
+                                            if (uiState.isSelectionMode) {
+                                                viewModel.toggleAddonSelection(addon.id)
+                                            } else {
+                                                selectedAddon = addon
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -259,9 +296,10 @@ fun AddOnManagementScreen(
             // Bottom Action Bar - Show different UI based on selection mode
             if (uiState.isSelectionMode) {
                 // Selection Mode - Show selection actions
+                val addonsToShow = uiState.filteredAddons ?: emptyList()
                 SelectionModeBottomBar(
                     selectedCount = uiState.selectedAddonIds.size,
-                    totalCount = uiState.filteredAddons.size,
+                    totalCount = addonsToShow.size,
                     onSelectAll = { viewModel.selectAllAddons() },
                     onDeselectAll = { viewModel.deselectAllAddons() },
                     onDelete = {
@@ -288,7 +326,7 @@ fun AddOnManagementScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "เพิ่ม Addon",
+                            text = stringResource(id = R.string.addon_management_add),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Medium
@@ -381,7 +419,7 @@ fun AddOnManagementScreen(
                 onDismissRequest = { viewModel.clearDeleteSuccessMessage() },
                 title = {
                     Text(
-                        text = "สำเร็จ",
+                        text = stringResource(id = R.string.success_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -401,7 +439,7 @@ fun AddOnManagementScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearDeleteSuccessMessage() }) {
-                        Text("ตกลง", color = PrimaryButton)
+                        Text(stringResource(id = R.string.dialog_button_ok), color = PrimaryButton)
                     }
                 }
             )
@@ -413,7 +451,7 @@ fun AddOnManagementScreen(
                 onDismissRequest = { viewModel.dismissSyncSuccess() },
                 title = {
                     Text(
-                        text = "สำเร็จ",
+                        text = stringResource(id = R.string.success_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -433,7 +471,7 @@ fun AddOnManagementScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.dismissSyncSuccess() }) {
-                        Text("ตกลง", color = PrimaryButton)
+                        Text(stringResource(id = R.string.dialog_button_ok), color = PrimaryButton)
                     }
                 }
             )
@@ -445,7 +483,7 @@ fun AddOnManagementScreen(
                 onDismissRequest = { viewModel.clearError() },
                 title = {
                     Text(
-                        text = "เกิดข้อผิดพลาด",
+                        text = stringResource(id = R.string.dialog_error_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -465,7 +503,7 @@ fun AddOnManagementScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearError() }) {
-                        Text("ตกลง", color = PrimaryButton)
+                        Text(stringResource(id = R.string.dialog_button_ok), color = PrimaryButton)
                     }
                 }
             )
@@ -545,7 +583,10 @@ private fun AddonItem(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = if (addon.isActive) "ใช้งาน" else "ไม่ใช้งาน",
+                        text = if (addon.isActive) 
+                            stringResource(id = R.string.product_status_active) 
+                        else 
+                            stringResource(id = R.string.product_status_inactive),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
@@ -588,10 +629,10 @@ private fun SelectionModeBottomBar(
                 onClick = if (selectedCount == totalCount) onDeselectAll else onSelectAll
             ) {
                 Text(
-                    text = if (selectedCount == totalCount) 
-                        "ยกเลิกเลือกทั้งหมด"
-                    else 
-                        "เลือกทั้งหมด",
+                    text = if (selectedCount == totalCount)
+                        stringResource(id = R.string.category_management_deselect_all)
+                    else
+                        stringResource(id = R.string.category_management_select_all),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -602,7 +643,7 @@ private fun SelectionModeBottomBar(
             
             // Selected Count
             Text(
-                text = "เลือก $selectedCount รายการ",
+                text = stringResource(id = R.string.addon_management_select_items, selectedCount),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -616,7 +657,7 @@ private fun SelectionModeBottomBar(
                 enabled = selectedCount > 0
             ) {
                 Text(
-                    text = "ลบ",
+                    text = stringResource(id = R.string.addon_group_management_action_delete),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -660,7 +701,7 @@ private fun AddonActionSheet(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "เลือกการดำเนินการ",
+                    text = stringResource(id = R.string.addon_management_action_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -671,7 +712,7 @@ private fun AddonActionSheet(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 Text(
-                    text = "เลือกการดำเนินการที่ต้องการ",
+                    text = stringResource(id = R.string.addon_management_action_subtitle),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -691,7 +732,10 @@ private fun AddonActionSheet(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = if (addon.isActive) "ปิดใช้งาน" else "เปิดใช้งาน",
+                            text = if (addon.isActive) 
+                                stringResource(id = R.string.addon_group_management_action_deactivate) 
+                            else 
+                                stringResource(id = R.string.addon_group_management_action_activate),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -706,7 +750,7 @@ private fun AddonActionSheet(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "แก้ไข",
+                            text = stringResource(id = R.string.addon_group_management_action_edit),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -721,7 +765,7 @@ private fun AddonActionSheet(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "ลบ",
+                            text = stringResource(id = R.string.addon_group_management_action_delete),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -746,7 +790,7 @@ private fun AddonActionSheet(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "ยกเลิก",
+                                text = stringResource(id = R.string.addon_group_management_cancel),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Bold,
                                     size = FontSize.Medium
@@ -774,7 +818,7 @@ private fun DeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "ยืนยันการลบ",
+                text = stringResource(id = R.string.product_management_confirm_delete_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -785,7 +829,7 @@ private fun DeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "คุณต้องการลบ Addon '$addonName' ใช่หรือไม่?",
+                    text = stringResource(id = R.string.addon_management_delete_confirm_single, addonName),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -794,7 +838,7 @@ private fun DeleteConfirmationDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "การดำเนินการนี้ไม่สามารถยกเลิกได้",
+                    text = stringResource(id = R.string.addon_management_delete_warning),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -806,7 +850,7 @@ private fun DeleteConfirmationDialog(
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(
-                    text = "ลบ",
+                    text = stringResource(id = R.string.addon_group_management_action_delete),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -818,7 +862,7 @@ private fun DeleteConfirmationDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.addon_group_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -843,7 +887,7 @@ private fun MultipleDeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "ยืนยันการลบ",
+                text = stringResource(id = R.string.product_management_confirm_delete_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -854,7 +898,7 @@ private fun MultipleDeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "คุณต้องการลบ Addon $selectedCount รายการใช่หรือไม่?",
+                    text = stringResource(id = R.string.addon_management_delete_confirm_multiple, selectedCount),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -863,7 +907,7 @@ private fun MultipleDeleteConfirmationDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "การดำเนินการนี้ไม่สามารถยกเลิกได้",
+                    text = stringResource(id = R.string.addon_management_delete_warning),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -875,7 +919,7 @@ private fun MultipleDeleteConfirmationDialog(
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(
-                    text = "ลบ",
+                    text = stringResource(id = R.string.addon_group_management_action_delete),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -887,7 +931,7 @@ private fun MultipleDeleteConfirmationDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.addon_group_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -912,7 +956,7 @@ private fun SyncStatusDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "สถานะการ Sync",
+                text = stringResource(id = R.string.addon_management_sync_status_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -924,7 +968,7 @@ private fun SyncStatusDialog(
             Column {
                 if (statistics != null) {
                     Text(
-                        text = "ทั้งหมด: ${statistics.total}",
+                        text = stringResource(id = R.string.addon_management_sync_total, statistics.total),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -933,7 +977,7 @@ private fun SyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Sync แล้ว: ${statistics.synced}",
+                        text = stringResource(id = R.string.addon_management_sync_synced, statistics.synced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -942,7 +986,7 @@ private fun SyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "รอ Sync: ${statistics.unsynced}",
+                        text = stringResource(id = R.string.addon_management_sync_pending, statistics.unsynced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -951,7 +995,7 @@ private fun SyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "ถูกลบ: ${statistics.deleted}",
+                        text = stringResource(id = R.string.addon_management_sync_deleted, statistics.deleted),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -970,7 +1014,7 @@ private fun SyncStatusDialog(
             if (statistics != null && statistics.unsynced > 0) {
                 TextButton(onClick = onSyncNow) {
                     Text(
-                        text = "Sync ตอนนี้",
+                        text = stringResource(id = R.string.addon_management_sync_now),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -983,7 +1027,7 @@ private fun SyncStatusDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -1007,7 +1051,7 @@ private fun ToggleSuccessDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -1028,7 +1072,7 @@ private fun ToggleSuccessDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

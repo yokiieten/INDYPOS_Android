@@ -27,6 +27,10 @@ class OrderRepositoryImpl @Inject constructor(
     override fun getOrders(): Flow<Result<List<OrderEntity>>> {
         return orderDao.getAllOrders().map { Result.success(it) }
     }
+
+    override suspend fun getOrdersSync(): Result<List<OrderEntity>> {
+        return Result.success(orderDao.getAllOrdersSync())
+    }
     
     override suspend fun refreshOrders() {
         if (networkConnectivityChecker.isConnected()) {
@@ -191,6 +195,11 @@ class OrderRepositoryImpl @Inject constructor(
     
     override suspend fun getOrderItems(orderId: String): List<OrderItemEntity> {
         return orderItemDao.getOrderItemsSync(orderId)
+    }
+
+    override suspend fun getTodayTopProduct(): Triple<String, Int, Double>? {
+        val row = orderItemDao.getTodayTopProduct() ?: return null
+        return Triple(row.productName, row.totalQuantity.toInt(), row.totalAmount)
     }
     
     override suspend fun updateOrderStatus(orderId: String, status: Int): Result<OrderEntity> {

@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -208,6 +209,7 @@ fun ProductDetailScreen(
                                 selectedAddons = uiState.selectedAddons,
                                 quantity = uiState.quantity,
                                 specialRequest = uiState.specialRequest,
+                                isEditing = uiState.editingCartItemId != null,
                                 onAddonToggle = { addonGroupId, addonId ->
                                     viewModel.toggleAddon(addonGroupId, addonId)
                                 },
@@ -239,6 +241,7 @@ fun ProductDetailScreen(
                             selectedAddons = uiState.selectedAddons,
                             quantity = uiState.quantity,
                             specialRequest = uiState.specialRequest,
+                            isEditing = uiState.editingCartItemId != null,
                             onAddonToggle = { addonGroupId, addonId ->
                                 viewModel.toggleAddon(addonGroupId, addonId)
                             },
@@ -270,6 +273,7 @@ fun ProductDetailScreen(
                             selectedAddons = uiState.selectedAddons,
                             quantity = uiState.quantity,
                             specialRequest = uiState.specialRequest,
+                            isEditing = uiState.editingCartItemId != null,
                             onAddonToggle = { addonGroupId, addonId ->
                                 viewModel.toggleAddon(addonGroupId, addonId)
                             },
@@ -325,9 +329,16 @@ fun ProductDetailScreen(
                     
                     // Show error as snackbar (toast without icon)
                     uiState.errorMessage?.let { errorMessage ->
+                        // Get localized message in composable context
+                        val localizedMessage = if (errorMessage == "MAX_SELECTION_ZERO") {
+                            stringResource(id = R.string.product_addon_max_selection_zero_error)
+                        } else {
+                            errorMessage
+                        }
+                        
                         LaunchedEffect(errorMessage) {
                             snackbarHostState.showSnackbar(
-                                message = errorMessage,
+                                message = localizedMessage,
                                 duration = androidx.compose.material3.SnackbarDuration.Short
                             )
                             viewModel.clearErrorMessage()
@@ -347,6 +358,7 @@ private fun ProductDetailContent(
     selectedAddons: Map<String, Set<String>>,
     quantity: Int,
     specialRequest: String,
+    isEditing: Boolean,
     onAddonToggle: (String, String) -> Unit,
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
@@ -471,13 +483,14 @@ private fun ProductDetailContent(
             Spacer(modifier = Modifier.height(100.dp)) // Space for bottom bar
         }
         
-        // Bottom Bar with Quantity and Add to Cart
+        // Bottom Bar with Quantity and Add to Cart / Save Edit
         BottomActionBar(
             quantity = quantity,
             totalPrice = totalPrice,
             onQuantityIncrease = onQuantityIncrease,
             onQuantityDecrease = onQuantityDecrease,
             onAddToCart = onAddToCart,
+            isEditing = isEditing,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
@@ -490,6 +503,7 @@ private fun BottomActionBar(
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
     onAddToCart: () -> Unit,
+    isEditing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -570,14 +584,32 @@ private fun BottomActionBar(
                     contentColor = Color.White
                 )
             ) {
-                Text(
-                    text = "เพิ่มลงตะกร้า ${formatCurrency(totalPrice)}",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Medium
-                    ),
-                    color = Color.White
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isEditing) {
+                            stringResource(id = R.string.product_detail_save_edit)
+                        } else {
+                            stringResource(id = R.string.product_detail_add_to_cart)
+                        },
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        text = formatCurrency(totalPrice),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = Color.White
+                    )
+                }
             }
         }
     }
@@ -618,14 +650,37 @@ private fun AddonGroupSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Max selection indicator
-                if (addonGroup.maxSelection != null) {
+                // Required badge (only show when required)
+                if (addonGroup.isRequired) {
+                    val requiredLabel = stringResource(id = R.string.addon_group_required)
                     Surface(
                         color = Color(0xFFE3F2FD),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "เลือกได้สูงสุด ${addonGroup.maxSelection} รายการ",
+                            text = requiredLabel,
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = PrimaryButton,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                // Max selection indicator (hide when maxSelection is 0)
+                val maxSelection = addonGroup.maxSelection
+                if (maxSelection != null && maxSelection > 0) {
+                    Surface(
+                        color = Color(0xFFE3F2FD),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(
+                                id = R.string.product_max_selection,
+                                maxSelection
+                            ),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Small
@@ -728,7 +783,7 @@ private fun SpecialRequestSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "คำขอพิเศษ",
+                text = stringResource(id = R.string.product_detail_special_request),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Medium

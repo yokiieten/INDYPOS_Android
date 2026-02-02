@@ -119,18 +119,24 @@
     <string name="register_error_profile_verification">ไม่สามารถตรวจสอบข้อมูลได้</string>
     
     <!-- Home Screen -->
-    <string name="home_default_shop_name">หน้าร้านฉัน</string>
+    <string name="home_default_shop_name">ร้านค้า</string>
+    <string name="home_store_default_name">ร้านค้า</string>
     <string name="home_edit_shop_cd">แก้ไขข้อมูลร้าน</string>
     <string name="home_change_cover">แก้ไขรูปภาพหน้าปก</string>
     <string name="home_description_placeholder">แตะเพื่อเพิ่มรายละเอียดร้าน...</string>
     <string name="home_daily_sales_title">ยอดขายวันนี้</string>
     <string name="home_daily_sales_label">ยอดขายวันนี้</string>
+    <string name="home_daily_orders_title">ออเดอร์วันนี้</string>
     <string name="home_orders_today_label">ออเดอร์วันนี้</string>
     <string name="home_orders_unit">รายการ</string>
     <string name="home_best_seller_title">สินค้าขายดี</string>
     <string name="home_best_seller_empty">ยังไม่มีข้อมูลสินค้าแนะนำ</string>
     <string name="home_shortcuts_title">Shortcuts</string>
     <string name="home_currency_suffix">บาท</string>
+    <string name="home_baht_currency">บาท</string>
+    <string name="home_no_sales_yet">ยังไม่มีการขาย</string>
+    <string name="home_create_order">เริ่มออเดอร์</string>
+    <string name="home_create_order_subtitle">เพิ่มสินค้าลงตะกร้า</string>
     <string name="home_nav_home">หน้าแรก</string>
     <string name="home_nav_orders">ออเดอร์</string>
     <string name="home_nav_charts">กราฟ</string>
@@ -159,8 +165,16 @@
     <string name="graph_select_period">เลือกช่วงเวลา</string>
     <string name="graph_summary_title">สรุป</string>
     <string name="graph_today_sales">ยอดขายวันนี้</string>
+    <string name="graph_week_sales">ยอดขาย 1 สัปดาห์</string>
+    <string name="graph_month_sales">ยอดขาย 1 เดือน</string>
+    <string name="graph_period_sales">ยอดขายช่วงที่เลือก</string>
     <string name="graph_cost_expenses">ค่าใช้จ่ายต้นทุน</string>
     <string name="graph_orders_today">ออเดอร์วันนี้</string>
+    <string name="graph_orders_week">ออเดอร์ 1 สัปดาห์</string>
+    <string name="graph_orders_month">ออเดอร์ 1 เดือน</string>
+    <string name="graph_orders_period">ออเดอร์ช่วงที่เลือก</string>
+    <string name="graph_orders_period_all">ออเดอร์ตามช่วงเวลาทั้งหมด</string>
+    <string name="graph_orders_success">ออเดอร์สำเร็จ</string>
     <string name="graph_cancelled_orders">ออเดอร์ยกเลิก</string>
     <string name="graph_chart_title">กราฟ</string>
     <string name="graph_total_sales">ผลรวมการขาย</string>
@@ -172,6 +186,38 @@
     <string name="graph_no_data_available">ไม่มีข้อมูล</string>
     <string name="graph_no_bestseller">ไม่มีข้อมูลสินค้าขายดี</string>
     <string name="graph_currency_baht">บาท</string>
+    <string name="graph_currency_symbol">฿</string>
+    
+    <!-- Time Period Labels -->
+    <string name="graph_period_today">วันนี้</string>
+    <string name="graph_period_week">1 สัปดาห์</string>
+    <string name="graph_period_month">1 เดือน</string>
+    <string name="graph_period_custom">กำหนดเอง</string>
+    
+    <!-- Day Labels -->
+    <string name="graph_day_monday">จ.</string>
+    <string name="graph_day_tuesday">อ.</string>
+    <string name="graph_day_wednesday">พ.</string>
+    <string name="graph_day_thursday">พฤ.</string>
+    <string name="graph_day_friday">ศ.</string>
+    <string name="graph_day_saturday">ส.</string>
+    <string name="graph_day_sunday">อา.</string>
+    
+    <!-- Week Labels -->
+    <string name="graph_week_1">W1</string>
+    <string name="graph_week_2">W2</string>
+    <string name="graph_week_3">W3</string>
+    <string name="graph_week_4">W4</string>
+    
+    <!-- Custom Date Range -->
+    <string name="graph_custom_range_cancel">ยกเลิก</string>
+    <string name="graph_custom_range_title">เลือกช่วงวันที่</string>
+    <string name="graph_custom_range_done">เสร็จสิ้น</string>
+    <string name="graph_custom_range_start_date">วันที่เริ่มต้น:</string>
+    <string name="graph_custom_range_end_date">วันที่สิ้นสุด:</string>
+    <string name="graph_custom_range_warning">หมายเหตุ: การเลือกช่วงเวลาเกิน 1 ปี อาจทำให้แอปโหลดช้า</string>
+    <string name="graph_date_buddhist_era">พ.ศ.</string>
+    <string name="graph_error_loading">เกิดข้อผิดพลาดในการโหลดข้อมูลกราฟ</string>
     
     <!-- Order Screen -->
     <string name="order_history_title">ประวัติออเดอร์</string>
@@ -246,19 +292,32 @@
     
     <!-- Data Management Screen -->
     <string name="data_management_title">จัดการข้อมูล</string>
+    <string name="data_export">ส่งออกข้อมูล</string>
+    <string name="data_export_subtitle">Export ข้อมูลต่างๆ เป็นไฟล์</string>
+    <string name="data_export_share_files">แชร์ไฟล์ที่ส่งออก</string>
+    
+    <!-- Data Stats -->
     <string name="data_stats_title">สรุปข้อมูลระบบ</string>
     <string name="data_stats_products">สินค้า</string>
     <string name="data_stats_categories">หมวดหมู่</string>
     <string name="data_stats_addons">ตัวเลือกเพิ่มเติม</string>
     <string name="data_stats_addon_groups">กลุ่มตัวเลือก</string>
     <string name="data_stats_orders">ประวัติการสั่งซื้อ</string>
-    <string name="data_export_title">ส่งออกข้อมูล</string>
-    <string name="data_export_subtitle">Export ข้อมูลต่างๆ เป็นไฟล์</string>
-    <string name="export_data_type_dialog_title">เลือกประเภทข้อมูลที่ต้องการส่งออก</string>
-    <string name="export_format_dialog_title">เลือกรูปแบบไฟล์</string>
-    <string name="export_format_dialog_subtitle">เลือกรูปแบบไฟล์ที่ต้องการส่งออก</string>
-    <string name="export_format_excel">Excel (.xlsx)</string>
-    <string name="export_format_csv">CSV (.csv)</string>
+    <string name="data_stats_storage">พื้นที่เก็บข้อมูล</string>
+    
+    <!-- Data Export/Import Dialogs -->
+    <string name="data_export_select_type">เลือกประเภทข้อมูลที่ต้องการส่งออก</string>
+    <string name="data_import_select_type">เลือกประเภทข้อมูลที่ต้องการนำเข้า</string>
+    <string name="data_export_format_title">เลือกรูปแบบไฟล์</string>
+    <string name="data_export_format_message">เลือกรูปแบบไฟล์ที่ต้องการส่งออก</string>
+    <string name="data_export_product_type_title">เลือกประเภทการส่งออกสินค้า</string>
+    <string name="data_export_product_type_message">เลือกประเภทการส่งออกสินค้าที่ต้องการ</string>
+    <string name="data_export_zip_package">📦 ZIP Package (รวมรูปภาพ)</string>
+    <string name="data_export_data_only">📄 ข้อมูลอย่างเดียว</string>
+    <string name="data_export_zip_format_title">เลือกรูปแบบไฟล์ข้อมูล</string>
+    <string name="data_export_zip_format_message">เลือกรูปแบบไฟล์ข้อมูลภายใน ZIP Package</string>
+    
+    <!-- Export Data Types -->
     <string name="export_data_type_categories">หมวดหมู่สินค้า</string>
     <string name="export_data_type_products">สินค้า</string>
     <string name="export_data_type_addon_groups">กลุ่มตัวเลือกเพิ่มเติม</string>
@@ -266,12 +325,23 @@
     <string name="export_data_type_orders">ประวัติการสั่งซื้อ</string>
     <string name="export_data_type_sales_report">รายงานยอดขาย</string>
     <string name="export_data_type_stock_report">รายงานสต็อก</string>
+    
+    <!-- Export Formats -->
+    <string name="export_format_excel">Excel (.xlsx)</string>
+    <string name="export_format_csv">CSV (.csv)</string>
+    
+    <!-- Export Error Messages -->
+    <string name="data_export_error_failed">การส่งออกข้อมูลล้มเหลว</string>
+    
+    <!-- Common -->
     <string name="common_back">กลับ</string>
+    <string name="common_cancel">ยกเลิก</string>
     
     <!-- Account Screen -->
     <string name="account_title">บัญชี</string>
     <string name="account_email_label">อีเมล</string>
     <string name="account_package_label">แพ็กเกจ</string>
+    <string name="account_status_plan">แพ็กเกจ</string>
     <string name="account_package_basic">Basic</string>
     <string name="account_employee_section_title">พนักงาน</string>
     <string name="account_employee_section_action_title">สร้างพนักงานใหม่</string>
@@ -347,12 +417,36 @@
     <string name="product_barcode_scanner">สแกนบาร์โค้ด</string>
     <string name="product_detail_required_addon_error">กรุณาเลือก %1$s</string>
     <string name="product_detail_insufficient_stock">สินค้าในสต็อกไม่เพียงพอ</string>
+    <!-- Product Detail -->
+    <string name="product_detail_title">รายละเอียดสินค้า</string>
+    <string name="product_detail_add_to_cart">เพิ่มลงตะกร้า</string>
+    <string name="product_detail_save_edit">บันทึกการแก้ไข</string>
+    <string name="product_detail_quantity">จำนวน</string>
+    <string name="product_detail_addons">เสริม</string>
+    <string name="product_detail_price">ราคา</string>
+    <string name="product_detail_special_request">คำขอพิเศษ</string>
+    <string name="product_max_selection">เลือกได้สูงสุด %1$d รายการ</string>
+    <string name="product_addon_max_selection_zero_error">ไม่สามารถเลือก Addon ได้ เนื่องจากกลุ่ม Addon นี้ตั้งค่าเลือกได้สูงสุดเป็น 0</string>
+    <string name="addon_group_max_selection_zero_error">เลือกได้สูงสุดต้องมากกว่า 0</string>
     
     <!-- Order Product / Cart -->
-    <string name="order_product_empty_cart">ตะกร้าสินค้าว่างเปล่า</string>
-    <string name="order_product_subtotal">ยอดรวม</string>
+    <string name="order_product_title">ตะกร้าสินค้า</string>
+    <string name="order_product_my_order">ตะกร้าสินค้าของฉัน</string>
+    <string name="order_product_add_menu">เพิ่มเมนู</string>
+    <string name="order_product_order_now">สั่งสินค้า</string>
+    <string name="order_product_payment_type">ประเภทการจ่ายเงิน</string>
+    <string name="order_product_cash_payment">จ่ายเงินสด</string>
+    <string name="order_product_transfer_payment">โอนเงิน</string>
     <string name="order_product_discount">ส่วนลด</string>
+    <string name="order_product_add_optional">เพิ่ม (ถ้ามี)</string>
+    <string name="order_product_subtotal">ยอดรวม</string>
     <string name="order_product_total">ยอดรวมทั้งสิ้น</string>
+    <string name="order_product_delete">ลบ</string>
+    <string name="order_product_discount_applied">ใช้ส่วนลด %1$s (ประหยัด ฿%2$s)</string>
+    <string name="order_product_empty_cart">ตะกร้าสินค้าว่าง\nเพิ่มสินค้าลงตะกร้าเพื่อเริ่มต้น</string>
+    <string name="order_product_add_product">เพิ่มสินค้า</string>
+    <string name="order_product_clear_all">ลบทั้งหมด</string>
+    <string name="order_product_clear_all_confirm">ต้องการลบสินค้าออกจากตะกร้าสินค้าทั้งหมดหรือไม่?</string>
     <string name="order_product_checkout">ชำระเงิน</string>
     
     <!-- Search Product Screen -->
@@ -369,7 +463,7 @@
     <string name="barcode_scanner_camera_error">ไม่สามารถเข้าถึงกล้องได้</string>
     <string name="barcode_scanner_camera_error_message">เกิดข้อผิดพลาดในการเปิดกล้อง กรุณาลองใหม่อีกครั้ง</string>
     <string name="barcode_scanner_product_not_found_title">ไม่พบสินค้า</string>
-    <string name="barcode_scanner_product_not_found_message">ไม่พบสินค้าที่ตรงกับบาร์โค้ดที่สแกน</string>
+    <string name="barcode_scanner_product_not_found_message">ไม่พบสินค้าที่มีรหัส: %1$s</string>
     
     <!-- Order Settings Screen -->
     <string name="order_settings_title">ตั้งค่าการสั่งซื้อ</string>
@@ -377,6 +471,13 @@
     <string name="order_settings_product_management">จัดการสินค้า</string>
     <string name="order_settings_addon_group_management">จัดการกลุ่มแอดออน</string>
     <string name="order_settings_addon_management">จัดการแอดออน</string>
+
+    <!-- Addon Group Management Labels -->
+    <string name="addon_group_required">จำเป็น</string>
+    <string name="addon_group_optional">ไม่จำเป็น</string>
+    <string name="addon_group_single_selection">เลือกได้ 1 รายการ</string>
+    <string name="addon_group_multiple_selection">เลือกได้หลายรายการ</string>
+    <string name="addon_group_items_count">%1$d รายการ</string>
     
     <!-- Category Management Screen -->
     <string name="category_management_title">การจัดการหมวดหมู่</string>
@@ -394,19 +495,66 @@
     <string name="category_management_action_deactivate">ปิดใช้งาน</string>
     <string name="category_management_action_activate">เปิดใช้งาน</string>
     <string name="category_management_action_edit">แก้ไขหมวดหมู่</string>
-    <string name="category_management_action_delete">ลบหมวดหมู่</string>
+    <string name="category_management_action_delete">ลบ</string>
     <string name="category_management_action_cancel">ยกเลิก</string>
     <string name="category_management_confirm_delete_title">ยืนยันการลบ</string>
     <string name="category_management_confirm_delete_message">คุณแน่ใจหรือไม่ที่จะลบรายการที่เลือกไว้?</string>
     <string name="category_management_confirm_delete_warning">การกระทำนี้ไม่สามารถย้อนกลับได้</string>
     <string name="category_management_select_category">เลือกหมวดหมู่</string>
     <string name="category_management_select_all">เลือกทั้งหมด</string>
+    <string name="category_management_deselect_all">ยกเลิกเลือกทั้งหมด</string>
     <string name="category_management_select_items">เลือก %1$d รายการ</string>
     <string name="category_management_name_label">ชื่อหมวดหมู่ *</string>
     <string name="category_management_name_placeholder">กรอกชื่อหมวดหมู่</string>
     <string name="category_management_save_changes">บันทึกการแก้ไข</string>
     <string name="category_management_add_success">เพิ่มหมวดหมู่เรียบร้อยแล้ว</string>
     <string name="category_management_edit_success">อัปเดตหมวดหมู่เรียบร้อยแล้ว</string>
+    <string name="category_form_validation_exists">หมวดหมู่นี้มีอยู่แล้ว</string>
+    <string name="category_error_duplicate_name">ชื่อหมวดหมู่นี้มีอยู่แล้ว</string>
+    
+    <!-- Category Form -->
+    <string name="category_form_name_title">ชื่อหมวดหมู่ *</string>
+    <string name="category_form_name_placeholder">กรอกชื่อหมวดหมู่</string>
+    <string name="category_form_save_button">เพิ่มหมวดหมู่</string>
+    <string name="category_form_save_edit_button">บันทึกการแก้ไข</string>
+    <string name="category_form_validation_name_required">กรุณาใส่ชื่อหมวดหมู่</string>
+    <string name="category_form_success_add">เพิ่มหมวดหมู่เรียบร้อยแล้ว</string>
+    <string name="category_form_success_add_offline">เพิ่มหมวดหมู่สำเร็จ (บันทึกแบบออฟไลน์)</string>
+    <string name="category_form_success_edit">อัปเดตหมวดหมู่เรียบร้อยแล้ว</string>
+    <string name="category_form_success_edit_offline">แก้ไขหมวดหมู่สำเร็จ (บันทึกแบบออฟไลน์)</string>
+    <string name="category_form_validation_edit_failed">ไม่สามารถแก้ไขหมวดหมู่ได้</string>
+    <string name="category_management_error_title">เกิดข้อผิดพลาด</string>
+    <string name="category_management_error_loading">เกิดข้อผิดพลาดในการโหลดข้อมูล</string>
+    <string name="category_management_error_loading_with_reason">เกิดข้อผิดพลาดในการโหลดข้อมูล: %1$s</string>
+    <string name="category_management_error_unknown">ไม่ทราบสาเหตุ</string>
+    <string name="category_management_error_updating_status">เกิดข้อผิดพลาดในการอัปเดตสถานะ</string>
+    <string name="category_management_error_deleting">เกิดข้อผิดพลาดในการลบหมวดหมู่</string>
+    <string name="category_management_error_syncing">เกิดข้อผิดพลาดในการ sync หมวดหมู่</string>
+    <string name="category_management_delete_confirm_message_single">คุณต้องการลบหมวดหมู่ \'%1$s\' ใช่หรือไม่?</string>
+    <string name="category_management_delete_confirm_message_multiple">คุณต้องการลบหมวดหมู่ %1$d รายการใช่หรือไม่?</string>
+    <string name="category_management_delete_success_single">ลบหมวดหมู่เรียบร้อยแล้ว</string>
+    <string name="category_management_delete_success_multiple">ลบหมวดหมู่ %1$d รายการเรียบร้อยแล้ว</string>
+    <string name="category_management_delete_success_with_name">ลบหมวดหมู่ \'%1$s\' เรียบร้อยแล้ว</string>
+    <string name="category_management_status_activate">เปิดใช้งาน</string>
+    <string name="category_management_status_deactivate">ปิดใช้งาน</string>
+    <string name="category_management_status_update_success">อัปเดตสถานะหมวดหมู่ \'%1$s\' เป็น \'%2$s\' เรียบร้อยแล้ว</string>
+    <string name="category_management_sync_status_title">สถานะการ Sync</string>
+    <string name="category_management_sync_total">ทั้งหมด: %1$d</string>
+    <string name="category_management_sync_synced">Sync แล้ว: %1$d</string>
+    <string name="category_management_sync_pending">รอ Sync: %1$d</string>
+    <string name="category_management_sync_deleted">ถูกลบ: %1$d</string>
+    <string name="category_management_sync_now">Sync ตอนนี้</string>
+    <string name="category_management_sync_success">Sync หมวดหมู่สำเร็จ</string>
+    <string name="category_management_default_name">หมวดหมู่</string>
+    
+    <!-- Product Error Messages -->
+    <string name="product_error_duplicate_sku">รหัส SKU นี้มีอยู่แล้ว</string>
+    <string name="product_error_duplicate_name">ชื่อนี้มีอยู่แล้ว</string>
+    <string name="product_error_duplicate_code">รหัสสินค้านี้มีอยู่แล้ว</string>
+    <string name="product_form_error_edit_failed">เกิดข้อผิดพลาดในการแก้ไขสินค้า</string>
+    <string name="product_form_error_load_not_found">ไม่พบสินค้าที่ต้องการแก้ไข</string>
+    <string name="product_form_error_load_with_reason">เกิดข้อผิดพลาดในการโหลดข้อมูล: %1$s</string>
+    <string name="product_form_error_unknown_reason">ไม่ทราบสาเหตุ</string>
     
     <!-- Product Management Screen -->
     <string name="product_management_title">จัดการสินค้า</string>
@@ -414,12 +562,14 @@
     <string name="product_management_cancel">ยกเลิก</string>
     <string name="product_management_search_placeholder">ค้นหาสินค้า…</string>
     <string name="product_management_all_categories">หมวดหมู่ทั้งหมด</string>
+    <!-- Shown when a product has no category assigned -->
+    <string name="product_no_category_title">ไม่มีหมวดหมู่</string>
     <string name="product_management_add_product">เพิ่มสินค้าใหม่</string>
     <string name="product_management_empty">ไม่มีสินค้า</string>
     <string name="product_management_loading">กำลังโหลด...</string>
     <string name="product_management_select_products">เลือกสินค้า</string>
     <string name="product_management_select_all">เลือกทั้งหมด</string>
-    <string name="product_management_deselect_all">ยกเลิกการเลือกทั้งหมด</string>
+    <string name="product_management_deselect_all">ยกเลิกเลือกทั้งหมด</string>
     <string name="product_management_select_items">เลือก %1$d รายการ</string>
     <string name="product_management_delete">ลบ</string>
     <string name="product_management_action_title">การดำเนินการสินค้า</string>
@@ -442,6 +592,178 @@
     <string name="product_management_sync_success">ซิงค์สำเร็จ</string>
     <string name="product_management_sync_error">เกิดข้อผิดพลาดในการซิงค์</string>
     <string name="product_management_toggle_success_title">สำเร็จ</string>
+    <string name="product_default_name">สินค้า</string>
+    <string name="product_status_active">ใช้งาน</string>
+    <string name="product_status_inactive">ไม่ใช้งาน</string>
+    <string name="product_management_confirm_delete_message_single">คุณต้องการลบสินค้า \'%1$s\' ใช่หรือไม่?</string>
+    <string name="product_management_confirm_delete_message_multiple">คุณต้องการลบสินค้า %1$d รายการใช่หรือไม่?</string>
+    <string name="product_management_items_count">รายการ</string>
+    
+    <!-- Add/Edit Product Screen -->
+    <string name="product_edit_title">แก้ไขสินค้า</string>
+    <string name="product_form_name_label">ชื่อสินค้า</string>
+    <string name="product_form_name_placeholder">กรุณากรอกชื่อสินค้า</string>
+    <string name="product_form_code_label">รหัสสินค้า</string>
+    <string name="product_form_code_placeholder">กรุณากรอกรหัสสินค้า</string>
+    <string name="product_form_code_scan_barcode">สแกนบาร์โค้ด</string>
+    <string name="product_form_selling_price_label">ราคาขาย</string>
+    <string name="product_form_cost_price_label">ราคาต้นทุน</string>
+    <string name="product_form_cost_price_placeholder">0 (ไม่บังคับ)</string>
+    <string name="product_form_unit_label">หน่วยนับ</string>
+    <string name="product_form_unit_placeholder">เช่น ชิ้น, แพ็ค, กล่อง</string>
+    <string name="product_form_image_label">ภาพสินค้า</string>
+    <string name="product_form_image_type_image">รูปภาพ</string>
+    <string name="product_form_image_type_color">สี</string>
+    <string name="product_form_image_select">เลือกรูปภาพ</string>
+    <string name="product_form_image_description">รูปภาพสินค้า</string>
+    <string name="product_form_category_label">หมวดหมู่</string>
+    <string name="product_form_category_add">+เพิ่ม</string>
+    <string name="product_form_category_select_placeholder">กรุณาเลือกหมวดหมู่</string>
+    <string name="product_form_category_select_title">เลือกหมวดหมู่ (%1$d รายการ)</string>
+    <string name="product_form_sku_enabled">สินค้า SKU</string>
+    <string name="product_form_sku_code_label">รหัส SKU</string>
+    <string name="product_form_sku_code_placeholder">กรอกรหัส SKU</string>
+    <string name="product_form_stock_enabled">สต็อกสินค้า</string>
+    <string name="product_form_stock_quantity_label">จำนวนสินค้า</string>
+    <string name="product_form_stock_quantity_placeholder">กรอกจำนวนสินค้า</string>
+    <string name="product_form_additional_options_enabled">มีออปชั่นเพิ่มเติม</string>
+    <string name="product_form_addon_groups_label">เลือก AddOn Groups</string>
+    <string name="product_form_addon_groups_empty">ไม่มี AddOn Groups ที่สามารถเลือกได้</string>
+    <string name="product_form_save_button">บันทึกข้อมูล</string>
+    <string name="product_form_save_success_title">สำเร็จ</string>
+    <string name="product_form_save_success_edit">แก้ไขสินค้าสำเร็จ</string>
+    <string name="product_form_save_success_add">เพิ่มสินค้าสำเร็จ</string>
+    <string name="product_form_error_title">เกิดข้อผิดพลาด</string>
+    <string name="product_form_no_internet_title">ไม่สามารถบันทึกได้</string>
+    <string name="product_form_no_internet_message">กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่ออัปโหลดรูปภาพ</string>
+    <string name="product_form_image_upload_error_title">อัปโหลดรูปภาพไม่สำเร็จ</string>
+    <string name="product_form_image_upload_error_message">เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ</string>
+    <string name="product_form_image_upload_error_question">ต้องการบันทึกสินค้าโดยไม่มีรูปภาพหรือไม่?</string>
+    <string name="product_form_image_upload_save_without_image">บันทึกโดยไม่มีรูป</string>
+    <string name="product_form_image_picker_title">เลือกรูปภาพ</string>
+    <string name="product_form_image_picker_camera">ถ่ายรูป</string>
+    <string name="product_form_image_picker_gallery">เลือกรูปจากแกลเลอรี</string>
+    <string name="product_form_add_category_title">เพิ่มหมวดหมู่ใหม่</string>
+    <string name="product_form_add_category_message">กรุณาใส่ชื่อหมวดหมู่</string>
+    <string name="product_form_add_category_placeholder">กรอกชื่อหมวดหมู่</string>
+    <string name="product_form_addon_group_selected">เลือก</string>
+    <string name="product_form_validation_name_required">กรุณากรอกชื่อสินค้า</string>
+    <string name="product_form_validation_code_required">กรุณากรอกรหัสสินค้า</string>
+    <string name="product_form_validation_selling_price_required">กรุณากรอกราคาขาย</string>
+    <string name="product_form_validation_cost_price_greater_than_selling">ราคาต้นทุนต้องไม่มากกว่าราคาขาย</string>
+    <string name="product_form_validation_unit_required">กรุณากรอกหน่วยนับ</string>
+    <string name="product_form_validation_category_required">กรุณาเลือกหมวดหมู่</string>
+    <string name="product_form_validation_image_or_color_required">กรุณาเลือกรูปภาพหรือสี</string>
+    <string name="product_form_validation_color_required">กรุณาเลือกสี</string>
+    <string name="product_form_validation_addon_groups_required">กรุณาเลือก AddOn Groups อย่างน้อย 1 รายการ</string>
+    <string name="product_form_validation_sku_required">กรุณากรอกรหัส SKU</string>
+    <string name="product_form_validation_stock_quantity_required">กรุณากรอกจำนวนสินค้า</string>
+    <string name="product_form_error_user_not_found">ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่</string>
+    <string name="product_form_error_save_generic">เกิดข้อผิดพลาดในการบันทึก</string>
+    <string name="product_form_loading_saving_product">กำลังบันทึกสินค้า...</string>
+    <string name="product_form_loading_uploading_image">กำลังอัปโหลดรูปภาพ...</string>
+    
+    <!-- Addon Group Management Screen -->
+    <string name="addon_group_management_title">จัดการกลุ่ม Addon</string>
+    <string name="addon_group_management_select_title">เลือกกลุ่ม Addon</string>
+    <string name="addon_group_management_edit">แก้ไข</string>
+    <string name="addon_group_management_cancel">ยกเลิก</string>
+    <string name="addon_group_management_search_placeholder">ค้นหากลุ่ม Addon</string>
+    <string name="addon_group_management_empty">ไม่มีกลุ่ม Addon</string>
+    <string name="addon_group_management_add">เพิ่มกลุ่ม Addon</string>
+    <string name="addon_group_management_sync_status_title">สถานะการ Sync</string>
+    <string name="addon_group_management_sync_total">ทั้งหมด: %1$d</string>
+    <string name="addon_group_management_sync_synced">Sync แล้ว: %1$d</string>
+    <string name="addon_group_management_sync_pending">รอ Sync: %1$d</string>
+    <string name="addon_group_management_sync_deleted">ถูกลบ: %1$d</string>
+    <string name="addon_group_management_sync_now">Sync ตอนนี้</string>
+    <string name="addon_group_management_delete_title">ลบ</string>
+    <string name="addon_group_management_delete_confirm_single">คุณต้องการลบกลุ่ม Addon \'%1$s\' ใช่หรือไม่?</string>
+    <string name="addon_group_management_delete_confirm_multiple">คุณต้องการลบกลุ่ม Addon %1$d รายการใช่หรือไม่?</string>
+    <string name="addon_group_management_delete_warning">การลบนี้ไม่สามารถยกเลิกได้</string>
+    <string name="addon_group_management_select_items">เลือก %1$d รายการ</string>
+    <string name="addon_group_management_action_title">ตัวเลือก</string>
+    <string name="addon_group_management_action_subtitle">เลือกการดำเนินการที่ต้องการ</string>
+    <string name="addon_group_management_action_deactivate">ปิดใช้งาน</string>
+    <string name="addon_group_management_action_activate">เปิดใช้งาน</string>
+    <string name="addon_group_management_action_edit">แก้ไข</string>
+    <string name="addon_group_management_action_delete">ลบ</string>
+    <string name="addon_group_management_status_active">ใช้งาน</string>
+    <string name="addon_group_management_status_inactive">ไม่ใช้งาน</string>
+    
+    <!-- Add/Edit Addon Group Screen -->
+    <string name="addon_group_edit_title">แก้ไขแอดออนกรุ๊ป</string>
+    <string name="addon_group_add_title">เพิ่มแอดออนกรุ๊ป</string>
+    <string name="addon_group_form_name_label">ชื่อกลุ่ม</string>
+    <string name="addon_group_form_name_placeholder">ความเผ็ด</string>
+    <string name="addon_group_form_required_label">จำเป็นต้องเลือก</string>
+    <string name="addon_group_form_max_selection_label">เลือกได้สูงสุด</string>
+    <string name="addon_group_form_addons_label">แอดออน</string>
+    <string name="addon_group_form_addons_empty">ไม่มี Addon</string>
+    <string name="addon_group_form_save_edit">บันทึกการแก้ไข</string>
+    <string name="addon_group_form_save_add">เพิ่มแอดออนกรุ๊ป</string>
+    <string name="addon_group_form_add_addon">+ เพิ่ม</string>
+    <string name="addon_group_form_success_edit_offline">แก้ไขกลุ่ม Addon สำเร็จ (บันทึกในเครื่อง)</string>
+    <string name="addon_group_form_success_edit">แก้ไขกลุ่ม Addon สำเร็จ</string>
+    <string name="addon_group_form_success_add_offline">เพิ่มกลุ่ม Addon สำเร็จ (บันทึกในเครื่อง)</string>
+    <string name="addon_group_form_success_add">เพิ่มกลุ่ม Addon สำเร็จ</string>
+    <string name="addon_group_form_add_addon_title">เพิ่ม Addon</string>
+    <string name="addon_group_form_add_addon_message">กรุณาใส่ชื่อและราคาแอดออน</string>
+    <string name="addon_group_form_add_addon_name_placeholder">ระบุชื่อแอดออน</string>
+    <string name="addon_group_form_add_addon_price_placeholder">ราคา</string>
+    <string name="addon_group_form_add_addon_button">เพิ่ม</string>
+    <string name="addon_group_form_validation_required">กรุณากรอกข้อมูลให้ครบ</string>
+    <string name="addon_group_form_error_not_found">ไม่พบกลุ่ม Addon ที่ต้องการแก้ไข</string>
+    <string name="addon_group_form_validation_name_required">กรุณากรอกชื่อกลุ่ม Addon</string>
+    <string name="addon_group_form_validation_addons_required">กรุณาเลือก Addon อย่างน้อย 1 รายการ</string>
+    <string name="addon_group_form_error_duplicate_name">ชื่อกลุ่ม Addon นี้มีอยู่แล้ว</string>
+    <string name="addon_group_form_error_create">เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon</string>
+    <string name="addon_group_form_error_update">เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon</string>
+    <string name="addon_group_form_error_create_addon">เกิดข้อผิดพลาดในการสร้าง Addon</string>
+    <string name="addon_group_form_error_load_addons_with_reason">เกิดข้อผิดพลาดในการโหลด Addon: %1$s</string>
+    
+    <!-- Addon Management Screen -->
+    <string name="addon_management_title">จัดการ Addon</string>
+    <string name="addon_management_select_title">เลือก Addon</string>
+    <string name="addon_management_search_placeholder">ค้นหา Addon</string>
+    <string name="addon_management_empty">ไม่มี Addon</string>
+    <string name="addon_management_add">เพิ่ม Addon</string>
+    <string name="addon_management_sync_status_title">สถานะการ Sync</string>
+    <string name="addon_management_sync_total">ทั้งหมด: %1$d</string>
+    <string name="addon_management_sync_synced">Sync แล้ว: %1$d</string>
+    <string name="addon_management_sync_pending">รอ Sync: %1$d</string>
+    <string name="addon_management_sync_deleted">ถูกลบ: %1$d</string>
+    <string name="addon_management_sync_now">Sync ตอนนี้</string>
+    <string name="addon_management_action_title">เลือกการดำเนินการ</string>
+    <string name="addon_management_action_subtitle">เลือกการดำเนินการที่ต้องการ</string>
+    <string name="addon_management_delete_confirm_single">คุณต้องการลบ Addon \'%1$s\' ใช่หรือไม่?</string>
+    <string name="addon_management_delete_confirm_multiple">คุณต้องการลบ Addon %1$d รายการใช่หรือไม่?</string>
+    <string name="addon_management_delete_warning">การดำเนินการนี้ไม่สามารถยกเลิกได้</string>
+    <string name="addon_management_select_items">เลือก %1$d รายการ</string>
+    
+    <!-- Add/Edit Addon Screen -->
+    <string name="addon_edit_title">แก้ไข Addon</string>
+    <string name="addon_add_title">เพิ่ม Addon</string>
+    <string name="addon_form_name_label">ชื่อ Addon</string>
+    <string name="addon_form_name_placeholder">กรุณากรอกชื่อ Addon</string>
+    <string name="addon_form_price_label">ราคา</string>
+    <string name="addon_form_price_placeholder">กรุณากรอกราคา</string>
+    <string name="addon_form_save_edit">บันทึกการแก้ไข</string>
+    <string name="addon_form_save_add">เพิ่ม Addon</string>
+    <string name="addon_form_success_edit_offline">แก้ไข Addon สำเร็จ (บันทึกในเครื่อง)</string>
+    <string name="addon_form_success_edit">แก้ไข Addon สำเร็จ</string>
+    <string name="addon_form_success_add_offline">เพิ่ม Addon สำเร็จ (บันทึกในเครื่อง)</string>
+    <string name="addon_form_success_add">เพิ่ม Addon สำเร็จ</string>
+    <string name="addon_form_free_plan_limit_title">ถึงขีดจำกัด</string>
+    <string name="addon_form_free_plan_limit_message">คุณถึงขีดจำกัดของแผนฟรีแล้ว กรุณาติดต่อเราเพื่ออัปเกรดแผน</string>
+    <string name="addon_form_contact_us">ติดต่อเรา</string>
+    <string name="addon_form_validation_name_required">กรุณากรอกชื่อ Addon</string>
+    <string name="addon_form_validation_price_non_negative">ราคาต้องเป็นตัวเลขที่มากกว่าหรือเท่ากับ 0</string>
+    <string name="addon_form_validation_price_invalid">กรุณากรอกราคาเป็นตัวเลขที่ถูกต้อง</string>
+    <string name="addon_form_error_save_generic">เกิดข้อผิดพลาดในการบันทึก</string>
+    <string name="addon_form_error_duplicate_name">ชื่อ Addon นี้มีอยู่แล้ว</string>
+    <string name="addon_form_error_create_addon">เกิดข้อผิดพลาดในการสร้าง Addon</string>
+    <string name="addon_form_success_add_single">เพิ่ม Addon สำเร็จ</string>
     
     <!-- Printer Settings Screen -->
     <string name="printer_settings_title">ปรินเตอร์</string>
@@ -462,4 +784,67 @@
     <string name="printer_disconnected">ไม่เชื่อมต่อ</string>
     <string name="printer_connection_failed">การเชื่อมต่อล้มเหลว</string>
     <string name="printer_scanning">กำลังค้นหา...</string>
+    
+    <!-- Stock Management Screen -->
+    <string name="stock_management_title">จัดการสต็อก</string>
+    <string name="stock_update_title">อัปเดตสต็อก</string>
+    <string name="stock_update_message">ใส่จำนวนที่ต้องการเพิ่ม/ลดสำหรับ %1$s (ปัจจุบัน: %2$d)</string>
+    <string name="stock_quantity_placeholder">ใส่จำนวน </string>
+    <string name="stock_update_button">อัปเดต</string>
+    <string name="stock_cancel_button">ยกเลิก</string>
+    <string name="stock_update_success_title">สำเร็จ</string>
+    <string name="stock_update_success_message">อัปเดตสต็อกสำเร็จสำหรับ %1$s: %2$d ชิ้น (เดิม %3$d)</string>
+    <string name="stock_ok_button">ตกลง</string>
+    <string name="stock_quantity_format">สต็อก: %1$d ชิ้น</string>
+    <string name="stock_management_empty_products">ไม่มีสินค้าที่เปิดใช้งานสต็อก</string>
+    <string name="stock_management_no_internet_message">การจัดการสต็อกต้องใช้การเชื่อมต่ออินเทอร์เน็ต</string>
+    <string name="stock_management_success_title">อัปเดตสต็อกสำเร็จ</string>
+    <string name="stock_management_update_title">อัปเดตสต็อก</string>
+    <string name="stock_management_current_stock">สต็อกปัจจุบัน: %1$s ชิ้น</string>
+    <string name="stock_management_quantity_label">จำนวนที่ต้องการเพิ่ม/ลด (เช่น +10)</string>
+    <string name="stock_management_update_button">อัปเดต</string>
+    <string name="stock_management_cancel_button">ยกเลิก</string>
+    <string name="stock_management_stock_label">สต็อก: %1$s ชิ้น</string>
+    <string name="stock_management_sync_pending">รอซิงค์</string>
+    <string name="stock_unit_piece">ชิ้น</string>
+    
+    <!-- Order Summary Screen -->
+    <string name="order_summary_title">สถานะออเดอร์</string>
+    <string name="order_summary_preparing">กำลังเตรียม</string>
+    <string name="order_summary_ready">พร้อมแล้ว</string>
+    <string name="order_summary_complete">เสร็จสิ้น</string>
+    <string name="order_summary_return_home">กลับหน้าหลัก</string>
+    <string name="order_summary_change">ทอน</string>
+    <string name="order_summary_auto_print_receipt">พิมพ์ใบเสร็จอัตโนมัติ</string>
+    <string name="order_summary_auto_open_drawer">เปิดลิ้นชักอัตโนมัติ</string>
+    <string name="order_summary_add_order">เพิ่มออเดอร์</string>
+    <string name="order_summary_success">สำเร็จ</string>
+    <string name="order_summary_select">เลือก</string>
+    
+    <!-- Receipt Settings -->
+    <string name="receipt_settings_title">ใบเสร็จ</string>
+    <string name="settings_print_shop_logo">พิมพ์โลโก้ร้าน</string>
+    <string name="settings_print_after_finish">พิมพ์หลังเสร็จสิ้น</string>
+    <string name="settings_promptpay_qr_code">QR Code PromptPay</string>
+    <string name="settings_open_cash_drawer">เปิดลิ้นชักเงิน</string>
+    <string name="settings_paper_size">ขนาดกระดาษ</string>
+    <string name="settings_footer">ส่วนท้าย</string>
+    <string name="settings_tax_identification_number">เลขประจำตัวผู้เสียภาษี</string>
+    <string name="settings_tin_description">แสดงเลขประจำตัวผู้เสียภาษีบนใบเสร็จเพื่อการปฏิบัติตามกฎหมายภาษี</string>
+    <string name="settings_tin_placeholder">กรอกเลขประจำตัวผู้เสียภาษี 13 หลัก</string>
+    <string name="settings_tin_invalid">รูปแบบเลขประจำตัวผู้เสียภาษีไม่ถูกต้อง (ต้องมี 13 หลัก)</string>
+    <string name="settings_tin_required">กรุณากรอกเลขประจำตัวผู้เสียภาษีเมื่อเปิดใช้งาน</string>
+    <string name="settings_custom_printing_services">บริการพิมพ์แบบกำหนดเอง</string>
+    <string name="settings_generate_qr_code_description">สร้าง QR Code PromptPay สำหรับการรับชำระเงิน</string>
+    <string name="settings_select_shop_logo">เลือกโลโก้ร้าน</string>
+    <string name="settings_select_qr_code">เลือก QR Code</string>
+    <string name="settings_attach_shop_logo">แนบรูปโลโก้ร้านของคุณ</string>
+    <string name="settings_attach_qr_code">แนบรูป QR Code สำหรับใบเสร็จ</string>
+    <string name="settings_save_success">บันทึกการตั้งค่าเรียบร้อยแล้ว</string>
+    <string name="settings_paper_size_select">เลือกขนาดกระดาษ</string>
+    <string name="settings_cancel">ยกเลิก</string>
+    <string name="settings_saving">กำลังบันทึก...</string>
+    <string name="settings_save_settings">บันทึกการตั้งค่า</string>
+    <string name="settings_paper_size_58mm">58 มม</string>
+    <string name="settings_paper_size_80mm">80 มม</string>
 </resources>

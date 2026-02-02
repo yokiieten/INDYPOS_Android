@@ -170,6 +170,32 @@ class ProductRepositoryImpl @Inject constructor(
                 }
             }
             
+            // Remove local items that are no longer in API (e.g. deleted on another device)
+            // Order: addons -> addon groups -> products -> categories (respect potential FK/cache)
+            val apiAddonIds = addonsMap.keys.toSet()
+            val existingAddonIds = addonDao.getAllAddons().map { it.id }.toSet()
+            (existingAddonIds - apiAddonIds).forEach { id ->
+                addonGroupAddonJunctionDao.deleteByAddonId(id)
+                addonDao.permanentlyDeleteAddon(id)
+            }
+            val apiAddonGroupIds = addonGroupsMap.keys.toSet()
+            val existingAddonGroupIds = addonGroupDao.getAllAddonGroups().map { it.id }.toSet()
+            (existingAddonGroupIds - apiAddonGroupIds).forEach { id ->
+                addonGroupAddonJunctionDao.deleteByAddonGroupId(id)
+                addonGroupDao.permanentlyDeleteAddonGroup(id)
+            }
+            val apiProductIds = productsList.map { it.id }.toSet()
+            val existingProductIds = productDao.getAllProducts().mapNotNull { it.id }.toSet()
+            (existingProductIds - apiProductIds).forEach { id ->
+                productAddonGroupJunctionDao.deleteByProductId(id)
+                productDao.deleteProductById(id)
+            }
+            val apiCategoryIdsFromSync = allCategoriesMap.keys.toSet()
+            val existingCategoryIdsFromSync = categoryDao.getAllCategories().map { it.id }.toSet()
+            (existingCategoryIdsFromSync - apiCategoryIdsFromSync).forEach { id ->
+                categoryDao.deleteCategoryById(id)
+            }
+            
             Result.success(Unit)
         } catch (e: HttpException) {
             val errorMessage = when (e.code()) {
@@ -346,6 +372,11 @@ class ProductRepositoryImpl @Inject constructor(
             if (apiCategories.isNotEmpty()) {
                 categoryDao.insertAll(apiCategories)
             }
+            
+            // Remove local categories that are no longer in API (e.g. deleted on another device)
+            val apiCategoryIds = apiCategories.map { it.id }.toSet()
+            val idsToRemove = existingCategoryIds - apiCategoryIds
+            idsToRemove.forEach { categoryDao.deleteCategoryById(it) }
             
             Result.success(Unit)
         } catch (e: HttpException) {
@@ -725,6 +756,58 @@ class ProductRepositoryImpl @Inject constructor(
                 val errorText = errorResponse.error?.lowercase() ?: ""
                 val messageText = errorResponse.message?.lowercase() ?: ""
                 
+                // Check for specific error keys first
+                val errorKey = errorResponse.error?.takeIf { it.isNotBlank() }
+                val messageKey = errorResponse.message?.takeIf { it.isNotBlank() }
+                val combinedErrorText = "$errorText $messageText"
+                
+                // Helper function to get localized string
+                fun getLocalizedString(resourceName: String, fallback: String): String {
+                    val resourceId = context.resources.getIdentifier(
+                        resourceName,
+                        "string",
+                        context.packageName
+                    )
+                    return if (resourceId != 0) {
+                        context.getString(resourceId)
+                    } else {
+                        fallback
+                    }
+                }
+                
+                // Handle category_form_validation_exists error key
+                when {
+                    errorKey == "category_form_validation_exists" || messageKey == "category_form_validation_exists" -> {
+                        return getLocalizedString("category_form_validation_exists", "หมวดหมู่นี้มีอยู่แล้ว")
+                    }
+                }
+                
+                // Handle product error keys
+                when {
+                    errorKey == "product_error_duplicate_sku" || messageKey == "product_error_duplicate_sku" -> {
+                        return getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
+                    }
+                    errorKey == "product_error_duplicate_name" || messageKey == "product_error_duplicate_name" -> {
+                        return getLocalizedString("product_error_duplicate_name", "ชื่อนี้มีอยู่แล้ว")
+                    }
+                    errorKey == "product_error_duplicate_code" || messageKey == "product_error_duplicate_code" -> {
+                        return getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
+                    }
+                }
+                
+                // Handle product error messages by content (for cases where error key is not provided)
+                when {
+                    combinedErrorText.contains("duplicate sku") || combinedErrorText.contains("duplicate sku code") -> {
+                        return getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
+                    }
+                    combinedErrorText.contains("duplicate product name") || combinedErrorText.contains("duplicate name") -> {
+                        return getLocalizedString("product_error_duplicate_name", "ชื่อนี้มีอยู่แล้ว")
+                    }
+                    combinedErrorText.contains("duplicate product code") || combinedErrorText.contains("duplicate code") -> {
+                        return getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
+                    }
+                }
+                
                 // Handle specific status codes
                 when (statusCode) {
                     400 -> {
@@ -763,10 +846,28 @@ class ProductRepositoryImpl @Inject constructor(
                     }
                     409 -> {
                         // Conflict - Duplicate name or code
-                        // Show both error and message if available
+                        // Check if it's a product error first
                         val errorTextValue = errorResponse.error?.takeIf { it.isNotBlank() }
                         val messageTextValue = errorResponse.message?.takeIf { it.isNotBlank() }
+                        val combinedText = "$errorTextValue $messageTextValue".lowercase()
+                        
+                        // Check for category duplicate errors first
                         when {
+                            combinedText.contains("duplicate category name") || 
+                            errorTextValue?.lowercase()?.contains("duplicate category name") == true -> {
+                                getLocalizedString("category_error_duplicate_name", "ชื่อหมวดหมู่นี้มีอยู่แล้ว / Duplicate category name")
+                            }
+                            // Check for product duplicate errors
+                            combinedText.contains("duplicate sku") || combinedText.contains("duplicate sku code") -> {
+                                getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
+                            }
+                            combinedText.contains("duplicate product name") || combinedText.contains("duplicate name") -> {
+                                getLocalizedString("product_error_duplicate_name", "ชื่อนี้มีอยู่แล้ว")
+                            }
+                            combinedText.contains("duplicate product code") || combinedText.contains("duplicate code") -> {
+                                getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
+                            }
+                            // For other duplicate errors
                             errorTextValue != null && messageTextValue != null -> "$errorTextValue ($messageTextValue)"
                             errorTextValue != null -> errorTextValue
                             messageTextValue != null -> messageTextValue
@@ -789,12 +890,37 @@ class ProductRepositoryImpl @Inject constructor(
             } catch (e: Exception) {
                 // If parsing fails, check raw string
                 val errorLower = errorJson.lowercase()
+                
+                // Helper function to get localized string
+                fun getLocalizedString(resourceName: String, fallback: String): String {
+                    val resourceId = context.resources.getIdentifier(
+                        resourceName,
+                        "string",
+                        context.packageName
+                    )
+                    return if (resourceId != 0) {
+                        context.getString(resourceId)
+                    } else {
+                        fallback
+                    }
+                }
+                
                 when {
                     statusCode == 409 && errorLower.contains("duplicate category name") -> {
-                        "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
+                        getLocalizedString("category_error_duplicate_name", "ชื่อหมวดหมู่นี้มีอยู่แล้ว / Duplicate category name")
                     }
                     statusCode == 403 && errorLower.contains("free_plan_limit_exceeded") -> {
                         "คุณใช้หมวดหมู่ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                    }
+                    // Product duplicate errors
+                    errorLower.contains("duplicate sku") || errorLower.contains("duplicate sku code") -> {
+                        getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
+                    }
+                    errorLower.contains("duplicate product name") || errorLower.contains("duplicate name") -> {
+                        getLocalizedString("product_error_duplicate_name", "ชื่อนี้มีอยู่แล้ว")
+                    }
+                    errorLower.contains("duplicate product code") || errorLower.contains("duplicate code") -> {
+                        getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
                     }
                     else -> {
                         getDefaultErrorMessage(statusCode)
@@ -1618,6 +1744,28 @@ class ProductRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
         }
+    }
+    
+    /**
+     * Clear all products, categories, addon groups, addons and their junctions from Room database
+     * This is used before fetching fresh data from API
+     * Note: This will trigger foreign key constraints on cart_items (productId will be set to NULL)
+     * Cart items should be restored after fetching new products
+     */
+    override suspend fun clearAllProductsAndCategories() {
+        // Delete junctions first (to avoid foreign key constraint issues)
+        productAddonGroupJunctionDao.deleteAll()
+        addonGroupAddonJunctionDao.deleteAll()
+        
+        // Delete products (this will set productId to NULL in cart_items due to foreign key)
+        productDao.deleteAll()
+        
+        // Delete categories
+        categoryDao.deleteAll()
+        
+        // Delete addon groups and addons
+        addonGroupDao.deleteAll()
+        addonDao.deleteAll()
     }
 }
 

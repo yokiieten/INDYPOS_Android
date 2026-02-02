@@ -6,6 +6,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddonCount
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 import java.util.Date
 
@@ -62,6 +64,20 @@ interface AddonGroupDao {
     // For management screen (including inactive, excluding deleted)
     @Query("SELECT * FROM addon_groups WHERE isDeletedLocally = 0 ORDER BY sortOrder ASC")
     fun getAllAddonGroupsForManagementFlow(): Flow<List<AddonGroupEntity>>
+    
+    // For management screen with addon count per group
+    @Transaction
+    @Query(
+        """
+        SELECT g.*, COUNT(j.addonId) AS addonCount
+        FROM addon_groups AS g
+        LEFT JOIN addon_group_addon_junction AS j ON g.id = j.addonGroupId
+        WHERE g.isDeletedLocally = 0
+        GROUP BY g.id
+        ORDER BY g.sortOrder ASC
+        """
+    )
+    fun getAddonGroupsWithAddonCountForManagementFlow(): Flow<List<AddonGroupWithAddonCount>>
     
     /**
      * Get unsynced addon groups count

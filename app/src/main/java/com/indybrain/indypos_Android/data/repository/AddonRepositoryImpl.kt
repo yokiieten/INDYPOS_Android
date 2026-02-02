@@ -1,13 +1,21 @@
 package com.indybrain.indypos_Android.data.repository
 
+import android.content.Context
+import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
+import com.indybrain.indypos_Android.data.local.dao.SelectedAddonJunctionDao
+import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
+import com.indybrain.indypos_Android.data.local.dao.CartDao
+import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
 import com.indybrain.indypos_Android.data.remote.dto.AddonDto
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import com.indybrain.indypos_Android.domain.repository.AddonSyncStatistics
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -19,7 +27,13 @@ import javax.inject.Inject
 class AddonRepositoryImpl @Inject constructor(
     private val productsApi: ProductsApi,
     private val addonDao: AddonDao,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val selectedAddonJunctionDao: SelectedAddonJunctionDao,
+    private val addonGroupAddonJunctionDao: AddonGroupAddonJunctionDao,
+    private val cartDao: CartDao,
+    private val orderAddonDao: OrderAddonDao,
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val gson: Gson,
+    @ApplicationContext private val context: Context
 ) : AddonRepository {
     
     private val dateFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
@@ -69,23 +83,37 @@ class AddonRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        403 -> {
-                            // Check for free plan limit error
-                            val errorBody = e.response()?.errorBody()?.string()
-                            if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
-                                "free_plan_limit_exceeded"
+                        400 -> {
+                            // Bad Request - parse error message
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        401 -> {
+                            // Unauthorized - parse specific error
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
                             } else {
-                                e.message() ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
+                                parsed
                             }
                         }
-                        409 -> {
-                            // Conflict - duplicate name
-                            "ชื่อ Addon นี้มีอยู่แล้ว"
+                        403 -> {
+                            // Forbidden - Free plan limit exceeded or Access denied
+                            parseApiErrorResponse(errorBody, e.code())
                         }
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
+                        409 -> {
+                            // Conflict - Duplicate addon name
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        500 -> {
+                            // Internal Server Error
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        else -> {
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -155,15 +183,41 @@ class AddonRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        404 -> "ไม่พบ Addon ที่ต้องการแก้ไข"
-                        409 -> {
-                            // Conflict - duplicate name
-                            "ชื่อ Addon นี้มีอยู่แล้ว"
+                        400 -> {
+                            // Bad Request - parse error message
+                            parseApiErrorResponse(errorBody, e.code())
                         }
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการแก้ไข Addon"
+                        401 -> {
+                            // Unauthorized - parse specific error
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> {
+                            // Forbidden - Access denied
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        404 -> {
+                            // Not Found - Addon not found
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        409 -> {
+                            // Conflict - Duplicate addon name
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        500 -> {
+                            // Internal Server Error
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
+                        else -> {
+                            parseApiErrorResponse(errorBody, e.code())
+                        }
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -207,6 +261,13 @@ class AddonRepositoryImpl @Inject constructor(
                 // Use REPLACE strategy to update existing addons
                 addonDao.insertAll(addons)
             }
+            // Remove local addons that are no longer in API (e.g. deleted on another device)
+            val apiAddonIds = addonsList.map { it.id }.toSet()
+            val existingAddonIds = addonDao.getAllAddons().map { it.id }.toSet()
+            (existingAddonIds - apiAddonIds).forEach { id ->
+                addonGroupAddonJunctionDao.deleteByAddonId(id)
+                addonDao.permanentlyDeleteAddon(id)
+            }
             
             Result.success(Unit)
         } catch (e: HttpException) {
@@ -243,11 +304,22 @@ class AddonRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        404 -> "ไม่พบ Addon ที่ต้องการ"
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ"
+                        400 -> parseApiErrorResponse(errorBody, e.code())
+                        401 -> {
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> parseApiErrorResponse(errorBody, e.code())
+                        404 -> parseApiErrorResponse(errorBody, e.code())
+                        500 -> parseApiErrorResponse(errorBody, e.code())
+                        else -> parseApiErrorResponse(errorBody, e.code())
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -289,11 +361,22 @@ class AddonRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        404 -> "ไม่พบ Addon ที่ต้องการลบ"
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการลบ"
+                        400 -> parseApiErrorResponse(errorBody, e.code())
+                        401 -> {
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> parseApiErrorResponse(errorBody, e.code())
+                        404 -> parseApiErrorResponse(errorBody, e.code())
+                        500 -> parseApiErrorResponse(errorBody, e.code())
+                        else -> parseApiErrorResponse(errorBody, e.code())
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -330,10 +413,22 @@ class AddonRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
+                    // Handle HTTP errors
+                    val errorBody = e.response()?.errorBody()
                     val errorMessage = when (e.code()) {
-                        401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                        500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                        else -> e.message() ?: "เกิดข้อผิดพลาดในการลบ"
+                        400 -> parseApiErrorResponse(errorBody, e.code())
+                        401 -> {
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else {
+                                parsed
+                            }
+                        }
+                        403 -> parseApiErrorResponse(errorBody, e.code())
+                        404 -> parseApiErrorResponse(errorBody, e.code())
+                        500 -> parseApiErrorResponse(errorBody, e.code())
+                        else -> parseApiErrorResponse(errorBody, e.code())
                     }
                     Result.failure(Exception(errorMessage))
                 }
@@ -349,6 +444,12 @@ class AddonRepositoryImpl @Inject constructor(
     }
     
     override suspend fun permanentlyDeleteAddon(addonId: String) {
+        // ลบความสัมพันธ์ทั้งหมดก่อน
+        selectedAddonJunctionDao.deleteByAddonId(addonId)
+        addonGroupAddonJunctionDao.deleteByAddonId(addonId)
+        cartDao.deleteCartAddonsByAddonId(addonId)
+        orderAddonDao.deleteOrderAddonsByAddonId(addonId)
+        // แล้วค่อยลบ addon
         addonDao.permanentlyDeleteAddon(addonId)
     }
     
@@ -434,15 +535,166 @@ class AddonRepositoryImpl @Inject constructor(
             
             Result.success(Unit)
         } catch (e: HttpException) {
+            // Handle HTTP errors
+            val errorBody = e.response()?.errorBody()
             val errorMessage = when (e.code()) {
-                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                else -> e.message() ?: "เกิดข้อผิดพลาดในการ sync"
+                400 -> parseApiErrorResponse(errorBody, e.code())
+                401 -> {
+                    val parsed = parseApiErrorResponse(errorBody, e.code())
+                    if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                        "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                    } else {
+                        parsed
+                    }
+                }
+                403 -> parseApiErrorResponse(errorBody, e.code())
+                500 -> parseApiErrorResponse(errorBody, e.code())
+                else -> parseApiErrorResponse(errorBody, e.code())
             }
             Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
         }
     }
+    
+    /**
+     * Parse API error response body
+     */
+    private fun parseApiErrorResponse(errorBody: ResponseBody?, statusCode: Int): String {
+        return try {
+            if (errorBody == null) {
+                return getDefaultErrorMessage(statusCode)
+            }
+            
+            val errorJson = errorBody.string()
+            if (errorJson.isBlank()) {
+                return getDefaultErrorMessage(statusCode)
+            }
+            
+            // Try to parse as error response
+            try {
+                val errorResponse = gson.fromJson(errorJson, AddonErrorResponse::class.java)
+                val errorText = errorResponse.error?.lowercase() ?: ""
+                val messageText = errorResponse.message?.lowercase() ?: ""
+                
+                // Check for specific error keys first
+                val errorKey = errorResponse.error?.takeIf { it.isNotBlank() }
+                val messageKey = errorResponse.message?.takeIf { it.isNotBlank() }
+                val combinedErrorText = "$errorText $messageText"
+                
+                // Handle specific status codes
+                when (statusCode) {
+                    400 -> {
+                        // Bad Request - return message or error field
+                        // Check for specific error messages
+                        when {
+                            messageText.contains("addon name is required", ignoreCase = true) -> {
+                                "กรุณากรอกชื่อ Addon"
+                            }
+                            else -> {
+                                errorResponse.message?.takeIf { it.isNotBlank() }
+                                    ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                                    ?: "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
+                            }
+                        }
+                    }
+                    401 -> {
+                        // Unauthorized - return message or error field
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                    }
+                    403 -> {
+                        // Forbidden - Free plan limit exceeded or Access denied
+                        val message = errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: ""
+                        
+                        when {
+                            message.contains("free_plan_limit", ignoreCase = true) -> {
+                                "คุณใช้ Addon ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                            }
+                            message.contains("access denied", ignoreCase = true) -> {
+                                "คุณไม่มีสิทธิ์แก้ไข Addon นี้"
+                            }
+                            else -> {
+                                message.ifBlank { "คุณไม่มีสิทธิ์เข้าถึง Addon นี้" }
+                            }
+                        }
+                    }
+                    404 -> {
+                        // Not Found - Addon not found
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "ไม่พบ Addon ที่ต้องการ"
+                    }
+                    409 -> {
+                        // Conflict - Duplicate addon name
+                        when {
+                            combinedErrorText.contains("duplicate addon name") || 
+                            combinedErrorText.contains("duplicate name") -> {
+                                "ชื่อ Addon นี้มีอยู่แล้ว"
+                            }
+                            errorKey != null && messageKey != null -> "$errorKey ($messageKey)"
+                            errorKey != null -> errorKey
+                            messageKey != null -> messageKey
+                            else -> "ชื่อ Addon นี้มีอยู่แล้ว"
+                        }
+                    }
+                    500 -> {
+                        // Internal Server Error
+                        errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: "Server error - กรุณาลองใหม่อีกครั้ง"
+                    }
+                    else -> {
+                        // Return error or message if available
+                        errorResponse.error?.takeIf { it.isNotBlank() }
+                            ?: errorResponse.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
+                    }
+                }
+            } catch (e: Exception) {
+                // If parsing fails, check raw string
+                val errorLower = errorJson.lowercase()
+                
+                when {
+                    statusCode == 409 && errorLower.contains("duplicate addon name") -> {
+                        "ชื่อ Addon นี้มีอยู่แล้ว"
+                    }
+                    statusCode == 403 && errorLower.contains("free_plan_limit_exceeded") -> {
+                        "คุณใช้ Addon ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
+                    }
+                    else -> {
+                        getDefaultErrorMessage(statusCode)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            getDefaultErrorMessage(statusCode)
+        }
+    }
+    
+    /**
+     * Get default error message for status code
+     */
+    private fun getDefaultErrorMessage(statusCode: Int): String {
+        return when (statusCode) {
+            400 -> "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
+            401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+            403 -> "คุณไม่มีสิทธิ์เข้าถึง Addon นี้"
+            404 -> "ไม่พบ Addon ที่ต้องการ"
+            409 -> "ชื่อ Addon นี้มีอยู่แล้ว"
+            500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+            else -> "เกิดข้อผิดพลาดในการสร้าง Addon"
+        }
+    }
 }
 
+/**
+ * Error response DTO for parsing API errors
+ */
+private data class AddonErrorResponse(
+    val error: String?,
+    val message: String?
+)

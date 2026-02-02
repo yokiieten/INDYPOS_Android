@@ -14,6 +14,7 @@ import com.indybrain.indypos_Android.data.local.dao.OrderDao
 import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
+import com.indybrain.indypos_Android.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import android.content.Context
 import android.net.Uri
@@ -163,7 +164,7 @@ class DataManagementViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isExporting = false,
-                                exportError = error.message ?: "Export failed"
+                                exportError = error.message ?: context.getString(R.string.data_export_error_failed)
                             )
                         }
                     }
@@ -172,7 +173,7 @@ class DataManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isExporting = false,
-                        exportError = e.message ?: "Export failed"
+                        exportError = e.message ?: context.getString(R.string.data_export_error_failed)
                     )
                 }
             }

@@ -511,6 +511,99 @@
 -keep enum com.indybrain.indypos_Android.data.export.ExportFormat { *; }
 -keep enum com.indybrain.indypos_Android.data.export.ExportDataType { *; }
 
+# ============================================
+# Language/Locale Management - CRITICAL FOR LANGUAGE SWITCHING
+# ============================================
+# Keep LocaleHelper object class (used for locale management)
+-keep class com.indybrain.indypos_Android.core.locale.LocaleHelper { *; }
+-keepclassmembers class com.indybrain.indypos_Android.core.locale.LocaleHelper {
+    <methods>;
+    <fields>;
+}
+# Keep all methods in LocaleHelper (including private methods used via reflection)
+-keepclassmembers class com.indybrain.indypos_Android.core.locale.LocaleHelper {
+    public static ** getLocaleFromCode(...);
+    public static ** getLocaleCode(...);
+    public static ** setLocale(...);
+    public static ** getCurrentLocale(...);
+    private static ** updateResources(...);
+}
+
+# Keep LanguageLocalDataSource (used for storing language preference)
+-keep class com.indybrain.indypos_Android.data.local.LanguageLocalDataSource { *; }
+-keepclassmembers class com.indybrain.indypos_Android.data.local.LanguageLocalDataSource {
+    <methods>;
+    <fields>;
+    <init>(...);
+}
+# Keep all methods in LanguageLocalDataSource
+-keepclassmembers class com.indybrain.indypos_Android.data.local.LanguageLocalDataSource {
+    public ** saveLanguageLocale(...);
+    public ** getLanguageLocale();
+    public ** getCurrentLanguageOption();
+}
+
+# Keep LanguageOption enum (used for language selection) - CRITICAL
+# Must preserve enum constants and values() method for language switching
+-keep enum com.indybrain.indypos_Android.data.local.LanguageOption { *; }
+-keepclassmembers enum com.indybrain.indypos_Android.data.local.LanguageOption {
+    <fields>;
+    <methods>;
+    public static ** valueOf(java.lang.String);
+    public static **[] values();
+    public ** localeCode;
+    public ** displayName;
+}
+# Keep all enum constants (Thai, English) - CRITICAL for LanguageOption.values()
+-keepclassmembers enum com.indybrain.indypos_Android.data.local.LanguageOption {
+    public static final com.indybrain.indypos_Android.data.local.LanguageOption Thai;
+    public static final com.indybrain.indypos_Android.data.local.LanguageOption English;
+    **[] $VALUES;
+    static **[] $values();
+}
+# Prevent enum name obfuscation and ensure values() is not removed
+-keepnames enum com.indybrain.indypos_Android.data.local.LanguageOption
+-keepclassmembernames enum com.indybrain.indypos_Android.data.local.LanguageOption {
+    public static **[] values();
+}
+
+# Keep LanguageSettingsViewModel (ViewModel for language settings)
+-keep class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsViewModel { *; }
+-keepclassmembers class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsViewModel {
+    <methods>;
+    <fields>;
+    <init>(...);
+}
+# Keep all methods in LanguageSettingsViewModel
+-keepclassmembers class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsViewModel {
+    public ** selectLanguage(...);
+    private ** loadCurrentLanguage();
+}
+
+# Keep LanguageSettingsUiState data class
+-keep class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsUiState { *; }
+-keepclassmembers class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsUiState {
+    <fields>;
+    <init>(...);
+    public ** copy(...);
+}
+# Keep all fields in LanguageSettingsUiState
+-keepclassmembers class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsUiState {
+    public ** selectedLanguage;
+}
+
+# Keep LanguageSettingsScreen composable (may use reflection for enum values())
+-keep class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsScreenKt { *; }
+-keepclassmembers class com.indybrain.indypos_Android.presentation.settings.LanguageSettingsScreenKt {
+    public static ** LanguageSettingsScreen(...);
+    private static ** LanguageOptionRow(...);
+}
+
+# Keep MainActivity attachBaseContext method (used for locale initialization)
+-keepclassmembers class com.indybrain.indypos_Android.MainActivity {
+    public ** attachBaseContext(...);
+}
+
 # JavaParser classes (optional dependency for XMLBeans code generation)
 -dontwarn com.github.javaparser.**
 

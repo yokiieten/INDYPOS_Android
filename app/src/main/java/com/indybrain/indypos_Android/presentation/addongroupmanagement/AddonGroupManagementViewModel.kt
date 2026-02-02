@@ -64,10 +64,29 @@ class AddonGroupManagementViewModel @Inject constructor(
      */
     private fun observeAddonGroups() {
         viewModelScope.launch {
-            addonGroupRepository.getAllAddonGroupsFlow().collect { addonGroups ->
+            addonGroupRepository.getAllAddonGroupsWithCountFlow().collect { groupsWithCount ->
+                val sortedGroups = groupsWithCount.sortedBy { it.addonGroup.sortOrder ?: 0 }
+                val addonGroups = sortedGroups.map { it.addonGroup }
+                val counts = sortedGroups.associate { it.addonGroup.id to it.addonCount }
+                
                 _uiState.update { current ->
+                    // ถ้ามีกลุ่มที่กำลังถูกลบหลายรายการอยู่ ให้ซ่อนออกจาก UI เลย
+                    val pendingDeleteIds = current.pendingDeleteAddonGroupIds
+                    val visibleAddonGroups = addonGroups.filterNot { pendingDeleteIds.contains(it.id) }
+                    
+                    // Re-apply search filter if there's an active search query
+                    val filteredAddonGroups = if (current.searchQuery.isNotBlank()) {
+                        visibleAddonGroups.filter { 
+                            it.name.contains(current.searchQuery, ignoreCase = true) 
+                        }
+                    } else {
+                        null // Clear filter when query is blank
+                    }
+                    
                     current.copy(
-                        addonGroups = addonGroups.sortedBy { it.sortOrder ?: 0 },
+                        addonGroups = visibleAddonGroups,
+                        filteredAddonGroups = filteredAddonGroups,
+                        addonCounts = counts,
                         isLoading = false // Clear loading state once we have data from Room
                     )
                 }
@@ -87,10 +106,11 @@ class AddonGroupManagementViewModel @Inject constructor(
      */
     fun searchAddonGroups(query: String) {
         _uiState.update { current ->
+            val addonGroups = current.addonGroups ?: emptyList()
             val filteredAddonGroups = if (query.isBlank()) {
-                current.addonGroups
+                null // Clear filter when query is blank
             } else {
-                current.addonGroups.filter { 
+                addonGroups.filter { 
                     it.name.contains(query, ignoreCase = true) 
                 }
             }
@@ -102,7 +122,7 @@ class AddonGroupManagementViewModel @Inject constructor(
      * Clear search
      */
     fun clearSearch() {
-        _uiState.update { it.copy(searchQuery = "", filteredAddonGroups = emptyList()) }
+        _uiState.update { it.copy(searchQuery = "", filteredAddonGroups = null) }
     }
     
     /**
@@ -222,8 +242,27 @@ class AddonGroupManagementViewModel @Inject constructor(
      */
     fun selectAllAddonGroups() {
         _uiState.update { current ->
-            val allAddonGroupIds = current.addonGroups.map { it.id }.toSet()
+            val addonGroups = current.addonGroups ?: emptyList()
+            val allAddonGroupIds = addonGroups.map { it.id }.toSet()
             current.copy(selectedAddonGroupIds = allAddonGroupIds)
+        }
+    }
+    
+    /**
+     * Select specific addon groups by IDs
+     */
+    fun selectAddonGroups(addonGroupIds: Set<String>) {
+        _uiState.update { current ->
+            current.copy(selectedAddonGroupIds = addonGroupIds)
+        }
+    }
+    
+    /**
+     * Deselect all addon groups
+     */
+    fun deselectAllAddonGroups() {
+        _uiState.update { current ->
+            current.copy(selectedAddonGroupIds = emptySet())
         }
     }
     
@@ -235,7 +274,17 @@ class AddonGroupManagementViewModel @Inject constructor(
             val selectedIds = _uiState.value.selectedAddonGroupIds.toList()
             if (selectedIds.isEmpty()) return@launch
             
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            // ตั้งสถานะให้รู้ว่ารายการเหล่านี้กำลังถูกลบ และซ่อนออกจาก UI เลย
+            _uiState.update { current ->
+                current.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    pendingDeleteAddonGroupIds = selectedIds.toSet(),
+                    // ออกจากโหมดแก้ไขและล้าง selection ทันที
+                    selectedAddonGroupIds = emptySet(),
+                    isEditMode = false
+                )
+            }
             
             var successCount = 0
             var failureMessage: String? = null
@@ -245,6 +294,7 @@ class AddonGroupManagementViewModel @Inject constructor(
                 result.onSuccess {
                     successCount++
                 }.onFailure { error ->
+                    // เก็บข้อความ error ไว้ แต่ยังพยายามลบตัวถัดไปต่อ
                     failureMessage = error.message ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
                 }
             }
@@ -253,7 +303,8 @@ class AddonGroupManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = failureMessage
+                        errorMessage = failureMessage,
+                        pendingDeleteAddonGroupIds = emptySet()
                     )
                 }
             } else {
@@ -266,8 +317,7 @@ class AddonGroupManagementViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         deleteSuccessMessage = successMessage,
-                        selectedAddonGroupIds = emptySet(),
-                        isEditMode = false
+                        pendingDeleteAddonGroupIds = emptySet()
                     )
                 }
             }
@@ -318,6 +368,13 @@ class AddonGroupManagementViewModel @Inject constructor(
             val stats = addonGroupRepository.getSyncStatistics()
             _uiState.update { it.copy(syncStatistics = stats) }
         }
+    }
+    
+    /**
+     * Clear error message
+     */
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }
 

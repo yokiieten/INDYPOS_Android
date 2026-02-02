@@ -500,4 +500,3 @@ private fun LogoutSuccessDialog(
         }
     )
 }
-

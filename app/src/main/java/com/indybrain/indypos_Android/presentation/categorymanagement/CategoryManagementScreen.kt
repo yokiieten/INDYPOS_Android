@@ -31,8 +31,8 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,11 +40,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,12 +100,30 @@ fun CategoryManagementScreen(
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     
-    // Calculate categories to show
-    val categoriesToShow = if (uiState.searchQuery.isNotBlank()) {
-        uiState.filteredCategories
-    } else {
-        uiState.categories
+    // Refresh categories when screen becomes visible (returns from AddEditCategoryScreen)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshCategories()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
+    
+    // Calculate categories to show - add null safety
+    val categoriesToShow = if (uiState.searchQuery.isNotBlank()) {
+        uiState.filteredCategories ?: emptyList()
+    } else {
+        uiState.categories ?: emptyList()
+    }
+    
+    // Show loading only for initial load when data hasn't been loaded yet (categories is null)
+    // Avoid showing full-screen loading during actions like delete to prevent flicker
+    val shouldShowLoading = uiState.isLoading && uiState.categories == null
     
     // Update search when query changes
     LaunchedEffect(searchQuery) {
@@ -218,45 +241,57 @@ fun CategoryManagementScreen(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshCategories() }
                 ) {
-                    if (categoriesToShow.isEmpty() && !uiState.isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.category_management_empty),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
+                    when {
+                        shouldShowLoading -> {
+                            // Show loading indicator when loading or data hasn't been loaded yet
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryButton)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                top = 8.dp,
-                                end = 16.dp,
-                                bottom = if (uiState.isEditMode) 80.dp else 80.dp // Space for bottom button
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(categoriesToShow) { category ->
-                                CategoryItem(
-                                    category = category,
-                                    isEditMode = uiState.isEditMode,
-                                    isSelected = uiState.selectedCategoryIds.contains(category.id),
-                                    onUseClick = { /* TODO: Handle use click */ },
-                                    onClick = { 
-                                        if (uiState.isEditMode) {
-                                            viewModel.toggleCategorySelection(category.id)
-                                        } else {
-                                            selectedCategory = category
-                                        }
-                                    }
+                        categoriesToShow.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.category_management_empty),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = SecondaryText
                                 )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    top = 8.dp,
+                                    end = 16.dp,
+                                    bottom = if (uiState.isEditMode) 80.dp else 80.dp // Space for bottom button
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(categoriesToShow) { category ->
+                                    CategoryItem(
+                                        category = category,
+                                        isEditMode = uiState.isEditMode,
+                                        isSelected = uiState.selectedCategoryIds.contains(category.id),
+                                        onUseClick = { /* TODO: Handle use click */ },
+                                        onClick = { 
+                                            if (uiState.isEditMode) {
+                                                viewModel.toggleCategorySelection(category.id)
+                                            } else {
+                                                selectedCategory = category
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -266,10 +301,20 @@ fun CategoryManagementScreen(
             // Bottom Action Bar - Show different UI based on edit mode
             if (uiState.isEditMode) {
                 // Edit Mode - Show selection actions
+                val allSelected = uiState.selectedCategoryIds.size == categoriesToShow.size && categoriesToShow.isNotEmpty()
                 EditModeBottomBar(
                     selectedCount = uiState.selectedCategoryIds.size,
                     totalCount = categoriesToShow.size,
-                    onSelectAll = { viewModel.selectAllCategories() },
+                    allSelected = allSelected,
+                    onSelectAll = { 
+                        if (allSelected) {
+                            viewModel.deselectAllCategories()
+                        } else {
+                            // Select only visible/filtered categories
+                            val visibleCategoryIds = categoriesToShow.map { it.id }.toSet()
+                            viewModel.selectCategories(visibleCategoryIds)
+                        }
+                    },
                     onDelete = {
                         if (uiState.selectedCategoryIds.isNotEmpty()) {
                             showMultipleDeleteConfirmation = true
@@ -403,6 +448,45 @@ fun CategoryManagementScreen(
                 }
             )
         }
+        
+        // Error Dialog - Show API errors as popup
+        uiState.errorMessage?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearError() },
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.category_management_error_title),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = error,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text(
+                            text = stringResource(id = R.string.dialog_button_ok),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -419,7 +503,7 @@ private fun CategorySyncStatusDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "สถานะการ Sync",
+                text = stringResource(id = R.string.category_management_sync_status_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -431,7 +515,7 @@ private fun CategorySyncStatusDialog(
             Column {
                 if (statistics != null) {
                     Text(
-                        text = "ทั้งหมด: ${statistics.total}",
+                        text = stringResource(id = R.string.category_management_sync_total, statistics.total),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -440,7 +524,7 @@ private fun CategorySyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Sync แล้ว: ${statistics.synced}",
+                        text = stringResource(id = R.string.category_management_sync_synced, statistics.synced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -449,7 +533,7 @@ private fun CategorySyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "รอ Sync: ${statistics.unsynced}",
+                        text = stringResource(id = R.string.category_management_sync_pending, statistics.unsynced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -458,7 +542,7 @@ private fun CategorySyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "ถูกลบ: ${statistics.deleted}",
+                        text = stringResource(id = R.string.category_management_sync_deleted, statistics.deleted),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -477,7 +561,7 @@ private fun CategorySyncStatusDialog(
             if (statistics != null && statistics.unsynced > 0) {
                 TextButton(onClick = onSyncNow) {
                     Text(
-                        text = "Sync ตอนนี้",
+                        text = stringResource(id = R.string.category_management_sync_now),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -666,7 +750,7 @@ private fun DeleteConfirmationDialog(
         },
         text = {
             Text(
-                text = "คุณต้องการลบหมวดหมู่ '$categoryName' ใช่หรือไม่?",
+                text = stringResource(id = R.string.category_management_delete_confirm_message_single, categoryName),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -729,7 +813,7 @@ private fun MultipleDeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = stringResource(id = R.string.category_management_confirm_delete_message),
+                    text = stringResource(id = R.string.category_management_delete_confirm_message_multiple, selectedCount),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -785,6 +869,7 @@ private fun MultipleDeleteConfirmationDialog(
 private fun EditModeBottomBar(
     selectedCount: Int,
     totalCount: Int,
+    allSelected: Boolean,
     onSelectAll: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -802,12 +887,15 @@ private fun EditModeBottomBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Select All Button
+            // Select All / Deselect All Button
             TextButton(
                 onClick = onSelectAll
             ) {
                 Text(
-                    text = stringResource(id = R.string.category_management_select_all),
+                    text = if (allSelected) 
+                        stringResource(id = R.string.category_management_deselect_all)
+                    else 
+                        stringResource(id = R.string.category_management_select_all),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -872,14 +960,14 @@ private fun CategoryItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Radio Button (in edit mode)
+            // Checkbox (in edit mode)
             if (isEditMode) {
-                RadioButton(
-                    selected = isSelected,
-                    onClick = onClick,
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = PrimaryButton,
-                        unselectedColor = SecondaryText
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = PrimaryButton,
+                        uncheckedColor = SecondaryText
                     )
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -916,41 +1004,43 @@ private fun CategoryItem(
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Status Badge or Use Button
-            if (category.isActive) {
-                // Active - Show Use Button
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onUseClick),
-                    color = GreenComplete
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.category_management_use),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
-            } else {
-                // Inactive - Show Red Badge
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp)),
-                    color = RedFailure
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.category_management_inactive),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+            // Status Badge or Use Button - Hide in edit mode
+            if (!isEditMode) {
+                if (category.isActive) {
+                    // Active - Show Use Button
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(onClick = onUseClick),
+                        color = GreenComplete
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.category_management_use),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    // Inactive - Show Red Badge
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp)),
+                        color = RedFailure
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.category_management_inactive),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
                 }
             }
         }

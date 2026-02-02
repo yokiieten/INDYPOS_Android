@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
@@ -56,6 +57,11 @@ import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 
 /**
@@ -72,9 +78,10 @@ fun AddEditAddonScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isEditMode = addonId != null
-    var priceText by remember { mutableStateOf(uiState.addonPrice) }
+    val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
-    
+    var isSaveInProgress by remember { mutableStateOf(false) }
+
     // Load addon data if in edit mode
     LaunchedEffect(addonId) {
         if (addonId != null) {
@@ -82,20 +89,18 @@ fun AddEditAddonScreen(
         }
     }
     
-    // Update price text when state changes
-    LaunchedEffect(uiState.addonPrice) {
-        priceText = uiState.addonPrice
+    // Track if navigation has been triggered to prevent multiple navigations
+    var hasNavigated by remember { mutableStateOf(false) }
+
+    // Reset hasNavigated when addonId changes (new add/edit session)
+    LaunchedEffect(addonId) {
+        hasNavigated = false
     }
-    
-    // Track if user clicked OK on success dialog
-    var shouldNavigateBack by remember { mutableStateOf(false) }
-    
-    // Navigate back when user clicks OK
-    LaunchedEffect(shouldNavigateBack) {
-        if (shouldNavigateBack) {
-            onSaveSuccess()
-            viewModel.dismissSuccessDialog()
-            shouldNavigateBack = false
+
+    // Reset save-in-progress flag when loading finishes
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            isSaveInProgress = false
         }
     }
     
@@ -106,9 +111,9 @@ fun AddEditAddonScreen(
                 title = {
                     Text(
                         text = if (isEditMode) 
-                            "แก้ไข Addon"
+                            stringResource(id = R.string.addon_edit_title)
                         else 
-                            "เพิ่ม Addon",
+                            stringResource(id = R.string.addon_add_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -120,7 +125,7 @@ fun AddEditAddonScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "กลับ",
+                            contentDescription = stringResource(id = R.string.product_back),
                             tint = PrimaryText
                         )
                     }
@@ -153,7 +158,7 @@ fun AddEditAddonScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Addon Name Label with red asterisk
-                    val nameLabelText = "ชื่อ Addon"
+                    val nameLabelText = stringResource(id = R.string.addon_form_name_label)
                     val annotatedNameLabel = buildAnnotatedString {
                         append(nameLabelText)
                         append(" ")
@@ -177,7 +182,7 @@ fun AddEditAddonScreen(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = {
                             Text(
-                                text = "กรุณากรอกชื่อ Addon",
+                                text = stringResource(id = R.string.addon_form_name_placeholder),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -188,10 +193,10 @@ fun AddEditAddonScreen(
                         singleLine = true,
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Color.Transparent
+                            unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
+                            focusedBorderColor = PrimaryButton
                         ),
                         enabled = !uiState.isLoading
                     )
@@ -200,7 +205,7 @@ fun AddEditAddonScreen(
                     
                     // Addon Price Label (no asterisk - optional)
                     Text(
-                        text = "ราคา",
+                        text = stringResource(id = R.string.addon_form_price_label),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -208,28 +213,23 @@ fun AddEditAddonScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     
-                    // Addon Price Input Field
                     OutlinedTextField(
-                        value = priceText,
+                        value = uiState.addonPrice,
                         onValueChange = { newValue ->
-                            // Allow only numbers and decimal point
-                            val filtered = newValue.filter { 
-                                it.isDigit() || it == '.' 
-                            }
-                            // Ensure only one decimal point
-                            val parts = filtered.split('.')
-                            val finalValue = if (parts.size > 2) {
-                                parts[0] + "." + parts.drop(1).joinToString("")
-                            } else {
-                                filtered
-                            }
-                            priceText = finalValue
-                            viewModel.updateAddonPrice(finalValue)
+                            // Use ViewModel's filterPriceInput function
+                            viewModel.updateAddonPrice(newValue)
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                // Format price when field loses focus
+                                if (!focusState.isFocused && uiState.addonPrice.isNotBlank()) {
+                                    viewModel.formatAddonPriceOnUnfocus()
+                                }
+                            },
                         placeholder = {
                             Text(
-                                text = "กรุณากรอกราคา",
+                                text = stringResource(id = R.string.addon_form_price_placeholder),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -239,14 +239,25 @@ fun AddEditAddonScreen(
                         },
                         singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = KeyboardType.Decimal
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // Format price when Done is pressed
+                                if (uiState.addonPrice.isNotBlank()) {
+                                    viewModel.formatAddonPriceOnUnfocus()
+                                }
+                                // Hide keyboard
+                                focusManager.clearFocus()
+                            }
                         ),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Color.Transparent
+                            unfocusedBorderColor = PrimaryButton.copy(alpha = 0.5f),
+                            focusedBorderColor = PrimaryButton
                         ),
                         enabled = !uiState.isLoading
                     )
@@ -262,8 +273,13 @@ fun AddEditAddonScreen(
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .clickable(
-                        enabled = !uiState.isLoading,
-                        onClick = { viewModel.saveAddon {} }
+                        enabled = !uiState.isLoading && !isSaveInProgress,
+                        onClick = {
+                            if (!isSaveInProgress) {
+                                isSaveInProgress = true
+                                viewModel.saveAddon {}
+                            }
+                        }
                     ),
                 color = if (uiState.isLoading) 
                     PrimaryButton.copy(alpha = 0.6f) 
@@ -282,9 +298,9 @@ fun AddEditAddonScreen(
                     } else {
                         Text(
                             text = if (isEditMode) 
-                                "บันทึกการแก้ไข"
+                                stringResource(id = R.string.addon_form_save_edit)
                             else 
-                                "เพิ่ม Addon",
+                                stringResource(id = R.string.addon_form_save_add),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Medium
@@ -298,13 +314,17 @@ fun AddEditAddonScreen(
         }
         
         // Success Dialog - Outside Box but inside Scaffold
-        if (uiState.isSuccess) {
+        if (uiState.isSuccess && !hasNavigated) {
             SuccessDialog(
                 isEditMode = isEditMode,
                 isOffline = uiState.isOfflineSuccess,
                 onOkClick = {
-                    // Trigger navigation via LaunchedEffect
-                    shouldNavigateBack = true
+                    // Prevent multiple navigations
+                    if (!hasNavigated) {
+                        hasNavigated = true
+                        viewModel.dismissSuccessDialog()
+                        onSaveSuccess()
+                    }
                 }
             )
         }
@@ -317,6 +337,7 @@ fun AddEditAddonScreen(
                 errorMessage = errorMessage,
                 onDismiss = {
                     viewModel.clearError()
+                    isSaveInProgress = false
                 }
             )
         }
@@ -328,10 +349,12 @@ fun AddEditAddonScreen(
             FreePlanLimitDialog(
                 onDismiss = {
                     viewModel.clearError()
+                    isSaveInProgress = false
                 },
                 onContactUs = {
                     // TODO: Navigate to contact us screen
                     viewModel.clearError()
+                    isSaveInProgress = false
                 }
             )
         }
@@ -351,7 +374,7 @@ private fun SuccessDialog(
         onDismissRequest = { /* Prevent dismissing by clicking outside */ },
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -362,10 +385,10 @@ private fun SuccessDialog(
         text = {
             Text(
                 text = when {
-                    isEditMode && isOffline -> "แก้ไข Addon สำเร็จ (บันทึกในเครื่อง)"
-                    isEditMode && !isOffline -> "แก้ไข Addon สำเร็จ"
-                    !isEditMode && isOffline -> "เพิ่ม Addon สำเร็จ (บันทึกในเครื่อง)"
-                    else -> "เพิ่ม Addon สำเร็จ"
+                    isEditMode && isOffline -> stringResource(id = R.string.addon_form_success_edit_offline)
+                    isEditMode && !isOffline -> stringResource(id = R.string.addon_form_success_edit)
+                    !isEditMode && isOffline -> stringResource(id = R.string.addon_form_success_add_offline)
+                    else -> stringResource(id = R.string.addon_form_success_add)
                 },
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
@@ -379,7 +402,7 @@ private fun SuccessDialog(
                 onClick = onOkClick
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -403,7 +426,7 @@ private fun ErrorDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "เกิดข้อผิดพลาด",
+                text = stringResource(id = R.string.dialog_error_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -426,7 +449,7 @@ private fun ErrorDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -436,6 +459,28 @@ private fun ErrorDialog(
             }
         }
     )
+}
+
+/**
+ * Format price for display
+ */
+private fun formatPriceForDisplay(price: String): String {
+    if (price.isBlank()) return price
+    
+    val endsWithDot = price.trim().endsWith(".")
+    val priceToParse = if (endsWithDot) price.trim().dropLast(1) else price.trim()
+    
+    val parsed = priceToParse.toDoubleOrNull()
+    return if (parsed != null) {
+        val formatted = if (parsed % 1.0 == 0.0) {
+            parsed.toInt().toString()
+        } else {
+            String.format("%.2f", parsed)
+        }
+        if (endsWithDot) "$formatted." else formatted
+    } else {
+        price
+    }
 }
 
 /**
@@ -450,7 +495,7 @@ private fun FreePlanLimitDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "ถึงขีดจำกัด",
+                text = stringResource(id = R.string.addon_form_free_plan_limit_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -460,7 +505,7 @@ private fun FreePlanLimitDialog(
         },
         text = {
             Text(
-                text = "คุณถึงขีดจำกัดของแผนฟรีแล้ว กรุณาติดต่อเราเพื่ออัปเกรดแผน",
+                text = stringResource(id = R.string.addon_form_free_plan_limit_message),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -473,7 +518,7 @@ private fun FreePlanLimitDialog(
                 onClick = onContactUs
             ) {
                 Text(
-                    text = "ติดต่อเรา",
+                    text = stringResource(id = R.string.addon_form_contact_us),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -487,7 +532,7 @@ private fun FreePlanLimitDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.addon_group_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium

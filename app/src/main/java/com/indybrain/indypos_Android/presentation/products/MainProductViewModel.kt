@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import javax.inject.Inject
@@ -35,7 +36,12 @@ class MainProductViewModel @Inject constructor(
     
     private var hideAdjusterJob: Job? = null
     
+    // Track if API call is in progress
+    private var isApiCallInProgress = false
+    
     init {
+        // Set loading state immediately to show skeleton
+        _uiState.update { it.copy(isLoading = true) }
         // Start observing local Room data immediately
         observeCategories()
         observeProducts()
@@ -51,7 +57,12 @@ class MainProductViewModel @Inject constructor(
      */
     fun loadProducts() {
         viewModelScope.launch {
+            // Set loading state immediately
+            isApiCallInProgress = true
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            
+            // Clear all products and categories from Room before fetching fresh data
+            productRepository.clearAllProductsAndCategories()
             
             // Try to fetch from API if connected, otherwise use local data
             if (networkConnectivityChecker.isConnected()) {
@@ -61,8 +72,24 @@ class MainProductViewModel @Inject constructor(
                     // that may have been set to null due to previous deleteAll() calls
                     val products = productRepository.getAllActiveProducts().first()
                     cartRepository.restoreProductIdsForCartItems(products)
-                    // isLoading will be set to false by observeProducts() when data arrives
+                    // API call completed, mark as not in progress
+                    isApiCallInProgress = false
+                    // Wait a bit for Room to process and emit new data
+                    delay(100)
+                    // Force update products and stop loading (in case Room doesn't emit immediately)
+                    val productsWithCategory = products.filter { 
+                        it.categoryId != null && it.categoryId.isNotBlank() 
+                    }
+                    _uiState.update { current ->
+                        current.copy(
+                            allProducts = productsWithCategory,
+                            products = productsWithCategory,
+                            isLoading = false
+                        )
+                    }
                 }.onFailure { error ->
+                    // API call failed, stop loading and show error
+                    isApiCallInProgress = false
                     _uiState.update { current ->
                         current.copy(
                             isLoading = false,
@@ -71,8 +98,23 @@ class MainProductViewModel @Inject constructor(
                     }
                 }
             } else {
-                // No internet, data will be loaded from Room via Flow
-                // isLoading will be set to false by observeProducts() when data arrives
+                // No internet, use local data
+                // Mark as not in progress so observeProducts() can stop loading when data arrives
+                isApiCallInProgress = false
+                // Wait a bit for Room to emit initial data
+                delay(100)
+                // If no data after delay, stop loading anyway
+                val products = productRepository.getAllActiveProducts().first()
+                val productsWithCategory = products.filter { 
+                    it.categoryId != null && it.categoryId.isNotBlank() 
+                }
+                _uiState.update { current ->
+                    current.copy(
+                        allProducts = productsWithCategory,
+                        products = productsWithCategory,
+                        isLoading = false
+                    )
+                }
             }
         }
     }
@@ -83,15 +125,15 @@ class MainProductViewModel @Inject constructor(
     private fun observeCategories() {
         viewModelScope.launch {
             productRepository.getAllActiveCategories().collect { categories ->
+                // Sort categories by sortOrder (handle null values)
+                val sortedCategories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
+                val firstCategoryId = sortedCategories.firstOrNull()?.id
+                
                 _uiState.update { current ->
-                    // Sort categories by sortOrder (handle null values)
-                    val sortedCategories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
-                    val firstCategoryId = sortedCategories.firstOrNull()?.id
                     // Set initial focused category to first category if not set
                     val newFocusedCategoryId = current.focusedCategoryId ?: firstCategoryId
                     current.copy(
-                        categories = sortedCategories, // Use sorted categories
-                        // Don't update isLoading here - let it be managed by loadProducts()
+                        categories = sortedCategories,
                         focusedCategoryId = newFocusedCategoryId,
                         selectedCategoryId = current.selectedCategoryId ?: firstCategoryId
                     )
@@ -112,14 +154,24 @@ class MainProductViewModel @Inject constructor(
                 val productsWithCategory = allProducts.filter { 
                     it.categoryId != null && it.categoryId.isNotBlank() 
                 }
+                
                 _uiState.update { current ->
-                    // Set isLoading to false when we receive data from Room (even if empty)
-                    // This ensures loading state is cleared after initial data load
-                    current.copy(
-                        allProducts = productsWithCategory,
-                        products = productsWithCategory, // Always show all products with category
-                        isLoading = false // Clear loading state once we have data from Room
-                    )
+                    // If API call is in progress, don't update products yet (to prevent showing old data)
+                    // Only update products after API call completes
+                    if (isApiCallInProgress) {
+                        // Keep loading state and don't update products (to prevent showing old data)
+                        current.copy(
+                            isLoading = true
+                        )
+                    } else {
+                        // API call completed, update products and stop loading
+                        // This will be called when Room emits data after API completes
+                        current.copy(
+                            allProducts = productsWithCategory,
+                            products = productsWithCategory, // Always show all products with category
+                            isLoading = false
+                        )
+                    }
                 }
             }
         }
@@ -149,7 +201,19 @@ class MainProductViewModel @Inject constructor(
      * Find product by barcode (productCode or skuCode)
      */
     suspend fun findProductByCode(code: String): ProductEntity? {
-        return productRepository.getProductByCode(code)
+        // 1) Find active product by code
+        val product = productRepository.getProductByCode(code) ?: return null
+
+        // 2) Product must have a category
+        val categoryId = product.categoryId?.takeIf { it.isNotBlank() } ?: return null
+
+        // 3) Category must still be active (and not deleted locally)
+        val category = productRepository.getCategoryById(categoryId)
+        val isCategoryActive = category?.let { it.isActive && !it.isDeletedLocally } ?: false
+
+        // If category is not active, treat as "product not found" for scanning/search,
+        // to match iOS behaviour and the SearchProductViewModel filters.
+        return if (isCategoryActive) product else null
     }
     
     /**

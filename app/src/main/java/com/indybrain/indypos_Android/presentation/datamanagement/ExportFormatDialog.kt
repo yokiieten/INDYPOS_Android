@@ -50,7 +50,7 @@ fun ExportFormatDialog(
             ) {
                 // Title
                 Text(
-                    text = stringResource(R.string.export_format_dialog_title),
+                    text = stringResource(R.string.data_export_format_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -63,7 +63,7 @@ fun ExportFormatDialog(
                 
                 // Subtitle
                 Text(
-                    text = stringResource(R.string.export_format_dialog_subtitle),
+                    text = stringResource(R.string.data_export_format_message),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -102,7 +102,7 @@ fun ExportFormatDialog(
                 
                 // Cancel Button
                 Text(
-                    text = stringResource(R.string.home_cancel),
+                    text = stringResource(R.string.common_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium

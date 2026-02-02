@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -72,6 +73,7 @@ fun ProductDetailContentMobileLandscape(
     selectedAddons: Map<String, Set<String>>,
     quantity: Int,
     specialRequest: String,
+    isEditing: Boolean,
     onAddonToggle: (String, String) -> Unit,
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
@@ -217,7 +219,8 @@ fun ProductDetailContentMobileLandscape(
                 totalPrice = totalPrice,
                 onQuantityIncrease = onQuantityIncrease,
                 onQuantityDecrease = onQuantityDecrease,
-                onAddToCart = onAddToCart
+                onAddToCart = onAddToCart,
+                isEditing = isEditing
             )
         }
     }
@@ -229,7 +232,8 @@ private fun BottomActionBarMobile(
     totalPrice: Double,
     onQuantityIncrease: () -> Unit,
     onQuantityDecrease: () -> Unit,
-    onAddToCart: () -> Unit
+    onAddToCart: () -> Unit,
+    isEditing: Boolean = false
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -296,7 +300,7 @@ private fun BottomActionBarMobile(
                 }
             }
             
-            // Add to Cart Button - Compact
+            // Add to Cart / Save Edit Button - Compact
             TextButton(
                 onClick = onAddToCart,
                 modifier = Modifier
@@ -309,14 +313,32 @@ private fun BottomActionBarMobile(
                     contentColor = Color.White
                 )
             ) {
-                Text(
-                    text = "เพิ่ม ${formatCurrency(totalPrice)}",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Medium
-                    ),
-                    color = Color.White
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isEditing) {
+                            stringResource(id = R.string.product_detail_save_edit)
+                        } else {
+                            stringResource(id = R.string.product_detail_add_to_cart)
+                        },
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        text = formatCurrency(totalPrice),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = Color.White
+                    )
+                }
             }
         }
     }
@@ -355,15 +377,45 @@ private fun AddonGroupSectionMobile(
                     color = PrimaryText
                 )
                 
-                if (addonGroup.maxSelection != null) {
-                    Text(
-                        text = "(${addonGroup.maxSelection})",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = PrimaryButton
-                    )
+                // Required badge (only show when required)
+                if (addonGroup.isRequired) {
+                    val requiredLabel = stringResource(id = R.string.addon_group_required)
+                    Surface(
+                        color = Color(0xFFE3F2FD),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = requiredLabel,
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = PrimaryButton,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                // แสดงข้อความจำนวนเลือกได้สูงสุด โดยใช้ string resource ตาม locale
+                val maxSelection = addonGroup.maxSelection
+                if (maxSelection != null && maxSelection > 0) {
+                    Surface(
+                        color = Color(0xFFE3F2FD),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(
+                                id = R.string.product_max_selection,
+                                maxSelection
+                            ),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = PrimaryButton,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
             
@@ -457,7 +509,7 @@ private fun SpecialRequestSectionMobile(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "คำขอพิเศษ",
+                text = stringResource(id = R.string.product_detail_special_request),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Medium

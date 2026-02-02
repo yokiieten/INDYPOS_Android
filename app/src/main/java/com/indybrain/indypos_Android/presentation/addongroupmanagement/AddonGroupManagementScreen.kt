@@ -31,8 +31,8 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,19 +40,26 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -93,11 +100,25 @@ fun AddonGroupManagementScreen(
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     
-    // Calculate addon groups to show
-    val addonGroupsToShow = if (uiState.searchQuery.isNotBlank()) {
-        uiState.filteredAddonGroups
-    } else {
-        uiState.addonGroups
+    // Refresh addon groups when screen becomes visible (returns from AddEditAddonGroupScreen)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var lastResumeTime by remember { mutableStateOf(0L) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val currentTime = System.currentTimeMillis()
+                // Only refresh if it's been more than 1 second since last refresh
+                // This prevents multiple refreshes but allows refresh when returning from AddEditAddonGroupScreen
+                if (currentTime - lastResumeTime > 1000) {
+                    viewModel.refreshAddonGroups()
+                    lastResumeTime = currentTime
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
     
     // Update search when query changes
@@ -112,9 +133,9 @@ fun AddonGroupManagementScreen(
                 title = {
                     Text(
                         text = if (uiState.isEditMode) 
-                            "เลือกกลุ่ม Addon"
+                            stringResource(id = R.string.addon_group_management_select_title)
                         else 
-                            "จัดการกลุ่ม Addon",
+                            stringResource(id = R.string.addon_group_management_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -126,7 +147,7 @@ fun AddonGroupManagementScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "กลับ",
+                            contentDescription = stringResource(id = R.string.product_back),
                             tint = PrimaryText
                         )
                     }
@@ -148,9 +169,9 @@ fun AddonGroupManagementScreen(
                     ) {
                         Text(
                             text = if (uiState.isEditMode) 
-                                "ยกเลิก"
+                                stringResource(id = R.string.addon_group_management_cancel)
                             else 
-                                "แก้ไข",
+                                stringResource(id = R.string.addon_group_management_edit),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -184,7 +205,7 @@ fun AddonGroupManagementScreen(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         placeholder = {
                             Text(
-                                text = "ค้นหากลุ่ม Addon",
+                                text = stringResource(id = R.string.addon_group_management_search_placeholder),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -216,44 +237,68 @@ fun AddonGroupManagementScreen(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshAddonGroups() }
                 ) {
-                    if (addonGroupsToShow.isEmpty() && !uiState.isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "ไม่มีกลุ่ม Addon",
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
-                        }
+                    // Calculate addon groups to show
+                    val groupsToShow = if (uiState.searchQuery.isNotBlank()) {
+                        uiState.filteredAddonGroups ?: emptyList()
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                top = 8.dp,
-                                end = 16.dp,
-                                bottom = if (uiState.isEditMode) 80.dp else 80.dp // Space for bottom button
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(addonGroupsToShow) { addonGroup ->
-                                AddonGroupItem(
-                                    addonGroup = addonGroup,
-                                    isEditMode = uiState.isEditMode,
-                                    isSelected = uiState.selectedAddonGroupIds.contains(addonGroup.id),
-                                    onClick = { 
-                                        if (uiState.isEditMode) {
-                                            viewModel.toggleAddonGroupSelection(addonGroup.id)
-                                        } else {
-                                            selectedAddonGroup = addonGroup
-                                        }
-                                    }
+                        uiState.addonGroups ?: emptyList()
+                    }
+                    // Show loading only for initial load when data hasn't been loaded yet (addonGroups is null)
+                    // Avoid showing full-screen loading during actions like delete to prevent flicker
+                    val shouldShowLoading = uiState.isLoading && uiState.addonGroups == null
+                    
+                    when {
+                        shouldShowLoading -> {
+                            // Show loading indicator when loading or data hasn't been loaded yet
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryButton)
+                            }
+                        }
+                        groupsToShow.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.addon_group_management_empty),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = SecondaryText
                                 )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    top = 8.dp,
+                                    end = 16.dp,
+                                    bottom = if (uiState.isEditMode) 80.dp else 80.dp // Space for bottom button
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(groupsToShow) { addonGroup ->
+                                    val addonCount = uiState.addonCounts[addonGroup.id]
+                                    AddonGroupItem(
+                                        addonGroup = addonGroup,
+                                        addonCount = addonCount,
+                                        isEditMode = uiState.isEditMode,
+                                        isSelected = uiState.selectedAddonGroupIds.contains(addonGroup.id),
+                                        onClick = { 
+                                            if (uiState.isEditMode) {
+                                                viewModel.toggleAddonGroupSelection(addonGroup.id)
+                                            } else {
+                                                selectedAddonGroup = addonGroup
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -263,10 +308,25 @@ fun AddonGroupManagementScreen(
             // Bottom Action Bar - Show different UI based on edit mode
             if (uiState.isEditMode) {
                 // Edit Mode - Show selection actions
+                val groupsToShow = if (uiState.searchQuery.isNotBlank()) {
+                    uiState.filteredAddonGroups ?: emptyList()
+                } else {
+                    uiState.addonGroups ?: emptyList()
+                }
+                val allSelected = uiState.selectedAddonGroupIds.size == groupsToShow.size && groupsToShow.isNotEmpty()
                 EditModeBottomBar(
                     selectedCount = uiState.selectedAddonGroupIds.size,
-                    totalCount = addonGroupsToShow.size,
-                    onSelectAll = { viewModel.selectAllAddonGroups() },
+                    totalCount = groupsToShow.size,
+                    allSelected = allSelected,
+                    onSelectAll = { 
+                        if (allSelected) {
+                            viewModel.deselectAllAddonGroups()
+                        } else {
+                            // Select only visible/filtered addon groups
+                            val visibleAddonGroupIds = groupsToShow.map { it.id }.toSet()
+                            viewModel.selectAddonGroups(visibleAddonGroupIds)
+                        }
+                    },
                     onDelete = {
                         if (uiState.selectedAddonGroupIds.isNotEmpty()) {
                             showMultipleDeleteConfirmation = true
@@ -291,7 +351,7 @@ fun AddonGroupManagementScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "เพิ่มกลุ่ม Addon",
+                            text = stringResource(id = R.string.addon_group_management_add),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Medium
@@ -400,6 +460,45 @@ fun AddonGroupManagementScreen(
                 }
             )
         }
+        
+        // Error Dialog - Show API errors as popup
+        uiState.errorMessage?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearError() },
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.dialog_error_title),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Large
+                        ),
+                        color = PrimaryText
+                    )
+                },
+                text = {
+                    Text(
+                        text = error,
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text(
+                            text = stringResource(id = R.string.dialog_button_ok),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Medium,
+                                size = FontSize.Medium
+                            ),
+                            color = PrimaryButton
+                        )
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -416,7 +515,7 @@ private fun AddonGroupSyncStatusDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "สถานะการ Sync",
+                text = stringResource(id = R.string.addon_group_management_sync_status_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -428,7 +527,7 @@ private fun AddonGroupSyncStatusDialog(
             Column {
                 if (statistics != null) {
                     Text(
-                        text = "ทั้งหมด: ${statistics.total}",
+                        text = stringResource(id = R.string.addon_group_management_sync_total, statistics.total),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -437,7 +536,7 @@ private fun AddonGroupSyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Sync แล้ว: ${statistics.synced}",
+                        text = stringResource(id = R.string.addon_group_management_sync_synced, statistics.synced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -446,7 +545,7 @@ private fun AddonGroupSyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "รอ Sync: ${statistics.unsynced}",
+                        text = stringResource(id = R.string.addon_group_management_sync_pending, statistics.unsynced),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -455,7 +554,7 @@ private fun AddonGroupSyncStatusDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "ถูกลบ: ${statistics.deleted}",
+                        text = stringResource(id = R.string.addon_group_management_sync_deleted, statistics.deleted),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -474,7 +573,7 @@ private fun AddonGroupSyncStatusDialog(
             if (statistics != null && statistics.unsynced > 0) {
                 TextButton(onClick = onSyncNow) {
                     Text(
-                        text = "Sync ตอนนี้",
+                        text = stringResource(id = R.string.addon_group_management_sync_now),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -487,7 +586,7 @@ private fun AddonGroupSyncStatusDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -511,7 +610,7 @@ private fun SyncSuccessDialog(
         onDismissRequest = { /* Prevent dismissing by clicking outside */ },
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -534,7 +633,7 @@ private fun SyncSuccessDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -558,7 +657,7 @@ private fun ToggleStatusSuccessDialog(
         onDismissRequest = { /* Prevent dismissing by clicking outside */ },
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -581,7 +680,7 @@ private fun ToggleStatusSuccessDialog(
                 onClick = onOkClick
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -605,7 +704,7 @@ private fun DeleteSuccessDialog(
         onDismissRequest = { /* Prevent dismissing by clicking outside */ },
         title = {
             Text(
-                text = "สำเร็จ",
+                text = stringResource(id = R.string.success_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -628,7 +727,7 @@ private fun DeleteSuccessDialog(
                 onClick = onOkClick
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -653,7 +752,7 @@ private fun DeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "ลบ",
+                text = stringResource(id = R.string.addon_group_management_delete_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -663,7 +762,7 @@ private fun DeleteConfirmationDialog(
         },
         text = {
             Text(
-                text = "คุณต้องการลบกลุ่ม Addon '$addonGroupName' ใช่หรือไม่?",
+                text = stringResource(id = R.string.addon_group_management_delete_confirm_single, addonGroupName),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -676,7 +775,7 @@ private fun DeleteConfirmationDialog(
                 onClick = onConfirm
             ) {
                 Text(
-                    text = "ตกลง",
+                    text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -690,7 +789,7 @@ private fun DeleteConfirmationDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.addon_group_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -715,7 +814,7 @@ private fun MultipleDeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "ยืนยันการลบ",
+                text = stringResource(id = R.string.product_management_confirm_delete_title),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -726,7 +825,7 @@ private fun MultipleDeleteConfirmationDialog(
         text = {
             Column {
                 Text(
-                    text = "คุณต้องการลบกลุ่ม Addon $selectedCount รายการใช่หรือไม่?",
+                    text = stringResource(id = R.string.addon_group_management_delete_confirm_multiple, selectedCount),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -735,7 +834,7 @@ private fun MultipleDeleteConfirmationDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "การลบนี้ไม่สามารถยกเลิกได้",
+                    text = stringResource(id = R.string.addon_group_management_delete_warning),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -749,7 +848,7 @@ private fun MultipleDeleteConfirmationDialog(
                 onClick = onConfirm
             ) {
                 Text(
-                    text = "ลบ",
+                    text = stringResource(id = R.string.addon_group_management_action_delete),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -763,7 +862,7 @@ private fun MultipleDeleteConfirmationDialog(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "ยกเลิก",
+                    text = stringResource(id = R.string.addon_group_management_cancel),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Medium
@@ -782,6 +881,7 @@ private fun MultipleDeleteConfirmationDialog(
 private fun EditModeBottomBar(
     selectedCount: Int,
     totalCount: Int,
+    allSelected: Boolean,
     onSelectAll: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -799,12 +899,15 @@ private fun EditModeBottomBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Select All Button
+            // Select All / Deselect All Button
             TextButton(
                 onClick = onSelectAll
             ) {
                 Text(
-                    text = "เลือกทั้งหมด",
+                    text = if (allSelected) 
+                        stringResource(id = R.string.category_management_deselect_all) 
+                    else 
+                        stringResource(id = R.string.category_management_select_all),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -815,7 +918,7 @@ private fun EditModeBottomBar(
             
             // Selected Count
             Text(
-                text = "เลือก $selectedCount รายการ",
+                text = stringResource(id = R.string.addon_group_management_select_items, selectedCount),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -829,7 +932,7 @@ private fun EditModeBottomBar(
                 enabled = selectedCount > 0
             ) {
                 Text(
-                    text = "ลบ",
+                    text = stringResource(id = R.string.addon_group_management_action_delete),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -847,6 +950,7 @@ private fun EditModeBottomBar(
 @Composable
 private fun AddonGroupItem(
     addonGroup: com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity,
+    addonCount: Int?,
     isEditMode: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit
@@ -865,14 +969,14 @@ private fun AddonGroupItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Radio Button (in edit mode)
+            // Checkbox (in edit mode)
             if (isEditMode) {
-                RadioButton(
-                    selected = isSelected,
-                    onClick = onClick,
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = PrimaryButton,
-                        unselectedColor = SecondaryText
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = PrimaryButton,
+                        uncheckedColor = SecondaryText
                     )
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -893,9 +997,37 @@ private fun AddonGroupItem(
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                // Additional info
+                // Additional info (required/optional + selection mode)
+                val requiredText = stringResource(
+                    id = if (addonGroup.isRequired) {
+                        R.string.addon_group_required
+                    } else {
+                        R.string.addon_group_optional
+                    }
+                )
+
+                val selectionText = stringResource(
+                    id = if (addonGroup.isSingleSelection) {
+                        R.string.addon_group_single_selection
+                    } else {
+                        R.string.addon_group_multiple_selection
+                    }
+                )
+
+                val baseInfoText = "$requiredText \u2022 $selectionText"
+
+                val infoText = if (addonCount != null && addonCount > 0) {
+                    val itemsText = stringResource(
+                        id = R.string.addon_group_items_count,
+                        addonCount
+                    )
+                    "$baseInfoText \u2022 $itemsText"
+                } else {
+                    baseInfoText
+                }
+
                 Text(
-                    text = if (addonGroup.isRequired) "จำเป็น" else "ไม่จำเป็น",
+                    text = infoText,
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -906,40 +1038,42 @@ private fun AddonGroupItem(
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Status Badge
-            if (addonGroup.isActive) {
-                // Active - Show Green Badge
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp)),
-                    color = GreenComplete
-                ) {
-                    Text(
-                        text = "ใช้งาน",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
-            } else {
-                // Inactive - Show Red Badge
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp)),
-                    color = RedFailure
-                ) {
-                    Text(
-                        text = "ไม่ใช้งาน",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Small
-                        ),
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+            // Status Badge - Hide in edit mode
+            if (!isEditMode) {
+                if (addonGroup.isActive) {
+                    // Active - Show Green Badge
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp)),
+                        color = GreenComplete
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.addon_group_management_status_active),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    // Inactive - Show Red Badge
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp)),
+                        color = RedFailure
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.addon_group_management_status_inactive),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
                 }
             }
         }
@@ -981,7 +1115,7 @@ private fun AddonGroupActionSheet(
             ) {
                 // Title
                 Text(
-                    text = "ตัวเลือก",
+                    text = stringResource(id = R.string.addon_group_management_action_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -994,7 +1128,7 @@ private fun AddonGroupActionSheet(
                 
                 // Subtitle
                 Text(
-                    text = "เลือกการดำเนินการที่ต้องการ",
+                    text = stringResource(id = R.string.addon_group_management_action_subtitle),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -1017,9 +1151,9 @@ private fun AddonGroupActionSheet(
                     ) {
                         Text(
                             text = if (addonGroup.isActive) 
-                                "ปิดใช้งาน"
+                                stringResource(id = R.string.addon_group_management_action_deactivate)
                             else 
-                                "เปิดใช้งาน",
+                                stringResource(id = R.string.addon_group_management_action_activate),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -1034,7 +1168,7 @@ private fun AddonGroupActionSheet(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "แก้ไข",
+                            text = stringResource(id = R.string.addon_group_management_action_edit),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -1049,7 +1183,7 @@ private fun AddonGroupActionSheet(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "ลบ",
+                            text = stringResource(id = R.string.addon_group_management_action_delete),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -1074,7 +1208,7 @@ private fun AddonGroupActionSheet(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "ยกเลิก",
+                                text = stringResource(id = R.string.addon_group_management_cancel),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Bold,
                                     size = FontSize.Medium

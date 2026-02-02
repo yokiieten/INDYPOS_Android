@@ -57,6 +57,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -103,7 +105,7 @@ fun OrderProductScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "ออเดอร์",
+                        text = stringResource(R.string.order_product_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -275,7 +277,7 @@ fun OrderProductScreen(
             },
             text = {
                 Text(
-                    text = "ต้องการลบสินค้าออกจากออเดอร์ทั้งหมดหรือไม่?",
+                    text = stringResource(R.string.order_product_clear_all_confirm),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -350,7 +352,7 @@ private fun LandscapeOrderContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "ออเดอร์ของฉัน",
+                    text = stringResource(R.string.order_product_my_order),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Large
@@ -362,20 +364,22 @@ private fun LandscapeOrderContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onClearAllClick) {
-                        Text(
-                            text = "ลบทั้งหมด",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = Color(0xFFFF5252)
-                        )
+                    if (uiState.groupedItems.isNotEmpty()) {
+                        TextButton(onClick = onClearAllClick) {
+                            Text(
+                                text = stringResource(R.string.order_product_clear_all),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Small
+                                ),
+                                color = Color(0xFFFF5252)
+                            )
+                        }
                     }
                     
                     TextButton(onClick = onAddMenuClick) {
                         Text(
-                            text = "เพิ่มเมนู",
+                            text = stringResource(R.string.order_product_add_product),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Small
@@ -388,19 +392,10 @@ private fun LandscapeOrderContent(
             
             // Cart items list
             if (uiState.groupedItems.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "ไม่มีสินค้าในตะกร้า",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = SecondaryText
-                    )
-                }
+                EmptyCartContent(
+                    modifier = Modifier.weight(1f),
+                    onAddMenuClick = onAddMenuClick
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -455,7 +450,7 @@ private fun LandscapeOrderContent(
                 ) {
                     // Payment type section
                     Text(
-                        text = "ประเภทการจ่ายเงิน",
+                        text = stringResource(R.string.order_product_payment_type),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium
@@ -502,7 +497,7 @@ private fun LandscapeOrderContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "ส่วนลด",
+                            text = stringResource(R.string.order_product_discount),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -536,7 +531,7 @@ private fun LandscapeOrderContent(
                         } else {
                             TextButton(onClick = onDiscountClick) {
                                 Text(
-                                    text = "เพิ่ม (ถ้ามี)",
+                                    text = stringResource(R.string.order_product_add_optional),
                                     style = FontUtils.mainFont(
                                         style = AppFontStyle.Regular,
                                         size = FontSize.Small
@@ -555,7 +550,7 @@ private fun LandscapeOrderContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "ยอดรวมราคา",
+                            text = stringResource(R.string.order_product_subtotal),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -580,7 +575,7 @@ private fun LandscapeOrderContent(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "ส่วนลด",
+                                text = stringResource(R.string.order_product_discount),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -606,7 +601,7 @@ private fun LandscapeOrderContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "รวม",
+                            text = stringResource(R.string.order_product_total),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Large
@@ -641,7 +636,8 @@ private fun LandscapeOrderContent(
                             } else {
                                 viewModel.placeOrder(
                                     onSuccess = { orderNumber ->
-                                        onOrderSuccess(total)
+                                        // สำหรับการชำระเงินด้วยการโอนเงิน ให้แสดงเงินทอนเป็น 0 บาท
+                                        onOrderSuccess(0.0)
                                     },
                                     onError = { error ->
                                         onError(error)
@@ -685,7 +681,7 @@ private fun PortraitOrderContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "ออเดอร์ของฉัน",
+                text = stringResource(R.string.order_product_my_order),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -697,20 +693,22 @@ private fun PortraitOrderContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onClearAllClick) {
-                    Text(
-                        text = "ลบทั้งหมด",
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = Color(0xFFFF5252)
-                    )
+                if (uiState.groupedItems.isNotEmpty()) {
+                    TextButton(onClick = onClearAllClick) {
+                        Text(
+                            text = stringResource(R.string.order_product_clear_all),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Medium
+                            ),
+                            color = Color(0xFFFF5252)
+                        )
+                    }
                 }
                 
                 TextButton(onClick = onAddMenuClick) {
                     Text(
-                        text = "เพิ่มเมนู",
+                        text = stringResource(R.string.order_product_add_product),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
@@ -723,21 +721,10 @@ private fun PortraitOrderContent(
         
         // Cart items list
         if (uiState.groupedItems.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "ไม่มีสินค้าในตะกร้า",
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Medium
-                    ),
-                    color = SecondaryText
-                )
-            }
+            EmptyCartContent(
+                modifier = Modifier.weight(1f),
+                onAddMenuClick = onAddMenuClick
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -781,7 +768,7 @@ private fun PortraitOrderContent(
                 // Payment type section
                 item {
                     Text(
-                        text = "ประเภทการจ่ายเงิน",
+                        text = stringResource(R.string.order_product_payment_type),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium
@@ -819,7 +806,7 @@ private fun PortraitOrderContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "ส่วนลด",
+                            text = stringResource(R.string.order_product_discount),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -853,7 +840,7 @@ private fun PortraitOrderContent(
                         } else {
                             TextButton(onClick = onDiscountClick) {
                                 Text(
-                                    text = "เพิ่ม (ถ้ามี)",
+                                    text = stringResource(R.string.order_product_add_optional),
                                     style = FontUtils.mainFont(
                                         style = AppFontStyle.Regular,
                                         size = FontSize.Small
@@ -873,7 +860,7 @@ private fun PortraitOrderContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "ยอดรวมราคา",
+                            text = stringResource(R.string.order_product_subtotal),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
@@ -898,7 +885,7 @@ private fun PortraitOrderContent(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "ส่วนลด",
+                                text = stringResource(R.string.order_product_discount),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.Regular,
                                     size = FontSize.Medium
@@ -924,7 +911,7 @@ private fun PortraitOrderContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "รวม",
+                            text = stringResource(R.string.order_product_total),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Medium
@@ -966,7 +953,8 @@ private fun PortraitOrderContent(
                     } else {
                         viewModel.placeOrder(
                             onSuccess = { orderNumber ->
-                                onOrderSuccess(total)
+                                // สำหรับการชำระเงินด้วยการโอนเงิน ให้แสดงเงินทอนเป็น 0 บาทเสมอ
+                                onOrderSuccess(0.0)
                             },
                             onError = { error ->
                                 onError(error)
@@ -1041,12 +1029,12 @@ private fun SwipeToDeleteCartItem(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Delete,
-                            contentDescription = "ลบ",
+                            contentDescription = stringResource(R.string.order_product_delete),
                             tint = Color.White
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "ลบ",
+                            text = stringResource(R.string.order_product_delete),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Bold,
                                 size = FontSize.Small
@@ -1249,13 +1237,13 @@ private fun GroupedCartItemRow(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
-                    contentDescription = "ลบ",
+                    contentDescription = stringResource(R.string.order_product_delete),
                     tint = Color(0xFFFF5252),
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "ลบ",
+                    text = stringResource(R.string.order_product_delete),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
@@ -1316,7 +1304,10 @@ private fun PaymentTypeButton(
                             R.drawable.ic_cash_transfer
                         }
                     ),
-                    contentDescription = paymentType.displayName,
+                    contentDescription = when (paymentType) {
+                        PaymentType.CASH -> stringResource(R.string.order_product_cash_payment)
+                        PaymentType.TRANSFER -> stringResource(R.string.order_product_transfer_payment)
+                    },
                     modifier = Modifier.size(20.dp),
                     contentScale = ContentScale.Fit,
                     colorFilter = ColorFilter.tint(Color.Black)
@@ -1326,7 +1317,10 @@ private fun PaymentTypeButton(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = paymentType.displayName,
+                text = when (paymentType) {
+                    PaymentType.CASH -> stringResource(R.string.order_product_cash_payment)
+                    PaymentType.TRANSFER -> stringResource(R.string.order_product_transfer_payment)
+                },
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Small
@@ -1381,7 +1375,7 @@ private fun OrderButton(
                 }
                 
                 Text(
-                    text = "สั่งสินค้า",
+                    text = stringResource(R.string.order_product_order_now),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Medium
@@ -1407,3 +1401,69 @@ private fun formatCurrency(value: Double): String {
     return "฿${formatter.format(value)}"
 }
 
+
+@Composable
+private fun EmptyCartContent(
+    modifier: Modifier = Modifier,
+    onAddMenuClick: () -> Unit
+) {
+    val emptyCartText = stringResource(R.string.order_product_empty_cart)
+    val (title, subtitle) = remember(emptyCartText) {
+        val parts = emptyCartText.split("\n", limit = 2)
+        if (parts.size >= 2) parts[0] to parts[1] else parts[0] to ""
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = title,
+            style = FontUtils.mainFont(
+                style = AppFontStyle.Bold,
+                size = FontSize.Large
+            ),
+            color = PrimaryText
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = subtitle,
+            style = FontUtils.mainFont(
+                style = AppFontStyle.Regular,
+                size = FontSize.Medium
+            ),
+            color = SecondaryText,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Surface(
+            modifier = Modifier
+                .width(200.dp)
+                .height(50.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onAddMenuClick),
+            color = PrimaryButton
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Text(
+                    text = stringResource(R.string.order_product_add_product),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Medium
+                    ),
+                    color = Color.White
+                )
+            }
+        }
+    }
+}

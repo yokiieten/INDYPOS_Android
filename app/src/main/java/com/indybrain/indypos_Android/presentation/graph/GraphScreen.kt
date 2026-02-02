@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
@@ -43,6 +44,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +72,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.config.AppConfig
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -98,6 +101,16 @@ fun GraphScreen(
     var showCustomRangeSheet by rememberSaveable { mutableStateOf(false) }
     var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Fetch orders from API when screen first opens, then save to Room and display
+    LaunchedEffect(Unit) {
+        viewModel.refreshOrdersFromApi()
+    }
+    
+    // รีโหลดข้อมูลทุกครั้งที่เปิดหน้ากราฟ (ตามช่วงเวลาที่เลือกปัจจุบัน)
+    LaunchedEffect(uiState.selectedPeriod, uiState.customStartDateMillis, uiState.customEndDateMillis) {
+        viewModel.refreshCurrentPeriod()
+    }
     
     Column(
         modifier = modifier
@@ -115,8 +128,8 @@ fun GraphScreen(
                     uiState.customEndDateMillis != null
                 ) {
                     formatCustomRange(
-                        uiState.customStartDateMillis,
-                        uiState.customEndDateMillis
+                        startMillis = uiState.customStartDateMillis,
+                        endMillis = uiState.customEndDateMillis
                     )
                 } else null,
                 onPeriodSelected = { period ->
@@ -144,7 +157,10 @@ fun GraphScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
             
-            SummaryCardsSection(summary = uiState.summary)
+            SummaryCardsSection(
+                summary = uiState.summary,
+                selectedPeriod = uiState.selectedPeriod
+            )
             
             Spacer(modifier = Modifier.height(24.dp))
             
@@ -190,6 +206,35 @@ fun GraphScreen(
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val context = LocalContext.current
         
+        // Initialize default dates (current month) when sheet opens and dates are null
+        LaunchedEffect(showCustomRangeSheet) {
+            if (customStartDateMillis == null || customEndDateMillis == null) {
+                val calendar = Calendar.getInstance()
+                // Set start date to first day of current month
+                val startCalendar = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                // Set end date to last day of current month
+                val endCalendar = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }
+                if (customStartDateMillis == null) {
+                    customStartDateMillis = startCalendar.timeInMillis
+                }
+                if (customEndDateMillis == null) {
+                    customEndDateMillis = endCalendar.timeInMillis
+                }
+            }
+        }
+        
         fun openDatePicker(isStart: Boolean) {
             val calendar = Calendar.getInstance()
             val currentMillis = if (isStart) customStartDateMillis else customEndDateMillis
@@ -223,6 +268,9 @@ fun GraphScreen(
             onDismissRequest = { showCustomRangeSheet = false },
             sheetState = sheetState
         ) {
+            val context = LocalContext.current
+            val locale = LocaleHelper.getCurrentLocale(context)
+            val buddhistEraLabel = stringResource(id = R.string.graph_date_buddhist_era)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -234,7 +282,7 @@ fun GraphScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "ยกเลิก",
+                        text = stringResource(id = R.string.graph_custom_range_cancel),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -245,7 +293,7 @@ fun GraphScreen(
                         }
                     )
                     Text(
-                        text = "เลือกช่วงวันที่",
+                        text = stringResource(id = R.string.graph_custom_range_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium
@@ -253,7 +301,7 @@ fun GraphScreen(
                         color = PrimaryText
                     )
                     Text(
-                        text = "เสร็จสิ้น",
+                        text = stringResource(id = R.string.graph_custom_range_done),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -274,7 +322,7 @@ fun GraphScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = "หมายเหตุ: การเลือกช่วงเวลาเกิน 1 ปี อาจทำให้แอปโหลดช้า",
+                    text = stringResource(id = R.string.graph_custom_range_warning),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Small
@@ -287,7 +335,7 @@ fun GraphScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "วันที่เริ่มต้น:",
+                        text = stringResource(id = R.string.graph_custom_range_start_date),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -304,7 +352,7 @@ fun GraphScreen(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
-                            text = formatCustomDate(customStartDateMillis),
+                            text = formatCustomDate(customStartDateMillis, locale, buddhistEraLabel),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -314,7 +362,7 @@ fun GraphScreen(
                     }
                     
                     Text(
-                        text = "วันที่สิ้นสุด:",
+                        text = stringResource(id = R.string.graph_custom_range_end_date),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -331,7 +379,7 @@ fun GraphScreen(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
-                            text = formatCustomDate(customEndDateMillis),
+                            text = formatCustomDate(customEndDateMillis, locale, buddhistEraLabel),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -373,7 +421,7 @@ private fun TimePeriodSelector(
                     text = if (selectedPeriod == TimePeriod.Custom && !customRangeLabel.isNullOrBlank()) {
                         customRangeLabel
                     } else {
-                        selectedPeriod.displayName
+                        stringResource(id = selectedPeriod.stringResId)
                     },
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
@@ -408,7 +456,7 @@ private fun TimePeriodSelector(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = period.displayName,
+                            text = stringResource(id = period.stringResId),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Small
@@ -436,28 +484,49 @@ private fun TimePeriodSelector(
     }
 }
 
-private fun formatCustomDate(millis: Long?): String {
+private fun formatCustomDate(millis: Long?, locale: Locale, buddhistEraLabel: String): String {
     if (millis == null) return ""
     val calendar = Calendar.getInstance().apply {
         timeInMillis = millis
     }
     val day = calendar.get(Calendar.DAY_OF_MONTH)
-    val monthFormat = SimpleDateFormat("MMM", Locale.ENGLISH)
+    val monthFormat = SimpleDateFormat("MMM", locale)
     val monthStr = monthFormat.format(calendar.time)
     val yearBE = calendar.get(Calendar.YEAR) + 543
-    return String.format("%02d %s BE %d", day, monthStr, yearBE)
+    return String.format("%02d %s %s %d", day, monthStr, buddhistEraLabel, yearBE)
 }
 
+@Composable
 private fun formatCustomRange(startMillis: Long?, endMillis: Long?): String {
-    if (startMillis == null || endMillis == null) return TimePeriod.Custom.displayName
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    if (startMillis == null || endMillis == null) return stringResource(id = TimePeriod.Custom.stringResId)
+    val context = LocalContext.current
+    val locale = LocaleHelper.getCurrentLocale(context)
+    val sdf = SimpleDateFormat("dd/MM/yyyy", locale)
     val start = java.util.Date(minOf(startMillis, endMillis))
     val end = java.util.Date(maxOf(startMillis, endMillis))
     return "${sdf.format(start)} - ${sdf.format(end)}"
 }
 
 @Composable
-private fun SummaryCardsSection(summary: GraphSummary) {
+private fun SummaryCardsSection(
+    summary: GraphSummary,
+    selectedPeriod: TimePeriod
+) {
+    // Get dynamic labels based on selected period
+    val salesLabel = when (selectedPeriod) {
+        TimePeriod.Today -> stringResource(id = R.string.graph_today_sales)
+        TimePeriod.Week -> stringResource(id = R.string.graph_week_sales)
+        TimePeriod.Month -> stringResource(id = R.string.graph_month_sales)
+        TimePeriod.Custom -> stringResource(id = R.string.graph_period_sales)
+    }
+    
+    val ordersLabel = when (selectedPeriod) {
+        TimePeriod.Today -> stringResource(id = R.string.graph_orders_today)
+        TimePeriod.Week -> stringResource(id = R.string.graph_orders_week)
+        TimePeriod.Month -> stringResource(id = R.string.graph_orders_month)
+        TimePeriod.Custom -> stringResource(id = R.string.graph_orders_period)
+    }
+    
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -467,7 +536,7 @@ private fun SummaryCardsSection(summary: GraphSummary) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             SummaryCard(
-                title = stringResource(id = R.string.graph_today_sales),
+                title = salesLabel,
                 value = formatCurrency(summary.todaySales),
                 valueColor = GreenComplete,
                 modifier = Modifier.weight(1f)
@@ -480,21 +549,21 @@ private fun SummaryCardsSection(summary: GraphSummary) {
             )
         }
         
-        // Middle row: Orders Today (full width)
+        // Middle row: ออเดอร์ตามช่วงเวลา (เหมือนเดิม) + ทั้งหมด
         SummaryCard(
-            title = stringResource(id = R.string.graph_orders_today),
-            value = "${summary.ordersToday} ${stringResource(id = R.string.home_orders_unit)}",
+            title = "$ordersLabel ${stringResource(id = R.string.order_filter_all)}",
+            value = "${summary.ordersToday + summary.cancelledOrders} ${stringResource(id = R.string.home_orders_unit)}",
             valueColor = GreenComplete,
             modifier = Modifier.fillMaxWidth()
         )
         
-        // Bottom row: Orders Today and Cancelled Orders
+        // Bottom row: ออเดอร์สำเร็จ (กรองแค่สำเร็จตามช่วง) และ ออเดอร์ยกเลิก
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             SummaryCard(
-                title = stringResource(id = R.string.graph_orders_today),
+                title = stringResource(id = R.string.graph_orders_success),
                 value = "${summary.ordersToday} ${stringResource(id = R.string.home_orders_unit)}",
                 valueColor = GreenComplete,
                 modifier = Modifier.weight(1f)
@@ -611,7 +680,7 @@ private fun ChartCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "ไม่มีข้อมูล",
+                        text = stringResource(id = R.string.graph_no_data_available),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
@@ -630,6 +699,9 @@ private fun LineChart(
     modifier: Modifier = Modifier
 ) {
     if (data.isEmpty()) return
+    
+    val context = LocalContext.current
+    val currencySymbol = stringResource(id = R.string.graph_currency_symbol)
     
     val maxValue = data.maxOfOrNull { it.value } ?: 1.0
     val minValue = data.minOfOrNull { it.value } ?: 0.0
@@ -780,7 +852,7 @@ private fun LineChart(
             if (index in points.indices) {
                 val point = points[index]
                 val value = data[index].value
-                val label = "฿${formatCurrency(value)}"
+                val label = "$currencySymbol${formatCurrency(value)}"
                 
                 drawContext.canvas.nativeCanvas.apply {
                     val textPaint = android.graphics.Paint().apply {
@@ -1314,6 +1386,28 @@ private fun BestSellerItem(
                     ),
                     color = Color.White
                 )
+            }
+            
+            // Crown icon for rank 1 (iOS style - top right)
+            if (seller.rank == 1) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 4.dp, y = (-4).dp)
+                        .size(24.dp)
+                        .background(
+                            Color(0xFFFFD700), // Gold color
+                            RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = "Crown",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
         

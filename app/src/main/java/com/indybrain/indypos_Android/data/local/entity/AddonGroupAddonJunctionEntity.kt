@@ -20,8 +20,9 @@ import androidx.room.Index
         ForeignKey(
             entity = AddonEntity::class,
             parentColumns = ["id"],
-            childColumns = ["addonId"],
-            onDelete = ForeignKey.CASCADE
+            childColumns = ["addonId"]
+            // หมายเหตุ: ไม่ใช้ CASCADE กับ AddonEntity เพื่อกันกรณีใช้ REPLACE บนตาราง addons
+            // ซึ่ง Room จะทำเป็น delete+insert แล้วไปลบ junction ทิ้งหมด
         )
     ],
     indices = [

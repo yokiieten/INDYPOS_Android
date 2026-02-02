@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.presentation.ordersummary
 
 import android.content.res.Configuration
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,9 +37,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -64,7 +68,7 @@ fun OrderSummaryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "สรุปออเดอร์",
+                        text = stringResource(id = R.string.order_summary_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -130,7 +134,7 @@ private fun OrderSummaryPortraitContent(
                     .padding(40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Checkmark icon
+                // Checkmark icon (ใช้รูปเดียวกับ iOS)
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -138,10 +142,9 @@ private fun OrderSummaryPortraitContent(
                         .background(Color.Transparent),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = "สำเร็จ",
-                        tint = Color.Black,
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_correct),
+                        contentDescription = stringResource(id = R.string.order_summary_success),
                         modifier = Modifier.size(100.dp)
                     )
                 }
@@ -150,7 +153,7 @@ private fun OrderSummaryPortraitContent(
                 
                 // Cash label
                 Text(
-                    text = "เงินทอน",
+                    text = stringResource(id = R.string.order_summary_change),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Largest
@@ -182,7 +185,7 @@ private fun OrderSummaryPortraitContent(
                     CheckboxIcon(isSelected = uiState.isPrintReceiptSelected)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "พิมพ์ใบเสร็จอัตโนมัติ",
+                        text = stringResource(id = R.string.order_summary_auto_print_receipt),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -203,7 +206,7 @@ private fun OrderSummaryPortraitContent(
                     CheckboxIcon(isSelected = uiState.isOpenCashDrawerSelected)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "เปิดลิ้นชักอัตโนมัติ",
+                        text = stringResource(id = R.string.order_summary_auto_open_drawer),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -233,13 +236,13 @@ private fun OrderSummaryPortraitContent(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = "เพิ่มออเดอร์",
+                    contentDescription = stringResource(id = R.string.order_summary_add_order),
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "เพิ่มออเดอร์",
+                    text = stringResource(id = R.string.order_summary_add_order),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.SemiBold,
                         size = FontSize.Medium
@@ -286,7 +289,7 @@ private fun OrderSummaryLandscapeContent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Checkmark icon
+                    // Checkmark icon (ใช้รูปเดียวกับ iOS)
                     Box(
                         modifier = Modifier
                             .size(80.dp)
@@ -294,10 +297,9 @@ private fun OrderSummaryLandscapeContent(
                             .background(Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = "สำเร็จ",
-                            tint = Color.Black,
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_correct),
+                            contentDescription = stringResource(id = R.string.order_summary_success),
                             modifier = Modifier.size(80.dp)
                         )
                     }
@@ -306,7 +308,7 @@ private fun OrderSummaryLandscapeContent(
                     
                     // Cash label
                     Text(
-                        text = "เงินทอน",
+                        text = stringResource(id = R.string.order_summary_change),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Largest
@@ -352,7 +354,7 @@ private fun OrderSummaryLandscapeContent(
                         CheckboxIcon(isSelected = uiState.isPrintReceiptSelected)
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "พิมพ์ใบเสร็จอัตโนมัติ",
+                            text = stringResource(id = R.string.order_summary_auto_print_receipt),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -374,7 +376,7 @@ private fun OrderSummaryLandscapeContent(
                         CheckboxIcon(isSelected = uiState.isOpenCashDrawerSelected)
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "เปิดลิ้นชักอัตโนมัติ",
+                            text = stringResource(id = R.string.order_summary_auto_open_drawer),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -401,13 +403,13 @@ private fun OrderSummaryLandscapeContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Add,
-                                contentDescription = "เพิ่มออเดอร์",
+                                contentDescription = stringResource(id = R.string.order_summary_add_order),
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "เพิ่มออเดอร์",
+                                text = stringResource(id = R.string.order_summary_add_order),
                                 style = FontUtils.mainFont(
                                     style = AppFontStyle.SemiBold,
                                     size = FontSize.Medium
@@ -441,7 +443,7 @@ private fun CheckboxIcon(isSelected: Boolean) {
         if (isSelected) {
             Icon(
                 imageVector = Icons.Filled.Check,
-                contentDescription = "เลือก",
+                contentDescription = stringResource(id = R.string.order_summary_select),
                 tint = Color.White,
                 modifier = Modifier.size(16.dp)
             )

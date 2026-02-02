@@ -817,89 +817,107 @@ private fun OrderListContent(
         state = swipeRefreshState,
         onRefresh = onRefresh
     ) {
-        if (isLoading && orders.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(id = R.string.order_loading),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Medium
-                    ),
-                    color = SecondaryText
-                )
-            }
-        } else if (orders.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(id = R.string.order_empty),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Medium
-                    ),
-                    color = PlaceholderText
-                )
-            }
-        } else {
-            val listState = rememberLazyListState()
-
-            // Trigger load more automatically when scrolled near the end
-            LaunchedEffect(listState, hasMore, isLoadingMore) {
-                snapshotFlow {
-                    val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                    val totalItems = listState.layoutInfo.totalItemsCount
-                    // When user scrolls to last 3 items
-                    lastVisible >= totalItems - 3
-                }
-                    .distinctUntilChanged()
-                    .collect { shouldLoadMore ->
-                        if (shouldLoadMore && hasMore && !isLoadingMore) {
-                            onLoadMore()
-                        }
-                    }
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                state = listState,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    horizontal = 20.dp,
-                    vertical = 16.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(orders) { order ->
-                    OrderItem(
-                        order = order,
-                        onClick = { onOrderClick(order.id) }
+        when {
+            isLoading && orders.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.order_loading),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = SecondaryText
                     )
                 }
+            }
+            orders.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.order_empty),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Medium
+                        ),
+                        color = PlaceholderText
+                    )
+                }
+            }
+            else -> {
+                val listState = rememberLazyListState()
 
-                // Footer: loading indicator while fetching more
-                item {
-                    if (isLoadingMore && hasMore) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.order_loading),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Small
-                                ),
-                                color = SecondaryText
-                            )
+                // Trigger load more automatically when scrolled near the end
+                LaunchedEffect(listState, hasMore, isLoadingMore) {
+                    snapshotFlow {
+                        try {
+                            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            val totalItems = listState.layoutInfo.totalItemsCount
+                            // When user scrolls to last 3 items
+                            lastVisible >= totalItems - 3
+                        } catch (e: Exception) {
+                            false // Don't trigger load more if there's an error
                         }
-                    } else {
-                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                        .distinctUntilChanged()
+                        .collect { shouldLoadMore ->
+                            if (shouldLoadMore && hasMore && !isLoadingMore) {
+                                try {
+                                    onLoadMore()
+                                } catch (e: Exception) {
+                                    // Handle error silently
+                                }
+                            }
+                        }
+                }
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 20.dp,
+                        vertical = 16.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(orders) { order ->
+                        OrderItem(
+                            order = order,
+                            onClick = { 
+                                try {
+                                    onOrderClick(order.id)
+                                } catch (e: Exception) {
+                                    // Handle error silently
+                                }
+                            }
+                        )
+                    }
+
+                    // Footer: loading indicator while fetching more
+                    item {
+                        if (isLoadingMore && hasMore) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.order_loading),
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Small
+                                    ),
+                                    color = SecondaryText
+                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
                     }
                 }
             }

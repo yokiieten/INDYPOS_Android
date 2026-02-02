@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.presentation.orderdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.entity.OrderEntity
 import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
 import com.indybrain.indypos_Android.domain.model.OrderStatus
@@ -20,6 +21,7 @@ import javax.inject.Inject
 class OrderDetailViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val authRepository: AuthRepository
+    private val networkConnectivityChecker: NetworkConnectivityChecker
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(OrderDetailUiState())
@@ -44,7 +46,19 @@ class OrderDetailViewModel @Inject constructor(
             
             try {
                 val order = orderRepository.getOrderById(orderId)
-                val orderItems = orderRepository.getOrderItems(orderId)
+                var orderItems = orderRepository.getOrderItems(orderId)
+                
+                // If order exists but items are empty, try to refresh from API
+                if (order != null && orderItems.isEmpty() && networkConnectivityChecker.isConnected()) {
+                    try {
+                        // Refresh orders list from API to get items
+                        orderRepository.refreshOrdersList()
+                        // Reload items after refresh
+                        orderItems = orderRepository.getOrderItems(orderId)
+                    } catch (e: Exception) {
+                        // Silently fail - use empty items list
+                    }
+                }
                 
                 if (order != null) {
                     _uiState.update { 
