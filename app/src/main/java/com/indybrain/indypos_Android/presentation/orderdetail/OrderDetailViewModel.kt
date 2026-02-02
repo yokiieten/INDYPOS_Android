@@ -20,7 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class OrderDetailViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
     private val networkConnectivityChecker: NetworkConnectivityChecker
 ) : ViewModel() {
     

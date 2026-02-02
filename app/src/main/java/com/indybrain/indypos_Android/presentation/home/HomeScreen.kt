@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
@@ -433,14 +434,13 @@ private fun HomeContent(
     modifier: Modifier = Modifier,
     uiState: HomeUiState,
     scrollState: androidx.compose.foundation.ScrollState,
-    shortcuts: List<HomeShortcut>,
+    shortcuts: List<HomeShortcut> = emptyList(),
     onImageClick: () -> Unit,
     onChangeImageClick: () -> Unit,
     onDescriptionClick: () -> Unit,
     onShortcutClick: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val configuration = context.resources.configuration
+    val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     
     if (isLandscape) {
