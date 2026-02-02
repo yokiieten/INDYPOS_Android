@@ -26,7 +26,8 @@ class EmployeeRepositoryImpl @Inject constructor(
                     email = request.email.trim(),
                     phone = request.phone.trim(),
                     password = request.password,
-                    roleId = request.roleId
+                    roleId = request.roleId,
+                    permissions = request.permissions
                 )
             )
 
@@ -81,7 +82,9 @@ class EmployeeRepositoryImpl @Inject constructor(
                             isActivated = dto.isActivated ?: false,
                             shopName = dto.shopName.orEmpty(),
                             createdAt = dto.createdAt.orEmpty(),
-                            updatedAt = dto.updatedAt.orEmpty()
+                            updatedAt = dto.updatedAt.orEmpty(),
+                            permissions = dto.permissions ?: emptyList(),
+                            rolePermissions = dto.rolePermissions ?: emptyList()
                         )
                     } else null
                 }
@@ -123,7 +126,8 @@ class EmployeeRepositoryImpl @Inject constructor(
                     email = request.email?.trim(),
                     phone = request.phone?.trim(),
                     roleId = request.roleId,
-                    isActivated = request.isActivated
+                    isActivated = request.isActivated,
+                    permissions = request.permissions
                 )
             )
 

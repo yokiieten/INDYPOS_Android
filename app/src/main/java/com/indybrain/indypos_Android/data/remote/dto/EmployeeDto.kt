@@ -12,7 +12,9 @@ data class CreateEmployeeRequestDto(
     val phone: String,
     val password: String,
     @SerializedName("role_id")
-    val roleId: Int
+    val roleId: Int,
+    @SerializedName("permissions")
+    val permissions: List<String> = emptyList()
 )
 
 data class EmployeeDto(
@@ -62,5 +64,9 @@ data class EmployeeDto(
     @SerializedName("created_at")
     val createdAt: String?,
     @SerializedName("updated_at")
-    val updatedAt: String?
+    val updatedAt: String?,
+    @SerializedName("permissions")
+    val permissions: List<String>? = null,
+    @SerializedName("role_permissions")
+    val rolePermissions: List<String>? = null
 )

@@ -302,6 +302,16 @@
     <string name="create_employee_role_manager">ผู้จัดการ</string>
     <string name="create_employee_submit">สร้างพนักงาน</string>
     <string name="create_employee_success_message">สร้างพนักงานสำเร็จ</string>
+    <string name="create_employee_permissions_section_title">สิทธิ์การใช้งาน</string>
+    <string name="create_employee_permissions_section_desc">สิทธิ์เฉพาะของพนักงานคนนี้ (เพิ่มเติมจากสิทธิ์ตาม Role)</string>
+    <string name="permission_order_create_label">สร้างออเดอร์</string>
+    <string name="permission_order_create_desc">อนุญาตให้สร้างออเดอร์ใหม่ได้</string>
+    <string name="permission_order_cancel_label">ยกเลิกออเดอร์</string>
+    <string name="permission_order_cancel_desc">อนุญาตให้ยกเลิกออเดอร์ที่สร้างไปแล้ว</string>
+    <string name="permission_report_view_label">ดูรายงาน / กราฟ</string>
+    <string name="permission_report_view_desc">เข้าดูหน้ารายงานยอดขายและกราฟได้</string>
+    <string name="permission_role_manage_label">จัดการ Role และสิทธิ์</string>
+    <string name="permission_role_manage_desc">สร้าง/แก้ไข Role และกำหนดสิทธิ์ในระบบ</string>
     
     <!-- Change Password Screen -->
     <string name="change_password_instruction">เพื่อความปลอดภัย ใช้อย่างน้อย 6 ตัวอักษร</string>

@@ -41,10 +41,14 @@ class AccountViewModel @Inject constructor(
                             else -> append("User")
                         }
                     }
+                    val permissions = user?.permissions ?: emptyList()
+                    val canManageEmployees = permissions.contains("role.manage") || permissions.contains("user.manage")
+
                     current.copy(
                         displayName = name,
                         email = user?.email ?: "",
-                        packageName = user?.subscriptionPlan ?: "Basic"
+                        packageName = user?.subscriptionPlan ?: "Basic",
+                        canManageEmployees = canManageEmployees
                     )
                 }
             }
@@ -52,6 +56,13 @@ class AccountViewModel @Inject constructor(
     }
 
     fun loadEmployees() {
+        // ถ้าไม่มีสิทธิ์จัดการพนักงานหรือ Role ก็ไม่ต้องเรียก API
+        val canManage = _uiState.value.canManageEmployees
+        if (!canManage) {
+            _uiState.update { it.copy(isLoadingEmployees = false, employees = emptyList(), employeesError = null) }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingEmployees = true, employeesError = null) }
 
@@ -145,7 +156,8 @@ data class AccountUiState(
     val selectedEmployee: Employee? = null,
     val showEmployeeActionsSheet: Boolean = false,
     val showDeleteConfirmation: Boolean = false,
-    val isDeletingEmployee: Boolean = false
+    val isDeletingEmployee: Boolean = false,
+    val canManageEmployees: Boolean = false
 )
 
 

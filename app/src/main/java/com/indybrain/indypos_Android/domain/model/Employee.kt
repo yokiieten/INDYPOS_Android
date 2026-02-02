@@ -13,5 +13,7 @@ data class Employee(
     val isActivated: Boolean,
     val shopName: String,
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
+    val permissions: List<String> = emptyList(),
+    val rolePermissions: List<String> = emptyList()
 )

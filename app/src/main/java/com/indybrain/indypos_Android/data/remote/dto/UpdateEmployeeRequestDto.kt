@@ -12,5 +12,7 @@ data class UpdateEmployeeRequestDto(
     @SerializedName("role_id")
     val roleId: Int? = null,
     @SerializedName("is_activated")
-    val isActivated: Boolean? = null
+    val isActivated: Boolean? = null,
+    @SerializedName("permissions")
+    val permissions: List<String> = emptyList()
 )

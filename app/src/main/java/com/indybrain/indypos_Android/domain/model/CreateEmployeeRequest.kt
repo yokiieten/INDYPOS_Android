@@ -7,5 +7,6 @@ data class CreateEmployeeRequest(
     val email: String,
     val phone: String,
     val password: String,
-    val roleId: Int
+    val roleId: Int,
+    val permissions: List<String> = emptyList()
 )

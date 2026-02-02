@@ -6,5 +6,6 @@ data class UpdateEmployeeRequest(
     val email: String? = null,
     val phone: String? = null,
     val roleId: Int? = null,
-    val isActivated: Boolean? = null
+    val isActivated: Boolean? = null,
+    val permissions: List<String> = emptyList()
 )

@@ -314,24 +314,6 @@ fun AccountScreen(
                         CircularProgressIndicator(color = PrimaryButton)
                     }
                 }
-            } else if (uiState.employeesError != null) {
-                item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color(0xFFFFF3E0),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = uiState.employeesError ?: "",
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = Color(0xFFE65100),
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                }
             } else if (uiState.employees.isNotEmpty()) {
                 item {
                     Surface(
@@ -520,6 +502,45 @@ fun AccountScreen(
                 }
             },
             containerColor = Color.White
+        )
+    }
+
+    // Employee list load error dialog
+    if (uiState.employeesError != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearEmployeesError() },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearEmployeesError() }) {
+                    Text(
+                        text = stringResource(id = R.string.dialog_button_ok),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = stringResource(id = R.string.dialog_error_title),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText
+                )
+            },
+            text = {
+                Text(
+                    text = uiState.employeesError ?: "",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = SecondaryText
+                )
+            }
         )
     }
 }

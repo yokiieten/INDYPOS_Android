@@ -1,11 +1,11 @@
 package com.indybrain.indypos_Android.presentation.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,6 +63,12 @@ import com.indybrain.indypos_Android.ui.theme.SecondaryText
 
 private data class RoleOption(val id: Int, val label: String)
 
+private data class PermissionOption(
+    val key: String,
+    val label: String,
+    val description: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditEmployeeScreen(
@@ -82,6 +89,7 @@ fun AddEditEmployeeScreen(
     var roleExpanded by remember { mutableStateOf(false) }
     var selectedRoleIndex by rememberSaveable { mutableStateOf(0) }
     var hasLoadedEmployee by remember { mutableStateOf(false) }
+    var selectedPermissions by rememberSaveable { mutableStateOf(listOf<String>()) }
 
     // Load employee data when in edit mode
     if (uiState.isEditMode && !hasLoadedEmployee) {
@@ -91,6 +99,8 @@ fun AddEditEmployeeScreen(
             lastName = employee.lastName
             email = employee.email
             phone = employee.phone
+            // ติ๊ก checkbox ตามสิทธิ์ที่มีอยู่ (รวมทั้งจาก role และสิทธิ์เฉพาะ)
+            selectedPermissions = (employee.permissions + employee.rolePermissions).distinct()
             // Find matching role index
             val roleOptions = listOf(
                 RoleOption(2, ""),
@@ -106,6 +116,29 @@ fun AddEditEmployeeScreen(
         RoleOption(1, stringResource(id = R.string.create_employee_role_manager))
     )
     val selectedRole = roleOptions[selectedRoleIndex.coerceIn(roleOptions.indices)]
+
+    val permissionOptions = listOf(
+        PermissionOption(
+            key = "order.create",
+            label = stringResource(id = R.string.permission_order_create_label),
+            description = stringResource(id = R.string.permission_order_create_desc)
+        ),
+        PermissionOption(
+            key = "order.cancel",
+            label = stringResource(id = R.string.permission_order_cancel_label),
+            description = stringResource(id = R.string.permission_order_cancel_desc)
+        ),
+        PermissionOption(
+            key = "report.view",
+            label = stringResource(id = R.string.permission_report_view_label),
+            description = stringResource(id = R.string.permission_report_view_desc)
+        ),
+        PermissionOption(
+            key = "role.manage",
+            label = stringResource(id = R.string.permission_role_manage_label),
+            description = stringResource(id = R.string.permission_role_manage_desc)
+        )
+    )
     
     val isFormValid = if (uiState.isEditMode) {
         // For edit mode, password is optional
@@ -271,7 +304,12 @@ fun AddEditEmployeeScreen(
                     FormField(
                         label = stringResource(id = R.string.create_employee_phone_label),
                         value = phone,
-                        onValueChange = { phone = it },
+                        onValueChange = { newValue ->
+                            // จำกัดความยาวเบอร์โทรไม่เกิน 10 ตัวอักษร
+                            if (newValue.length <= 10) {
+                                phone = newValue
+                            }
+                        },
                         placeholder = stringResource(id = R.string.create_employee_phone_placeholder),
                         isRequired = true
                     )
@@ -351,6 +389,81 @@ fun AddEditEmployeeScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(20.dp))
+
+            SectionHeader(text = stringResource(id = R.string.create_employee_permissions_section_title))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.create_employee_permissions_section_desc),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = SecondaryText
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    permissionOptions.forEach { option ->
+                        val checked = selectedPermissions.contains(option.key)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedPermissions = if (checked) {
+                                        selectedPermissions.filterNot { it == option.key }
+                                    } else {
+                                        (selectedPermissions + option.key).distinct()
+                                    }
+                                },
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { isChecked ->
+                                    selectedPermissions = if (isChecked) {
+                                        (selectedPermissions + option.key).distinct()
+                                    } else {
+                                        selectedPermissions.filterNot { it == option.key }
+                                    }
+                                }
+                            )
+                            Column(
+                                modifier = Modifier.padding(start = 8.dp)
+                            ) {
+                                Text(
+                                    text = option.label,
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Medium,
+                                        size = FontSize.Medium
+                                    ),
+                                    color = PrimaryText
+                                )
+                                Text(
+                                    text = option.description,
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Small
+                                    ),
+                                    color = SecondaryText
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(28.dp))
 
             Button(
@@ -364,7 +477,8 @@ fun AddEditEmployeeScreen(
                                     email = email,
                                     phone = phone,
                                     roleId = selectedRole.id,
-                                    isActivated = true
+                                    isActivated = true,
+                                    permissions = selectedPermissions
                                 )
                             )
                         } else {
@@ -376,7 +490,8 @@ fun AddEditEmployeeScreen(
                                     email = email,
                                     phone = phone,
                                     password = password,
-                                    roleId = selectedRole.id
+                                    roleId = selectedRole.id,
+                                    permissions = selectedPermissions
                                 )
                             )
                         }
