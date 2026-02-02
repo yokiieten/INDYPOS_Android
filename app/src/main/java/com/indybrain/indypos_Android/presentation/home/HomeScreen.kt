@@ -139,6 +139,13 @@ fun HomeScreen(
         }
     }
     
+    // When graph tab is hidden (e.g. only order.create), switch away from Charts
+    LaunchedEffect(uiState.showGraphTab) {
+        if (!uiState.showGraphTab && selectedDestination == HomeBottomDestination.Charts) {
+            selectedDestination = HomeBottomDestination.Home
+        }
+    }
+    
     // Fetch data when screen appears (like viewWillAppear in iOS)
     // This will trigger when:
     // 1. Screen first appears (selectedDestination is Home)
@@ -180,7 +187,8 @@ fun HomeScreen(
             if (!isImageViewerVisible) {
                 HomeBottomBar(
                     selected = selectedDestination,
-                    onSelected = { selectedDestination = it }
+                    onSelected = { selectedDestination = it },
+                    showGraphTab = uiState.showGraphTab
                 )
             }
         }
@@ -194,7 +202,30 @@ fun HomeScreen(
         } else {
             when (selectedDestination) {
                 HomeBottomDestination.Charts -> {
-                    GraphScreen(contentPadding = padding)
+                    if (uiState.showGraphTab) {
+                        GraphScreen(contentPadding = padding)
+                    } else {
+                        HomeContent(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding),
+                            uiState = uiState,
+                            scrollState = scrollState,
+                            onImageClick = {
+                                if (!uiState.shopImageUrl.isNullOrBlank()) {
+                                    isImageViewerVisible = true
+                                }
+                            },
+                            onChangeImageClick = { viewModel.showImagePicker() },
+                            onDescriptionClick = { viewModel.showEditDescriptionDialog() },
+                            onShortcutClick = { shortcutId ->
+                                when (shortcutId) {
+                                    "start_order" -> onNavigateToMainProduct()
+                                    else -> {}
+                                }
+                            }
+                        )
+                    }
                 }
                 HomeBottomDestination.Orders -> {
                     OrderScreen(
@@ -1148,13 +1179,19 @@ private fun ShortcutListItem(
 @Composable
 private fun HomeBottomBar(
     selected: HomeBottomDestination,
-    onSelected: (HomeBottomDestination) -> Unit
+    onSelected: (HomeBottomDestination) -> Unit,
+    showGraphTab: Boolean = true
 ) {
+    val destinations = if (showGraphTab) {
+        HomeBottomDestination.entries
+    } else {
+        HomeBottomDestination.entries.filter { it != HomeBottomDestination.Charts }
+    }
     NavigationBar(
         containerColor = Color.White,
         tonalElevation = 0.dp
     ) {
-        HomeBottomDestination.entries.forEach { destination ->
+        destinations.forEach { destination ->
             NavigationBarItem(
                 selected = destination == selected,
                 onClick = { onSelected(destination) },

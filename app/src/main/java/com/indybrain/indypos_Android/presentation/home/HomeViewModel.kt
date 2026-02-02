@@ -43,6 +43,9 @@ class HomeViewModel @Inject constructor(
     private fun observeUser() {
         viewModelScope.launch {
             authRepository.getCurrentUser().collect { user ->
+                val showGraphTab = user?.permissions?.let { perms ->
+                    perms != listOf("order.create")
+                } ?: true
                 _uiState.update { current ->
                     current.copy(
                         isLoading = false,
@@ -50,7 +53,8 @@ class HomeViewModel @Inject constructor(
                             ?: user?.firstName
                             ?: "INDYPOS",
                         shopDescription = user?.shopDescription.orEmpty(),
-                        shopImageUrl = user?.shopImageUrl
+                        shopImageUrl = user?.shopImageUrl,
+                        showGraphTab = showGraphTab
                     )
                 }
             }

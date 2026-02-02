@@ -28,6 +28,7 @@ data class User(
     val orderCount: Int? = null,
     val token: String? = null,
     val refreshToken: String? = null,
-    val expiresIn: Long? = null
+    val expiresIn: Long? = null,
+    val permissions: List<String>? = null
 )
 

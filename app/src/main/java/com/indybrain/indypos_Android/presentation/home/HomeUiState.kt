@@ -24,7 +24,9 @@ data class HomeUiState(
     val successMessage: String? = null,
     val showImagePickerDialog: Boolean = false,
     val showEditStoreNameDialog: Boolean = false,
-    val showEditDescriptionDialog: Boolean = false
+    val showEditDescriptionDialog: Boolean = false,
+    /** If false, hide graph (Charts) tab in bottom bar (e.g. when user has only order.create). */
+    val showGraphTab: Boolean = true
 )
 
 data class HomeStatistics(

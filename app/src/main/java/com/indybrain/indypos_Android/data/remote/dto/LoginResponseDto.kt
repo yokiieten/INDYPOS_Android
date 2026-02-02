@@ -60,6 +60,8 @@ data class LoginUserDto(
     @SerializedName("updated_at")
     val updatedAt: String? = null,
     @SerializedName("order_count")
-    val orderCount: Int? = null
+    val orderCount: Int? = null,
+    @SerializedName("permissions")
+    val permissions: List<String>? = null
 )
 

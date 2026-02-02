@@ -734,7 +734,8 @@ class AuthRepositoryImpl @Inject constructor(
                 orderCount = null,
                 token = this.token?.takeIf { it.isNotBlank() },
                 refreshToken = this.refreshToken?.takeIf { it.isNotBlank() },
-                expiresIn = null
+                expiresIn = null,
+                permissions = null
             )
         } catch (e: Exception) {
             throw IllegalStateException("ไม่สามารถแปลงข้อมูลผู้ใช้ได้: ${e.message}", e)
@@ -772,7 +773,8 @@ class AuthRepositoryImpl @Inject constructor(
                 orderCount = userDto.orderCount,
                 token = this.token?.ifBlank { null },
                 refreshToken = this.refreshToken?.ifBlank { null },
-                expiresIn = this.expiresIn
+                expiresIn = this.expiresIn,
+                permissions = userDto.permissions
             )
         } catch (e: Exception) {
             throw IllegalStateException("ไม่สามารถแปลงข้อมูลผู้ใช้ได้: ${e.message}", e)
@@ -809,7 +811,8 @@ class AuthRepositoryImpl @Inject constructor(
                 orderCount = this.user.orderCount,
                 token = this.token.ifBlank { null },
                 refreshToken = this.refreshToken.ifBlank { null },
-                expiresIn = this.expiresIn
+                expiresIn = this.expiresIn,
+                permissions = this.user.permissions
             )
         } catch (e: Exception) {
             throw IllegalStateException("ไม่สามารถแปลงข้อมูลผู้ใช้ได้: ${e.message}", e)
