@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.data.local.entity.OrderEntity
 import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
 import com.indybrain.indypos_Android.domain.model.OrderStatus
+import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,11 +18,25 @@ import javax.inject.Inject
 
 @HiltViewModel
 class OrderDetailViewModel @Inject constructor(
-    private val orderRepository: OrderRepository
+    private val orderRepository: OrderRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(OrderDetailUiState())
     val uiState: StateFlow<OrderDetailUiState> = _uiState.asStateFlow()
+    
+    init {
+        observeUserPermissions()
+    }
+    
+    private fun observeUserPermissions() {
+        viewModelScope.launch {
+            authRepository.getCurrentUser().collect { user ->
+                val canCancelOrder = user?.permissions?.contains("order.cancel") ?: false
+                _uiState.update { it.copy(canCancelOrder = canCancelOrder) }
+            }
+        }
+    }
     
     fun loadOrder(orderId: String) {
         viewModelScope.launch {

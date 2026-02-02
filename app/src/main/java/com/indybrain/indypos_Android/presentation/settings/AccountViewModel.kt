@@ -42,7 +42,8 @@ class AccountViewModel @Inject constructor(
                         }
                     }
                     val permissions = user?.permissions ?: emptyList()
-                    val canManageEmployees = permissions.contains("role.manage") || permissions.contains("user.manage")
+                    // Check if user has "user.manage" permission to manage employees
+                    val canManageEmployees = permissions.contains("user.manage")
 
                     current.copy(
                         displayName = name,

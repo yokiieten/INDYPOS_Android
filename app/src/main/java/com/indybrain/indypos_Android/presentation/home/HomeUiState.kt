@@ -26,7 +26,9 @@ data class HomeUiState(
     val showEditStoreNameDialog: Boolean = false,
     val showEditDescriptionDialog: Boolean = false,
     /** If false, hide graph (Charts) tab in bottom bar (e.g. when user has only order.create). */
-    val showGraphTab: Boolean = true
+    val showGraphTab: Boolean = true,
+    /** User permissions from API - used to control access to features */
+    val userPermissions: List<String> = emptyList()
 )
 
 data class HomeStatistics(

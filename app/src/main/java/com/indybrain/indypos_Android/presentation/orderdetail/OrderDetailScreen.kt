@@ -154,6 +154,7 @@ fun OrderDetailScreen(
                 OrderDetailContent(
                     order = uiState.order!!,
                     orderItems = uiState.orderItems,
+                    canCancelOrder = uiState.canCancelOrder,
                     onCancelClick = {
                         showCancelDialog = true
                     },
@@ -324,6 +325,7 @@ fun OrderDetailScreen(
 private fun OrderDetailContent(
     order: com.indybrain.indypos_Android.data.local.entity.OrderEntity,
     orderItems: List<OrderItemEntity>,
+    canCancelOrder: Boolean,
     onCancelClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -377,8 +379,8 @@ private fun OrderDetailContent(
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Action Buttons
-        if (canCancel) {
+        // Action Buttons - Show cancel button only if user has permission and order can be cancelled
+        if (canCancel && canCancelOrder) {
             TextButton(
                 onClick = onCancelClick,
                 modifier = Modifier

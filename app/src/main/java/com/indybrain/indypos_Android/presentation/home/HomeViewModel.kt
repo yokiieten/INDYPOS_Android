@@ -43,9 +43,8 @@ class HomeViewModel @Inject constructor(
     private fun observeUser() {
         viewModelScope.launch {
             authRepository.getCurrentUser().collect { user ->
-                val showGraphTab = user?.permissions?.let { perms ->
-                    perms != listOf("order.create")
-                } ?: true
+                // Check if user has "report.view" permission to show graph tab
+                val showGraphTab = user?.permissions?.contains("report.view") ?: false
                 _uiState.update { current ->
                     current.copy(
                         isLoading = false,
@@ -54,7 +53,8 @@ class HomeViewModel @Inject constructor(
                             ?: "INDYPOS",
                         shopDescription = user?.shopDescription.orEmpty(),
                         shopImageUrl = user?.shopImageUrl,
-                        showGraphTab = showGraphTab
+                        showGraphTab = showGraphTab,
+                        userPermissions = user?.permissions ?: emptyList()
                     )
                 }
             }

@@ -218,12 +218,17 @@ fun HomeScreen(
                             },
                             onChangeImageClick = { viewModel.showImagePicker() },
                             onDescriptionClick = { viewModel.showEditDescriptionDialog() },
-                            onShortcutClick = { shortcutId ->
-                                when (shortcutId) {
-                                    "start_order" -> onNavigateToMainProduct()
-                                    else -> {}
+                        onShortcutClick = { shortcutId ->
+                            when (shortcutId) {
+                                "start_order" -> {
+                                    // Check if user has "order.create" permission
+                                    if (uiState.userPermissions.contains("order.create")) {
+                                        onNavigateToMainProduct()
+                                    }
                                 }
+                                else -> {}
                             }
+                        }
                         )
                     }
                 }
@@ -287,7 +292,12 @@ fun HomeScreen(
                         onDescriptionClick = { viewModel.showEditDescriptionDialog() },
                         onShortcutClick = { shortcutId ->
                             when (shortcutId) {
-                                "start_order" -> onNavigateToMainProduct()
+                                "start_order" -> {
+                                    // Check if user has "order.create" permission
+                                    if (uiState.userPermissions.contains("order.create")) {
+                                        onNavigateToMainProduct()
+                                    }
+                                }
                                 // Add other shortcut handlers here
                             }
                         }
