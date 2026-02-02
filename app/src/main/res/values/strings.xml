@@ -343,6 +343,35 @@
     <string name="account_package_label">แพ็กเกจ</string>
     <string name="account_status_plan">แพ็กเกจ</string>
     <string name="account_package_basic">Basic</string>
+    <string name="account_employee_section_title">พนักงาน</string>
+    <string name="account_employee_section_action_title">สร้างพนักงานใหม่</string>
+    <string name="account_employee_section_action_desc">เพิ่มพนักงานเพื่อให้เข้าระบบได้ทันที</string>
+    <string name="account_employee_action_button">สร้างพนักงาน</string>
+
+    <!-- Create Employee Screen -->
+    <string name="create_employee_title">สร้างพนักงาน</string>
+    <string name="create_employee_subtitle">กรอกข้อมูลพนักงานเพื่อเพิ่มเข้าระบบ</string>
+    <string name="create_employee_required_hint">ช่องที่มี * จำเป็นต้องกรอก</string>
+    <string name="create_employee_section_account">ข้อมูลบัญชี</string>
+    <string name="create_employee_section_profile">ข้อมูลติดต่อ</string>
+    <string name="create_employee_username_label">ชื่อผู้ใช้</string>
+    <string name="create_employee_username_placeholder">เช่น emp001</string>
+    <string name="create_employee_password_label">รหัสผ่านเริ่มต้น</string>
+    <string name="create_employee_password_placeholder">อย่างน้อย 8 ตัวอักษร</string>
+    <string name="create_employee_first_name_label">ชื่อจริง</string>
+    <string name="create_employee_first_name_placeholder">กรอกชื่อจริง</string>
+    <string name="create_employee_last_name_label">นามสกุล</string>
+    <string name="create_employee_last_name_placeholder">กรอกนามสกุล</string>
+    <string name="create_employee_email_label">อีเมล</string>
+    <string name="create_employee_email_placeholder">เช่น emp001@example.com</string>
+    <string name="create_employee_phone_label">เบอร์โทรศัพท์</string>
+    <string name="create_employee_phone_placeholder">0812345678</string>
+    <string name="create_employee_role_label">บทบาท</string>
+    <string name="create_employee_role_placeholder">เลือกบทบาท</string>
+    <string name="create_employee_role_staff">พนักงาน</string>
+    <string name="create_employee_role_manager">ผู้จัดการ</string>
+    <string name="create_employee_submit">สร้างพนักงาน</string>
+    <string name="create_employee_success_message">สร้างพนักงานสำเร็จ</string>
     
     <!-- Change Password Screen -->
     <string name="change_password_instruction">เพื่อความปลอดภัย ใช้อย่างน้อย 6 ตัวอักษร</string>

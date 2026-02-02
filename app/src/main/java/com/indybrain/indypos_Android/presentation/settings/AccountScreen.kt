@@ -16,6 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +42,7 @@ import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
+import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 
@@ -46,6 +50,7 @@ import com.indybrain.indypos_Android.ui.theme.SecondaryText
 @Composable
 fun AccountScreen(
     onBackClick: () -> Unit = {},
+    onCreateEmployeeClick: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -159,6 +164,96 @@ fun AccountScreen(
                         ),
                         color = PrimaryText
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = stringResource(id = R.string.account_employee_section_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
+                ),
+                color = PrimaryText,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            )
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFF5F5F7)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.PersonAdd,
+                                contentDescription = null,
+                                tint = PrimaryText,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 12.dp)
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.account_employee_section_action_title),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Medium,
+                                    size = FontSize.Medium
+                                ),
+                                color = PrimaryText
+                            )
+                            Text(
+                                text = stringResource(id = R.string.account_employee_section_action_desc),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Small
+                                ),
+                                color = SecondaryText
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = onCreateEmployeeClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryButton,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.account_employee_action_button),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Medium
+                            ),
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        )
+                    }
                 }
             }
         }
