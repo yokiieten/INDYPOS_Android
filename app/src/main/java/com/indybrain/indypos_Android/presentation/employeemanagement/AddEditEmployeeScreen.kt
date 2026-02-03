@@ -182,7 +182,11 @@ fun AddEditEmployeeScreen(
                 fieldLabel(stringResource(R.string.employee_add_edit_phone))
                 OutlinedTextField(
                     value = uiState.phone,
-                    onValueChange = { viewModel.updatePhone(it) },
+                    onValueChange = { newValue ->
+                        if (newValue.length <= 10) {
+                            viewModel.updatePhone(newValue)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text(stringResource(R.string.employee_add_edit_phone_placeholder), style = FontUtils.mainFont(style = AppFontStyle.Regular, size = FontSize.Medium), color = PlaceholderText) },
                     singleLine = true,
@@ -207,20 +211,6 @@ fun AddEditEmployeeScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
-
-                fieldLabel(stringResource(R.string.employee_add_edit_role_id))
-                OutlinedTextField(
-                    value = uiState.roleIdStr,
-                    onValueChange = { viewModel.updateRoleIdStr(it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(stringResource(R.string.employee_add_edit_role_id_placeholder), style = FontUtils.mainFont(style = AppFontStyle.Regular, size = FontSize.Medium), color = PlaceholderText) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors(),
-                    enabled = !uiState.isLoading
-                )
-                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     text = stringResource(R.string.employee_add_edit_permissions),
