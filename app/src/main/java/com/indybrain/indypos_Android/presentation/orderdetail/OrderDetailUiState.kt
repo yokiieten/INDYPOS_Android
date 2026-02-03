@@ -8,7 +8,8 @@ data class OrderDetailUiState(
     val orderItems: List<OrderItemEntity> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val isCancelling: Boolean = false
+    val isCancelling: Boolean = false,
+    val canCancelOrder: Boolean = false
 )
 
 

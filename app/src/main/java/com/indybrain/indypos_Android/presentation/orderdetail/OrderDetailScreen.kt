@@ -154,6 +154,7 @@ fun OrderDetailScreen(
                 OrderDetailContent(
                     order = uiState.order!!,
                     orderItems = uiState.orderItems,
+                    canCancelOrder = uiState.canCancelOrder,
                     onCancelClick = {
                         showCancelDialog = true
                     },
@@ -324,12 +325,15 @@ fun OrderDetailScreen(
 private fun OrderDetailContent(
     order: com.indybrain.indypos_Android.data.local.entity.OrderEntity,
     orderItems: List<OrderItemEntity>,
+    canCancelOrder: Boolean,
     onCancelClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val status = OrderStatus.fromCode(order.statusRaw)
     val paymentType = PaymentType.fromCode(order.paymentTypeRaw)
-    val canCancel = status != OrderStatus.CANCELLED && status != OrderStatus.DELIVERED
+    val canCancel = status != OrderStatus.CANCELLED &&
+            status != OrderStatus.DELIVERED &&
+            canCancelOrder
     
     Column(
         modifier = modifier
