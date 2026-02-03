@@ -29,12 +29,18 @@ class SettingsViewModel @Inject constructor(
     }
     
     /**
-     * Load current user permissions
+     * Load current user data relevant for Settings screen
      */
     private fun loadUserPermissions() {
         viewModelScope.launch {
             authRepository.getCurrentUser().collect { user ->
-                _uiState.update { it.copy(userPermissions = user?.permissions ?: emptyList()) }
+                _uiState.update {
+                    it.copy(
+                        userPermissions = user?.permissions ?: emptyList(),
+                        ownerId = user?.ownerId,
+                        subscriptionPlan = user?.subscriptionPlan
+                    )
+                }
             }
         }
     }
@@ -132,6 +138,8 @@ data class SettingsUiState(
     val isLoggingOut: Boolean = false,
     val isLogoutSuccess: Boolean = false,
     val errorMessage: String? = null,
-    val userPermissions: List<String> = emptyList()
+    val userPermissions: List<String> = emptyList(),
+    val ownerId: Int? = null,
+    val subscriptionPlan: String? = null
 )
 

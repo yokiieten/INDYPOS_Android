@@ -109,11 +109,15 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 SettingsItem.values().forEach { item ->
+                    // Extra rule: owner_id == null && subscription_plan == "free" cannot manage employees
+                    val isFreePlanWithoutOwner = uiState.ownerId == null &&
+                        (uiState.subscriptionPlan?.equals("free", ignoreCase = true) == true)
+
                     // Check if user has permission to see this menu item
                     val hasPermission = when (item) {
                         SettingsItem.EmployeeManagement -> {
-                            // User needs role.manage permission to see employee management
-                            uiState.userPermissions.contains("role.manage")
+                            // User needs role.manage permission AND must not be free plan without owner
+                            uiState.userPermissions.contains("role.manage") && !isFreePlanWithoutOwner
                         }
                         else -> true // All other items are visible to everyone
                     }
