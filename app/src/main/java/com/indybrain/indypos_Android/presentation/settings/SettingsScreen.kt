@@ -112,14 +112,12 @@ fun SettingsScreen(
                     // Check if user has permission to see this menu item
                     val hasPermission = when (item) {
                         SettingsItem.EmployeeManagement -> {
-                            // User needs both role.manage and user.manage permissions
-                            val hasRoleManage = uiState.userPermissions.contains("role.manage")
-                            val hasUserManage = uiState.userPermissions.contains("user.manage")
-                            hasRoleManage && hasUserManage
+                            // User needs role.manage permission to see employee management
+                            uiState.userPermissions.contains("role.manage")
                         }
                         else -> true // All other items are visible to everyone
                     }
-                    
+
                     if (hasPermission) {
                         SettingsItemRow(
                             item = item,
