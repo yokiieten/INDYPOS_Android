@@ -141,6 +141,13 @@ fun HomeScreen(
         }
     }
     
+    // ถ้าไม่มีสิทธิ์ดูรายงาน และแท็บที่เลือกเป็น Charts ให้เด้งกลับไปหน้า Home
+    LaunchedEffect(uiState.canViewReports) {
+        if (!uiState.canViewReports && selectedDestination == HomeBottomDestination.Charts) {
+            selectedDestination = HomeBottomDestination.Home
+        }
+    }
+
     // Fetch data when screen appears (like viewWillAppear in iOS)
     // This will trigger when:
     // 1. Screen first appears (selectedDestination is Home)
@@ -182,6 +189,7 @@ fun HomeScreen(
             if (!isImageViewerVisible) {
                 HomeBottomBar(
                     selected = selectedDestination,
+                    canViewReports = uiState.canViewReports,
                     onSelected = { selectedDestination = it }
                 )
             }
@@ -1167,13 +1175,22 @@ private fun ShortcutListItem(
 @Composable
 private fun HomeBottomBar(
     selected: HomeBottomDestination,
+    canViewReports: Boolean,
     onSelected: (HomeBottomDestination) -> Unit
 ) {
     NavigationBar(
         containerColor = Color.White,
         tonalElevation = 0.dp
     ) {
-        HomeBottomDestination.entries.forEach { destination ->
+        val destinations = HomeBottomDestination.entries.filter { destination ->
+            if (destination == HomeBottomDestination.Charts && !canViewReports) {
+                false
+            } else {
+                true
+            }
+        }
+
+        destinations.forEach { destination ->
             NavigationBarItem(
                 selected = destination == selected,
                 onClick = { onSelected(destination) },

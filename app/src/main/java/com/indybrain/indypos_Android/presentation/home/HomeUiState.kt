@@ -18,6 +18,7 @@ data class HomeUiState(
     val shopName: String = "",
     val shopDescription: String = "",
     val shopImageUrl: String? = null,
+    val canViewReports: Boolean = false,
     val statistics: HomeStatistics = HomeStatistics(),
     val shortcuts: List<HomeShortcut> = HomeShortcut.defaults(),
     val errorMessage: String? = null,

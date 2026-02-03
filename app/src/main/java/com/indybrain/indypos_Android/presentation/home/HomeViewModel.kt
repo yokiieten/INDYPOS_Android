@@ -54,6 +54,11 @@ class HomeViewModel @Inject constructor(
     private fun observeUser() {
         viewModelScope.launch {
             authRepository.getCurrentUser().collect { user ->
+                val directPermissions = user?.permissions ?: emptyList()
+                val rolePermissions = user?.rolePermissions ?: emptyList()
+                val allPermissions = (directPermissions + rolePermissions).toSet()
+                val canViewReports = "report.view" in allPermissions
+
                 _uiState.update { current ->
                     current.copy(
                         isLoading = false,
@@ -61,7 +66,8 @@ class HomeViewModel @Inject constructor(
                             ?: user?.firstName
                             ?: "INDYPOS",
                         shopDescription = user?.shopDescription.orEmpty(),
-                        shopImageUrl = user?.shopImageUrl
+                        shopImageUrl = user?.shopImageUrl,
+                        canViewReports = canViewReports
                     )
                 }
             }
