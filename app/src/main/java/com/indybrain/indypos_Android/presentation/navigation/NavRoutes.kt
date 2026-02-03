@@ -33,6 +33,7 @@ sealed class NavRoutes(val route: String) {
     data object StockManagement : NavRoutes("stock_management")
     data object DataManagement : NavRoutes("data_management")
     data object EmployeeManagement : NavRoutes("employee_management")
+    data object AddEditEmployee : NavRoutes("add_edit_employee")
     data object ContactUs : NavRoutes("contact_us")
     data object ReceiptSettings : NavRoutes("receipt_settings")
     data object PrinterSettings : NavRoutes("printer_settings")
@@ -91,6 +92,13 @@ sealed class NavRoutes(val route: String) {
         
         const val RESET_PASSWORD_ROUTE = "reset_password/{token}"
         fun resetPassword(token: String) = "reset_password/$token"
+
+        const val ADD_EDIT_EMPLOYEE_ROUTE = "add_edit_employee?employeeData={employeeData}"
+        fun addEditEmployee(employeeDataJson: String?) = if (employeeDataJson != null) {
+            "add_edit_employee?employeeData=$employeeDataJson"
+        } else {
+            "add_edit_employee"
+        }
     }
 }
 

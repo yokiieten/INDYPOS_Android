@@ -39,6 +39,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,17 +50,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.gson.Gson
+import java.net.URLEncoder
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.domain.model.User
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
+import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import kotlinx.coroutines.launch
 
@@ -71,10 +78,27 @@ import kotlinx.coroutines.launch
 @Composable
 fun EmployeeManagementScreen(
     viewModel: EmployeeManagementViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onNavigateToAddEdit: (employeeDataJson: String?) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val gson = remember { Gson() }
+    
+    // Refresh when returning to this screen
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refresh()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     
     // Show error message if present
     LaunchedEffect(uiState.errorMessage) {
@@ -132,12 +156,24 @@ fun EmployeeManagementScreen(
                 }
                 uiState.employees.isEmpty() -> {
                     // Empty state
-                    EmptyEmployeeListContent()
+                    EmptyEmployeeListContent(onCreateEmployeeClick = { 
+                        onNavigateToAddEdit(null) 
+                    })
                 }
                 else -> {
-                    // Employee list
+                    // Employee list with Create button above
                     EmployeeListContent(
-                        employees = uiState.employees
+                        employees = uiState.employees,
+                        gson = gson,
+                        onCreateEmployeeClick = { 
+                            onNavigateToAddEdit(null) 
+                        },
+                        onEditEmployeeClick = { employee -> 
+                            val employeeData = EmployeeNavigationData.fromUser(employee)
+                            val json = gson.toJson(employeeData)
+                            val encodedJson = URLEncoder.encode(json, "UTF-8")
+                            onNavigateToAddEdit(encodedJson)
+                        }
                     )
                 }
             }
@@ -149,14 +185,16 @@ fun EmployeeManagementScreen(
  * Empty state when there are no employees
  */
 @Composable
-private fun EmptyEmployeeListContent() {
+private fun EmptyEmployeeListContent(
+    onCreateEmployeeClick: () -> Unit = {}
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = stringResource(id = R.string.employee_management_empty),
@@ -166,6 +204,21 @@ private fun EmptyEmployeeListContent() {
                 ),
                 color = PrimaryText
             )
+            Surface(
+                modifier = Modifier.clickable(onClick = onCreateEmployeeClick),
+                shape = RoundedCornerShape(8.dp),
+                color = PrimaryButton
+            ) {
+                Text(
+                    text = stringResource(id = R.string.employee_management_create_employee),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                )
+            }
         }
     }
 }
@@ -176,7 +229,10 @@ private fun EmptyEmployeeListContent() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EmployeeListContent(
-    employees: List<User>
+    employees: List<User>,
+    gson: Gson,
+    onCreateEmployeeClick: () -> Unit = {},
+    onEditEmployeeClick: (User) -> Unit = {}
 ) {
     var selectedEmployee by remember { mutableStateOf<User?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -192,6 +248,28 @@ private fun EmployeeListContent(
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item(key = "create_button") {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+                    .clickable(onClick = onCreateEmployeeClick),
+                shape = RoundedCornerShape(8.dp),
+                color = PrimaryButton
+            ) {
+                Text(
+                    text = stringResource(id = R.string.employee_management_create_employee),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Medium
+                    ),
+                    color = Color.White,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+            }
+        }
         items(employees, key = { it.id }) { employee ->
             EmployeeListItem(
                 employee = employee,
@@ -216,7 +294,7 @@ private fun EmployeeListContent(
                         sheetState.hide()
                         showBottomSheet = false
                     }
-                    // TODO: Navigate to edit screen
+                    selectedEmployee?.let { onEditEmployeeClick(it) }
                 },
                 onDelete = {
                     scope.launch {

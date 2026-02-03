@@ -102,5 +102,36 @@ interface AuthRepository {
      * @return Result containing list of employees
      */
     suspend fun getEmployees(ownerId: Int? = null): Result<List<User>>
+
+    /**
+     * Create employee
+     * @return Result containing created User on success
+     */
+    suspend fun createEmployee(
+        username: String,
+        firstName: String,
+        lastName: String,
+        email: String,
+        phone: String,
+        password: String,
+        roleId: Int? = null,
+        permissions: List<String>? = null
+    ): Result<User>
+
+    /**
+     * Update employee
+     * @param employeeId ID of employee to update
+     * @return Result containing updated User on success
+     */
+    suspend fun updateEmployee(
+        employeeId: Int,
+        firstName: String? = null,
+        lastName: String? = null,
+        email: String? = null,
+        phone: String? = null,
+        roleId: Int? = null,
+        isActivated: Boolean? = null,
+        permissions: List<String>? = null
+    ): Result<User>
 }
 

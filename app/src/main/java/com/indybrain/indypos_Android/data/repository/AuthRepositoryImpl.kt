@@ -18,6 +18,8 @@ import com.indybrain.indypos_Android.data.remote.api.LogoutRequestDto
 import com.indybrain.indypos_Android.data.remote.api.RegisterRequestDto
 import com.indybrain.indypos_Android.data.remote.api.RegisterResponseDto
 import com.indybrain.indypos_Android.data.remote.api.ResumeAuthRequestDto
+import com.indybrain.indypos_Android.data.remote.api.CreateEmployeeRequestDto
+import com.indybrain.indypos_Android.data.remote.api.UpdateEmployeeRequestDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateShopDescriptionRequestDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateShopNameRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.EmployeeListResponseDto
@@ -861,6 +863,90 @@ class AuthRepositoryImpl @Inject constructor(
                 401 -> "กรุณาเข้าสู่ระบบใหม่อีกครั้ง"
                 403 -> "คุณไม่มีสิทธิ์ในการเข้าถึงข้อมูลนี้"
                 400 -> "ข้อมูลที่ส่งมาไม่ถูกต้อง"
+                else -> parseErrorMessage(e.response()?.errorBody())
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}", e))
+        }
+    }
+
+    override suspend fun createEmployee(
+        username: String,
+        firstName: String,
+        lastName: String,
+        email: String,
+        phone: String,
+        password: String,
+        roleId: Int?,
+        permissions: List<String>?
+    ): Result<User> {
+        return try {
+            val request = CreateEmployeeRequestDto(
+                username = username,
+                firstName = firstName,
+                lastName = lastName,
+                email = email,
+                phone = phone,
+                password = password,
+                roleId = roleId,
+                permissions = permissions?.takeIf { it.isNotEmpty() }
+            )
+            val response = authApi.createEmployee(request)
+            if (response.status != 201) {
+                val errorMessage = response.error ?: response.message ?: "ไม่สามารถสร้างพนักงานได้"
+                return Result.failure(IllegalStateException(errorMessage))
+            }
+            val user = response.data?.toDomainModel()
+                ?: return Result.failure(IllegalStateException("ไม่ได้รับข้อมูลพนักงานจากเซิร์ฟเวอร์"))
+            Result.success(user)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "กรุณาเข้าสู่ระบบใหม่อีกครั้ง"
+                403 -> "คุณไม่มีสิทธิ์ในการสร้างพนักงาน"
+                400 -> parseErrorMessage(e.response()?.errorBody()) ?: "ข้อมูลไม่ถูกต้อง"
+                else -> parseErrorMessage(e.response()?.errorBody())
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}", e))
+        }
+    }
+
+    override suspend fun updateEmployee(
+        employeeId: Int,
+        firstName: String?,
+        lastName: String?,
+        email: String?,
+        phone: String?,
+        roleId: Int?,
+        isActivated: Boolean?,
+        permissions: List<String>?
+    ): Result<User> {
+        return try {
+            val request = UpdateEmployeeRequestDto(
+                firstName = firstName,
+                lastName = lastName,
+                email = email,
+                phone = phone,
+                roleId = roleId,
+                isActivated = isActivated,
+                permissions = permissions
+            )
+            val response = authApi.updateEmployee(employeeId, request)
+            if (response.status != 200) {
+                val errorMessage = response.error ?: response.message ?: "ไม่สามารถแก้ไขพนักงานได้"
+                return Result.failure(IllegalStateException(errorMessage))
+            }
+            val user = response.data?.toDomainModel()
+                ?: return Result.failure(IllegalStateException("ไม่ได้รับข้อมูลพนักงานจากเซิร์ฟเวอร์"))
+            Result.success(user)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "กรุณาเข้าสู่ระบบใหม่อีกครั้ง"
+                403 -> "คุณไม่มีสิทธิ์ในการแก้ไขพนักงาน"
+                400 -> parseErrorMessage(e.response()?.errorBody()) ?: "ข้อมูลไม่ถูกต้อง"
+                404 -> "ไม่พบพนักงาน"
                 else -> parseErrorMessage(e.response()?.errorBody())
             }
             Result.failure(IllegalStateException(errorMessage, e))

@@ -728,6 +728,47 @@
     <string name="employee_management_role_owner">Owner</string>
     <string name="employee_management_role_employee">Employee</string>
     <string name="employee_management_role_unknown">Unknown</string>
+    <string name="employee_management_create_employee">Create Employee</string>
+    
+    <!-- Add/Edit Employee Screen -->
+    <string name="employee_add_edit_title_add">Create Employee</string>
+    <string name="employee_add_edit_title_edit">Edit Employee</string>
+    <string name="employee_add_edit_username">Username</string>
+    <string name="employee_add_edit_username_placeholder">Enter username (min 3 characters)</string>
+    <string name="employee_add_edit_first_name">First name</string>
+    <string name="employee_add_edit_first_name_placeholder">Enter first name</string>
+    <string name="employee_add_edit_last_name">Last name</string>
+    <string name="employee_add_edit_last_name_placeholder">Enter last name</string>
+    <string name="employee_add_edit_email">Email</string>
+    <string name="employee_add_edit_email_placeholder">Enter email</string>
+    <string name="employee_add_edit_phone">Phone</string>
+    <string name="employee_add_edit_phone_placeholder">Enter phone (min 10 digits)</string>
+    <string name="employee_add_edit_password">Password</string>
+    <string name="employee_add_edit_password_placeholder">Enter password (min 6 characters)</string>
+    <string name="employee_add_edit_role_id">Role (Role ID)</string>
+    <string name="employee_add_edit_role_id_placeholder">Optional - leave blank for default</string>
+    <string name="employee_add_edit_permissions">Permissions</string>
+    <string name="employee_add_edit_is_activated">Account active</string>
+    <string name="employee_add_edit_save">Save</string>
+    
+    <!-- Permission Labels -->
+    <string name="permission_order_create">Create Order</string>
+    <string name="permission_order_cancel">Cancel Order</string>
+    <string name="permission_order_view">View Order</string>
+    <string name="permission_report_view">View Report</string>
+    <string name="permission_role_manage">Manage Roles</string>
+    <string name="employee_add_edit_validation_username_required">Please enter username</string>
+    <string name="employee_add_edit_validation_username_too_short">Username must be at least 3 characters</string>
+    <string name="employee_add_edit_validation_first_name_required">Please enter first name</string>
+    <string name="employee_add_edit_validation_last_name_required">Please enter last name</string>
+    <string name="employee_add_edit_validation_email_required">Please enter email</string>
+    <string name="employee_add_edit_validation_email_invalid">Invalid email format</string>
+    <string name="employee_add_edit_validation_phone_required">Please enter phone</string>
+    <string name="employee_add_edit_validation_phone_too_short">Phone must be at least 10 digits</string>
+    <string name="employee_add_edit_validation_password_required">Please enter password</string>
+    <string name="employee_add_edit_validation_password_too_short">Password must be at least 6 characters</string>
+    <string name="employee_add_edit_success_created">Employee created successfully</string>
+    <string name="employee_add_edit_success_updated">Employee updated successfully</string>
     
     <!-- Stock Management Screen -->
     <string name="stock_management_title">Stock Management</string>

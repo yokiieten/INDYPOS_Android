@@ -56,6 +56,7 @@ import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.stockmanagement.StockManagementScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.presentation.datamanagement.DataManagementScreen
+import com.indybrain.indypos_Android.presentation.employeemanagement.AddEditEmployeeScreen
 import com.indybrain.indypos_Android.presentation.employeemanagement.EmployeeManagementScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddonGroupManagementScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddEditAddonGroupScreen
@@ -878,6 +879,28 @@ class MainActivity : ComponentActivity() {
                         composable(NavRoutes.EmployeeManagement.route) {
                             EmployeeManagementScreen(
                                 onNavigateBack = {
+                                    navController.popBackStack()
+                                },
+                                onNavigateToAddEdit = { employeeDataJson ->
+                                    navController.navigate(NavRoutes.addEditEmployee(employeeDataJson))
+                                }
+                            )
+                        }
+                        
+                        composable(
+                            route = NavRoutes.ADD_EDIT_EMPLOYEE_ROUTE,
+                            arguments = listOf(
+                                navArgument("employeeData") { 
+                                    nullable = true
+                                    defaultValue = null
+                                }
+                            )
+                        ) {
+                            AddEditEmployeeScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onSaveSuccess = {
                                     navController.popBackStack()
                                 }
                             )

@@ -767,6 +767,47 @@
     <string name="employee_management_role_owner">Owner</string>
     <string name="employee_management_role_employee">พนักงาน</string>
     <string name="employee_management_role_unknown">ไม่ทราบ</string>
+    <string name="employee_management_create_employee">สร้างพนักงาน</string>
+    
+    <!-- Add/Edit Employee Screen -->
+    <string name="employee_add_edit_title_add">สร้างพนักงาน</string>
+    <string name="employee_add_edit_title_edit">แก้ไขพนักงาน</string>
+    <string name="employee_add_edit_username">ชื่อผู้ใช้</string>
+    <string name="employee_add_edit_username_placeholder">กรอกชื่อผู้ใช้ (อย่างน้อย 3 ตัวอักษร)</string>
+    <string name="employee_add_edit_first_name">ชื่อ</string>
+    <string name="employee_add_edit_first_name_placeholder">กรอกชื่อ</string>
+    <string name="employee_add_edit_last_name">นามสกุล</string>
+    <string name="employee_add_edit_last_name_placeholder">กรอกนามสกุล</string>
+    <string name="employee_add_edit_email">อีเมล</string>
+    <string name="employee_add_edit_email_placeholder">กรอกอีเมล</string>
+    <string name="employee_add_edit_phone">เบอร์โทร</string>
+    <string name="employee_add_edit_phone_placeholder">กรอกเบอร์โทร (อย่างน้อย 10 หลัก)</string>
+    <string name="employee_add_edit_password">รหัสผ่าน</string>
+    <string name="employee_add_edit_password_placeholder">กรอกรหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</string>
+    <string name="employee_add_edit_role_id">ตำแหน่ง (Role ID)</string>
+    <string name="employee_add_edit_role_id_placeholder">ไม่บังคับ - ว่างใช้ค่าเริ่มต้น</string>
+    <string name="employee_add_edit_permissions">สิทธิ์การใช้งาน</string>
+    <string name="employee_add_edit_is_activated">เปิดใช้งานบัญชี</string>
+    <string name="employee_add_edit_save">บันทึก</string>
+    
+    <!-- Permission Labels -->
+    <string name="permission_order_create">สร้างออเดอร์</string>
+    <string name="permission_order_cancel">ยกเลิกออเดอร์</string>
+    <string name="permission_order_view">ดูออเดอร์</string>
+    <string name="permission_report_view">ดูรายงาน</string>
+    <string name="permission_role_manage">จัดการตำแหน่งงาน</string>
+    <string name="employee_add_edit_validation_username_required">กรุณากรอกชื่อผู้ใช้</string>
+    <string name="employee_add_edit_validation_username_too_short">ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร</string>
+    <string name="employee_add_edit_validation_first_name_required">กรุณากรอกชื่อ</string>
+    <string name="employee_add_edit_validation_last_name_required">กรุณากรอกนามสกุล</string>
+    <string name="employee_add_edit_validation_email_required">กรุณากรอกอีเมล</string>
+    <string name="employee_add_edit_validation_email_invalid">รูปแบบอีเมลไม่ถูกต้อง</string>
+    <string name="employee_add_edit_validation_phone_required">กรุณากรอกเบอร์โทร</string>
+    <string name="employee_add_edit_validation_phone_too_short">เบอร์โทรต้องมีอย่างน้อย 10 หลัก</string>
+    <string name="employee_add_edit_validation_password_required">กรุณากรอกรหัสผ่าน</string>
+    <string name="employee_add_edit_validation_password_too_short">รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร</string>
+    <string name="employee_add_edit_success_created">สร้างพนักงานเรียบร้อยแล้ว</string>
+    <string name="employee_add_edit_success_updated">แก้ไขพนักงานเรียบร้อยแล้ว</string>
     
     <!-- Stock Management Screen -->
     <string name="stock_management_title">จัดการสต็อก</string>

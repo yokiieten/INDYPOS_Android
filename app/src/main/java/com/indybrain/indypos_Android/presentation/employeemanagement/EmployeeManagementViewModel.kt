@@ -23,10 +23,6 @@ class EmployeeManagementViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EmployeeManagementUiState())
     val uiState: StateFlow<EmployeeManagementUiState> = _uiState.asStateFlow()
     
-    init {
-        loadEmployees()
-    }
-    
     /**
      * Load employees from repository
      */

@@ -16,6 +16,17 @@ data class EmployeeListResponseDto(
 )
 
 /**
+ * Response DTO for create/update employee (single employee in data)
+ */
+data class EmployeeSingleResponseDto(
+    val status: Int?,
+    val message: String?,
+    val data: EmployeeDto?,
+    val timestamp: String?,
+    val error: String?
+)
+
+/**
  * Employee DTO
  */
 data class EmployeeDto(

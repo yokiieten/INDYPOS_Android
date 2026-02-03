@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.data.remote.api
 
 import com.indybrain.indypos_Android.data.remote.dto.EmployeeListResponseDto
+import com.indybrain.indypos_Android.data.remote.dto.EmployeeSingleResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.LogoutResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.ResumeAuthResponseDto
@@ -12,8 +13,9 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
-import retrofit2.http.Part
 import retrofit2.http.PUT
+import retrofit2.http.Part
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 /**
@@ -100,6 +102,25 @@ interface AuthApi {
     suspend fun getEmployees(
         @Query("owner_id") ownerId: Int? = null
     ): EmployeeListResponseDto
+
+    /**
+     * Create employee
+     * POST /api/v1/protected/employees
+     * Permission: user.manage (Owner or Admin)
+     */
+    @POST("protected/employees")
+    suspend fun createEmployee(@Body request: CreateEmployeeRequestDto): EmployeeSingleResponseDto
+
+    /**
+     * Update employee
+     * PUT /api/v1/protected/employees/:id
+     * Permission: user.manage (Owner or Admin)
+     */
+    @PUT("protected/employees/{id}")
+    suspend fun updateEmployee(
+        @Path("id") employeeId: Int,
+        @Body request: UpdateEmployeeRequestDto
+    ): EmployeeSingleResponseDto
 }
 
 /**
@@ -340,3 +361,32 @@ data class ResetPasswordResponseDto(
     val error: String? = null
 )
 
+/**
+ * Request DTO for create employee
+ * POST /api/v1/protected/employees
+ */
+data class CreateEmployeeRequestDto(
+    val username: String,
+    @SerializedName("first_name") val firstName: String,
+    @SerializedName("last_name") val lastName: String,
+    val email: String,
+    val phone: String,
+    val password: String,
+    @SerializedName("role_id") val roleId: Int? = null,
+    val permissions: List<String>? = null
+)
+
+/**
+ * Request DTO for update employee
+ * PUT /api/v1/protected/employees/:id
+ * Send only fields to update
+ */
+data class UpdateEmployeeRequestDto(
+    @SerializedName("first_name") val firstName: String? = null,
+    @SerializedName("last_name") val lastName: String? = null,
+    val email: String? = null,
+    val phone: String? = null,
+    @SerializedName("role_id") val roleId: Int? = null,
+    @SerializedName("is_activated") val isActivated: Boolean? = null,
+    val permissions: List<String>? = null
+)
