@@ -712,6 +712,22 @@
     <string name="employee_management_title">Employee Management</string>
     <string name="employee_management_empty">No employees yet</string>
     <string name="employee_management_loading">Loading...</string>
+    <string name="employee_management_action_title">Manage Employee</string>
+    <string name="employee_management_action_subtitle">Select an action</string>
+    <string name="employee_management_action_edit">Edit</string>
+    <string name="employee_management_action_delete">Delete</string>
+    <string name="employee_management_action_cancel">Cancel</string>
+    <string name="employee_management_delete_confirm_title">Confirm Delete</string>
+    <string name="employee_management_delete_confirm_message">Are you sure you want to delete employee \'%1$s\'?</string>
+    <string name="employee_management_delete_warning">This action cannot be undone</string>
+    <string name="employee_management_delete_success">Employee deleted successfully</string>
+    <string name="employee_management_edit_success">Employee updated successfully</string>
+    <string name="employee_management_status_active">Active</string>
+    <string name="employee_management_status_inactive">Inactive</string>
+    <string name="employee_management_role_admin">Admin</string>
+    <string name="employee_management_role_owner">Owner</string>
+    <string name="employee_management_role_employee">Employee</string>
+    <string name="employee_management_role_unknown">Unknown</string>
     
     <!-- Stock Management Screen -->
     <string name="stock_management_title">Stock Management</string>

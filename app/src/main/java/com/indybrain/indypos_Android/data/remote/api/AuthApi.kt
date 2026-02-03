@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android.data.remote.api
 
+import com.indybrain.indypos_Android.data.remote.dto.EmployeeListResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.LogoutResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.ResumeAuthResponseDto
@@ -7,11 +8,13 @@ import com.indybrain.indypos_Android.data.remote.dto.UploadShopImageResponseDto
 import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.PUT
+import retrofit2.http.Query
 
 /**
  * Retrofit API interface for authentication endpoints
@@ -86,6 +89,17 @@ interface AuthApi {
      */
     @POST("auth/reset-password")
     suspend fun resetPassword(@Body request: ResetPasswordRequestDto): ResetPasswordResponseDto
+    
+    /**
+     * Get employee list endpoint
+     * Requires authentication and user.manage permission
+     * Owner can see their own employees
+     * Admin can see all employees or filter by owner_id
+     */
+    @GET("protected/employees")
+    suspend fun getEmployees(
+        @Query("owner_id") ownerId: Int? = null
+    ): EmployeeListResponseDto
 }
 
 /**

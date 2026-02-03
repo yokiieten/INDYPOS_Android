@@ -13,6 +13,9 @@ data class User(
     val role: String? = null,
     val ownerId: Int? = null,
     val roleId: Int? = null,
+    val roleName: String? = null,
+    val ownerName: String? = null,
+    val ownerShopName: String? = null,
     val shopName: String? = null,
     val shopDescription: String? = null,
     val shopImageUrl: String? = null,
@@ -29,6 +32,7 @@ data class User(
     val updatedAt: String? = null,
     val orderCount: Int? = null,
     val permissions: List<String>? = null,
+    val rolePermissions: List<String>? = null,
     val token: String? = null,
     val refreshToken: String? = null,
     val expiresIn: Long? = null

@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.presentation.employeemanagement
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.domain.model.User
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,21 +28,64 @@ class EmployeeManagementViewModel @Inject constructor(
     }
     
     /**
-     * Load employees
-     * TODO: Implement actual employee loading from repository
+     * Load employees from repository
      */
-    private fun loadEmployees() {
+    fun loadEmployees() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             
-            // TODO: Replace with actual API call
-            // For now, show empty list
-            _uiState.update { 
-                it.copy(
-                    isLoading = false,
-                    employees = emptyList()
-                )
-            }
+            val result = authRepository.getEmployees()
+            
+            result.fold(
+                onSuccess = { employees ->
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            employees = employees,
+                            errorMessage = null
+                        )
+                    }
+                },
+                onFailure = { exception ->
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = exception.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลพนักงาน"
+                        )
+                    }
+                }
+            )
+        }
+    }
+    
+    /**
+     * Refresh employee list (for pull-to-refresh)
+     */
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
+            
+            val result = authRepository.getEmployees()
+            
+            result.fold(
+                onSuccess = { employees ->
+                    _uiState.update { 
+                        it.copy(
+                            isRefreshing = false,
+                            employees = employees,
+                            errorMessage = null
+                        )
+                    }
+                },
+                onFailure = { exception ->
+                    _uiState.update { 
+                        it.copy(
+                            isRefreshing = false,
+                            errorMessage = exception.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลพนักงาน"
+                        )
+                    }
+                }
+            )
         }
     }
 }
@@ -51,6 +95,7 @@ class EmployeeManagementViewModel @Inject constructor(
  */
 data class EmployeeManagementUiState(
     val isLoading: Boolean = false,
-    val employees: List<Employee> = emptyList(),
+    val isRefreshing: Boolean = false,
+    val employees: List<User> = emptyList(),
     val errorMessage: String? = null
 )

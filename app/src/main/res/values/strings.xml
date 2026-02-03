@@ -751,6 +751,22 @@
     <string name="employee_management_title">การจัดการพนักงาน</string>
     <string name="employee_management_empty">ยังไม่มีพนักงาน</string>
     <string name="employee_management_loading">กำลังโหลด...</string>
+    <string name="employee_management_action_title">จัดการพนักงาน</string>
+    <string name="employee_management_action_subtitle">เลือกการดำเนินการที่ต้องการ</string>
+    <string name="employee_management_action_edit">แก้ไขข้อมูล</string>
+    <string name="employee_management_action_delete">ลบพนักงาน</string>
+    <string name="employee_management_action_cancel">ยกเลิก</string>
+    <string name="employee_management_delete_confirm_title">ยืนยันการลบ</string>
+    <string name="employee_management_delete_confirm_message">คุณต้องการลบพนักงาน \'%1$s\' ใช่หรือไม่?</string>
+    <string name="employee_management_delete_warning">การกระทำนี้ไม่สามารถย้อนกลับได้</string>
+    <string name="employee_management_delete_success">ลบพนักงานเรียบร้อยแล้ว</string>
+    <string name="employee_management_edit_success">แก้ไขข้อมูลเรียบร้อยแล้ว</string>
+    <string name="employee_management_status_active">เปิดใช้งาน</string>
+    <string name="employee_management_status_inactive">ปิดใช้งาน</string>
+    <string name="employee_management_role_admin">Admin</string>
+    <string name="employee_management_role_owner">Owner</string>
+    <string name="employee_management_role_employee">พนักงาน</string>
+    <string name="employee_management_role_unknown">ไม่ทราบ</string>
     
     <!-- Stock Management Screen -->
     <string name="stock_management_title">จัดการสต็อก</string>

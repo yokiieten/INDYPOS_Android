@@ -20,8 +20,10 @@ import com.indybrain.indypos_Android.data.remote.api.RegisterResponseDto
 import com.indybrain.indypos_Android.data.remote.api.ResumeAuthRequestDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateShopDescriptionRequestDto
 import com.indybrain.indypos_Android.data.remote.api.UpdateShopNameRequestDto
+import com.indybrain.indypos_Android.data.remote.dto.EmployeeListResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.ResumeAuthResponseDto
+import com.indybrain.indypos_Android.data.remote.dto.toDomainModel
 import com.indybrain.indypos_Android.domain.model.LoginRequest
 import com.indybrain.indypos_Android.domain.model.RegisterRequest
 import com.indybrain.indypos_Android.domain.model.User
@@ -837,6 +839,33 @@ class AuthRepositoryImpl @Inject constructor(
             errorResponse?.error?.takeIf { it.isNotBlank() } ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
         } catch (e: Exception) {
             "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+        }
+    }
+    
+    override suspend fun getEmployees(ownerId: Int?): Result<List<User>> {
+        return try {
+            val response = authApi.getEmployees(ownerId)
+            
+            // Check response status
+            if (response.status != 200) {
+                val errorMessage = response.error ?: response.message ?: "ไม่สามารถดึงข้อมูลพนักงานได้"
+                return Result.failure(IllegalStateException(errorMessage))
+            }
+            
+            // Map DTOs to domain models
+            val employees = response.data?.map { it.toDomainModel() } ?: emptyList()
+            
+            Result.success(employees)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "กรุณาเข้าสู่ระบบใหม่อีกครั้ง"
+                403 -> "คุณไม่มีสิทธิ์ในการเข้าถึงข้อมูลนี้"
+                400 -> "ข้อมูลที่ส่งมาไม่ถูกต้อง"
+                else -> parseErrorMessage(e.response()?.errorBody())
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}", e))
         }
     }
 }

@@ -93,5 +93,14 @@ interface AuthRepository {
      * @return Result indicating success or failure
      */
     suspend fun resetPassword(token: String, newPassword: String): Result<Unit>
+    
+    /**
+     * Get employee list
+     * Owner can see their own employees
+     * Admin can see all employees or filter by ownerId
+     * @param ownerId Optional owner ID (Admin only)
+     * @return Result containing list of employees
+     */
+    suspend fun getEmployees(ownerId: Int? = null): Result<List<User>>
 }
 
