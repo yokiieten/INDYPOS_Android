@@ -222,13 +222,15 @@ fun AddEditEmployeeScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable(enabled = !uiState.isLoading) { viewModel.togglePermission(permission) }
+                            .clickable(
+                                enabled = !uiState.isLoading
+                            ) { viewModel.togglePermission(permission) }
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
                             checked = permission in uiState.selectedPermissions,
-                            onCheckedChange = { viewModel.togglePermission(permission) },
+                            onCheckedChange = { _: Boolean -> viewModel.togglePermission(permission) },
                             enabled = !uiState.isLoading,
                             colors = CheckboxDefaults.colors(checkedColor = PrimaryButton)
                         )

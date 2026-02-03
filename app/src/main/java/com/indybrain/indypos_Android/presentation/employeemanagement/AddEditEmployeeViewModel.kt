@@ -58,7 +58,10 @@ class AddEditEmployeeViewModel @Inject constructor(
                         email = employeeData.email,
                         phone = employeeData.phone,
                         roleIdStr = employeeData.roleId?.toString() ?: "",
-                        selectedPermissions = employeeData.permissions.toSet(),
+                        selectedPermissions = employeeData.permissions
+                            .toMutableSet()
+                            .apply { add("order.create") }
+                            .toSet(),
                         isActivated = employeeData.isActivated
                     )
                 }
@@ -85,7 +88,15 @@ class AddEditEmployeeViewModel @Inject constructor(
     fun togglePermission(permission: String) {
         _uiState.update { state ->
             val newSet = state.selectedPermissions.toMutableSet()
-            if (newSet.contains(permission)) newSet.remove(permission) else newSet.add(permission)
+            if (permission != "order.create") {
+                if (newSet.contains(permission)) {
+                    newSet.remove(permission)
+                } else {
+                    newSet.add(permission)
+                }
+            }
+            // Ensure "order.create" is always present
+            newSet.add("order.create")
             state.copy(selectedPermissions = newSet, errorMessage = null)
         }
     }
@@ -200,7 +211,7 @@ data class AddEditEmployeeUiState(
     val phone: String = "",
     val password: String = "",
     val roleIdStr: String = "",
-    val selectedPermissions: Set<String> = emptySet(),
+    val selectedPermissions: Set<String> = setOf("order.create"),
     val isActivated: Boolean = true,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
