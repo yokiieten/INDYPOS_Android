@@ -31,22 +31,26 @@ data class LoginUserDto(
     val phone: String? = null,
     @SerializedName("role")
     val role: String? = null,
+    @SerializedName("owner_id")
+    val ownerId: Int? = null,
+    @SerializedName("role_id")
+    val roleId: Int? = null,
     @SerializedName("shop_name")
     val shopName: String? = null,
     @SerializedName("shop_description")
     val shopDescription: String? = null,
     @SerializedName("shop_image_url")
     val shopImageUrl: String? = null,
-    @SerializedName("subscription_plan")
-    val subscriptionPlan: String? = null,
-    @SerializedName("subscription_expires_at")
-    val subscriptionExpiresAt: String? = null,
-    @SerializedName("max_devices")
-    val maxDevices: Int? = null,
-    @SerializedName("current_device_uuid")
-    val currentDeviceUuid: String? = null,
     @SerializedName("is_activated")
     val isActivated: Boolean? = null,
+    @SerializedName("subscription_plan")
+    val subscriptionPlan: String? = null,
+    @SerializedName("max_devices")
+    val maxDevices: Int? = null,
+    @SerializedName("subscription_expires_at")
+    val subscriptionExpiresAt: String? = null,
+    @SerializedName("current_device_uuid")
+    val currentDeviceUuid: String? = null,
     @SerializedName("term_of_use")
     val termOfUse: Boolean? = null,
     @SerializedName("privacy_policy")
@@ -60,6 +64,8 @@ data class LoginUserDto(
     @SerializedName("updated_at")
     val updatedAt: String? = null,
     @SerializedName("order_count")
-    val orderCount: Int? = null
+    val orderCount: Int? = null,
+    @SerializedName("permissions")
+    val permissions: List<String>? = null
 )
 

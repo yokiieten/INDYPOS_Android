@@ -755,6 +755,8 @@ class AuthRepositoryImpl @Inject constructor(
                 email = userDto.email.ifBlank { "" },
                 phone = userDto.phone,
                 role = userDto.role,
+                ownerId = userDto.ownerId,
+                roleId = userDto.roleId,
                 shopName = userDto.shopName,
                 shopDescription = userDto.shopDescription,
                 shopImageUrl = userDto.shopImageUrl,
@@ -770,6 +772,7 @@ class AuthRepositoryImpl @Inject constructor(
                 createdAt = userDto.createdAt,
                 updatedAt = userDto.updatedAt,
                 orderCount = userDto.orderCount,
+                permissions = userDto.permissions,
                 token = this.token?.ifBlank { null },
                 refreshToken = this.refreshToken?.ifBlank { null },
                 expiresIn = this.expiresIn
@@ -792,6 +795,8 @@ class AuthRepositoryImpl @Inject constructor(
                 email = this.user.email.ifBlank { "" },
                 phone = this.user.phone,
                 role = this.user.role,
+                ownerId = this.user.ownerId,
+                roleId = this.user.roleId,
                 shopName = this.user.shopName,
                 shopDescription = this.user.shopDescription,
                 shopImageUrl = this.user.shopImageUrl,
@@ -807,6 +812,7 @@ class AuthRepositoryImpl @Inject constructor(
                 createdAt = this.user.createdAt,
                 updatedAt = this.user.updatedAt,
                 orderCount = this.user.orderCount,
+                permissions = this.user.permissions,
                 token = this.token.ifBlank { null },
                 refreshToken = this.refreshToken.ifBlank { null },
                 expiresIn = this.expiresIn
