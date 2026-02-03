@@ -43,7 +43,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -68,6 +71,7 @@ fun AddEditEmployeeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isEditMode = uiState.employeeId != null
     var saveInProgress by remember { mutableStateOf(false) }
+    var isPasswordVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isLoading) {
         if (!uiState.isLoading) saveInProgress = false
@@ -205,6 +209,34 @@ fun AddEditEmployeeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text(stringResource(R.string.employee_add_edit_password_placeholder), style = FontUtils.mainFont(style = AppFontStyle.Regular, size = FontSize.Medium), color = PlaceholderText) },
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        visualTransformation = if (isPasswordVisible) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
+                        },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = { isPasswordVisible = !isPasswordVisible },
+                                enabled = !uiState.isLoading
+                            ) {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (isPasswordVisible) {
+                                            R.drawable.ic_open_eye
+                                        } else {
+                                            R.drawable.ic_close_eye
+                                        }
+                                    ),
+                                    contentDescription = if (isPasswordVisible) {
+                                        "Hide password"
+                                    } else {
+                                        "Show password"
+                                    },
+                                    tint = Color.Unspecified
+                                )
+                            }
+                        },
                         shape = RoundedCornerShape(8.dp),
                         colors = textFieldColors(),
                         enabled = !uiState.isLoading
