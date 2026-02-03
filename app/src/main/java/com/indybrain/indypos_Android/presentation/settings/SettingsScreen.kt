@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Print
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -108,16 +109,29 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 SettingsItem.values().forEach { item ->
-                    SettingsItemRow(
-                        item = item,
-                        onClick = {
-                            if (item == SettingsItem.Logout) {
-                                viewModel.onLogoutClick()
-                            } else {
-                                onSettingsItemClick(item)
-                            }
+                    // Check if user has permission to see this menu item
+                    val hasPermission = when (item) {
+                        SettingsItem.EmployeeManagement -> {
+                            // User needs both role.manage and user.manage permissions
+                            val hasRoleManage = uiState.userPermissions.contains("role.manage")
+                            val hasUserManage = uiState.userPermissions.contains("user.manage")
+                            hasRoleManage && hasUserManage
                         }
-                    )
+                        else -> true // All other items are visible to everyone
+                    }
+                    
+                    if (hasPermission) {
+                        SettingsItemRow(
+                            item = item,
+                            onClick = {
+                                if (item == SettingsItem.Logout) {
+                                    viewModel.onLogoutClick()
+                                } else {
+                                    onSettingsItemClick(item)
+                                }
+                            }
+                        )
+                    }
                 }
             }
             
@@ -259,6 +273,10 @@ enum class SettingsItem(
     Account(
         icon = Icons.Outlined.AccountCircle,
         labelRes = R.string.settings_account
+    ),
+    EmployeeManagement(
+        icon = Icons.Outlined.Group,
+        labelRes = R.string.settings_employee_management
     ),
     ChangePassword(
         icon = Icons.Outlined.Key,

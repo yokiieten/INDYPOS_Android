@@ -24,6 +24,21 @@ class SettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
     
+    init {
+        loadUserPermissions()
+    }
+    
+    /**
+     * Load current user permissions
+     */
+    private fun loadUserPermissions() {
+        viewModelScope.launch {
+            authRepository.getCurrentUser().collect { user ->
+                _uiState.update { it.copy(userPermissions = user?.permissions ?: emptyList()) }
+            }
+        }
+    }
+    
     /**
      * Handle logout button click
      * Checks internet connectivity first, then shows appropriate dialog
@@ -116,6 +131,7 @@ data class SettingsUiState(
     val showLogoutSuccessDialog: Boolean = false,
     val isLoggingOut: Boolean = false,
     val isLogoutSuccess: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val userPermissions: List<String> = emptyList()
 )
 

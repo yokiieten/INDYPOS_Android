@@ -116,6 +116,7 @@ fun HomeScreen(
     onNavigateToOrderSettings: () -> Unit = {},
     onNavigateToStockManagement: () -> Unit = {},
     onNavigateToDataManagement: () -> Unit = {},
+    onNavigateToEmployeeManagement: () -> Unit = {},
     onNavigateToContactUs: () -> Unit = {},
     onNavigateToReceiptSettings: () -> Unit = {},
     onNavigateToPrinterSettings: () -> Unit = {},
@@ -224,6 +225,9 @@ fun HomeScreen(
                                 }
                                 SettingsItem.ManageData -> {
                                     onNavigateToDataManagement()
+                                }
+                                SettingsItem.EmployeeManagement -> {
+                                    onNavigateToEmployeeManagement()
                                 }
                                 SettingsItem.ContactUs -> {
                                     onNavigateToContactUs()

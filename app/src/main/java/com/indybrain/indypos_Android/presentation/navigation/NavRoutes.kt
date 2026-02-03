@@ -32,6 +32,7 @@ sealed class NavRoutes(val route: String) {
     data object OrderDetail : NavRoutes("order_detail")
     data object StockManagement : NavRoutes("stock_management")
     data object DataManagement : NavRoutes("data_management")
+    data object EmployeeManagement : NavRoutes("employee_management")
     data object ContactUs : NavRoutes("contact_us")
     data object ReceiptSettings : NavRoutes("receipt_settings")
     data object PrinterSettings : NavRoutes("printer_settings")

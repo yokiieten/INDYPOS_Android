@@ -281,6 +281,7 @@
     <string name="settings_manage_stock">จัดการสต็อก</string>
     <string name="settings_receipt">ตั้งค่าใบเสร็จ</string>
     <string name="settings_manage_data">จัดการข้อมูล</string>
+    <string name="settings_employee_management">การจัดการพนักงาน</string>
     <string name="settings_contact_us">ติดต่อเรา</string>
     <string name="settings_logout">ออกจากระบบ</string>
     
@@ -745,6 +746,11 @@
     <string name="printer_disconnected">ไม่เชื่อมต่อ</string>
     <string name="printer_connection_failed">การเชื่อมต่อล้มเหลว</string>
     <string name="printer_scanning">กำลังค้นหา...</string>
+    
+    <!-- Employee Management Screen -->
+    <string name="employee_management_title">การจัดการพนักงาน</string>
+    <string name="employee_management_empty">ยังไม่มีพนักงาน</string>
+    <string name="employee_management_loading">กำลังโหลด...</string>
     
     <!-- Stock Management Screen -->
     <string name="stock_management_title">จัดการสต็อก</string>

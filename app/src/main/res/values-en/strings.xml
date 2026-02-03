@@ -268,6 +268,7 @@
     <string name="settings_manage_stock">Manage Stock</string>
     <string name="settings_receipt">Receipt Settings</string>
     <string name="settings_manage_data">Manage Data</string>
+    <string name="settings_employee_management">Employee Management</string>
     <string name="settings_contact_us">Contact Us</string>
     <string name="settings_logout">Logout</string>
     
@@ -706,6 +707,11 @@
     <string name="addon_form_error_duplicate_name">This addon name already exists</string>
     <string name="addon_form_error_create_addon">An error occurred while creating addon</string>
     <string name="addon_form_success_add_single">Addon added successfully</string>
+    
+    <!-- Employee Management Screen -->
+    <string name="employee_management_title">Employee Management</string>
+    <string name="employee_management_empty">No employees yet</string>
+    <string name="employee_management_loading">Loading...</string>
     
     <!-- Stock Management Screen -->
     <string name="stock_management_title">Stock Management</string>

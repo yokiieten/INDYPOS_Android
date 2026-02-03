@@ -56,6 +56,7 @@ import com.indybrain.indypos_Android.presentation.settings.OrderSettingsScreen
 import com.indybrain.indypos_Android.presentation.stockmanagement.StockManagementScreen
 import com.indybrain.indypos_Android.presentation.splash.SplashScreen
 import com.indybrain.indypos_Android.presentation.datamanagement.DataManagementScreen
+import com.indybrain.indypos_Android.presentation.employeemanagement.EmployeeManagementScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddonGroupManagementScreen
 import com.indybrain.indypos_Android.presentation.addongroupmanagement.AddEditAddonGroupScreen
 import com.indybrain.indypos_Android.presentation.addonmanagement.AddEditAddonScreen
@@ -492,6 +493,9 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToDataManagement = {
                                     navController.navigate(NavRoutes.DataManagement.route)
                                 },
+                                onNavigateToEmployeeManagement = {
+                                    navController.navigate(NavRoutes.EmployeeManagement.route)
+                                },
                                 onNavigateToContactUs = {
                                     navController.navigate(NavRoutes.ContactUs.route)
                                 },
@@ -866,6 +870,14 @@ class MainActivity : ComponentActivity() {
                         composable(NavRoutes.DataManagement.route) {
                             DataManagementScreen(
                                 onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        
+                        composable(NavRoutes.EmployeeManagement.route) {
+                            EmployeeManagementScreen(
+                                onNavigateBack = {
                                     navController.popBackStack()
                                 }
                             )
