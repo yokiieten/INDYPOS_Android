@@ -40,7 +40,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,13 +96,6 @@ fun EmployeeManagementScreen(
         
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-    
-    // Show error message if present
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
         }
     }
     
@@ -173,11 +165,92 @@ fun EmployeeManagementScreen(
                             val json = gson.toJson(employeeData)
                             val encodedJson = URLEncoder.encode(json, "UTF-8")
                             onNavigateToAddEdit(encodedJson)
+                        },
+                        onDeleteEmployeeConfirm = { employee ->
+                            viewModel.deleteEmployee(employee.id)
                         }
                     )
                 }
             }
         }
+    }
+
+    // Error popup
+    if (uiState.errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearError() },
+            title = {
+                Text(
+                    text = "เกิดข้อผิดพลาด",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText
+                )
+            },
+            text = {
+                Text(
+                    text = uiState.errorMessage ?: "",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryText
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearError() }) {
+                    Text(
+                        text = "ตกลง",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                }
+            }
+        )
+    }
+
+    // Success popup
+    if (uiState.successMessage != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearSuccessMessage() },
+            title = {
+                Text(
+                    text = "สำเร็จ",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText
+                )
+            },
+            text = {
+                Text(
+                    text = uiState.successMessage ?: "",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryText
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearSuccessMessage() }) {
+                    Text(
+                        text = "ตกลง",
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                }
+            }
+        )
     }
 }
 
@@ -232,7 +305,8 @@ private fun EmployeeListContent(
     employees: List<User>,
     gson: Gson,
     onCreateEmployeeClick: () -> Unit = {},
-    onEditEmployeeClick: (User) -> Unit = {}
+    onEditEmployeeClick: (User) -> Unit = {},
+    onDeleteEmployeeConfirm: (User) -> Unit = {}
 ) {
     var selectedEmployee by remember { mutableStateOf<User?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -319,7 +393,7 @@ private fun EmployeeListContent(
             employeeName = "${selectedEmployee?.firstName} ${selectedEmployee?.lastName}".trim()
                 .ifEmpty { selectedEmployee?.username ?: "" },
             onConfirm = {
-                // TODO: Implement delete
+                selectedEmployee?.let { onDeleteEmployeeConfirm(it) }
                 showDeleteDialog = false
                 selectedEmployee = null
             },

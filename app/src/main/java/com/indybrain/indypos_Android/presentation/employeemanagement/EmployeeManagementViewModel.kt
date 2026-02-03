@@ -84,6 +84,45 @@ class EmployeeManagementViewModel @Inject constructor(
             )
         }
     }
+
+    /**
+     * Delete employee by id
+     */
+    fun deleteEmployee(employeeId: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
+
+            val result = authRepository.deleteEmployee(employeeId)
+
+            result.fold(
+                onSuccess = {
+                    _uiState.update { state ->
+                        state.copy(
+                            isLoading = false,
+                            employees = state.employees.filterNot { it.id == employeeId },
+                            successMessage = "ลบพนักงานสำเร็จ"
+                        )
+                    }
+                },
+                onFailure = { exception ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = exception.message ?: "ไม่สามารถลบพนักงานได้"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun clearSuccessMessage() {
+        _uiState.update { it.copy(successMessage = null) }
+    }
 }
 
 /**
@@ -93,5 +132,6 @@ data class EmployeeManagementUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val employees: List<User> = emptyList(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val successMessage: String? = null
 )

@@ -9,6 +9,7 @@ import com.indybrain.indypos_Android.data.remote.dto.UploadShopImageResponseDto
 import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
@@ -120,6 +121,16 @@ interface AuthApi {
     suspend fun updateEmployee(
         @Path("id") employeeId: Int,
         @Body request: UpdateEmployeeRequestDto
+    ): EmployeeSingleResponseDto
+
+    /**
+     * Delete employee
+     * DELETE /api/v1/protected/employees/:id
+     * Permission: user.manage (Owner or Admin)
+     */
+    @DELETE("protected/employees/{id}")
+    suspend fun deleteEmployee(
+        @Path("id") employeeId: Int
     ): EmployeeSingleResponseDto
 }
 

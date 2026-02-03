@@ -871,6 +871,30 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteEmployee(employeeId: Int): Result<Unit> {
+        return try {
+            val response = authApi.deleteEmployee(employeeId)
+
+            if (response.status != 200) {
+                val errorMessage = response.error ?: response.message ?: "ไม่สามารถลบพนักงานได้"
+                return Result.failure(IllegalStateException(errorMessage))
+            }
+
+            Result.success(Unit)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "กรุณาเข้าสู่ระบบใหม่อีกครั้ง"
+                403 -> "คุณไม่มีสิทธิ์ในการลบพนักงาน"
+                400 -> parseErrorMessage(e.response()?.errorBody())
+                404 -> "ไม่พบพนักงาน"
+                else -> parseErrorMessage(e.response()?.errorBody())
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}", e))
+        }
+    }
+
     override suspend fun createEmployee(
         username: String,
         firstName: String,

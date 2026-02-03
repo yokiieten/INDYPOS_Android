@@ -133,5 +133,12 @@ interface AuthRepository {
         isActivated: Boolean? = null,
         permissions: List<String>? = null
     ): Result<User>
+
+    /**
+     * Delete employee
+     * @param employeeId ID of employee to delete
+     * @return Result indicating success or failure
+     */
+    suspend fun deleteEmployee(employeeId: Int): Result<Unit>
 }
 
