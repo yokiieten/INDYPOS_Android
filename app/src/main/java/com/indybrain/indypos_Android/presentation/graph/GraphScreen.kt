@@ -1139,14 +1139,15 @@ private fun ProductStatsCard(
                 }
             } else {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Show top 3 products
-                    productStats.take(3).forEach { product ->
-                        ProductStatItem(product = product)
+                    productStats.take(3).forEachIndexed { index, product ->
+                        ProductStatItem(
+                            product = product,
+                            rank = index + 1,
+                            totalAmount = totalAmount
+                        )
                     }
-                    
-                    // Fill remaining slots if less than 3
                     repeat(3 - productStats.size.coerceAtMost(3)) {
                         EmptyProductStatItem()
                     }
@@ -1158,86 +1159,112 @@ private fun ProductStatsCard(
 
 @Composable
 private fun ProductStatItem(
-    product: ProductStatsData
+    product: ProductStatsData,
+    rank: Int,
+    totalAmount: Double
 ) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    val sharePercent = if (totalAmount > 0) (product.amount / totalAmount * 100) else 0.0
+    val rankColor = when (rank) {
+        1 -> Color(0xFFFFD700)
+        2 -> Color(0xFFC0C0C0)
+        3 -> Color(0xFFCD7F32)
+        else -> PrimaryButton
+    }
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(rankColor, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
         ) {
+            Text(
+                text = "$rank",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
+                ),
+                color = Color.White
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = product.name,
                 style = FontUtils.mainFont(
-                    style = AppFontStyle.Regular,
+                    style = AppFontStyle.Medium,
                     size = FontSize.Medium
                 ),
-                color = PrimaryText,
-                modifier = Modifier.weight(1f)
+                color = PrimaryText
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "${formatCurrency(product.amount)} ${stringResource(id = R.string.graph_currency_baht)}",
+                text = "${String.format(Locale.getDefault(), "%.1f", sharePercent)}% ของยอดรวม",
                 style = FontUtils.mainFont(
-                    style = AppFontStyle.Medium,
+                    style = AppFontStyle.Regular,
                     size = FontSize.Small
                 ),
                 color = SecondaryText
             )
         }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        // Progress bar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .background(Color(0xFFE5E5E5), RoundedCornerShape(3.dp))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(product.progress.coerceIn(0.1, 1.0).toFloat())
-                    .fillMaxSize()
-                    .background(PrimaryButton, RoundedCornerShape(3.dp))
-            )
-        }
+        Text(
+            text = "${formatCurrency(product.amount)} ${stringResource(id = R.string.graph_currency_baht)}",
+            style = FontUtils.mainFont(
+                style = AppFontStyle.Bold,
+                size = FontSize.Medium
+            ),
+            color = GreenComplete
+        )
     }
 }
 
 @Composable
 private fun EmptyProductStatItem() {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(Color(0xFFE5E5E5), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "-",
                 style = FontUtils.mainFont(
-                    style = AppFontStyle.Regular,
-                    size = FontSize.Medium
-                ),
-                color = PlaceholderText,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "-",
-                style = FontUtils.mainFont(
                     style = AppFontStyle.Medium,
-                    size = FontSize.Small
+                    size = FontSize.Medium
                 ),
                 color = PlaceholderText
             )
         }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .background(Color(0xFFE5E5E5), RoundedCornerShape(3.dp))
+        Text(
+            text = "-",
+            style = FontUtils.mainFont(
+                style = AppFontStyle.Regular,
+                size = FontSize.Medium
+            ),
+            color = PlaceholderText,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "-",
+            style = FontUtils.mainFont(
+                style = AppFontStyle.Regular,
+                size = FontSize.Small
+            ),
+            color = PlaceholderText
         )
     }
 }

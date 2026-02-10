@@ -216,6 +216,7 @@ class GraphViewModel @Inject constructor(
         data class ProductAggToday(
             var name: String,
             var amount: Double,
+            var cost: Double,
             var quantity: Int,
             var productId: String?
         )
@@ -229,29 +230,34 @@ class GraphViewModel @Inject constructor(
                     ProductAggToday(
                         name = item.productName,
                         amount = 0.0,
+                        cost = 0.0,
                         quantity = 0,
                         productId = item.productId
                     )
                 }
                 agg.amount += item.totalPrice
+                agg.cost += (item.unitCost ?: 0.0) * item.quantity
                 agg.quantity += item.quantity
             }
         }
         
-        val topProducts = productMap
-            .entries
-            .sortedByDescending { it.value.quantity }
+        // สินค้าที่ทำรายได้สูงสุด: เรียงตามกำไร (ยอดขาย - ต้นทุน) หลังหักต้นทุนแล้ว
+        val topByProfit = productMap.entries
+            .map { (k, v) -> k to (v.amount - v.cost) }
+            .sortedByDescending { it.second }
             .take(3)
-        
-        val maxQuantity = topProducts.maxOfOrNull { it.value.quantity } ?: 1
-        val productStats = topProducts.map { (_, agg) ->
+        val profitList = topByProfit.map { (key, _) -> key to productMap[key]!! }
+        val maxProfit = profitList.maxOfOrNull { (it.second.amount - it.second.cost) } ?: 1.0
+        val productStats = profitList.map { (_, agg) ->
+            val profit = agg.amount - agg.cost
             ProductStatsData(
                 name = agg.name,
-                amount = agg.amount,
-                progress = (agg.quantity.toDouble() / maxQuantity).coerceIn(0.0, 1.0)
+                amount = profit,
+                progress = (profit / maxProfit).coerceIn(0.0, 1.0)
             )
         }
-        
+        // Best seller: เรียงตามจำนวนชิ้นที่ขาย
+        val topProducts = productMap.entries.sortedByDescending { it.value.quantity }.take(3)
         val bestSellers = topProducts.mapIndexed { index, (_, agg) ->
             val product = agg.productId?.let { productDao.getProductById(it) }
             BestSellerData(
@@ -278,7 +284,7 @@ class GraphViewModel @Inject constructor(
 
     /**
      * ดึงข้อมูลจริงจาก Room สำหรับช่วง "1 สัปดาห์"
-     * - ใช้ 7 วันย้อนหลังจากวันนี้ (ไม่ใช่สัปดาห์ปฏิทิน)
+     * - 1 สัปดาห์ = ตั้งแต่วันอาทิตย์ 00:00:00 จนถึงวันปัจจุบัน 23:59:59 ของสัปดาห์นั้น
      * - กราฟผลรวมยอดขาย: แสดงตามวันในสัปดาห์ (จ. อ. พ. พฤ. ศ. ส. อา.)
      * - กราฟอื่น ๆ (ช่องทาง, สินค้า, Best seller) ใช้ข้อมูลจริงของสัปดาห์เดียวกัน
      */
@@ -301,21 +307,25 @@ class GraphViewModel @Inject constructor(
             return
         }
         
-        val calendar = Calendar.getInstance()
-        // ตั้งค่าเป็นวันนี้เวลา 00:00:00
+        val calendar = Calendar.getInstance(Locale.getDefault())
+        // สิ้นสุด: วันนี้ 23:59:59
         calendar.set(Calendar.HOUR_OF_DAY, 23)
         calendar.set(Calendar.MINUTE, 59)
         calendar.set(Calendar.SECOND, 59)
         calendar.set(Calendar.MILLISECOND, 999)
-        val endDate = calendar.time // วันนี้เวลา 23:59:59
+        val endDate = calendar.time
         
-        // 7 วันย้อนหลัง
-        calendar.add(Calendar.DAY_OF_YEAR, -6) // -6 เพราะรวมวันนี้ด้วย = 7 วัน
+        // เริ่มต้น: วันอาทิตย์ของสัปดาห์นั้น 00:00:00
+        // Calendar.DAY_OF_WEEK: 1=Sunday, 2=Monday, ..., 7=Saturday
+        calendar.time = endDate
+        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+        val daysFromSunday = dayOfWeek - Calendar.SUNDAY // 0 = อา, 1 = จ, ...
+        calendar.add(Calendar.DAY_OF_YEAR, -daysFromSunday)
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
-        val startDate = calendar.time // 7 วันก่อนเวลา 00:00:00
+        val startDate = calendar.time
         
         val weekOrders = orders.filter { order ->
             order.orderDate >= startDate && order.orderDate <= endDate
@@ -414,6 +424,7 @@ class GraphViewModel @Inject constructor(
         data class ProductAgg(
             var name: String,
             var amount: Double,
+            var cost: Double,
             var quantity: Int,
             var productId: String?
         )
@@ -427,29 +438,33 @@ class GraphViewModel @Inject constructor(
                     ProductAgg(
                         name = item.productName,
                         amount = 0.0,
+                        cost = 0.0,
                         quantity = 0,
                         productId = item.productId
                     )
                 }
                 agg.amount += item.totalPrice
+                agg.cost += (item.unitCost ?: 0.0) * item.quantity
                 agg.quantity += item.quantity
             }
         }
         
-        val topProducts = productMap
-            .entries
-            .sortedByDescending { it.value.quantity }
+        // สินค้าที่ทำรายได้สูงสุด: เรียงตามกำไร (ยอดขาย - ต้นทุน)
+        val topByProfit = productMap.entries
+            .map { (k, v) -> k to (v.amount - v.cost) }
+            .sortedByDescending { it.second }
             .take(3)
-        
-        val maxQuantity = topProducts.maxOfOrNull { it.value.quantity } ?: 1
-        val productStats = topProducts.map { (_, agg) ->
+        val profitList = topByProfit.map { (key, _) -> key to productMap[key]!! }
+        val maxProfit = profitList.maxOfOrNull { (it.second.amount - it.second.cost) } ?: 1.0
+        val productStats = profitList.map { (_, agg) ->
+            val profit = agg.amount - agg.cost
             ProductStatsData(
                 name = agg.name,
-                amount = agg.amount,
-                progress = (agg.quantity.toDouble() / maxQuantity).coerceIn(0.0, 1.0)
+                amount = profit,
+                progress = (profit / maxProfit).coerceIn(0.0, 1.0)
             )
         }
-        
+        val topProducts = productMap.entries.sortedByDescending { it.value.quantity }.take(3)
         val bestSellers = topProducts.mapIndexed { index, (_, agg) ->
             val product = agg.productId?.let { productDao.getProductById(it) }
             BestSellerData(
@@ -476,7 +491,7 @@ class GraphViewModel @Inject constructor(
 
     /**
      * ดึงข้อมูลจริงจาก Room สำหรับช่วง "1 เดือน"
-     * - ใช้เดือนปัจจุบัน
+     * - 1 เดือน = ตั้งแต่วันที่ 1 ของเดือน 00:00:00 จนถึงวันปัจจุบัน 23:59:59 ของเดือนนั้น
      * - กราฟผลรวมยอดขาย: แบ่งเป็น 4 ช่วง (W1 - W4) ตามวันที่ในเดือน
      * - กราฟอื่น ๆ (ช่องทาง, สินค้า, Best seller) ใช้ข้อมูลจริงของเดือนเดียวกัน
      */
@@ -498,14 +513,28 @@ class GraphViewModel @Inject constructor(
             return
         }
         
-        val calendar = Calendar.getInstance()
+        val calendar = Calendar.getInstance(Locale.getDefault())
         val currentMonth = calendar.get(Calendar.MONTH)
         val currentYear = calendar.get(Calendar.YEAR)
         
+        // วันที่ 1 ของเดือน 00:00:00
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val monthStart = calendar.time
+        
+        // วันนี้ 23:59:59 (ไม่ใช่วันสุดท้ายของเดือน)
+        calendar.timeInMillis = System.currentTimeMillis()
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val monthEnd = calendar.time
+        
         val monthOrders = orders.filter { order ->
-            calendar.time = order.orderDate
-            calendar.get(Calendar.MONTH) == currentMonth &&
-                calendar.get(Calendar.YEAR) == currentYear
+            order.orderDate >= monthStart && order.orderDate <= monthEnd
         }
         
         if (monthOrders.isEmpty()) {
@@ -545,23 +574,8 @@ class GraphViewModel @Inject constructor(
         )
         
         // กราฟ W1-W4 แบ่งตามสัปดาห์ภายในเดือน (exclude cancelled)
-        // หาวันแรกและวันสุดท้ายของเดือน
+        // แบ่งเดือนเป็น 4 ช่วงตามจำนวนวันในเดือน
         calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val monthStart = calendar.time
-        
-        calendar.add(Calendar.MONTH, 1)
-        calendar.add(Calendar.DAY_OF_MONTH, -1)
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        calendar.set(Calendar.MILLISECOND, 999)
-        val monthEnd = calendar.time
-        
-        // แบ่งเดือนเป็น 4 สัปดาห์ (แต่ละสัปดาห์ประมาณ 7-8 วัน)
         val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
         val daysPerWeek = daysInMonth / 4.0
         
@@ -597,6 +611,7 @@ class GraphViewModel @Inject constructor(
         data class ProductAggMonth(
             var name: String,
             var amount: Double,
+            var cost: Double,
             var quantity: Int,
             var productId: String?
         )
@@ -610,29 +625,33 @@ class GraphViewModel @Inject constructor(
                     ProductAggMonth(
                         name = item.productName,
                         amount = 0.0,
+                        cost = 0.0,
                         quantity = 0,
                         productId = item.productId
                     )
                 }
                 agg.amount += item.totalPrice
+                agg.cost += (item.unitCost ?: 0.0) * item.quantity
                 agg.quantity += item.quantity
             }
         }
         
-        val topProducts = productMap
-            .entries
-            .sortedByDescending { it.value.quantity }
+        // สินค้าที่ทำรายได้สูงสุด: เรียงตามกำไร (ยอดขาย - ต้นทุน)
+        val topByProfit = productMap.entries
+            .map { (k, v) -> k to (v.amount - v.cost) }
+            .sortedByDescending { it.second }
             .take(3)
-        
-        val maxQuantity = topProducts.maxOfOrNull { it.value.quantity } ?: 1
-        val productStats = topProducts.map { (_, agg) ->
+        val profitList = topByProfit.map { (key, _) -> key to productMap[key]!! }
+        val maxProfit = profitList.maxOfOrNull { (it.second.amount - it.second.cost) } ?: 1.0
+        val productStats = profitList.map { (_, agg) ->
+            val profit = agg.amount - agg.cost
             ProductStatsData(
                 name = agg.name,
-                amount = agg.amount,
-                progress = (agg.quantity.toDouble() / maxQuantity).coerceIn(0.0, 1.0)
+                amount = profit,
+                progress = (profit / maxProfit).coerceIn(0.0, 1.0)
             )
         }
-        
+        val topProducts = productMap.entries.sortedByDescending { it.value.quantity }.take(3)
         val bestSellers = topProducts.mapIndexed { index, (_, agg) ->
             val product = agg.productId?.let { productDao.getProductById(it) }
             BestSellerData(
@@ -679,8 +698,20 @@ class GraphViewModel @Inject constructor(
             return
         }
         
-        val startDate = java.util.Date(startMillis)
-        val endDate = java.util.Date(endMillis)
+        // เริ่มต้น = ต้นวัน 00:00:00, สิ้นสุด = ปลายวัน 23:59:59 (รวมทั้งวันของวันสิ้นสุด)
+        val cal = Calendar.getInstance(Locale.getDefault())
+        cal.timeInMillis = startMillis
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val startDate = cal.time
+        cal.timeInMillis = endMillis
+        cal.set(Calendar.HOUR_OF_DAY, 23)
+        cal.set(Calendar.MINUTE, 59)
+        cal.set(Calendar.SECOND, 59)
+        cal.set(Calendar.MILLISECOND, 999)
+        val endDate = cal.time
         
         val rangeOrders = orders.filter { order ->
             order.orderDate >= startDate && order.orderDate <= endDate
@@ -770,6 +801,7 @@ class GraphViewModel @Inject constructor(
         data class ProductAggCustom(
             var name: String,
             var amount: Double,
+            var cost: Double,
             var quantity: Int,
             var productId: String?
         )
@@ -783,29 +815,33 @@ class GraphViewModel @Inject constructor(
                     ProductAggCustom(
                         name = item.productName,
                         amount = 0.0,
+                        cost = 0.0,
                         quantity = 0,
                         productId = item.productId
                     )
                 }
                 agg.amount += item.totalPrice
+                agg.cost += (item.unitCost ?: 0.0) * item.quantity
                 agg.quantity += item.quantity
             }
         }
         
-        val topProducts = productMap
-            .entries
-            .sortedByDescending { it.value.quantity }
+        // สินค้าที่ทำรายได้สูงสุด: เรียงตามกำไร (ยอดขาย - ต้นทุน)
+        val topByProfit = productMap.entries
+            .map { (k, v) -> k to (v.amount - v.cost) }
+            .sortedByDescending { it.second }
             .take(3)
-        
-        val maxQuantity = topProducts.maxOfOrNull { it.value.quantity } ?: 1
-        val productStats = topProducts.map { (_, agg) ->
+        val profitList = topByProfit.map { (key, _) -> key to productMap[key]!! }
+        val maxProfit = profitList.maxOfOrNull { (it.second.amount - it.second.cost) } ?: 1.0
+        val productStats = profitList.map { (_, agg) ->
+            val profit = agg.amount - agg.cost
             ProductStatsData(
                 name = agg.name,
-                amount = agg.amount,
-                progress = (agg.quantity.toDouble() / maxQuantity).coerceIn(0.0, 1.0)
+                amount = profit,
+                progress = (profit / maxProfit).coerceIn(0.0, 1.0)
             )
         }
-        
+        val topProducts = productMap.entries.sortedByDescending { it.value.quantity }.take(3)
         val bestSellers = topProducts.mapIndexed { index, (_, agg) ->
             val product = agg.productId?.let { productDao.getProductById(it) }
             BestSellerData(
