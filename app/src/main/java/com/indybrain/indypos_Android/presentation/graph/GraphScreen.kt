@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -1164,6 +1165,11 @@ private fun ProductStatItem(
     totalAmount: Double
 ) {
     val sharePercent = if (totalAmount > 0) (product.amount / totalAmount * 100) else 0.0
+    val progressFraction = if (totalAmount > 0) {
+        (product.amount / totalAmount).coerceIn(0.05, 1.0)
+    } else {
+        0.0
+    }
     val rankColor = when (rank) {
         1 -> Color(0xFFFFD700)
         2 -> Color(0xFFC0C0C0)
@@ -1171,41 +1177,59 @@ private fun ProductStatItem(
         else -> PrimaryButton
     }
     
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(rankColor, RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "$rank",
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Medium
-                ),
-                color = Color.White
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(rankColor, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "$rank",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Small
+                    ),
+                    color = Color.White
+                )
+            }
             Text(
                 text = product.name,
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Medium,
                     size = FontSize.Medium
                 ),
-                color = PrimaryText
+                color = PrimaryText,
+                modifier = Modifier.weight(1f)
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "${String.format(Locale.getDefault(), "%.1f", sharePercent)}% ของยอดรวม",
+                text = "${formatCurrency(product.amount)} ${stringResource(id = R.string.graph_currency_baht)}",
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
+                ),
+                color = GreenComplete
+            )
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                text = String.format(Locale.getDefault(), "%.1f%%", sharePercent),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Small
@@ -1213,14 +1237,23 @@ private fun ProductStatItem(
                 color = SecondaryText
             )
         }
-        Text(
-            text = "${formatCurrency(product.amount)} ${stringResource(id = R.string.graph_currency_baht)}",
-            style = FontUtils.mainFont(
-                style = AppFontStyle.Bold,
-                size = FontSize.Medium
-            ),
-            color = GreenComplete
-        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Progress bar เต็มแถว ใต้เปอร์เซ็นต์ (ให้ layout ใกล้เคียงตัวอย่าง)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .background(Color(0xFFE5E5E5), RoundedCornerShape(3.dp))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progressFraction.toFloat())
+                    .background(PrimaryButton, RoundedCornerShape(3.dp))
+            )
+        }
     }
 }
 
