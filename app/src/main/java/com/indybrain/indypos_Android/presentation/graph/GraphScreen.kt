@@ -485,7 +485,11 @@ private fun TimePeriodSelector(
     }
 }
 
-private fun formatCustomDate(millis: Long?, locale: Locale, buddhistEraLabel: String): String {
+private fun formatCustomDate(
+    millis: Long?,
+    locale: Locale,
+    buddhistEraLabel: String
+): String {
     if (millis == null) return ""
     val calendar = Calendar.getInstance().apply {
         timeInMillis = millis
@@ -493,8 +497,14 @@ private fun formatCustomDate(millis: Long?, locale: Locale, buddhistEraLabel: St
     val day = calendar.get(Calendar.DAY_OF_MONTH)
     val monthFormat = SimpleDateFormat("MMM", locale)
     val monthStr = monthFormat.format(calendar.time)
-    val yearBE = calendar.get(Calendar.YEAR) + 543
-    return String.format("%02d %s %s %d", day, monthStr, buddhistEraLabel, yearBE)
+    val isThai = locale.language == "th"
+    return if (isThai) {
+        val yearBE = calendar.get(Calendar.YEAR) + 543
+        String.format("%02d %s %s %d", day, monthStr, buddhistEraLabel, yearBE)
+    } else {
+        val year = calendar.get(Calendar.YEAR)
+        String.format("%02d %s %d", day, monthStr, year)
+    }
 }
 
 @Composable
@@ -502,10 +512,26 @@ private fun formatCustomRange(startMillis: Long?, endMillis: Long?): String {
     if (startMillis == null || endMillis == null) return stringResource(id = TimePeriod.Custom.stringResId)
     val context = LocalContext.current
     val locale = LocaleHelper.getCurrentLocale(context)
-    val sdf = SimpleDateFormat("dd/MM/yyyy", locale)
-    val start = java.util.Date(minOf(startMillis, endMillis))
-    val end = java.util.Date(maxOf(startMillis, endMillis))
-    return "${sdf.format(start)} - ${sdf.format(end)}"
+    val buddhistEraLabel = stringResource(id = R.string.graph_date_buddhist_era)
+    val isThai = locale.language == "th"
+    val (startCal, endCal) = Pair(
+        Calendar.getInstance().apply { timeInMillis = minOf(startMillis, endMillis) },
+        Calendar.getInstance().apply { timeInMillis = maxOf(startMillis, endMillis) }
+    )
+    val dayMonthFormat = SimpleDateFormat("dd/MM", locale)
+    val startYear = if (isThai) startCal.get(Calendar.YEAR) + 543 else startCal.get(Calendar.YEAR)
+    val endYear = if (isThai) endCal.get(Calendar.YEAR) + 543 else endCal.get(Calendar.YEAR)
+    val startStr = if (isThai) {
+        "${dayMonthFormat.format(startCal.time)}/$startYear $buddhistEraLabel"
+    } else {
+        "${dayMonthFormat.format(startCal.time)}/$startYear"
+    }
+    val endStr = if (isThai) {
+        "${dayMonthFormat.format(endCal.time)}/$endYear $buddhistEraLabel"
+    } else {
+        "${dayMonthFormat.format(endCal.time)}/$endYear"
+    }
+    return "$startStr - $endStr"
 }
 
 @Composable
