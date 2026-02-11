@@ -1229,14 +1229,26 @@ private fun ProductStatItem(
                 color = PrimaryText,
                 modifier = Modifier.weight(1f)
             )
-            Text(
-                text = "${formatCurrency(product.amount)} ${stringResource(id = R.string.graph_currency_baht)}",
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Medium
-                ),
-                color = GreenComplete
-            )
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = "${formatCurrency(product.amount)} ${stringResource(id = R.string.graph_currency_baht)}",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Medium
+                    ),
+                    color = GreenComplete
+                )
+                Text(
+                    text = "${product.quantity} ${stringResource(id = R.string.stock_unit_piece)}",
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = SecondaryText
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(2.dp))

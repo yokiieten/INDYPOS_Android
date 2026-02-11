@@ -241,19 +241,19 @@ class GraphViewModel @Inject constructor(
             }
         }
         
-        // สินค้าที่ทำรายได้สูงสุด: เรียงตามกำไร (ยอดขาย - ต้นทุน) หลังหักต้นทุนแล้ว
-        val topByProfit = productMap.entries
-            .map { (k, v) -> k to (v.amount - v.cost) }
+        // สินค้าที่ทำรายได้สูงสุด: เรียงตามยอดขายเต็ม (ไม่หักต้นทุน)
+        val topByRevenue = productMap.entries
+            .map { (k, v) -> k to v.amount }
             .sortedByDescending { it.second }
             .take(3)
-        val profitList = topByProfit.map { (key, _) -> key to productMap[key]!! }
-        val maxProfit = profitList.maxOfOrNull { (it.second.amount - it.second.cost) } ?: 1.0
-        val productStats = profitList.map { (_, agg) ->
-            val profit = agg.amount - agg.cost
+        val revenueList = topByRevenue.map { (key, _) -> key to productMap[key]!! }
+        val maxRevenue = revenueList.maxOfOrNull { it.second.amount } ?: 1.0
+        val productStats = revenueList.map { (_, agg) ->
             ProductStatsData(
                 name = agg.name,
-                amount = profit,
-                progress = (profit / maxProfit).coerceIn(0.0, 1.0)
+                amount = agg.amount,
+                quantity = agg.quantity,
+                progress = (agg.amount / maxRevenue).coerceIn(0.0, 1.0)
             )
         }
         // Best seller: เรียงตามจำนวนชิ้นที่ขาย
@@ -449,19 +449,19 @@ class GraphViewModel @Inject constructor(
             }
         }
         
-        // สินค้าที่ทำรายได้สูงสุด: เรียงตามกำไร (ยอดขาย - ต้นทุน)
-        val topByProfit = productMap.entries
-            .map { (k, v) -> k to (v.amount - v.cost) }
+        // สินค้าที่ทำรายได้สูงสุด: เรียงตามยอดขายเต็ม (ไม่หักต้นทุน)
+        val topByRevenue = productMap.entries
+            .map { (k, v) -> k to v.amount }
             .sortedByDescending { it.second }
             .take(3)
-        val profitList = topByProfit.map { (key, _) -> key to productMap[key]!! }
-        val maxProfit = profitList.maxOfOrNull { (it.second.amount - it.second.cost) } ?: 1.0
-        val productStats = profitList.map { (_, agg) ->
-            val profit = agg.amount - agg.cost
+        val revenueList = topByRevenue.map { (key, _) -> key to productMap[key]!! }
+        val maxRevenue = revenueList.maxOfOrNull { it.second.amount } ?: 1.0
+        val productStats = revenueList.map { (_, agg) ->
             ProductStatsData(
                 name = agg.name,
-                amount = profit,
-                progress = (profit / maxProfit).coerceIn(0.0, 1.0)
+                amount = agg.amount,
+                quantity = agg.quantity,
+                progress = (agg.amount / maxRevenue).coerceIn(0.0, 1.0)
             )
         }
         val topProducts = productMap.entries.sortedByDescending { it.value.quantity }.take(3)
@@ -636,19 +636,19 @@ class GraphViewModel @Inject constructor(
             }
         }
         
-        // สินค้าที่ทำรายได้สูงสุด: เรียงตามกำไร (ยอดขาย - ต้นทุน)
-        val topByProfit = productMap.entries
-            .map { (k, v) -> k to (v.amount - v.cost) }
+        // สินค้าที่ทำรายได้สูงสุด: เรียงตามยอดขายเต็ม (ไม่หักต้นทุน)
+        val topByRevenue = productMap.entries
+            .map { (k, v) -> k to v.amount }
             .sortedByDescending { it.second }
             .take(3)
-        val profitList = topByProfit.map { (key, _) -> key to productMap[key]!! }
-        val maxProfit = profitList.maxOfOrNull { (it.second.amount - it.second.cost) } ?: 1.0
-        val productStats = profitList.map { (_, agg) ->
-            val profit = agg.amount - agg.cost
+        val revenueList = topByRevenue.map { (key, _) -> key to productMap[key]!! }
+        val maxRevenue = revenueList.maxOfOrNull { it.second.amount } ?: 1.0
+        val productStats = revenueList.map { (_, agg) ->
             ProductStatsData(
                 name = agg.name,
-                amount = profit,
-                progress = (profit / maxProfit).coerceIn(0.0, 1.0)
+                amount = agg.amount,
+                quantity = agg.quantity,
+                progress = (agg.amount / maxRevenue).coerceIn(0.0, 1.0)
             )
         }
         val topProducts = productMap.entries.sortedByDescending { it.value.quantity }.take(3)
@@ -826,19 +826,19 @@ class GraphViewModel @Inject constructor(
             }
         }
         
-        // สินค้าที่ทำรายได้สูงสุด: เรียงตามกำไร (ยอดขาย - ต้นทุน)
-        val topByProfit = productMap.entries
-            .map { (k, v) -> k to (v.amount - v.cost) }
+        // สินค้าที่ทำรายได้สูงสุด: เรียงตามยอดขายเต็ม (ไม่หักต้นทุน)
+        val topByRevenue = productMap.entries
+            .map { (k, v) -> k to v.amount }
             .sortedByDescending { it.second }
             .take(3)
-        val profitList = topByProfit.map { (key, _) -> key to productMap[key]!! }
-        val maxProfit = profitList.maxOfOrNull { (it.second.amount - it.second.cost) } ?: 1.0
-        val productStats = profitList.map { (_, agg) ->
-            val profit = agg.amount - agg.cost
+        val revenueList = topByRevenue.map { (key, _) -> key to productMap[key]!! }
+        val maxRevenue = revenueList.maxOfOrNull { it.second.amount } ?: 1.0
+        val productStats = revenueList.map { (_, agg) ->
             ProductStatsData(
                 name = agg.name,
-                amount = profit,
-                progress = (profit / maxProfit).coerceIn(0.0, 1.0)
+                amount = agg.amount,
+                quantity = agg.quantity,
+                progress = (agg.amount / maxRevenue).coerceIn(0.0, 1.0)
             )
         }
         val topProducts = productMap.entries.sortedByDescending { it.value.quantity }.take(3)

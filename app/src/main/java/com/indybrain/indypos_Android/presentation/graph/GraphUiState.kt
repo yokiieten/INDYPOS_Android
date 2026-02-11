@@ -44,7 +44,8 @@ data class RevenueComparison(
 data class ProductStatsData(
     val name: String,
     val amount: Double,
-    val progress: Double // 0.0 - 1.0
+    val quantity: Int = 0,
+    val progress: Double = 0.0 // 0.0 - 1.0
 )
 
 data class BestSellerData(
