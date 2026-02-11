@@ -271,7 +271,6 @@ fun GraphScreen(
         ) {
             val context = LocalContext.current
             val locale = LocaleHelper.getCurrentLocale(context)
-            val buddhistEraLabel = stringResource(id = R.string.graph_date_buddhist_era)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -353,7 +352,7 @@ fun GraphScreen(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
-                            text = formatCustomDate(customStartDateMillis, locale, buddhistEraLabel),
+                            text = formatCustomDate(customStartDateMillis, locale),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -380,7 +379,7 @@ fun GraphScreen(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
-                            text = formatCustomDate(customEndDateMillis, locale, buddhistEraLabel),
+                            text = formatCustomDate(customEndDateMillis, locale),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -485,11 +484,7 @@ private fun TimePeriodSelector(
     }
 }
 
-private fun formatCustomDate(
-    millis: Long?,
-    locale: Locale,
-    buddhistEraLabel: String
-): String {
+private fun formatCustomDate(millis: Long?, locale: Locale): String {
     if (millis == null) return ""
     val calendar = Calendar.getInstance().apply {
         timeInMillis = millis
@@ -498,13 +493,8 @@ private fun formatCustomDate(
     val monthFormat = SimpleDateFormat("MMM", locale)
     val monthStr = monthFormat.format(calendar.time)
     val isThai = locale.language == "th"
-    return if (isThai) {
-        val yearBE = calendar.get(Calendar.YEAR) + 543
-        String.format("%02d %s %s %d", day, monthStr, buddhistEraLabel, yearBE)
-    } else {
-        val year = calendar.get(Calendar.YEAR)
-        String.format("%02d %s %d", day, monthStr, year)
-    }
+    val year = if (isThai) calendar.get(Calendar.YEAR) + 543 else calendar.get(Calendar.YEAR)
+    return String.format("%02d %s %d", day, monthStr, year)
 }
 
 @Composable
@@ -512,7 +502,6 @@ private fun formatCustomRange(startMillis: Long?, endMillis: Long?): String {
     if (startMillis == null || endMillis == null) return stringResource(id = TimePeriod.Custom.stringResId)
     val context = LocalContext.current
     val locale = LocaleHelper.getCurrentLocale(context)
-    val buddhistEraLabel = stringResource(id = R.string.graph_date_buddhist_era)
     val isThai = locale.language == "th"
     val (startCal, endCal) = Pair(
         Calendar.getInstance().apply { timeInMillis = minOf(startMillis, endMillis) },
@@ -521,16 +510,8 @@ private fun formatCustomRange(startMillis: Long?, endMillis: Long?): String {
     val dayMonthFormat = SimpleDateFormat("dd/MM", locale)
     val startYear = if (isThai) startCal.get(Calendar.YEAR) + 543 else startCal.get(Calendar.YEAR)
     val endYear = if (isThai) endCal.get(Calendar.YEAR) + 543 else endCal.get(Calendar.YEAR)
-    val startStr = if (isThai) {
-        "${dayMonthFormat.format(startCal.time)}/$startYear $buddhistEraLabel"
-    } else {
-        "${dayMonthFormat.format(startCal.time)}/$startYear"
-    }
-    val endStr = if (isThai) {
-        "${dayMonthFormat.format(endCal.time)}/$endYear $buddhistEraLabel"
-    } else {
-        "${dayMonthFormat.format(endCal.time)}/$endYear"
-    }
+    val startStr = "${dayMonthFormat.format(startCal.time)}/$startYear"
+    val endStr = "${dayMonthFormat.format(endCal.time)}/$endYear"
     return "$startStr - $endStr"
 }
 
