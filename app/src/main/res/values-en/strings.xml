@@ -156,6 +156,10 @@
     <string name="graph_month_sales">1 Month Sales</string>
     <string name="graph_period_sales">Selected Period Sales</string>
     <string name="graph_cost_expenses">Cost Expenses</string>
+    <string name="graph_profit_today">Profit Today</string>
+    <string name="graph_profit_week">1 Week Profit</string>
+    <string name="graph_profit_month">1 Month Profit</string>
+    <string name="graph_profit_period">Selected Period Profit</string>
     <string name="graph_orders_today">Orders Today</string>
     <string name="graph_orders_week">1 Week Orders</string>
     <string name="graph_orders_month">1 Month Orders</string>

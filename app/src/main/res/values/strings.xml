@@ -169,6 +169,10 @@
     <string name="graph_month_sales">ยอดขาย 1 เดือน</string>
     <string name="graph_period_sales">ยอดขายช่วงที่เลือก</string>
     <string name="graph_cost_expenses">ค่าใช้จ่ายต้นทุน</string>
+    <string name="graph_profit_today">กำไรวันนี้</string>
+    <string name="graph_profit_week">กำไร 1 สัปดาห์</string>
+    <string name="graph_profit_month">กำไร 1 เดือน</string>
+    <string name="graph_profit_period">กำไรช่วงที่เลือก</string>
     <string name="graph_orders_today">ออเดอร์วันนี้</string>
     <string name="graph_orders_week">ออเดอร์ 1 สัปดาห์</string>
     <string name="graph_orders_month">ออเดอร์ 1 เดือน</string>

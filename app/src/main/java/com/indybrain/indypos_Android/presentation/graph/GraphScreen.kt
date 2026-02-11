@@ -528,6 +528,15 @@ private fun SummaryCardsSection(
         TimePeriod.Custom -> stringResource(id = R.string.graph_orders_period)
     }
     
+    val profitLabel = when (selectedPeriod) {
+        TimePeriod.Today -> stringResource(id = R.string.graph_profit_today)
+        TimePeriod.Week -> stringResource(id = R.string.graph_profit_week)
+        TimePeriod.Month -> stringResource(id = R.string.graph_profit_month)
+        TimePeriod.Custom -> stringResource(id = R.string.graph_profit_period)
+    }
+    
+    val profitValue = summary.todaySales - summary.costOfExpenses
+    
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -549,6 +558,14 @@ private fun SummaryCardsSection(
                 modifier = Modifier.weight(1f)
             )
         }
+        
+        // Profit row: กำไร (ยอดขายหักต้นทุน)
+        SummaryCard(
+            title = profitLabel,
+            value = formatCurrency(profitValue),
+            valueColor = if (profitValue >= 0) GreenComplete else RedFailure,
+            modifier = Modifier.fillMaxWidth()
+        )
         
         // Middle row: ออเดอร์ตามช่วงเวลา (เหมือนเดิม) + ทั้งหมด
         SummaryCard(
