@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -146,6 +147,16 @@ fun OrderScreen(
             OrderFilterButton(
                 filterOption = uiState.filterOption,
                 sortOption = uiState.sortOption,
+                customRangeLabel = if (
+                    uiState.filterOption == OrderFilter.SELECT_DATE &&
+                    uiState.customStartDateMillis != null &&
+                    uiState.customEndDateMillis != null
+                ) {
+                    formatOrderCustomRange(
+                        startMillis = uiState.customStartDateMillis,
+                        endMillis = uiState.customEndDateMillis
+                    )
+                } else null,
                 onFilterSelected = { viewModel.selectFilter(it) },
                 onSortSelected = { viewModel.selectSort(it) },
                 onSelectDateRangeClick = {
@@ -189,6 +200,32 @@ fun OrderScreen(
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val context = LocalContext.current
 
+        // Initialize default dates (current month) when sheet opens and dates are null
+        LaunchedEffect(showCustomRangeSheet) {
+            if (customStartDateMillis == null || customEndDateMillis == null) {
+                val startCalendar = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val endCalendar = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }
+                if (customStartDateMillis == null) {
+                    customStartDateMillis = startCalendar.timeInMillis
+                }
+                if (customEndDateMillis == null) {
+                    customEndDateMillis = endCalendar.timeInMillis
+                }
+            }
+        }
+
         fun openDatePicker(isStart: Boolean) {
             val calendar = Calendar.getInstance()
             val currentMillis = if (isStart) customStartDateMillis else customEndDateMillis
@@ -218,28 +255,69 @@ fun OrderScreen(
             ).show()
         }
 
-        val configuration = LocalConfiguration.current
-        val locale = configuration.locales[0] ?: Locale.getDefault()
-
         ModalBottomSheet(
             onDismissRequest = { showCustomRangeSheet = false },
             sheetState = sheetState
         ) {
+            val locale = LocaleHelper.getCurrentLocale(context)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.graph_custom_range_cancel),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton,
+                        modifier = Modifier.clickable {
+                            showCustomRangeSheet = false
+                        }
+                    )
+                    Text(
+                        text = stringResource(id = R.string.graph_custom_range_title),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Bold,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryText
+                    )
+                    Text(
+                        text = stringResource(id = R.string.graph_custom_range_done),
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Medium,
+                            size = FontSize.Medium
+                        ),
+                        color = PrimaryButton,
+                        modifier = Modifier.clickable {
+                            if (customStartDateMillis != null && customEndDateMillis != null) {
+                                viewModel.setCustomRange(
+                                    customStartDateMillis!!,
+                                    customEndDateMillis!!
+                                )
+                                showCustomRangeSheet = false
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Text(
-                    text = stringResource(id = R.string.graph_custom_range_title),
+                    text = stringResource(id = R.string.graph_custom_range_warning),
                     style = FontUtils.mainFont(
-                        style = AppFontStyle.Bold,
-                        size = FontSize.Medium
+                        style = AppFontStyle.Medium,
+                        size = FontSize.Small
                     ),
-                    color = PrimaryText,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
+                    color = Color(0xFFFF9500),
+                    modifier = Modifier.padding(bottom = 24.dp)
                 )
 
                 Column(
@@ -301,40 +379,6 @@ fun OrderScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.graph_custom_range_cancel),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Medium,
-                            size = FontSize.Medium
-                        ),
-                        color = PrimaryButton,
-                        modifier = Modifier.clickable {
-                            showCustomRangeSheet = false
-                        }
-                    )
-                    Text(
-                        text = stringResource(id = R.string.graph_custom_range_done),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Medium,
-                            size = FontSize.Medium
-                        ),
-                        color = PrimaryButton,
-                        modifier = Modifier.clickable {
-                            if (customStartDateMillis != null && customEndDateMillis != null) {
-                                viewModel.setCustomRange(
-                                    customStartDateMillis!!,
-                                    customEndDateMillis!!
-                                )
-                                showCustomRangeSheet = false
-                            }
-                        }
-                    )
-                }
             }
         }
     }
@@ -409,12 +453,17 @@ private fun OrderTabItem(
 private fun OrderFilterButton(
     filterOption: OrderFilter,
     sortOption: OrderSort,
+    customRangeLabel: String? = null,
     onFilterSelected: (OrderFilter) -> Unit,
     onSortSelected: (OrderSort) -> Unit,
     onSelectDateRangeClick: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val filterText = getFilterText(filterOption)
+    val filterText = if (filterOption == OrderFilter.SELECT_DATE && !customRangeLabel.isNullOrBlank()) {
+        customRangeLabel
+    } else {
+        getFilterText(filterOption)
+    }
     val sortText = getSortText(sortOption)
 
     Box(
@@ -804,8 +853,27 @@ private fun formatOrderCustomDate(millis: Long?, locale: Locale): String {
     val day = calendar.get(Calendar.DAY_OF_MONTH)
     val monthFormat = SimpleDateFormat("MMM", locale)
     val monthStr = monthFormat.format(calendar.time)
-    val yearBE = calendar.get(Calendar.YEAR) + 543
-    return String.format(locale, "%02d %s BE %d", day, monthStr, yearBE)
+    val isThai = locale.language == "th"
+    val year = if (isThai) calendar.get(Calendar.YEAR) + 543 else calendar.get(Calendar.YEAR)
+    return String.format("%02d %s %d", day, monthStr, year)
+}
+
+@Composable
+private fun formatOrderCustomRange(startMillis: Long?, endMillis: Long?): String {
+    if (startMillis == null || endMillis == null) return stringResource(R.string.order_filter_select_date)
+    val context = LocalContext.current
+    val locale = LocaleHelper.getCurrentLocale(context)
+    val isThai = locale.language == "th"
+    val (startCal, endCal) = Pair(
+        Calendar.getInstance().apply { timeInMillis = minOf(startMillis, endMillis) },
+        Calendar.getInstance().apply { timeInMillis = maxOf(startMillis, endMillis) }
+    )
+    val dayMonthFormat = SimpleDateFormat("dd/MM", locale)
+    val startYear = if (isThai) startCal.get(Calendar.YEAR) + 543 else startCal.get(Calendar.YEAR)
+    val endYear = if (isThai) endCal.get(Calendar.YEAR) + 543 else endCal.get(Calendar.YEAR)
+    val startStr = "${dayMonthFormat.format(startCal.time)}/$startYear"
+    val endStr = "${dayMonthFormat.format(endCal.time)}/$endYear"
+    return "$startStr - $endStr"
 }
 
 @Composable
