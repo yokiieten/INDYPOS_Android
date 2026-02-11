@@ -1241,7 +1241,7 @@ private fun ProductStatItem(
                     color = GreenComplete
                 )
                 Text(
-                    text = "${product.quantity} ${stringResource(id = R.string.stock_unit_piece)}",
+                    text = "${product.quantity} ${stringResource(id = R.string.home_orders_unit)}",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Small
