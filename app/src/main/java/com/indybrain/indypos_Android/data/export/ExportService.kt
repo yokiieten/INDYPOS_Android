@@ -215,29 +215,42 @@ class ExportService @Inject constructor(
     suspend fun exportOrders(format: ExportFormat): File? = withContext(Dispatchers.IO) {
         try {
             val orders = orderDao.getAllOrdersSync()
+            // 7 order-level columns + 7 item-level columns (including Cost Price)
             val headers = arrayOf(
-                "ID", "Order Number", "Order Date", "Customer Name", "Customer Phone",
-                "Subtotal", "Discount", "Total", "Payment Type", "Status", "Notes", "Created At", "Updated At"
+                "Order Number", "Date", "Subtotal", "Discount", "Total", "Payment Type", "Status",
+                "Product Name", "Quantity", "Price", "Cost Price", "Item Total", "Addons", "Special Request"
             )
-            
-            val rows = orders.map { order ->
-                arrayOf(
-                    order.id,
+            val rows = mutableListOf<Array<String>>()
+            for (order in orders) {
+                val orderCells = arrayOf(
                     order.orderNumber,
                     dateFormat.format(order.orderDate),
-                    order.customerName ?: "",
-                    order.customerPhone ?: "",
                     order.subtotal.toString(),
                     order.discount.toString(),
                     order.total.toString(),
                     getPaymentTypeText(order.paymentTypeRaw),
-                    getStatusText(order.statusRaw),
-                    order.notes ?: "",
-                    order.createdAt?.let { dateFormat.format(it) } ?: "",
-                    dateFormat.format(order.updatedAt)
+                    getStatusText(order.statusRaw)
                 )
+                val items = orderItemDao.getOrderItemsSync(order.id)
+                if (items.isEmpty()) {
+                    // Order with no items: one row with order info only, item columns empty
+                    rows.add(orderCells + arrayOf("", "", "", "", "", "", ""))
+                } else {
+                    for (item in items) {
+                        rows.add(
+                            orderCells + arrayOf(
+                                item.productName,
+                                item.quantity.toString(),
+                                item.productUnitPrice.toString(),
+                                item.unitCost?.toString() ?: "",
+                                item.totalPrice.toString(),
+                                item.addons ?: "",
+                                item.specialRequest ?: ""
+                            )
+                        )
+                    }
+                }
             }
-            
             createFile("Orders", format, headers, rows)
         } catch (e: Exception) {
             null
