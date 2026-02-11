@@ -218,6 +218,9 @@ fun OrderScreen(
             ).show()
         }
 
+        val configuration = LocalConfiguration.current
+        val locale = configuration.locales[0] ?: Locale.getDefault()
+
         ModalBottomSheet(
             onDismissRequest = { showCustomRangeSheet = false },
             sheetState = sheetState
@@ -228,7 +231,7 @@ fun OrderScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
                 Text(
-                    text = "เลือกช่วงวันที่",
+                    text = stringResource(id = R.string.graph_custom_range_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Medium
@@ -243,7 +246,7 @@ fun OrderScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "วันที่เริ่มต้น:",
+                        text = stringResource(id = R.string.graph_custom_range_start_date),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -260,7 +263,7 @@ fun OrderScreen(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
-                            text = formatOrderCustomDate(customStartDateMillis),
+                            text = formatOrderCustomDate(customStartDateMillis, locale),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -270,7 +273,7 @@ fun OrderScreen(
                     }
 
                     Text(
-                        text = "วันที่สิ้นสุด:",
+                        text = stringResource(id = R.string.graph_custom_range_end_date),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -287,7 +290,7 @@ fun OrderScreen(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
-                            text = formatOrderCustomDate(customEndDateMillis),
+                            text = formatOrderCustomDate(customEndDateMillis, locale),
                             style = FontUtils.mainFont(
                                 style = AppFontStyle.Medium,
                                 size = FontSize.Medium
@@ -304,7 +307,7 @@ fun OrderScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "ยกเลิก",
+                        text = stringResource(id = R.string.graph_custom_range_cancel),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -315,7 +318,7 @@ fun OrderScreen(
                         }
                     )
                     Text(
-                        text = "ตกลง",
+                        text = stringResource(id = R.string.graph_custom_range_done),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Medium,
                             size = FontSize.Medium
@@ -411,7 +414,9 @@ private fun OrderFilterButton(
     onSelectDateRangeClick: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    
+    val filterText = getFilterText(filterOption)
+    val sortText = getSortText(sortOption)
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -433,7 +438,7 @@ private fun OrderFilterButton(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${getFilterText(filterOption)} • ${getSortText(sortOption)}",
+                    text = "$filterText • $sortText",
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Medium,
                         size = FontSize.Small
@@ -771,34 +776,36 @@ private fun OrderFilterButton(
     }
 }
 
+@Composable
 private fun getFilterText(filter: OrderFilter): String {
     return when (filter) {
-        OrderFilter.ALL -> "ทั้งหมด"
-        OrderFilter.TODAY -> "วันนี้"
-        OrderFilter.THIS_WEEK -> "สัปดาห์นี้"
-        OrderFilter.THIS_MONTH -> "เดือนนี้"
-        OrderFilter.SELECT_DATE -> "เลือกวันที่"
+        OrderFilter.ALL -> stringResource(R.string.order_filter_all)
+        OrderFilter.TODAY -> stringResource(R.string.order_filter_today)
+        OrderFilter.THIS_WEEK -> stringResource(R.string.order_filter_this_week)
+        OrderFilter.THIS_MONTH -> stringResource(R.string.order_filter_this_month)
+        OrderFilter.SELECT_DATE -> stringResource(R.string.order_filter_select_date)
     }
 }
 
+@Composable
 private fun getSortText(sort: OrderSort): String {
     return when (sort) {
-        OrderSort.LATEST -> "ล่าสุด"
-        OrderSort.OLDEST -> "เก่าสุด"
-        OrderSort.HIGHEST_AMOUNT -> "ยอดสูงสุด"
+        OrderSort.LATEST -> stringResource(R.string.order_sort_latest)
+        OrderSort.OLDEST -> stringResource(R.string.order_sort_oldest)
+        OrderSort.HIGHEST_AMOUNT -> stringResource(R.string.order_sort_highest)
     }
 }
 
-private fun formatOrderCustomDate(millis: Long?): String {
+private fun formatOrderCustomDate(millis: Long?, locale: Locale): String {
     if (millis == null) return ""
     val calendar = Calendar.getInstance().apply {
         timeInMillis = millis
     }
     val day = calendar.get(Calendar.DAY_OF_MONTH)
-    val monthFormat = SimpleDateFormat("MMM", Locale.ENGLISH)
+    val monthFormat = SimpleDateFormat("MMM", locale)
     val monthStr = monthFormat.format(calendar.time)
     val yearBE = calendar.get(Calendar.YEAR) + 543
-    return String.format("%02d %s BE %d", day, monthStr, yearBE)
+    return String.format(locale, "%02d %s BE %d", day, monthStr, yearBE)
 }
 
 @Composable
