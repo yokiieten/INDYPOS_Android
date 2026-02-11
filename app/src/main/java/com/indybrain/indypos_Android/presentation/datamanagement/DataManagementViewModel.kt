@@ -44,11 +44,7 @@ class DataManagementViewModel @Inject constructor(
     
     private val _uiState = MutableStateFlow(DataManagementUiState())
     val uiState: StateFlow<DataManagementUiState> = _uiState.asStateFlow()
-    
-    init {
-        refreshDataStats()
-    }
-    
+
     fun refreshDataStats() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -58,54 +54,37 @@ class DataManagementViewModel @Inject constructor(
                 Log.d("DataManagement", "🌐 Network available, fetching statistics from API...")
                 
                 try {
-                    // Get local unsynced counts only (for online mode - will combine with API counts)
-                    val localProductCount = productDao.getUnsyncedProducts().size
-                    val localCategoryCount = categoryDao.getUnsyncedCategories().size
-                    val localAddonCount = addonDao.getUnsyncedAddonsCount()
-                    val localAddonGroupCount = addonGroupDao.getUnsyncedAddonGroupsCount()
-                    val localOrderCount = orderDao.getUnsyncedOrdersCount()
-                    
-                    // Call Statistics API
                     val response = productsApi.getStatistics()
                     
                     if (response.status == 200 && response.data != null) {
                         val data = response.data!!
-                        Log.d("DataManagement", "✅ Statistics API success")
-                        Log.d("DataManagement", "   📊 API counts - Products: ${data.productCount ?: 0}, Categories: ${data.categoryCount ?: 0}, Addons: ${data.addonCount ?: 0}, AddonGroups: ${data.addonGroupCount ?: 0}, Orders: ${data.orderCount ?: 0}")
-                        Log.d("DataManagement", "   📱 Local unsynced counts - Products: $localProductCount, Categories: $localCategoryCount, Addons: $localAddonCount, AddonGroups: $localAddonGroupCount, Orders: $localOrderCount")
+                        Log.d("DataManagement", "✅ Statistics API success - Products: ${data.productCount ?: 0}, Categories: ${data.categoryCount ?: 0}, Addons: ${data.addonCount ?: 0}, AddonGroups: ${data.addonGroupCount ?: 0}, Orders: ${data.orderCount ?: 0}")
                         
-                        // Combine API counts with local unsynced counts
-                        val totalProductCount = (data.productCount ?: 0) + localProductCount
-                        val totalCategoryCount = (data.categoryCount ?: 0) + localCategoryCount
-                        val totalAddonCount = (data.addonCount ?: 0) + localAddonCount
-                        val totalAddonGroupCount = (data.addonGroupCount ?: 0) + localAddonGroupCount
-                        val totalOrderCount = (data.orderCount ?: 0) + localOrderCount
-                        
-                        Log.d("DataManagement", "   ✅ Total counts - Products: $totalProductCount, Categories: $totalCategoryCount, Addons: $totalAddonCount, AddonGroups: $totalAddonGroupCount, Orders: $totalOrderCount")
-                        
+                        // Show API values as-is
                         _uiState.update { current ->
                             current.copy(
                                 isLoading = false,
-                                productCount = totalProductCount,
-                                categoryCount = totalCategoryCount,
-                                addonCount = totalAddonCount,
-                                addonGroupCount = totalAddonGroupCount,
-                                orderCount = totalOrderCount
+                                productCount = data.productCount ?: 0,
+                                categoryCount = data.categoryCount ?: 0,
+                                addonCount = data.addonCount ?: 0,
+                                addonGroupCount = data.addonGroupCount ?: 0,
+                                orderCount = data.orderCount ?: 0
                             )
                         }
                     } else {
                         Log.w("DataManagement", "⚠️ Statistics API returned error, using local counts only")
-                        // Fallback to local counts (all data, not just unsynced)
+                        val apiError = response.error?.takeIf { it.isNotBlank() } ?: response.message
+                        _uiState.update { it.copy(errorMessage = apiError.ifBlank { null }) }
                         refreshDataStatsOffline()
                     }
                 } catch (e: Exception) {
                     Log.e("DataManagement", "❌ Statistics API failed: ${e.message}, using local counts only")
-                    // Fallback to local counts (all data, not just unsynced)
+                    _uiState.update { it.copy(errorMessage = e.message) }
                     refreshDataStatsOffline()
                 }
             } else {
                 Log.d("DataManagement", "📴 No network available, using local counts only")
-                // No network, use original logic (all data)
+                _uiState.update { it.copy(errorMessage = context.getString(R.string.logout_no_internet_title)) }
                 refreshDataStatsOffline()
             }
         }
@@ -188,6 +167,10 @@ class DataManagementViewModel @Inject constructor(
                 exportedFiles = null
             )
         }
+    }
+
+    fun clearStatsError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
     
     private fun getUriForFile(file: File): Uri? {

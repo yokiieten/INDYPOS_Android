@@ -25,11 +25,13 @@ import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -154,6 +156,35 @@ fun DataManagementScreen(
                 )
             }
         }
+    }
+
+    // Error dialog when stats API fails (or no network)
+    uiState.errorMessage?.let { errorMessage ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearStatsError() },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearStatsError() }) {
+                    Text(
+                        text = stringResource(R.string.dialog_button_ok),
+                        style = FontUtils.mainFont(style = AppFontStyle.Medium, size = FontSize.Medium)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.dialog_error_title),
+                    style = FontUtils.mainFont(style = AppFontStyle.Bold, size = FontSize.Large),
+                    color = PrimaryText
+                )
+            },
+            text = {
+                Text(
+                    text = errorMessage,
+                    style = FontUtils.mainFont(style = AppFontStyle.Regular, size = FontSize.Medium),
+                    color = SecondaryText
+                )
+            }
+        )
     }
 }
 
