@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.AsyncImage
@@ -1424,7 +1425,8 @@ private fun BestSellerItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(backgroundColor, RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(backgroundColor, RoundedCornerShape(12.dp))
             ) {
                 val imageUrl = seller.imageUrl?.takeIf { it.isNotBlank() }
                 
@@ -1555,7 +1557,8 @@ private fun EmptyBestSellerItem() {
         Box(
             modifier = Modifier
                 .size(60.dp)
-                .background(Color(0xFFE5E5E5), RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFE5E5E5), RoundedCornerShape(12.dp))
         )
         
         Column(
