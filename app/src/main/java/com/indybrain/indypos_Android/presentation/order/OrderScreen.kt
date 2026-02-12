@@ -1066,7 +1066,7 @@ private fun OrderItem(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
                         ),
-                        color = SecondaryText
+                        color = RedFailure
                     )
                 }
                 
