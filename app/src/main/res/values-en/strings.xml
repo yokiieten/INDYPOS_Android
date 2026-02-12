@@ -152,17 +152,17 @@
     <string name="graph_select_period">Select Period</string>
     <string name="graph_summary_title">Summary</string>
     <string name="graph_today_sales">Today\'s Sales</string>
-    <string name="graph_week_sales">1 Week Sales</string>
-    <string name="graph_month_sales">1 Month Sales</string>
+    <string name="graph_week_sales">This Week\'s Sales</string>
+    <string name="graph_month_sales">This Month\'s Sales</string>
     <string name="graph_period_sales">Selected Period Sales</string>
     <string name="graph_cost_expenses">Cost Expenses</string>
     <string name="graph_profit_today">Profit Today</string>
-    <string name="graph_profit_week">1 Week Profit</string>
-    <string name="graph_profit_month">1 Month Profit</string>
+    <string name="graph_profit_week">This Week\'s Profit</string>
+    <string name="graph_profit_month">This Month\'s Profit</string>
     <string name="graph_profit_period">Selected Period Profit</string>
     <string name="graph_orders_today">Orders Today</string>
-    <string name="graph_orders_week">1 Week Orders</string>
-    <string name="graph_orders_month">1 Month Orders</string>
+    <string name="graph_orders_week">This Week\'s Orders</string>
+    <string name="graph_orders_month">This Month\'s Orders</string>
     <string name="graph_orders_period">Selected Period Orders</string>
     <string name="graph_orders_period_all">All Orders in Period</string>
     <string name="graph_orders_success">Successful Orders</string>
@@ -181,8 +181,8 @@
     
     <!-- Time Period Labels -->
     <string name="graph_period_today">Today</string>
-    <string name="graph_period_week">1 Week</string>
-    <string name="graph_period_month">1 Month</string>
+    <string name="graph_period_week">This Week</string>
+    <string name="graph_period_month">This Month</string>
     <string name="graph_period_custom">Custom</string>
     
     <!-- Day Labels -->

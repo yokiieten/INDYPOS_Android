@@ -165,17 +165,17 @@
     <string name="graph_select_period">เลือกช่วงเวลา</string>
     <string name="graph_summary_title">สรุป</string>
     <string name="graph_today_sales">ยอดขายวันนี้</string>
-    <string name="graph_week_sales">ยอดขาย 1 สัปดาห์</string>
-    <string name="graph_month_sales">ยอดขาย 1 เดือน</string>
+    <string name="graph_week_sales">ยอดขายสัปดาห์นี้</string>
+    <string name="graph_month_sales">ยอดขายเดือนนี้</string>
     <string name="graph_period_sales">ยอดขายช่วงที่เลือก</string>
     <string name="graph_cost_expenses">ค่าใช้จ่ายต้นทุน</string>
     <string name="graph_profit_today">กำไรวันนี้</string>
-    <string name="graph_profit_week">กำไร 1 สัปดาห์</string>
-    <string name="graph_profit_month">กำไร 1 เดือน</string>
+    <string name="graph_profit_week">กำไรสัปดาห์นี้</string>
+    <string name="graph_profit_month">กำไรเดือนนี้</string>
     <string name="graph_profit_period">กำไรช่วงที่เลือก</string>
     <string name="graph_orders_today">ออเดอร์วันนี้</string>
-    <string name="graph_orders_week">ออเดอร์ 1 สัปดาห์</string>
-    <string name="graph_orders_month">ออเดอร์ 1 เดือน</string>
+    <string name="graph_orders_week">ออเดอร์สัปดาห์นี้</string>
+    <string name="graph_orders_month">ออเดอร์เดือนนี้</string>
     <string name="graph_orders_period">ออเดอร์ช่วงที่เลือก</string>
     <string name="graph_orders_period_all">ออเดอร์ตามช่วงเวลาทั้งหมด</string>
     <string name="graph_orders_success">ออเดอร์สำเร็จ</string>
@@ -194,8 +194,8 @@
     
     <!-- Time Period Labels -->
     <string name="graph_period_today">วันนี้</string>
-    <string name="graph_period_week">1 สัปดาห์</string>
-    <string name="graph_period_month">1 เดือน</string>
+    <string name="graph_period_week">สัปดาห์นี้</string>
+    <string name="graph_period_month">เดือนนี้</string>
     <string name="graph_period_custom">กำหนดเอง</string>
     
     <!-- Day Labels -->
