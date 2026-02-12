@@ -151,10 +151,10 @@
     <string name="graph_title">Charts</string>
     <string name="graph_select_period">Select Period</string>
     <string name="graph_summary_title">Summary</string>
-    <string name="graph_today_sales">Today\'s Sales</string>
-    <string name="graph_week_sales">This Week\'s Sales</string>
-    <string name="graph_month_sales">This Month\'s Sales</string>
-    <string name="graph_period_sales">Selected Period Sales</string>
+    <string name="graph_today_sales">Today\'s Revenue</string>
+    <string name="graph_week_sales">This Week\'s Revenue</string>
+    <string name="graph_month_sales">This Month\'s Revenue</string>
+    <string name="graph_period_sales">Selected Period Revenue</string>
     <string name="graph_cost_expenses">Cost Expenses</string>
     <string name="graph_profit_today">Profit Today</string>
     <string name="graph_profit_week">This Week\'s Profit</string>
