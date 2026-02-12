@@ -10,6 +10,7 @@ data class GraphUiState(
     val chartData: List<ChartDataPoint> = emptyList(),
     val revenueComparison: RevenueComparison = RevenueComparison(),
     val productStats: List<ProductStatsData> = emptyList(),
+    val totalProductSalesInPeriod: Double = 0.0,
     val bestSellers: List<BestSellerData> = emptyList(),
     val customStartDateMillis: Long? = null,
     val customEndDateMillis: Long? = null,

@@ -192,7 +192,8 @@ fun GraphScreen(
             
             // Product Stats section
             ProductStatsCard(
-                productStats = uiState.productStats
+                productStats = uiState.productStats,
+                totalProductSalesInPeriod = uiState.totalProductSalesInPeriod
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -1112,7 +1113,8 @@ private fun LegendItem(
 
 @Composable
 private fun ProductStatsCard(
-    productStats: List<ProductStatsData>
+    productStats: List<ProductStatsData>,
+    totalProductSalesInPeriod: Double
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1134,9 +1136,8 @@ private fun ProductStatsCard(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            val totalAmount = productStats.sumOf { it.amount }
             Text(
-                text = "${formatCurrency(totalAmount)} ${stringResource(id = R.string.graph_currency_baht)}",
+                text = "${formatCurrency(totalProductSalesInPeriod)} ${stringResource(id = R.string.graph_currency_baht)}",
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Bold,
                     size = FontSize.Large
@@ -1170,7 +1171,7 @@ private fun ProductStatsCard(
                         ProductStatItem(
                             product = product,
                             rank = index + 1,
-                            totalAmount = totalAmount
+                            totalProductSalesInPeriod = totalProductSalesInPeriod
                         )
                     }
                     repeat(3 - productStats.size.coerceAtMost(3)) {
@@ -1186,11 +1187,11 @@ private fun ProductStatsCard(
 private fun ProductStatItem(
     product: ProductStatsData,
     rank: Int,
-    totalAmount: Double
+    totalProductSalesInPeriod: Double
 ) {
-    val sharePercent = if (totalAmount > 0) (product.amount / totalAmount * 100) else 0.0
-    val progressFraction = if (totalAmount > 0) {
-        (product.amount / totalAmount).coerceIn(0.05, 1.0)
+    val sharePercent = if (totalProductSalesInPeriod > 0) (product.amount / totalProductSalesInPeriod * 100) else 0.0
+    val progressFraction = if (totalProductSalesInPeriod > 0) {
+        (product.amount / totalProductSalesInPeriod).coerceIn(0.05, 1.0)
     } else {
         0.0
     }

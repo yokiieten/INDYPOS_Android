@@ -98,6 +98,7 @@ class GraphViewModel @Inject constructor(
                                     chartData = emptyList(),
                                     revenueComparison = RevenueComparison(),
                                     productStats = emptyList(),
+                                    totalProductSalesInPeriod = 0.0,
                                     bestSellers = emptyList()
                                 )
                             }
@@ -269,6 +270,7 @@ class GraphViewModel @Inject constructor(
                 rank = index + 1
             )
         }
+        val totalProductSalesInPeriod = productMap.values.sumOf { it.amount }
         
         _uiState.update { current ->
             current.copy(
@@ -277,6 +279,7 @@ class GraphViewModel @Inject constructor(
                 chartData = chartData,
                 revenueComparison = revenueComparison,
                 productStats = productStats,
+                totalProductSalesInPeriod = totalProductSalesInPeriod,
                 bestSellers = bestSellers
             )
         }
@@ -301,6 +304,7 @@ class GraphViewModel @Inject constructor(
                     chartData = emptyList(),
                     revenueComparison = RevenueComparison(),
                     productStats = emptyList(),
+                    totalProductSalesInPeriod = 0.0,
                     bestSellers = emptyList()
                 )
             }
@@ -339,6 +343,7 @@ class GraphViewModel @Inject constructor(
                     chartData = emptyList(),
                     revenueComparison = RevenueComparison(),
                     productStats = emptyList(),
+                    totalProductSalesInPeriod = 0.0,
                     bestSellers = emptyList()
                 )
             }
@@ -476,6 +481,7 @@ class GraphViewModel @Inject constructor(
                 rank = index + 1
             )
         }
+        val totalProductSalesInPeriod = productMap.values.sumOf { it.amount }
         
         _uiState.update { current ->
             current.copy(
@@ -484,6 +490,7 @@ class GraphViewModel @Inject constructor(
                 chartData = chartData,
                 revenueComparison = revenueComparison,
                 productStats = productStats,
+                totalProductSalesInPeriod = totalProductSalesInPeriod,
                 bestSellers = bestSellers
             )
         }
@@ -507,6 +514,7 @@ class GraphViewModel @Inject constructor(
                     chartData = emptyList(),
                     revenueComparison = RevenueComparison(),
                     productStats = emptyList(),
+                    totalProductSalesInPeriod = 0.0,
                     bestSellers = emptyList()
                 )
             }
@@ -545,6 +553,7 @@ class GraphViewModel @Inject constructor(
                     chartData = emptyList(),
                     revenueComparison = RevenueComparison(),
                     productStats = emptyList(),
+                    totalProductSalesInPeriod = 0.0,
                     bestSellers = emptyList()
                 )
             }
@@ -663,6 +672,7 @@ class GraphViewModel @Inject constructor(
                 rank = index + 1
             )
         }
+        val totalProductSalesInPeriod = productMap.values.sumOf { it.amount }
         
         _uiState.update { current ->
             current.copy(
@@ -671,6 +681,7 @@ class GraphViewModel @Inject constructor(
                 chartData = chartData,
                 revenueComparison = revenueComparison,
                 productStats = productStats,
+                totalProductSalesInPeriod = totalProductSalesInPeriod,
                 bestSellers = bestSellers
             )
         }
@@ -692,6 +703,7 @@ class GraphViewModel @Inject constructor(
                     chartData = emptyList(),
                     revenueComparison = RevenueComparison(),
                     productStats = emptyList(),
+                    totalProductSalesInPeriod = 0.0,
                     bestSellers = emptyList()
                 )
             }
@@ -725,6 +737,7 @@ class GraphViewModel @Inject constructor(
                     chartData = emptyList(),
                     revenueComparison = RevenueComparison(),
                     productStats = emptyList(),
+                    totalProductSalesInPeriod = 0.0,
                     bestSellers = emptyList()
                 )
             }
@@ -853,6 +866,7 @@ class GraphViewModel @Inject constructor(
                 rank = index + 1
             )
         }
+        val totalProductSalesInPeriod = productMap.values.sumOf { it.amount }
         
         _uiState.update { current ->
             current.copy(
@@ -861,6 +875,7 @@ class GraphViewModel @Inject constructor(
                 chartData = chartData,
                 revenueComparison = revenueComparison,
                 productStats = productStats,
+                totalProductSalesInPeriod = totalProductSalesInPeriod,
                 bestSellers = bestSellers
             )
         }
