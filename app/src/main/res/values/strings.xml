@@ -349,14 +349,19 @@
     <string name="account_package_basic">Basic</string>
     
     <!-- Change Password Screen -->
-    <string name="change_password_instruction">เพื่อความปลอดภัย ใช้อย่างน้อย 6 ตัวอักษร</string>
-    <string name="change_password_old_label">รหัสผ่านเดิม</string>
-    <string name="change_password_new_label">รหัสผ่านใหม่</string>
-    <string name="change_password_confirm_label">ยืนยันรหัสผ่านใหม่</string>
-    <string name="change_password_save">บันทึก</string>
-    <string name="change_password_success">เปลี่ยนรหัสผ่านสำเร็จ</string>
-    <string name="change_password_error_old_incorrect">รหัสผ่านเดิมไม่ถูกต้อง</string>
-    <string name="change_password_error_generic">เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน</string>
+    <string name="settings_change_password_title">เปลี่ยนรหัสผ่าน</string>
+    <string name="settings_change_password_old_placeholder">รหัสผ่านปัจจุบัน</string>
+    <string name="settings_change_password_new_placeholder">รหัสผ่านใหม่</string>
+    <string name="settings_change_password_confirm_placeholder">ยืนยันรหัสผ่านใหม่</string>
+    <string name="settings_change_password_info">เพื่อความปลอดภัย ใช้อย่างน้อย 6 ตัวอักษร</string>
+    <string name="settings_change_password_save">บันทึก</string>
+    <string name="settings_change_password_success">เปลี่ยนรหัสผ่านสำเร็จ</string>
+    <string name="settings_change_password_error_old_required">กรุณากรอกรหัสผ่านปัจจุบัน</string>
+    <string name="settings_change_password_error_new_required">กรุณากรอกรหัสผ่านใหม่</string>
+    <string name="settings_change_password_error_weak">รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร</string>
+    <string name="settings_change_password_error_mismatch">รหัสผ่านไม่ตรงกัน</string>
+    <string name="settings_change_password_error_old_incorrect">รหัสผ่านปัจจุบันไม่ถูกต้อง</string>
+    <string name="settings_change_password_error_generic">เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน</string>
     <string name="success_title">สำเร็จ</string>
     <string name="common_error">เกิดข้อผิดพลาด</string>
     

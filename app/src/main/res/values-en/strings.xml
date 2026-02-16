@@ -339,14 +339,19 @@
     <string name="logout_success_message">Logout successful</string>
     
     <!-- Change Password Screen -->
-    <string name="change_password_instruction">For security, use at least 6 characters</string>
-    <string name="change_password_old_label">Old Password</string>
-    <string name="change_password_new_label">New Password</string>
-    <string name="change_password_confirm_label">Confirm New Password</string>
-    <string name="change_password_save">Save</string>
-    <string name="change_password_success">Password changed successfully</string>
-    <string name="change_password_error_old_incorrect">Old password is incorrect</string>
-    <string name="change_password_error_generic">Failed to change password</string>
+    <string name="settings_change_password_title">Change Password</string>
+    <string name="settings_change_password_old_placeholder">Current password</string>
+    <string name="settings_change_password_new_placeholder">New password</string>
+    <string name="settings_change_password_confirm_placeholder">Confirm new password</string>
+    <string name="settings_change_password_info">For your security, use at least 6 characters</string>
+    <string name="settings_change_password_save">Save</string>
+    <string name="settings_change_password_success">Password changed successfully</string>
+    <string name="settings_change_password_error_old_required">Please enter current password</string>
+    <string name="settings_change_password_error_new_required">Please enter new password</string>
+    <string name="settings_change_password_error_weak">New password must be at least 6 characters</string>
+    <string name="settings_change_password_error_mismatch">Passwords do not match</string>
+    <string name="settings_change_password_error_old_incorrect">Current password is incorrect</string>
+    <string name="settings_change_password_error_generic">An error occurred while changing password</string>
     <string name="success_title">Success</string>
     <string name="common_error">Error</string>
     

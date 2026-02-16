@@ -11,6 +11,7 @@ import com.indybrain.indypos_Android.data.local.database.IndyPosDatabase
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
 import com.indybrain.indypos_Android.data.remote.api.ChangePasswordRequestDto
 import com.indybrain.indypos_Android.data.remote.api.ForgotPasswordRequestDto
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.remote.api.ResetPasswordRequestDto
 import com.indybrain.indypos_Android.data.remote.api.VerifyResetPasswordTokenRequestDto
 import com.indybrain.indypos_Android.data.remote.api.LoginRequestDto
@@ -350,7 +351,7 @@ class AuthRepositoryImpl @Inject constructor(
                 val errorMessage = getLocalizedChangePasswordErrorMessage(
                     errorText = response.message,
                     statusCode = response.status
-                ) ?: response.message ?: "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+                ) ?: response.message ?: context.getString(R.string.settings_change_password_error_generic)
                 Result.failure(IllegalStateException(errorMessage))
             }
         } catch (e: HttpException) {
@@ -360,7 +361,7 @@ class AuthRepositoryImpl @Inject constructor(
             val errorMessage = when {
                 e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
                 e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
-                else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+                else -> e.message ?: context.getString(R.string.settings_change_password_error_generic)
             }
             Result.failure(IllegalStateException(errorMessage, e))
         }
@@ -605,54 +606,76 @@ class AuthRepositoryImpl @Inject constructor(
     }
     
     /**
-     * Get localized error message for change password errors
-     * Similar to iOS implementation
+     * Get localized error message for change password API errors.
+     * Maps API error patterns to localized strings (supports Thai/English via device locale).
      */
     private fun getLocalizedChangePasswordErrorMessage(
         errorText: String?,
         statusCode: Int? = null
     ): String? {
-        val error = errorText?.lowercase() ?: return null
+        val error = errorText?.lowercase(Locale.ROOT) ?: return null
         
         // Check for "old password is incorrect" pattern
-        if (error.contains("old password") && 
-            (error.contains("incorrect") || error.contains("wrong") || 
-             error.contains("invalid") || error.contains("not match"))) {
-            return "รหัสผ่านเดิมไม่ถูกต้อง"
+        if (error.contains("old password") &&
+            (error.contains("incorrect") || error.contains("wrong") ||
+                error.contains("invalid") || error.contains("not match"))) {
+            return context.getString(R.string.settings_change_password_error_old_incorrect)
         }
         
-        // Check for "password" and "incorrect" together
-        if (error.contains("password") && 
+        // Check for "current password" (alternative API wording)
+        if (error.contains("current password") &&
+            (error.contains("incorrect") || error.contains("wrong") ||
+                error.contains("invalid") || error.contains("not match"))) {
+            return context.getString(R.string.settings_change_password_error_old_incorrect)
+        }
+        
+        // Check for "password" and "incorrect" together (generic password error)
+        if (error.contains("password") &&
             (error.contains("incorrect") || error.contains("wrong") || error.contains("invalid"))) {
-            return "รหัสผ่านเดิมไม่ถูกต้อง"
+            return context.getString(R.string.settings_change_password_error_old_incorrect)
+        }
+        
+        // Check for password mismatch (new vs confirm)
+        if (error.contains("mismatch") || error.contains("do not match") || error.contains("not match")) {
+            return context.getString(R.string.settings_change_password_error_mismatch)
+        }
+        
+        // Check for weak password
+        if (error.contains("at least") && error.contains("character")) {
+            return context.getString(R.string.settings_change_password_error_weak)
         }
         
         return null
     }
     
     /**
-     * Parse error message from HTTP error response body
+     * Parse error message from HTTP error response body (4xx/5xx from API).
+     * Maps known error patterns to localized strings.
      */
     private fun parseChangePasswordErrorMessage(errorBody: ResponseBody?): String {
         return try {
             if (errorBody == null) {
-                return "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+                return context.getString(R.string.settings_change_password_error_generic)
             }
             
             val errorJson = errorBody.string()
             if (errorJson.isBlank()) {
-                return "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+                return context.getString(R.string.settings_change_password_error_generic)
             }
             
             val errorResponse = gson.fromJson(errorJson, ChangePasswordErrorResponse::class.java)
-            val errorMessage = errorResponse?.message?.takeIf { it.isNotBlank() } 
+            val rawMessage = errorResponse?.message?.takeIf { it.isNotBlank() }
                 ?: errorResponse?.error?.takeIf { it.isNotBlank() }
-                ?: "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
             
-            // Apply localized error message logic
-            getLocalizedChangePasswordErrorMessage(errorMessage) ?: errorMessage
+            when {
+                rawMessage != null -> {
+                    // Map known API error patterns to localized message
+                    getLocalizedChangePasswordErrorMessage(rawMessage) ?: rawMessage
+                }
+                else -> context.getString(R.string.settings_change_password_error_generic)
+            }
         } catch (e: Exception) {
-            "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+            context.getString(R.string.settings_change_password_error_generic)
         }
     }
     

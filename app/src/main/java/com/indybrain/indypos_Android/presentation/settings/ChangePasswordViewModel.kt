@@ -1,9 +1,12 @@
 package com.indybrain.indypos_Android.presentation.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +19,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ChangePasswordViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository
 ) : ViewModel() {
     
@@ -75,7 +79,18 @@ class ChangePasswordViewModel @Inject constructor(
     
     fun changePassword() {
         val state = _uiState.value
-        if (!state.isFormValid) return
+        if (!state.isFormValid) {
+            _uiState.update {
+                it.copy(
+                    errorMessage = getValidationErrorMessage(
+                        oldPassword = it.oldPassword,
+                        newPassword = it.newPassword,
+                        confirmPassword = it.confirmPassword
+                    )
+                )
+            }
+            return
+        }
         
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -97,7 +112,7 @@ class ChangePasswordViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน"
+                        errorMessage = error.message ?: context.getString(R.string.settings_change_password_error_generic)
                     )
                 }
             }
@@ -138,6 +153,25 @@ class ChangePasswordViewModel @Inject constructor(
                 confirmPassword.isNotBlank() &&
                 newPassword.length >= 6 &&
                 newPassword == confirmPassword
+    }
+    
+    private fun getValidationErrorMessage(
+        oldPassword: String,
+        newPassword: String,
+        confirmPassword: String
+    ): String {
+        return when {
+            oldPassword.isBlank() ->
+                context.getString(R.string.settings_change_password_error_old_required)
+            newPassword.isBlank() ->
+                context.getString(R.string.settings_change_password_error_new_required)
+            confirmPassword.isBlank() || newPassword != confirmPassword ->
+                context.getString(R.string.settings_change_password_error_mismatch)
+            newPassword.length < 6 ->
+                context.getString(R.string.settings_change_password_error_weak)
+            else ->
+                context.getString(R.string.settings_change_password_error_generic)
+        }
     }
 }
 

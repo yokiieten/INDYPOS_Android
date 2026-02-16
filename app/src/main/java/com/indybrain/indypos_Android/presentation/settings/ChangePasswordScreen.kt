@@ -70,7 +70,7 @@ fun ChangePasswordScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(id = R.string.settings_change_password),
+                        text = stringResource(id = R.string.settings_change_password_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Large
@@ -103,7 +103,7 @@ fun ChangePasswordScreen(
         ) {
             // Instruction text
             Text(
-                text = stringResource(id = R.string.change_password_instruction),
+                text = stringResource(id = R.string.settings_change_password_info),
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
@@ -114,7 +114,7 @@ fun ChangePasswordScreen(
             
             // Old Password Field
             PasswordField(
-                label = stringResource(id = R.string.change_password_old_label),
+                label = stringResource(id = R.string.settings_change_password_old_placeholder),
                 password = uiState.oldPassword,
                 onPasswordChange = { viewModel.updateOldPassword(it) },
                 isPasswordVisible = uiState.isOldPasswordVisible,
@@ -127,7 +127,7 @@ fun ChangePasswordScreen(
             
             // New Password Field
             PasswordField(
-                label = stringResource(id = R.string.change_password_new_label),
+                label = stringResource(id = R.string.settings_change_password_new_placeholder),
                 password = uiState.newPassword,
                 onPasswordChange = { viewModel.updateNewPassword(it) },
                 isPasswordVisible = uiState.isNewPasswordVisible,
@@ -140,7 +140,7 @@ fun ChangePasswordScreen(
             
             // Confirm New Password Field
             PasswordField(
-                label = stringResource(id = R.string.change_password_confirm_label),
+                label = stringResource(id = R.string.settings_change_password_confirm_placeholder),
                 password = uiState.confirmPassword,
                 onPasswordChange = { viewModel.updateConfirmPassword(it) },
                 isPasswordVisible = uiState.isConfirmPasswordVisible,
@@ -154,7 +154,7 @@ fun ChangePasswordScreen(
             // Save Button
             Button(
                 onClick = { viewModel.changePassword() },
-                enabled = !uiState.isLoading && uiState.isFormValid,
+                enabled = !uiState.isLoading,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -165,7 +165,7 @@ fun ChangePasswordScreen(
                 )
             ) {
                 Text(
-                    text = stringResource(id = R.string.change_password_save),
+                    text = stringResource(id = R.string.settings_change_password_save),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Medium
@@ -192,7 +192,7 @@ fun ChangePasswordScreen(
             },
             text = {
                 Text(
-                    text = stringResource(R.string.change_password_success),
+                    text = stringResource(R.string.settings_change_password_success),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
