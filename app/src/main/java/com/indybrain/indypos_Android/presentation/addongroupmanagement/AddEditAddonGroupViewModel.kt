@@ -285,9 +285,9 @@ class AddEditAddonGroupViewModel @Inject constructor(
                         isSuccess = true,
                         isOfflineSuccess = isOffline,
                         successMessage = if (isOffline) {
-                            "แก้ไขกลุ่ม Addon สำเร็จ (บันทึกในเครื่อง)"
+                            context.getString(R.string.addon_group_form_success_edit_offline)
                         } else {
-                            "แก้ไขกลุ่ม Addon สำเร็จ"
+                            context.getString(R.string.addon_group_form_success_edit)
                         }
                     )
                 }

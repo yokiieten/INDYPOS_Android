@@ -232,7 +232,8 @@ class AddEditAddonViewModel @Inject constructor(
                     errorMessage.contains("free_plan_limit_exceeded", ignoreCase = true) -> {
                         "free_plan_limit_exceeded"
                     }
-                    errorMessage.contains("ชื่อ Addon นี้มีอยู่แล้ว") -> {
+                    errorMessage.contains("ชื่อ Addon นี้มีอยู่แล้ว", ignoreCase = true) ||
+                    errorMessage.contains("This addon name already exists", ignoreCase = true) -> {
                         context.getString(R.string.addon_form_error_duplicate_name)
                     }
                     else -> errorMessage
