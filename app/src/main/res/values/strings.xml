@@ -20,6 +20,11 @@
     <string name="forgot_password_error_email_invalid">รูปแบบอีเมลไม่ถูกต้อง</string>
     <string name="forgot_password_error_generic">เกิดข้อผิดพลาดในการส่งลิงก์รีเซ็ตรหัสผ่าน</string>
     
+    <!-- Content descriptions (accessibility) -->
+    <string name="cd_show_password">แสดงรหัสผ่าน</string>
+    <string name="cd_hide_password">ซ่อนรหัสผ่าน</string>
+    <string name="cd_app_logo">โลโก้แอป</string>
+    
     <!-- Reset Password Screen -->
     <string name="reset_password_title">รีเซ็ตรหัสผ่าน</string>
     <string name="reset_password_description">กรอกรหัสผ่านใหม่ของคุณ</string>

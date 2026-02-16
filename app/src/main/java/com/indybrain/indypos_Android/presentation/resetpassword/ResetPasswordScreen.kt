@@ -80,7 +80,7 @@ fun ResetPasswordScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "กลับ",
+                        contentDescription = stringResource(R.string.common_back),
                         tint = PrimaryText
                     )
                 }
@@ -104,7 +104,7 @@ fun ResetPasswordScreen(
                     // App Logo
                     Image(
                         painter = painterResource(id = R.drawable.logo_appstore),
-                        contentDescription = "App Logo",
+                        contentDescription = stringResource(R.string.cd_app_logo),
                         modifier = Modifier.size(80.dp)
                     )
                     
@@ -143,7 +143,7 @@ fun ResetPasswordScreen(
                     // App Logo
                     Image(
                         painter = painterResource(id = R.drawable.logo_appstore),
-                        contentDescription = "App Logo",
+                        contentDescription = stringResource(R.string.cd_app_logo),
                         modifier = Modifier.size(80.dp)
                     )
                     
@@ -426,9 +426,9 @@ private fun PasswordField(
                         }
                     ),
                     contentDescription = if (isPasswordVisible) {
-                        "Hide password"
+                        stringResource(R.string.cd_hide_password)
                     } else {
-                        "Show password"
+                        stringResource(R.string.cd_show_password)
                     },
                     tint = Color.Unspecified
                 )

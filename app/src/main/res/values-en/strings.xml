@@ -20,6 +20,11 @@
     <string name="forgot_password_error_email_invalid">Invalid email format</string>
     <string name="forgot_password_error_generic">Failed to send password reset link</string>
     
+    <!-- Content descriptions (accessibility) -->
+    <string name="cd_show_password">Show password</string>
+    <string name="cd_hide_password">Hide password</string>
+    <string name="cd_app_logo">App logo</string>
+    
     <!-- Reset Password Screen -->
     <string name="reset_password_title">Reset Password</string>
     <string name="reset_password_description">Enter your new password</string>
@@ -143,6 +148,10 @@
     <string name="home_nav_settings">Settings</string>
     <string name="home_error_title">Error</string>
     <string name="home_ok">OK</string>
+    <string name="home_success_title">Success</string>
+    
+    <!-- Common -->
+    <string name="common_back">Back</string>
     
     <!-- API Error Messages -->
     <string name="api_error_unauthorized">Session expired. Please login again</string>
