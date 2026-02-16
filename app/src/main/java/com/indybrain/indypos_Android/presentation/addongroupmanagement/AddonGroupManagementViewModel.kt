@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,8 +44,10 @@ class AddonGroupManagementViewModel @Inject constructor(
                 // Has internet - fetch from API and sync with Room
                 val result = addonGroupRepository.fetchAndSyncAddonGroups()
                 result.onSuccess {
-                    // Data will be updated via observeAddonGroups() Flow
-                }.onFailure { error ->
+                    // When list is empty, Flow may not emit -> load and set isLoading=false
+                    loadAddonGroupsFromRoomAndUpdateState()
+                }
+                result.onFailure { error ->
                     _uiState.update { current ->
                         current.copy(
                             isLoading = false,
@@ -53,9 +56,32 @@ class AddonGroupManagementViewModel @Inject constructor(
                     }
                 }
             } else {
-                // No internet - data will be loaded from Room via Flow
-                // isLoading will be set to false by observeAddonGroups() when data arrives
+                // No internet - Flow may not emit again if data unchanged/empty
+                loadAddonGroupsFromRoomAndUpdateState()
             }
+        }
+    }
+    
+    /**
+     * Load addon groups from Room and update state - used when Flow may not emit (e.g. empty list)
+     */
+    private suspend fun loadAddonGroupsFromRoomAndUpdateState() {
+        val groupsWithCount = addonGroupRepository.getAllAddonGroupsWithCountFlow().first()
+        val sortedGroups = groupsWithCount.sortedBy { it.addonGroup.sortOrder ?: 0 }
+        val addonGroups = sortedGroups.map { it.addonGroup }
+        val counts = sortedGroups.associate { it.addonGroup.id to it.addonCount }
+        _uiState.update { current ->
+            val pendingDeleteIds = current.pendingDeleteAddonGroupIds
+            val visibleAddonGroups = addonGroups.filterNot { pendingDeleteIds.contains(it.id) }
+            val filtered = if (current.searchQuery.isNotBlank()) {
+                visibleAddonGroups.filter { it.name.contains(current.searchQuery, ignoreCase = true) }
+            } else null
+            current.copy(
+                addonGroups = visibleAddonGroups,
+                filteredAddonGroups = filtered,
+                addonCounts = counts,
+                isLoading = false
+            )
         }
     }
     

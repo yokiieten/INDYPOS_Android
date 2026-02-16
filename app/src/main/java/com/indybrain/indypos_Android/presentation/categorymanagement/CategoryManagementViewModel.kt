@@ -47,8 +47,21 @@ class CategoryManagementViewModel @Inject constructor(
                     // Has internet - fetch from API and sync with Room
                     val result = productRepository.fetchAndSyncCategories()
                     result.onSuccess {
-                        // Data will be updated via observeCategories() Flow
-                        // isLoading will be set to false when Flow emits data
+                        // When list is empty, Room Flow may not emit (no DB change) -> load and set isLoading=false
+                        val categories = productRepository.getAllCategories()
+                            .sortedBy { it.createdAt }
+                        _uiState.update { current ->
+                            val pendingDeleteIds = current.pendingDeleteCategoryIds
+                            val visibleCategories = categories.filterNot { pendingDeleteIds.contains(it.id) }
+                            val filtered = if (current.searchQuery.isNotBlank()) {
+                                visibleCategories.filter { it.name.contains(current.searchQuery, ignoreCase = true) }
+                            } else null
+                            current.copy(
+                                categories = visibleCategories,
+                                filteredCategories = filtered,
+                                isLoading = false
+                            )
+                        }
                     }.onFailure { error ->
                         _uiState.update { current ->
                             current.copy(
@@ -58,8 +71,21 @@ class CategoryManagementViewModel @Inject constructor(
                         }
                     }
                 } else {
-                    // No internet - data will be loaded from Room via Flow
-                    // isLoading will be set to false by observeCategories() when data arrives
+                    // No internet - load from Room, Flow may not emit again if data unchanged/empty
+                    val categories = productRepository.getAllCategories()
+                        .sortedBy { it.createdAt }
+                    _uiState.update { current ->
+                        val pendingDeleteIds = current.pendingDeleteCategoryIds
+                        val visibleCategories = categories.filterNot { pendingDeleteIds.contains(it.id) }
+                        val filtered = if (current.searchQuery.isNotBlank()) {
+                            visibleCategories.filter { it.name.contains(current.searchQuery, ignoreCase = true) }
+                        } else null
+                        current.copy(
+                            categories = visibleCategories,
+                            filteredCategories = filtered,
+                            isLoading = false
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { current ->

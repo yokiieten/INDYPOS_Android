@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -45,6 +46,10 @@ class AddOnManagementViewModel @Inject constructor(
             if (networkConnectivityChecker.isConnected()) {
                 // Has internet - sync from API first
                 val result = addonRepository.fetchAndSyncAddons()
+                result.onSuccess {
+                    // When list is empty, Flow may not emit -> load and set isLoading=false
+                    loadAddonsFromRoomAndUpdateState()
+                }
                 result.onFailure { error ->
                     _uiState.update { current ->
                         current.copy(
@@ -53,11 +58,35 @@ class AddOnManagementViewModel @Inject constructor(
                         )
                     }
                 }
-                // On success, data will be updated via observeAddons() Flow
             } else {
-                // No internet - data will be loaded from Room via Flow
-                // isLoading will be set to false by observeAddons() when data arrives
+                // No internet - Flow may not emit again if data unchanged/empty
+                loadAddonsFromRoomAndUpdateState()
             }
+        }
+    }
+    
+    /**
+     * Load addons from Room and update state - used when Flow may not emit (e.g. empty list)
+     */
+    private suspend fun loadAddonsFromRoomAndUpdateState() {
+        val addons = addonRepository.getAllAddonsForManagementFlow().first()
+        val query = searchQueryFlow.value
+        val filtered = addons.filter { addon ->
+            query.isBlank() || addon.name.contains(query, ignoreCase = true)
+        }
+        val sorted = filtered.sortedWith(
+            compareBy<AddonEntity> { if (it.isSynced) 1 else 0 }.thenBy { it.name }
+        )
+        _uiState.update { current ->
+            val pendingDeleteIds = current.pendingDeleteAddonIds
+            val visibleAll = addons.filter { !pendingDeleteIds.contains(it.id) }
+            val visibleFiltered = sorted.filter { !pendingDeleteIds.contains(it.id) }
+            current.copy(
+                addons = visibleAll,
+                filteredAddons = visibleFiltered,
+                searchQuery = query,
+                isLoading = false
+            )
         }
     }
     

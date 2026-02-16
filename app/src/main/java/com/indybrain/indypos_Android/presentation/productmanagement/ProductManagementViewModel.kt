@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -47,6 +48,10 @@ class ProductManagementViewModel @Inject constructor(
             if (networkConnectivityChecker.isConnected()) {
                 // Has internet - sync from API first
                 val result = productRepository.syncAllProductData()
+                result.onSuccess {
+                    // When list is empty, Flow may not emit -> load and set isLoading=false
+                    loadProductsFromRoomAndUpdateState()
+                }
                 result.onFailure { error ->
                     _uiState.update { current ->
                         current.copy(
@@ -55,11 +60,38 @@ class ProductManagementViewModel @Inject constructor(
                         )
                     }
                 }
-                // On success, data will be updated via observeProducts() Flow
             } else {
-                // No internet - data will be loaded from Room via Flow
-                // isLoading will be set to false by observeProducts() when data arrives
+                // No internet - Flow may not emit again if data unchanged/empty
+                loadProductsFromRoomAndUpdateState()
             }
+        }
+    }
+    
+    /**
+     * Load products from Room and update state - used when Flow may not emit (e.g. empty list)
+     */
+    private suspend fun loadProductsFromRoomAndUpdateState() {
+        val products = productRepository.getAllProductsForManagement().first()
+        val query = searchQueryFlow.value
+        val categoryId = selectedCategoryFlow.value
+        val filtered = products.filter { product ->
+            val matchesSearch = query.isBlank() || product.name?.contains(query, ignoreCase = true) == true
+            val matchesCategory = categoryId == null || product.categoryId == categoryId
+            matchesSearch && matchesCategory
+        }
+        val sorted = filtered.sortedWith(
+            compareBy<ProductEntity> { if (it.isSynced == true) 1 else 0 }.thenBy { it.name ?: "" }
+        )
+        _uiState.update { current ->
+            val pendingDeleteIds = current.pendingDeleteProductIds
+            val visibleAll = products.filter { it.id == null || !pendingDeleteIds.contains(it.id) }
+            val visibleFiltered = sorted.filter { it.id == null || !pendingDeleteIds.contains(it.id) }
+            current.copy(
+                products = visibleAll,
+                filteredProducts = visibleFiltered,
+                searchQuery = query,
+                isLoading = false
+            )
         }
     }
     
