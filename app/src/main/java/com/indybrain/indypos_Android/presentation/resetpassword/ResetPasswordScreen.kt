@@ -56,6 +56,13 @@ fun ResetPasswordScreen(
         }
     }
     
+    // Req 2 & 3: When logged in + token expired/valid -> navigate back silently (no popup)
+    LaunchedEffect(uiState.shouldNavigateBack, uiState.errorMessage) {
+        if (uiState.shouldNavigateBack && uiState.errorMessage == null) {
+            viewModel.handleIntent(ResetPasswordIntent.ClearError)
+            onBackClick()
+        }
+    }
     
     Scaffold(
         modifier = Modifier.fillMaxSize(),

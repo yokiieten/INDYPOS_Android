@@ -41,43 +41,80 @@ class ResetPasswordViewModel @Inject constructor(
         _uiState.update { it.copy(isVerifyingToken = true, errorMessage = null) }
         
         viewModelScope.launch {
+            val isLoggedIn = authRepository.isLoggedIn()
             try {
                 authRepository.verifyResetPasswordToken(token)
                     .onSuccess { userId ->
-                        _uiState.update {
-                            it.copy(
-                                isVerifyingToken = false,
-                                isTokenVerified = true,
-                                userId = userId,
-                                errorMessage = null
-                            )
+                        if (isLoggedIn) {
+                            // Req 3: Logged in + valid token -> don't show Reset Password, navigate back
+                            _uiState.update {
+                                it.copy(
+                                    isVerifyingToken = false,
+                                    isTokenVerified = false,
+                                    shouldNavigateBack = true,
+                                    errorMessage = null
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isVerifyingToken = false,
+                                    isTokenVerified = true,
+                                    userId = userId,
+                                    errorMessage = null
+                                )
+                            }
                         }
                     }
                     .onFailure {
-                        // Always use resource key for proper localization (TH/EN)
-                        val errorMessage = "reset_password_error_token_expired"
-                        _uiState.update {
-                            it.copy(
-                                isVerifyingToken = false,
-                                isTokenVerified = false,
-                                errorMessage = errorMessage,
-                                shouldNavigateBack = true
-                            )
+                        if (isLoggedIn) {
+                            // Req 2: Logged in + expired token -> no popup, navigate back silently
+                            _uiState.update {
+                                it.copy(
+                                    isVerifyingToken = false,
+                                    isTokenVerified = false,
+                                    shouldNavigateBack = true,
+                                    errorMessage = null
+                                )
+                            }
+                        } else {
+                            // Req 1: Not logged in + expired token -> show popup with localized text
+                            val errorMessage = "reset_password_error_token_expired"
+                            _uiState.update {
+                                it.copy(
+                                    isVerifyingToken = false,
+                                    isTokenVerified = false,
+                                    errorMessage = errorMessage,
+                                    shouldNavigateBack = true
+                                )
+                            }
+                            _state.value = ResetPasswordState.Error(errorMessage)
                         }
-                        _state.value = ResetPasswordState.Error(errorMessage)
                     }
             } catch (e: Exception) {
-                // Always use resource key for proper localization (TH/EN)
-                val errorMessage = "reset_password_error_token_expired"
-                _uiState.update {
-                    it.copy(
-                        isVerifyingToken = false,
-                        isTokenVerified = false,
-                        errorMessage = errorMessage,
-                        shouldNavigateBack = true
-                    )
+                if (isLoggedIn) {
+                    // Req 2: Logged in + error -> no popup, navigate back silently
+                    _uiState.update {
+                        it.copy(
+                            isVerifyingToken = false,
+                            isTokenVerified = false,
+                            shouldNavigateBack = true,
+                            errorMessage = null
+                        )
+                    }
+                } else {
+                    // Req 1: Not logged in + error -> show popup
+                    val errorMessage = "reset_password_error_token_expired"
+                    _uiState.update {
+                        it.copy(
+                            isVerifyingToken = false,
+                            isTokenVerified = false,
+                            errorMessage = errorMessage,
+                            shouldNavigateBack = true
+                        )
+                    }
+                    _state.value = ResetPasswordState.Error(errorMessage)
                 }
-                _state.value = ResetPasswordState.Error(errorMessage)
             }
         }
     }

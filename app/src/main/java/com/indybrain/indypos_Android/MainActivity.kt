@@ -1096,16 +1096,13 @@ class MainActivity : ComponentActivity() {
                 
                 val token = data.getQueryParameter("token")
                 if (token != null && token.isNotEmpty()) {
-                    // Navigate to reset password screen with token
-                    // Use a small delay to ensure UI is ready
                     coroutineScope.launch {
                         kotlinx.coroutines.delay(500)
-                        // Always navigate to reset password screen, even if already there
-                        // This allows handling the same link clicked again
+                        // ถ้า login ค้างไว้ ไม่ navigate ไปหน้า Reset Password (ไม่มีอะไรเกิดขึ้น)
+                        if (authRepository.isLoggedIn()) {
+                            return@launch
+                        }
                         val resetPasswordRoute = NavRoutes.resetPassword(token)
-                        
-                        // Navigate to reset password screen
-                        // Clear back stack to Login so user can go back to login
                         navController.navigate(resetPasswordRoute) {
                             // Pop to Login if it exists, otherwise clear all
                             val loginRoute = NavRoutes.Login.route
