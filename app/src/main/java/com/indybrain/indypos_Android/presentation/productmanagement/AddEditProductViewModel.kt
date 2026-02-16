@@ -508,7 +508,7 @@ class AddEditProductViewModel @Inject constructor(
             // Validation error - keep dialog open and show error message
             _uiState.update { 
                 it.copy(
-                    categoryError = "กรุณาใส่ชื่อหมวดหมู่"
+                    categoryError = context.getString(R.string.product_form_add_category_message)
                 )
             }
             return
@@ -539,7 +539,7 @@ class AddEditProductViewModel @Inject constructor(
                     it.copy(
                         categoryId = category.id,
                         isCreatingCategory = false,
-                        categorySuccess = "เพิ่มหมวดหมู่ '$categoryName' เรียบร้อยแล้ว",
+                        categorySuccess = context.getString(R.string.product_form_add_category_success, categoryName),
                         showAddCategoryDialog = false,
                         categoryName = "",
                         categoryError = null
@@ -555,7 +555,7 @@ class AddEditProductViewModel @Inject constructor(
                         showAddCategoryDialog = false,
                         categoryName = "",
                         categoryError = null,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่"
+                        errorMessage = error.message ?: context.getString(R.string.product_form_error_add_category)
                     ) 
                 }
             }
@@ -733,7 +733,7 @@ class AddEditProductViewModel @Inject constructor(
                                         isLoading = false,
                                         loadingMessage = null,
                                         showImageUploadErrorDialog = true,
-                                        errorMessage = error?.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
+                                        errorMessage = error?.message ?: context.getString(R.string.product_form_image_upload_error_message)
                                     )
                                 }
                                 return@launch
@@ -836,7 +836,7 @@ class AddEditProductViewModel @Inject constructor(
                     val isLocalUri = state.imageUrl.startsWith("content://") || state.imageUrl.startsWith("file://")
                     if (isLocalUri) {
                         _uiState.update { 
-                            it.copy(loadingMessage = "กำลังอัปโหลดรูปภาพ...")
+                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_uploading_image))
                         }
                         
                         try {
@@ -851,7 +851,7 @@ class AddEditProductViewModel @Inject constructor(
                                         isLoading = false,
                                         loadingMessage = null,
                                         showImageUploadErrorDialog = true,
-                                        errorMessage = error?.message ?: "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"
+                                        errorMessage = error?.message ?: context.getString(R.string.product_form_image_upload_error_message)
                                     )
                                 }
                                 return@launch
@@ -875,13 +875,13 @@ class AddEditProductViewModel @Inject constructor(
                         }
                     } else {
                         _uiState.update { 
-                            it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
                         }
                     }
                 } else {
                     if (hasNetwork) {
                         _uiState.update { 
-                            it.copy(loadingMessage = "กำลังบันทึกสินค้า...")
+                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
                         }
                     }
                 }

@@ -621,6 +621,8 @@
     <string name="product_form_add_category_title">เพิ่มหมวดหมู่ใหม่</string>
     <string name="product_form_add_category_message">กรุณาใส่ชื่อหมวดหมู่</string>
     <string name="product_form_add_category_placeholder">กรอกชื่อหมวดหมู่</string>
+    <string name="product_form_error_add_category">เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่</string>
+    <string name="product_form_add_category_success">เพิ่มหมวดหมู่ \'%1$s\' เรียบร้อยแล้ว</string>
     <string name="product_form_addon_group_selected">เลือก</string>
     <string name="product_form_validation_name_required">กรุณากรอกชื่อสินค้า</string>
     <string name="product_form_validation_code_required">กรุณากรอกรหัสสินค้า</string>

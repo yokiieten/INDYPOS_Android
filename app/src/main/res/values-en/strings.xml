@@ -606,6 +606,8 @@
     <string name="product_form_add_category_title">Add New Category</string>
     <string name="product_form_add_category_message">Please enter category name</string>
     <string name="product_form_add_category_placeholder">Enter category name</string>
+    <string name="product_form_error_add_category">Failed to add category</string>
+    <string name="product_form_add_category_success">Category \'%1$s\' added successfully</string>
     <string name="product_form_addon_group_selected">Selected</string>
     <string name="product_form_validation_name_required">Please enter product name</string>
     <string name="product_form_validation_code_required">Please enter product code</string>
