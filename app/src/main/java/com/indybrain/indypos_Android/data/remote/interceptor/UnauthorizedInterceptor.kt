@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.data.remote.interceptor
 
 import android.util.Log
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.indybrain.indypos_Android.core.error.UnauthorizedErrorHandler
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -27,6 +28,13 @@ class UnauthorizedInterceptor @Inject constructor(
         // Check for 401 status code
         if (response.code == 401) {
             Log.d(TAG, "🔍 401 Unauthorized detected on ${request.url}")
+
+            // For login endpoint, NEVER force logout - always let repository handle it
+            val isLoginEndpoint = request.url.encodedPath.contains("auth/login")
+            if (isLoginEndpoint) {
+                Log.d(TAG, "🔒 401 on login endpoint - Skipping force logout, let repository handle")
+                return response
+            }
 
             // Parse response body to check for specific error messages
             val responseBody = response.peekBody(Long.MAX_VALUE).string()
@@ -64,11 +72,14 @@ class UnauthorizedInterceptor @Inject constructor(
     }
 
     /**
-     * Data class for parsing error responses
+     * Data class for parsing error responses.
+     * CRITICAL: @SerializedName required for ProGuard/R8 release builds -
+     * without it, obfuscated field names cause Gson parsing to fail,
+     * leading to handle401Error() being wrongly triggered for login 401s.
      */
     private data class ErrorResponse(
-        val error: String?,
-        val message: String?,
-        val statusCode: Int?
+        @SerializedName("error") val error: String?,
+        @SerializedName("message") val message: String?,
+        @SerializedName("statusCode") val statusCode: Int?
     )
 }
