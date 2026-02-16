@@ -53,8 +53,9 @@ class ResetPasswordViewModel @Inject constructor(
                             )
                         }
                     }
-                    .onFailure { exception ->
-                        val errorMessage = exception.message ?: "reset_password_error_token_expired"
+                    .onFailure {
+                        // Always use resource key for proper localization (TH/EN)
+                        val errorMessage = "reset_password_error_token_expired"
                         _uiState.update {
                             it.copy(
                                 isVerifyingToken = false,
@@ -66,7 +67,8 @@ class ResetPasswordViewModel @Inject constructor(
                         _state.value = ResetPasswordState.Error(errorMessage)
                     }
             } catch (e: Exception) {
-                val errorMessage = e.message ?: "reset_password_error_token_expired"
+                // Always use resource key for proper localization (TH/EN)
+                val errorMessage = "reset_password_error_token_expired"
                 _uiState.update {
                     it.copy(
                         isVerifyingToken = false,
@@ -105,7 +107,8 @@ class ResetPasswordViewModel @Inject constructor(
                     it.copy(
                         errorMessage = null,
                         successMessage = null,
-                        isSuccess = false
+                        isSuccess = false,
+                        shouldNavigateBack = false
                     ) 
                 }
                 _state.value = ResetPasswordState.Idle

@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -55,13 +56,6 @@ fun ResetPasswordScreen(
         }
     }
     
-    // Handle navigation back on token verification failure
-    LaunchedEffect(uiState.shouldNavigateBack) {
-        if (uiState.shouldNavigateBack) {
-            kotlinx.coroutines.delay(2000) // Show error for 2 seconds before navigating back
-            onBackClick()
-        }
-    }
     
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -285,16 +279,26 @@ fun ResetPasswordScreen(
         }
     }
     
-    // Error dialog
+    // Error dialog - dismiss only when user taps OK (not auto-dismiss)
     uiState.errorMessage?.let { errorMessage ->
+        val shouldNavigateBack = uiState.shouldNavigateBack
         AlertDialog(
             onDismissRequest = {
-                viewModel.handleIntent(ResetPasswordIntent.ClearError)
+                if (!shouldNavigateBack) {
+                    viewModel.handleIntent(ResetPasswordIntent.ClearError)
+                }
             },
+            properties = DialogProperties(
+                dismissOnClickOutside = !shouldNavigateBack,
+                dismissOnBackPress = !shouldNavigateBack
+            ),
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.handleIntent(ResetPasswordIntent.ClearError)
+                        if (shouldNavigateBack) {
+                            onBackClick()
+                        }
                     }
                 ) {
                     Text(
