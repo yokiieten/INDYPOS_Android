@@ -13,6 +13,49 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
+ * In-memory cache for verified reset-password tokens.
+ * Survives ViewModel/Activity recreation (e.g. screen rotation) to prevent duplicate API calls.
+ */
+private object ResetPasswordVerifyCache {
+    private val verifiedTokens = mutableMapOf<String, Int?>() // token -> userId
+    private val verifyingTokens = mutableSetOf<String>()
+    private val resetCompletedTokens = mutableSetOf<String>() // token already had reset success
+
+    @Synchronized
+    fun isVerified(token: String): Boolean = token in verifiedTokens
+
+    @Synchronized
+    fun getUserId(token: String): Int? = verifiedTokens[token]
+
+    @Synchronized
+    fun isVerifying(token: String): Boolean = token in verifyingTokens
+
+    @Synchronized
+    fun isResetCompleted(token: String): Boolean = token in resetCompletedTokens
+
+    @Synchronized
+    fun markVerifying(token: String) { verifyingTokens.add(token) }
+
+    @Synchronized
+    fun markVerified(token: String, userId: Int?) {
+        verifyingTokens.remove(token)
+        verifiedTokens[token] = userId
+    }
+
+    @Synchronized
+    fun markVerifyFailed(token: String) {
+        verifyingTokens.remove(token)
+    }
+
+    @Synchronized
+    fun markResetCompleted(token: String) {
+        verifiedTokens.remove(token)
+        verifyingTokens.remove(token)
+        resetCompletedTokens.add(token)
+    }
+}
+
+/**
  * ViewModel for Reset Password screen implementing MVI pattern with StateFlow
  */
 @HiltViewModel
@@ -20,7 +63,7 @@ class ResetPasswordViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val resetPasswordUseCase: ResetPasswordUseCase
 ) : ViewModel() {
-    
+
     // UI State Flow
     private val _uiState = MutableStateFlow(ResetPasswordUiState())
     val uiState: StateFlow<ResetPasswordUiState> = _uiState.asStateFlow()
@@ -33,19 +76,53 @@ class ResetPasswordViewModel @Inject constructor(
     private var resetToken: String? = null
     
     fun setTokenAndVerify(token: String) {
+        if (token.isBlank()) return
         resetToken = token
-        verifyToken(token)
+
+        // Use cache to prevent duplicate API calls (survives ViewModel recreation on rotation)
+        when {
+            ResetPasswordVerifyCache.isResetCompleted(token) -> {
+                // Reset already succeeded - skip API, navigate to login without showing popup again
+                _uiState.update {
+                    it.copy(
+                        isVerifyingToken = false,
+                        isTokenVerified = true,
+                        isLoading = false,
+                        errorMessage = null,
+                        shouldNavigateToLoginOnRestore = true
+                    )
+                }
+                return
+            }
+            ResetPasswordVerifyCache.isVerified(token) -> {
+                val userId = ResetPasswordVerifyCache.getUserId(token)
+                _uiState.update {
+                    it.copy(
+                        isVerifyingToken = false,
+                        isTokenVerified = true,
+                        userId = userId,
+                        errorMessage = null
+                    )
+                }
+                return
+            }
+            ResetPasswordVerifyCache.isVerifying(token) -> return
+            _uiState.value.isSuccess -> return
+            else -> verifyToken(token)
+        }
     }
     
     private fun verifyToken(token: String) {
+        ResetPasswordVerifyCache.markVerifying(token)
         _uiState.update { it.copy(isVerifyingToken = true, errorMessage = null) }
-        
+
         viewModelScope.launch {
             val isLoggedIn = authRepository.isLoggedIn()
             try {
                 authRepository.verifyResetPasswordToken(token)
                     .onSuccess { userId ->
                         if (isLoggedIn) {
+                            ResetPasswordVerifyCache.markVerifyFailed(token)
                             // Req 3: Logged in + valid token -> don't show Reset Password, navigate back
                             _uiState.update {
                                 it.copy(
@@ -56,6 +133,7 @@ class ResetPasswordViewModel @Inject constructor(
                                 )
                             }
                         } else {
+                            ResetPasswordVerifyCache.markVerified(token, userId)
                             _uiState.update {
                                 it.copy(
                                     isVerifyingToken = false,
@@ -67,6 +145,7 @@ class ResetPasswordViewModel @Inject constructor(
                         }
                     }
                     .onFailure {
+                        ResetPasswordVerifyCache.markVerifyFailed(token)
                         if (isLoggedIn) {
                             // Req 2: Logged in + expired token -> no popup, navigate back silently
                             _uiState.update {
@@ -92,6 +171,7 @@ class ResetPasswordViewModel @Inject constructor(
                         }
                     }
             } catch (e: Exception) {
+                ResetPasswordVerifyCache.markVerifyFailed(token)
                 if (isLoggedIn) {
                     // Req 2: Logged in + error -> no popup, navigate back silently
                     _uiState.update {
@@ -145,7 +225,8 @@ class ResetPasswordViewModel @Inject constructor(
                         errorMessage = null,
                         successMessage = null,
                         isSuccess = false,
-                        shouldNavigateBack = false
+                        shouldNavigateBack = false,
+                        shouldNavigateToLoginOnRestore = false
                     ) 
                 }
                 _state.value = ResetPasswordState.Idle
@@ -200,8 +281,10 @@ class ResetPasswordViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
-                resetPasswordUseCase(resetToken!!, _uiState.value.newPassword.trim())
+                val token = resetToken!!
+                resetPasswordUseCase(token, _uiState.value.newPassword.trim())
                     .onSuccess {
+                        ResetPasswordVerifyCache.markResetCompleted(token)
                         val successMessage = "reset_password_success_message"
                         _uiState.update {
                             it.copy(

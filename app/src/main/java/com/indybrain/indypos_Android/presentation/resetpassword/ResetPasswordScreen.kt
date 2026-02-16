@@ -38,11 +38,13 @@ fun ResetPasswordScreen(
     onBackClick: () -> Unit = {},
     onSuccess: () -> Unit = {}
 ) {
-    // Set token and verify when screen is first composed
-    LaunchedEffect(token) {
-        viewModel.setTokenAndVerify(token)
+    // Verify token when screen is composed (LaunchedEffect(Unit) = once per composition entry; cache prevents duplicate API)
+    LaunchedEffect(Unit) {
+        if (token.isNotBlank()) {
+            viewModel.setTokenAndVerify(token)
+        }
     }
-    
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     
@@ -61,6 +63,14 @@ fun ResetPasswordScreen(
         if (uiState.shouldNavigateBack && uiState.errorMessage == null) {
             viewModel.handleIntent(ResetPasswordIntent.ClearError)
             onBackClick()
+        }
+    }
+
+    // หลังหมุนจอ: reset สำเร็จแล้ว → ไป login โดยไม่แสดง popup ซ้ำ
+    LaunchedEffect(uiState.shouldNavigateToLoginOnRestore) {
+        if (uiState.shouldNavigateToLoginOnRestore) {
+            viewModel.handleIntent(ResetPasswordIntent.ClearError)
+            onSuccess()
         }
     }
     

@@ -40,6 +40,8 @@ data class ResetPasswordUiState(
     val errorMessage: String? = null,
     val successMessage: String? = null,
     val isSuccess: Boolean = false,
-    val shouldNavigateBack: Boolean = false
+    val shouldNavigateBack: Boolean = false,
+    /** true = restore หลังหมุนจอ (reset สำเร็จแล้ว) → ไป login โดยไม่แสดง popup */
+    val shouldNavigateToLoginOnRestore: Boolean = false
 )
 

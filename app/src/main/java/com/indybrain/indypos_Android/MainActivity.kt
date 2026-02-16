@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -199,8 +200,8 @@ class MainActivity : ComponentActivity() {
                     // Store current intent URI and timestamp to force updates
                     var currentIntentUri by remember { mutableStateOf(intent?.data?.toString()) }
                     var lastIntentTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
-                    // Track the last processed intent URI to prevent re-processing on resume
-                    var lastProcessedIntentUri by remember { mutableStateOf<String?>(null) }
+                    // Track the last processed intent URI (persist across config change เพื่อไม่กระพริบไป ResetPassword ตอนหมุนจอ)
+                    var lastProcessedIntentUri by rememberSaveable { mutableStateOf<String?>(null) }
                     // Track if we have a new intent from onNewIntent that needs processing
                     var hasNewIntentToProcess by remember { mutableStateOf(false) }
                     
