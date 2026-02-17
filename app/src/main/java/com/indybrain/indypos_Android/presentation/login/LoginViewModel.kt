@@ -1,15 +1,21 @@
 package com.indybrain.indypos_Android.presentation.login
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.model.LoginRequest
 import com.indybrain.indypos_Android.domain.usecase.LoginUseCase
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
 
 /**
@@ -17,8 +23,17 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     private val loginUseCase: LoginUseCase
 ) : ViewModel() {
+
+    /** Returns string in the user's selected language (respects language change in Settings) */
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
     
     // UI State Flow
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -66,12 +81,11 @@ class LoginViewModel @Inject constructor(
             
             is LoginIntent.ShowUnauthorizedError -> {
                 // Show unauthorized error message (session expired)
+                val message = getLocalizedString(R.string.api_error_unauthorized)
                 _uiState.update {
-                    it.copy(
-                        errorMessage = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง"
-                    )
+                    it.copy(errorMessage = message)
                 }
-                _state.value = LoginState.Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง")
+                _state.value = LoginState.Error(message)
             }
         }
     }
@@ -84,13 +98,14 @@ class LoginViewModel @Inject constructor(
         val password = _uiState.value.password
         
         if (email.isBlank() || password.isBlank()) {
-            _uiState.update { 
+            val message = getLocalizedString(R.string.login_error_fields_required)
+            _uiState.update {
                 it.copy(
-                    errorMessage = "Please fill in all fields",
+                    errorMessage = message,
                     isLoading = false
                 )
             }
-            _state.value = LoginState.Error("Please fill in all fields")
+            _state.value = LoginState.Error(message)
             return
         }
         
@@ -116,11 +131,12 @@ class LoginViewModel @Inject constructor(
                         _state.value = LoginState.Success(user)
                     }
                     .onFailure { exception ->
-                        val errorMessage = when {
-                            exception.message != null -> exception.message!!
-                            exception.cause?.message != null -> exception.cause!!.message!!
-                            else -> "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
-                        }
+                        val rawMessage = exception.message
+                            ?: exception.cause?.message
+                            ?: getLocalizedString(R.string.login_error_system_error)
+                        val statusCode = (exception.cause as? HttpException)?.code()
+                        val errorMessage = getLocalizedLoginErrorMessage(rawMessage, statusCode)
+                            ?: rawMessage
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -133,11 +149,9 @@ class LoginViewModel @Inject constructor(
                     }
             } catch (e: Exception) {
                 // Catch any unexpected exceptions to prevent app crash
-                val errorMessage = when {
-                    e.message != null -> e.message!!
-                    e.cause?.message != null -> e.cause!!.message!!
-                    else -> "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง"
-                }
+                val rawMessage = e.message ?: e.cause?.message ?: getLocalizedString(R.string.login_error_system_error)
+                val statusCode = (e.cause as? HttpException)?.code() ?: (e as? HttpException)?.code()
+                val errorMessage = getLocalizedLoginErrorMessage(rawMessage, statusCode) ?: rawMessage
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -149,6 +163,56 @@ class LoginViewModel @Inject constructor(
                 _state.value = LoginState.Error(errorMessage)
             }
         }
+    }
+
+    /**
+     * Maps raw error text and HTTP status code to localized login error messages.
+     * Returns null if no mapping applies (caller should use raw message as fallback).
+     */
+    private fun getLocalizedLoginErrorMessage(
+        errorText: String?,
+        statusCode: Int?
+    ): String? {
+        // Check status code first - 401 typically means invalid credentials
+        if (statusCode == 401) {
+            return getLocalizedString(R.string.login_error_invalid_credentials)
+        }
+
+        // Check for connection/network errors
+        val error = errorText?.lowercase() ?: return null
+        if (error.contains("unable to resolve host") ||
+            error.contains("timeout") ||
+            error.contains("no address associated with hostname") ||
+            error.contains("connection refused") ||
+            error.contains("network is unreachable") ||
+            error.contains("connection") ||
+            error.contains("network")
+        ) {
+            return getLocalizedString(R.string.login_error_connection_failed)
+        }
+
+        // Check for various patterns of "invalid email or password" error
+        if (error.contains("invalid") && error.contains("email") && error.contains("password")) {
+            return getLocalizedString(R.string.login_error_invalid_credentials)
+        }
+        if (error.contains("invalid") && (error.contains("email") || error.contains("password"))) {
+            return getLocalizedString(R.string.login_error_invalid_credentials)
+        }
+        if (error.contains("email") && error.contains("password") &&
+            (error.contains("incorrect") || error.contains("wrong") || error.contains("invalid"))
+        ) {
+            return getLocalizedString(R.string.login_error_invalid_credentials)
+        }
+        if ((error.contains("email") || error.contains("password")) &&
+            (error.contains("incorrect") || error.contains("wrong") || error.contains("invalid") || error.contains("not match"))
+        ) {
+            return getLocalizedString(R.string.login_error_invalid_credentials)
+        }
+        if (error.contains("invalid credentials")) {
+            return getLocalizedString(R.string.login_error_invalid_credentials)
+        }
+
+        return null
     }
 }
 

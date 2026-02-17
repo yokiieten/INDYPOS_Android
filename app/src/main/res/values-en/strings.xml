@@ -8,6 +8,11 @@
     <string name="password_label">Password</string>
     <string name="password_placeholder">Enter your password</string>
     <string name="login_button">Sign In</string>
+    <!-- Login Error Messages -->
+    <string name="login_error_invalid_credentials">Invalid email or password</string>
+    <string name="login_error_connection_failed">Connection error occurred</string>
+    <string name="login_error_system_error">Login system error occurred</string>
+    <string name="login_error_fields_required">Please fill in all fields</string>
     <string name="forgot_password">Forgot Password?</string>
     <string name="forgot_password_title">Forgot Password</string>
     <string name="forgot_password_description">Enter your email to receive a password reset link</string>
