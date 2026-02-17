@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.data.remote.api
 
 import com.indybrain.indypos_Android.data.remote.dto.LoginResponseDto
+import com.indybrain.indypos_Android.data.remote.dto.LoginUserDto
 import com.indybrain.indypos_Android.data.remote.dto.LogoutResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.ResumeAuthResponseDto
 import com.indybrain.indypos_Android.data.remote.dto.UploadShopImageResponseDto
@@ -142,12 +143,29 @@ data class ChangePasswordRequestDto(
 
 /**
  * Response DTO for change password
+ * Success (user): data has user, token, refresh_token, expires_in
+ * Success (admin): data is null — requires login again
+ * Fail: data is null, error has message
  */
 data class ChangePasswordResponseDto(
-    val status: Int?,
-    val message: String?,
-    val data: Any?,
-    val timestamp: String?
+    val status: Int? = null,
+    val message: String? = null,
+    val data: ChangePasswordDataDto? = null,
+    val error: String? = null,
+    val timestamp: String? = null
+)
+
+/**
+ * Data DTO for change password success (regular user)
+ * Admin success returns data = null
+ */
+data class ChangePasswordDataDto(
+    val user: LoginUserDto? = null,
+    val token: String? = null,
+    @SerializedName("refresh_token")
+    val refreshToken: String? = null,
+    @SerializedName("expires_in")
+    val expiresIn: Long? = null
 )
 
 /**

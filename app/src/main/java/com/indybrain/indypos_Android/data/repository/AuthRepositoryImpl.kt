@@ -9,6 +9,7 @@ import com.indybrain.indypos_Android.core.utils.ImageUtils
 import com.indybrain.indypos_Android.data.local.AuthLocalDataSource
 import com.indybrain.indypos_Android.data.local.database.IndyPosDatabase
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
+import com.indybrain.indypos_Android.data.remote.api.ChangePasswordDataDto
 import com.indybrain.indypos_Android.data.remote.api.ChangePasswordRequestDto
 import com.indybrain.indypos_Android.data.remote.api.ForgotPasswordRequestDto
 import com.indybrain.indypos_Android.R
@@ -346,12 +347,28 @@ class AuthRepositoryImpl @Inject constructor(
             )
             
             if (response.status == 200 || response.status == 201) {
-                Result.success(Unit)
+                val data = response.data
+                if (data != null && data.user != null && data.token != null && data.refreshToken != null) {
+                    // Regular user: save new tokens and updated user
+                    val updatedUser = data.toChangePasswordUser()
+                    localDataSource.saveUser(updatedUser)
+                    Result.success(Unit)
+                } else {
+                    // Admin: data is null — clear auth and require login again
+                    localDataSource.clearUser()
+                    try {
+                        database.clearAllData()
+                    } catch (e: Exception) {
+                        android.util.Log.e("AuthRepository", "Error clearing database on admin password change: ${e.message}", e)
+                    }
+                    Result.success(Unit)
+                }
             } else {
+                val errorText = response.error ?: response.message
                 val errorMessage = getLocalizedChangePasswordErrorMessage(
-                    errorText = response.message,
+                    errorText = errorText,
                     statusCode = response.status
-                ) ?: response.message ?: context.getString(R.string.settings_change_password_error_generic)
+                ) ?: errorText ?: context.getString(R.string.settings_change_password_error_generic)
                 Result.failure(IllegalStateException(errorMessage))
             }
         } catch (e: HttpException) {
@@ -645,6 +662,11 @@ class AuthRepositoryImpl @Inject constructor(
             return context.getString(R.string.settings_change_password_error_weak)
         }
         
+        // Check for "invalid request" (e.g. new password too short)
+        if (error.contains("invalid request")) {
+            return context.getString(R.string.settings_change_password_error_weak)
+        }
+        
         return null
     }
     
@@ -762,6 +784,40 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             throw IllegalStateException("ไม่สามารถแปลงข้อมูลผู้ใช้ได้: ${e.message}", e)
         }
+    }
+    
+    /**
+     * Extension function to map ChangePasswordDataDto to domain User (with new tokens)
+     */
+    private fun ChangePasswordDataDto.toChangePasswordUser(): User {
+        val userDto = this.user ?: throw IllegalStateException("User data is null")
+        return User(
+            id = userDto.id,
+            username = userDto.username,
+            firstName = userDto.firstName,
+            lastName = userDto.lastName,
+            email = userDto.email.ifBlank { "" },
+            phone = userDto.phone,
+            role = userDto.role,
+            shopName = userDto.shopName,
+            shopDescription = userDto.shopDescription,
+            shopImageUrl = userDto.shopImageUrl,
+            subscriptionPlan = userDto.subscriptionPlan,
+            subscriptionExpiresAt = userDto.subscriptionExpiresAt,
+            maxDevices = userDto.maxDevices,
+            currentDeviceUuid = userDto.currentDeviceUuid,
+            isActivated = userDto.isActivated,
+            termOfUse = userDto.termOfUse,
+            privacyPolicy = userDto.privacyPolicy,
+            marketingConsent = userDto.marketingConsent,
+            birthDate = userDto.birthDate,
+            createdAt = userDto.createdAt,
+            updatedAt = userDto.updatedAt,
+            orderCount = userDto.orderCount,
+            token = this.token?.ifBlank { null },
+            refreshToken = this.refreshToken?.ifBlank { null },
+            expiresIn = this.expiresIn
+        )
     }
     
     /**
