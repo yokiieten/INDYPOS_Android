@@ -104,8 +104,7 @@ class ChangePasswordViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        showSuccessDialog = true,
-                        isSuccess = true
+                        showSuccessDialog = true
                     )
                 }
             }.onFailure { error ->
@@ -123,15 +122,19 @@ class ChangePasswordViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 showSuccessDialog = false,
-                isSuccess = true // Trigger navigation
+                shouldNavigateBack = true
             )
         }
+    }
+
+    fun dismissSuccessDialogWithoutNavigate() {
+        _uiState.update { it.copy(showSuccessDialog = false) }
     }
     
     fun resetSuccess() {
         _uiState.update { 
             it.copy(
-                isSuccess = false,
+                shouldNavigateBack = false,
                 oldPassword = "",
                 newPassword = "",
                 confirmPassword = ""
@@ -188,7 +191,7 @@ data class ChangePasswordUiState(
     val isLoading: Boolean = false,
     val isFormValid: Boolean = false,
     val showSuccessDialog: Boolean = false,
-    val isSuccess: Boolean = false,
+    val shouldNavigateBack: Boolean = false,
     val errorMessage: String? = null
 )
 

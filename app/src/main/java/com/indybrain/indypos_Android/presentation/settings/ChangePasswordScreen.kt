@@ -56,9 +56,9 @@ fun ChangePasswordScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     
-    // Navigate back on success
-    LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) {
+    // Navigate back only when user clicks OK on success dialog
+    LaunchedEffect(uiState.shouldNavigateBack) {
+        if (uiState.shouldNavigateBack) {
             viewModel.resetSuccess()
             onBackClick()
         }
@@ -176,10 +176,10 @@ fun ChangePasswordScreen(
         }
     }
     
-    // Success Dialog
+    // Success Dialog - Only navigate back when user clicks OK
     if (uiState.showSuccessDialog) {
         AlertDialog(
-            onDismissRequest = { viewModel.dismissSuccessDialog() },
+            onDismissRequest = { viewModel.dismissSuccessDialogWithoutNavigate() },
             title = {
                 Text(
                     text = stringResource(R.string.success_title),
@@ -202,7 +202,9 @@ fun ChangePasswordScreen(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { viewModel.dismissSuccessDialog() }
+                    onClick = {
+                        viewModel.dismissSuccessDialog()
+                    }
                 ) {
                     Text(
                         text = stringResource(R.string.dialog_button_ok),
