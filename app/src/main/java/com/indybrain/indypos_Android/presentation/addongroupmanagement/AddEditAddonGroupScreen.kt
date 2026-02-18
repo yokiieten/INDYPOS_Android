@@ -350,13 +350,8 @@ fun AddEditAddonGroupScreen(
         
         // Error Dialog
         uiState.errorMessage?.let { errorMessage ->
-            val localizedMessage = if (errorMessage == "MAX_SELECTION_ZERO_ERROR") {
-                stringResource(id = R.string.addon_group_max_selection_zero_error)
-            } else {
-                errorMessage
-            }
             ErrorDialog(
-                errorMessage = localizedMessage,
+                errorMessage = errorMessage,
                 onDismiss = {
                     viewModel.clearErrorMessage()
                     isSaveInProgress = false

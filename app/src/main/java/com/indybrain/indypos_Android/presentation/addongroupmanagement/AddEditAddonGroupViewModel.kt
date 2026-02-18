@@ -3,8 +3,10 @@ package com.indybrain.indypos_Android.presentation.addongroupmanagement
 import androidx.lifecycle.ViewModel
 import android.content.Context
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.AddonEntity
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
@@ -27,8 +29,22 @@ class AddEditAddonGroupViewModel @Inject constructor(
     private val addonGroupRepository: AddonGroupRepository,
     private val addonRepository: AddonRepository,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    /** Returns string in the user's selected language (respects language change in Settings) */
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
+
+    private fun getLocalizedString(resId: Int, vararg formatArgs: Any): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId, *formatArgs)
+    }
     
     data class FormState(
         val groupName: String = "",
@@ -93,7 +109,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = context.getString(R.string.addon_group_form_error_not_found)
+                        errorMessage = getLocalizedString(R.string.addon_group_form_error_not_found)
                     )
                 }
             }
@@ -107,10 +123,10 @@ class AddEditAddonGroupViewModel @Inject constructor(
         viewModelScope.launch {
             addonRepository.getAllAddonsForManagementFlow()
                 .catch { e ->
-                    val reason = e.message ?: context.getString(R.string.common_error)
+                    val reason = e.message ?: getLocalizedString(R.string.common_error)
                     _uiState.update { 
                         it.copy(
-                            errorMessage = context.getString(
+                            errorMessage = getLocalizedString(
                                 R.string.addon_group_form_error_load_addons_with_reason,
                                 reason
                             )
@@ -162,18 +178,18 @@ class AddEditAddonGroupViewModel @Inject constructor(
         val formState = _uiState.value.formState
         
         if (formState.groupName.trim().isEmpty()) {
-            return context.getString(R.string.addon_group_form_validation_name_required)
+            return getLocalizedString(R.string.addon_group_form_validation_name_required)
         }
         
         if (formState.selectedAddonIds.isEmpty()) {
-            return context.getString(R.string.addon_group_form_validation_addons_required)
+            return getLocalizedString(R.string.addon_group_form_validation_addons_required)
         }
         
         // Validate maxSelection - cannot be 0
         if (formState.maxSelection.isNotEmpty()) {
             val maxSelectionValue = formState.maxSelection.toIntOrNull()
             if (maxSelectionValue != null && maxSelectionValue == 0) {
-                return "MAX_SELECTION_ZERO_ERROR" // Will be localized in UI
+                return getLocalizedString(R.string.addon_group_max_selection_zero_error)
             }
         }
         
@@ -204,7 +220,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
             if (addonGroupRepository.isDuplicateName(formState.groupName, excludeId)) {
                 _uiState.update { 
                     it.copy(
-                        errorMessage = context.getString(R.string.addon_group_form_error_duplicate_name)
+                        errorMessage = getLocalizedString(R.string.addon_group_form_error_duplicate_name)
                     ) 
                 }
                 return@launch
@@ -245,9 +261,9 @@ class AddEditAddonGroupViewModel @Inject constructor(
                         isSuccess = true,
                         isOfflineSuccess = isOffline,
                         successMessage = if (isOffline) {
-                            context.getString(R.string.addon_group_form_success_add_offline)
+                            getLocalizedString(R.string.addon_group_form_success_add_offline)
                         } else {
-                            context.getString(R.string.addon_group_form_success_add)
+                            getLocalizedString(R.string.addon_group_form_success_add)
                         }
                     )
                 }
@@ -285,9 +301,9 @@ class AddEditAddonGroupViewModel @Inject constructor(
                         isSuccess = true,
                         isOfflineSuccess = isOffline,
                         successMessage = if (isOffline) {
-                            context.getString(R.string.addon_group_form_success_edit_offline)
+                            getLocalizedString(R.string.addon_group_form_success_edit_offline)
                         } else {
-                            context.getString(R.string.addon_group_form_success_edit)
+                            getLocalizedString(R.string.addon_group_form_success_edit)
                         }
                     )
                 }
@@ -302,7 +318,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
      * Handle create error
      */
     private fun handleCreateError(error: Throwable) {
-        val errorMessage = error.message ?: context.getString(R.string.addon_group_form_error_create)
+        val errorMessage = error.message ?: getLocalizedString(R.string.addon_group_form_error_create)
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -315,7 +331,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
      * Handle update error
      */
     private fun handleUpdateError(error: Throwable) {
-        val errorMessage = error.message ?: context.getString(R.string.addon_group_form_error_update)
+        val errorMessage = error.message ?: getLocalizedString(R.string.addon_group_form_error_update)
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -333,7 +349,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    errorMessage = context.getString(R.string.addon_form_validation_name_required)
+                    errorMessage = getLocalizedString(R.string.addon_form_validation_name_required)
                 )
             }
             return
@@ -349,13 +365,13 @@ class AddEditAddonGroupViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            successMessage = context.getString(R.string.addon_form_success_add_single)
+                            successMessage = getLocalizedString(R.string.addon_form_success_add_single)
                         )
                     }
                 },
                 onFailure = { error ->
                     // API error - close dialog and show as popup
-                    val errorMessage = error.message ?: context.getString(R.string.addon_form_error_create_addon)
+                    val errorMessage = error.message ?: getLocalizedString(R.string.addon_form_error_create_addon)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
