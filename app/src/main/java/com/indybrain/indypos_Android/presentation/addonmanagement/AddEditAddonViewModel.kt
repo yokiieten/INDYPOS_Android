@@ -3,6 +3,8 @@ package com.indybrain.indypos_Android.presentation.addonmanagement
 import androidx.lifecycle.ViewModel
 import android.content.Context
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import com.indybrain.indypos_Android.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,8 +24,16 @@ import javax.inject.Inject
 @HiltViewModel
 class AddEditAddonViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    /** Returns string in the user's selected language (respects language change in Settings) */
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
     
     private val _uiState = MutableStateFlow(AddEditAddonUiState())
     val uiState: StateFlow<AddEditAddonUiState> = _uiState.asStateFlow()
@@ -176,7 +186,7 @@ class AddEditAddonViewModel @Inject constructor(
         // Validation
         if (name.isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.addon_form_validation_name_required))
+                it.copy(errorMessage = getLocalizedString(R.string.addon_form_validation_name_required))
             }
             return
         }
@@ -189,14 +199,14 @@ class AddEditAddonViewModel @Inject constructor(
                 val parsedPrice = priceString.toDouble()
                 if (parsedPrice < 0) {
                     _uiState.update { 
-                        it.copy(errorMessage = context.getString(R.string.addon_form_validation_price_non_negative))
+                        it.copy(errorMessage = getLocalizedString(R.string.addon_form_validation_price_non_negative))
                     }
                     return
                 }
                 parsedPrice
             } catch (e: NumberFormatException) {
                 _uiState.update { 
-                    it.copy(errorMessage = context.getString(R.string.addon_form_validation_price_invalid))
+                    it.copy(errorMessage = getLocalizedString(R.string.addon_form_validation_price_invalid))
                 }
                 return
             }
@@ -226,7 +236,7 @@ class AddEditAddonViewModel @Inject constructor(
                 }
                 // Don't call onSuccess() here - let the dialog handle navigation
             }.onFailure { error ->
-                val errorMessage = error.message ?: context.getString(R.string.addon_form_error_save_generic)
+                val errorMessage = error.message ?: getLocalizedString(R.string.addon_form_error_save_generic)
                 // Handle special error codes
                 val finalErrorMessage = when {
                     errorMessage.contains("free_plan_limit_exceeded", ignoreCase = true) -> {
@@ -234,7 +244,7 @@ class AddEditAddonViewModel @Inject constructor(
                     }
                     errorMessage.contains("ชื่อ Addon นี้มีอยู่แล้ว", ignoreCase = true) ||
                     errorMessage.contains("This addon name already exists", ignoreCase = true) -> {
-                        context.getString(R.string.addon_form_error_duplicate_name)
+                        getLocalizedString(R.string.addon_form_error_duplicate_name)
                     }
                     else -> errorMessage
                 }

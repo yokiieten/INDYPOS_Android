@@ -4,8 +4,10 @@ import android.net.Uri
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
@@ -34,8 +36,22 @@ class AddEditProductViewModel @Inject constructor(
     private val addonGroupRepository: AddonGroupRepository,
     private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    /** Returns string in the user's selected language (respects language change in Settings) */
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
+
+    private fun getLocalizedString(resId: Int, vararg formatArgs: Any): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId, *formatArgs)
+    }
     
     private val _uiState = MutableStateFlow(AddEditProductUiState())
     val uiState: StateFlow<AddEditProductUiState> = _uiState.asStateFlow()
@@ -144,16 +160,16 @@ class AddEditProductViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            errorMessage = context.getString(R.string.product_form_error_load_not_found)
+                            errorMessage = getLocalizedString(R.string.product_form_error_load_not_found)
                         )
                     }
                 }
             } catch (e: Exception) {
-                val reason = e.message ?: context.getString(R.string.product_form_error_unknown_reason)
+                val reason = e.message ?: getLocalizedString(R.string.product_form_error_unknown_reason)
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = context.getString(R.string.product_form_error_load_with_reason, reason)
+                        errorMessage = getLocalizedString(R.string.product_form_error_load_with_reason, reason)
                     )
                 }
             }
@@ -412,7 +428,7 @@ class AddEditProductViewModel @Inject constructor(
                 imageUrl = null,
                 isImageSelected = false,
                 showImageUploadErrorDialog = false,
-                loadingMessage = context.getString(R.string.product_form_loading_saving_product)
+                loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product)
             )
         }
         // Retry save product
@@ -508,7 +524,7 @@ class AddEditProductViewModel @Inject constructor(
             // Validation error - keep dialog open and show error message
             _uiState.update { 
                 it.copy(
-                    categoryError = context.getString(R.string.product_form_add_category_message)
+                    categoryError = getLocalizedString(R.string.product_form_add_category_message)
                 )
             }
             return
@@ -539,7 +555,7 @@ class AddEditProductViewModel @Inject constructor(
                     it.copy(
                         categoryId = category.id,
                         isCreatingCategory = false,
-                        categorySuccess = context.getString(R.string.product_form_add_category_success, categoryName),
+                        categorySuccess = getLocalizedString(R.string.product_form_add_category_success, categoryName),
                         showAddCategoryDialog = false,
                         categoryName = "",
                         categoryError = null
@@ -555,7 +571,7 @@ class AddEditProductViewModel @Inject constructor(
                         showAddCategoryDialog = false,
                         categoryName = "",
                         categoryError = null,
-                        errorMessage = error.message ?: context.getString(R.string.product_form_error_add_category)
+                        errorMessage = error.message ?: getLocalizedString(R.string.product_form_error_add_category)
                     ) 
                 }
             }
@@ -572,14 +588,14 @@ class AddEditProductViewModel @Inject constructor(
         // Validation
         if (state.productName.trim().isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_name_required))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_name_required))
             }
             return
         }
         
         if (state.productCode.trim().isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_code_required))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_code_required))
             }
             return
         }
@@ -592,7 +608,7 @@ class AddEditProductViewModel @Inject constructor(
         
         if (sellingPrice <= 0) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_selling_price_required))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_selling_price_required))
             }
             return
         }
@@ -605,21 +621,21 @@ class AddEditProductViewModel @Inject constructor(
         }
         if (tempCostPrice != null && tempCostPrice > sellingPrice) {
             _uiState.update {
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_cost_price_greater_than_selling))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_cost_price_greater_than_selling))
             }
             return
         }
         
         if (state.unit.trim().isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_unit_required))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_unit_required))
             }
             return
         }
         
         if (state.categoryId == null) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_category_required))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_category_required))
             }
             return
         }
@@ -627,14 +643,14 @@ class AddEditProductViewModel @Inject constructor(
         // Check if image/color is selected
         if (state.isImageSelected && state.imageUrl == null && state.selectedColorHex == null) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_image_or_color_required))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_image_or_color_required))
             }
             return
         }
         
         if (!state.isImageSelected && state.selectedColorHex == null) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_color_required))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_color_required))
             }
             return
         }
@@ -642,7 +658,7 @@ class AddEditProductViewModel @Inject constructor(
         // Validate AddOn Groups if hasAdditionalOptions is enabled
         if (state.hasAdditionalOptions && state.addonGroupIds.isEmpty()) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_addon_groups_required))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_addon_groups_required))
             }
             return
         }
@@ -650,7 +666,7 @@ class AddEditProductViewModel @Inject constructor(
         // Validate SKU Code if SKU is enabled
         if (state.isSkuEnabled && state.skuCode.trim().isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.product_form_validation_sku_required))
+                it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_sku_required))
             }
             return
         }
@@ -664,7 +680,7 @@ class AddEditProductViewModel @Inject constructor(
             }
             if (stockQuantity == null || stockQuantity < 0) {
                 _uiState.update { 
-                    it.copy(errorMessage = context.getString(R.string.product_form_validation_stock_quantity_required))
+                    it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_stock_quantity_required))
                 }
                 return
             }
@@ -701,7 +717,7 @@ class AddEditProductViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         loadingMessage = null,
-                        errorMessage = context.getString(R.string.product_form_error_user_not_found)
+                        errorMessage = getLocalizedString(R.string.product_form_error_user_not_found)
                     )
                 }
                 return@launch
@@ -718,7 +734,7 @@ class AddEditProductViewModel @Inject constructor(
                     if (isLocalUri) {
                         // Show uploading image message
                         _uiState.update { 
-                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_uploading_image))
+                            it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_uploading_image))
                         }
                         
                         try {
@@ -733,7 +749,7 @@ class AddEditProductViewModel @Inject constructor(
                                         isLoading = false,
                                         loadingMessage = null,
                                         showImageUploadErrorDialog = true,
-                                        errorMessage = error?.message ?: context.getString(R.string.product_form_image_upload_error_message)
+                                        errorMessage = error?.message ?: getLocalizedString(R.string.product_form_image_upload_error_message)
                                     )
                                 }
                                 return@launch
@@ -741,7 +757,7 @@ class AddEditProductViewModel @Inject constructor(
                             finalImageUrl = uploadedUrl
                             // Change loading message to saving product
                             _uiState.update { 
-                                it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
+                                it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
                             }
                         } catch (e: Exception) {
                             _uiState.update { 
@@ -749,7 +765,7 @@ class AddEditProductViewModel @Inject constructor(
                                     isLoading = false,
                                     loadingMessage = null,
                                     showImageUploadErrorDialog = true,
-                                    errorMessage = context.getString(
+                                    errorMessage = getLocalizedString(
                                         R.string.product_form_image_upload_error_message
                                     )
                                 )
@@ -759,14 +775,14 @@ class AddEditProductViewModel @Inject constructor(
                     } else {
                         // Image URL is already uploaded, show saving message
                         _uiState.update { 
-                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
+                            it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
                         }
                     }
                 } else {
                     // No image or offline, show saving message
                     if (hasNetwork) {
                         _uiState.update { 
-                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
+                            it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
                         }
                     }
                 }
@@ -823,7 +839,7 @@ class AddEditProductViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: context.getString(R.string.product_form_error_save_generic)
+                            errorMessage = error.message ?: getLocalizedString(R.string.product_form_error_save_generic)
                         )
                     }
                 }
@@ -836,7 +852,7 @@ class AddEditProductViewModel @Inject constructor(
                     val isLocalUri = state.imageUrl.startsWith("content://") || state.imageUrl.startsWith("file://")
                     if (isLocalUri) {
                         _uiState.update { 
-                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_uploading_image))
+                            it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_uploading_image))
                         }
                         
                         try {
@@ -851,14 +867,14 @@ class AddEditProductViewModel @Inject constructor(
                                         isLoading = false,
                                         loadingMessage = null,
                                         showImageUploadErrorDialog = true,
-                                        errorMessage = error?.message ?: context.getString(R.string.product_form_image_upload_error_message)
+                                        errorMessage = error?.message ?: getLocalizedString(R.string.product_form_image_upload_error_message)
                                     )
                                 }
                                 return@launch
                             }
                             finalImageUrl = uploadedUrl
                             _uiState.update { 
-                                it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
+                                it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
                             }
                         } catch (e: Exception) {
                             _uiState.update { 
@@ -866,7 +882,7 @@ class AddEditProductViewModel @Inject constructor(
                                     isLoading = false,
                                     loadingMessage = null,
                                     showImageUploadErrorDialog = true,
-                                    errorMessage = context.getString(
+                                    errorMessage = getLocalizedString(
                                         R.string.product_form_image_upload_error_message
                                     )
                                 )
@@ -875,13 +891,13 @@ class AddEditProductViewModel @Inject constructor(
                         }
                     } else {
                         _uiState.update { 
-                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
+                            it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
                         }
                     }
                 } else {
                     if (hasNetwork) {
                         _uiState.update { 
-                            it.copy(loadingMessage = context.getString(R.string.product_form_loading_saving_product))
+                            it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
                         }
                     }
                 }
@@ -940,7 +956,7 @@ class AddEditProductViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             loadingMessage = null,
-                            errorMessage = error.message ?: context.getString(R.string.product_form_error_save_generic)
+                            errorMessage = error.message ?: getLocalizedString(R.string.product_form_error_save_generic)
                         )
                     }
                 }

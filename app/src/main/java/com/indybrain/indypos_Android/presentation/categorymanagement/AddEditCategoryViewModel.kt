@@ -3,7 +3,9 @@ package com.indybrain.indypos_Android.presentation.categorymanagement
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,8 +23,16 @@ import javax.inject.Inject
 @HiltViewModel
 class AddEditCategoryViewModel @Inject constructor(
     private val productRepository: ProductRepository,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    /** Returns string in the user's selected language (respects language change in Settings) */
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
     
     private val _uiState = MutableStateFlow(AddEditCategoryUiState())
     val uiState: StateFlow<AddEditCategoryUiState> = _uiState.asStateFlow()
@@ -76,7 +86,7 @@ class AddEditCategoryViewModel @Inject constructor(
         // Validation
         if (name.isBlank()) {
             _uiState.update { 
-                it.copy(errorMessage = context.getString(R.string.category_form_validation_name_required))
+                it.copy(errorMessage = getLocalizedString(R.string.category_form_validation_name_required))
             }
             return
         }
@@ -89,7 +99,7 @@ class AddEditCategoryViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = context.getString(R.string.api_error_unauthorized)
+                        errorMessage = getLocalizedString(R.string.api_error_unauthorized)
                     )
                 }
                 return@launch
@@ -102,7 +112,7 @@ class AddEditCategoryViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            errorMessage = context.getString(R.string.category_form_validation_edit_failed)
+                            errorMessage = getLocalizedString(R.string.category_form_validation_edit_failed)
                         )
                     }
                     return@launch
@@ -139,9 +149,9 @@ class AddEditCategoryViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         errorMessage = error.message ?: if (categoryId != null) {
-                            context.getString(R.string.category_form_validation_edit_failed)
+                            getLocalizedString(R.string.category_form_validation_edit_failed)
                         } else {
-                            context.getString(R.string.category_management_error_loading)
+                            getLocalizedString(R.string.category_management_error_loading)
                         }
                     )
                 }
