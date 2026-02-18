@@ -3,7 +3,9 @@ package com.indybrain.indypos_Android.presentation.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -19,9 +21,17 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ChangePasswordViewModel @Inject constructor(
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository
 ) : ViewModel() {
+
+    /** Returns string in the user's selected language (respects language change in Settings) */
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
     
     private val _uiState = MutableStateFlow(ChangePasswordUiState())
     val uiState: StateFlow<ChangePasswordUiState> = _uiState.asStateFlow()
@@ -111,7 +121,7 @@ class ChangePasswordViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: context.getString(R.string.settings_change_password_error_generic)
+                        errorMessage = error.message ?: getLocalizedString(R.string.settings_change_password_error_generic)
                     )
                 }
             }
@@ -165,15 +175,15 @@ class ChangePasswordViewModel @Inject constructor(
     ): String {
         return when {
             oldPassword.isBlank() ->
-                context.getString(R.string.settings_change_password_error_old_required)
+                getLocalizedString(R.string.settings_change_password_error_old_required)
             newPassword.isBlank() ->
-                context.getString(R.string.settings_change_password_error_new_required)
+                getLocalizedString(R.string.settings_change_password_error_new_required)
             confirmPassword.isBlank() || newPassword != confirmPassword ->
-                context.getString(R.string.settings_change_password_error_mismatch)
+                getLocalizedString(R.string.settings_change_password_error_mismatch)
             newPassword.length < 6 ->
-                context.getString(R.string.settings_change_password_error_weak)
+                getLocalizedString(R.string.settings_change_password_error_weak)
             else ->
-                context.getString(R.string.settings_change_password_error_generic)
+                getLocalizedString(R.string.settings_change_password_error_generic)
         }
     }
 }
