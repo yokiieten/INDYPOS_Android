@@ -68,6 +68,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import com.indybrain.indypos_Android.R
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.util.Locale
 
 /**
  * Add/Edit Addon Group Screen
@@ -775,19 +778,26 @@ private fun AddAddonDialog(
                 OutlinedTextField(
                     value = addonPrice,
                     onValueChange = { newValue ->
-                        val filtered = newValue.filter { 
-                            it.isDigit() || it == '.' 
+                        val filtered = newValue.filter {
+                            it.isDigit() || it == '.'
                         }
                         val parts = filtered.split('.')
-                        val finalValue = if (parts.size > 2) {
+                        addonPrice = if (parts.size > 2) {
                             parts[0] + "." + parts.drop(1).joinToString("")
                         } else {
                             filtered
                         }
-                        addonPrice = finalValue
                     },
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused && addonPrice.isNotBlank()) {
+                                val parsed = addonPrice.trim().toDoubleOrNull()
+                                if (parsed != null) {
+                                    addonPrice = String.format(Locale.US, "%.2f", parsed)
+                                }
+                            }
+                        },
                     placeholder = {
                         Text(
                             text = stringResource(id = R.string.addon_group_form_add_addon_price_placeholder),
@@ -829,7 +839,10 @@ private fun AddAddonDialog(
                         if (price == null || price <= 0) {
                             showValidationError = true
                         } else {
-                            onConfirm(name, price)
+                            val roundedPrice = BigDecimal(price.toString())
+                                .setScale(2, RoundingMode.HALF_UP)
+                                .toDouble()
+                            onConfirm(name, roundedPrice)
                             addonName = ""
                             addonPrice = ""
                         }
