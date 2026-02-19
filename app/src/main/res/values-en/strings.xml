@@ -683,6 +683,7 @@
     <string name="addon_group_form_error_not_found">Addon group to edit was not found</string>
     <string name="addon_group_form_validation_name_required">Please enter addon group name</string>
     <string name="addon_group_form_validation_addons_required">Please select at least 1 addon</string>
+    <string name="addon_group_form_validation_addons_select_required">Please select at least 1 add-on</string>
     <string name="addon_group_form_error_duplicate_name">This addon group name already exists</string>
     <string name="addon_group_form_error_create">An error occurred while creating addon group</string>
     <string name="addon_group_form_error_update">An error occurred while updating addon group</string>

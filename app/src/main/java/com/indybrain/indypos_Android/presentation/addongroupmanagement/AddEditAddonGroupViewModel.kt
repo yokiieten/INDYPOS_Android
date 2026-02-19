@@ -182,7 +182,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
         }
         
         if (formState.selectedAddonIds.isEmpty()) {
-            return getLocalizedString(R.string.addon_group_form_validation_addons_required)
+            return getLocalizedString(R.string.addon_group_form_validation_addons_select_required)
         }
         
         // Validate maxSelection - cannot be 0
