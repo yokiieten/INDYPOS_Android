@@ -361,7 +361,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
             val result = addonRepository.createAddon(name, price)
             result.fold(
                 onSuccess = {
-                    loadAvailableAddons()
+                    addonRepository.fetchAndSyncAddons()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -370,13 +370,13 @@ class AddEditAddonGroupViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
-                    // API error - close dialog and show as popup
+                    addonRepository.fetchAndSyncAddons()
                     val errorMessage = error.message ?: getLocalizedString(R.string.addon_form_error_create_addon)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             errorMessage = errorMessage,
-                            successMessage = null // Clear success message if any
+                            successMessage = null
                         )
                     }
                 }
