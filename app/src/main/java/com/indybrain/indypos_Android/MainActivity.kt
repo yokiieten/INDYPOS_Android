@@ -549,6 +549,9 @@ class MainActivity : ComponentActivity() {
                                 onSearchClick = {
                                     navController.navigate(NavRoutes.SearchProduct.route)
                                 },
+                                onProductManagementClick = {
+                                    navController.navigate(NavRoutes.ProductManagement.route)
+                                },
                                 scannedBarcode = scannedBarcode
                             )
                         }

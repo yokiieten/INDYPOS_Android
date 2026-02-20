@@ -55,6 +55,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
@@ -134,6 +135,7 @@ fun MainProductScreen(
     onCartClick: () -> Unit = {},
     onBarcodeScannerClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
+    onProductManagementClick: () -> Unit = {},
     scannedBarcode: String? = null,
     viewModel: MainProductViewModel = hiltViewModel()
 ) {
@@ -150,6 +152,7 @@ fun MainProductScreen(
             onCartClick = onCartClick,
             onBarcodeScannerClick = onBarcodeScannerClick,
             onSearchClick = onSearchClick,
+            onProductManagementClick = onProductManagementClick,
             scannedBarcode = scannedBarcode,
             viewModel = viewModel
         )
@@ -485,19 +488,10 @@ fun MainProductScreen(
                     }
                     !hasProducts && !uiState.isLoading -> {
                         // Show empty state only when not loading and no products
-                        Box(
+                        EmptyProductsView(
                             modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.product_empty),
-                                style = FontUtils.mainFont(
-                                    style = AppFontStyle.Regular,
-                                    size = FontSize.Medium
-                                ),
-                                color = SecondaryText
-                            )
-                        }
+                            onClick = onProductManagementClick
+                        )
                     }
                     else -> {
                         // Show products when we have products
@@ -532,19 +526,10 @@ fun MainProductScreen(
                     ) {
                     if (categoriesWithProducts.isEmpty()) {
                         item {
-                            Box(
+                            EmptyProductsView(
                                 modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = stringResource(id = R.string.product_empty),
-                                    style = FontUtils.mainFont(
-                                        style = AppFontStyle.Regular,
-                                        size = FontSize.Medium
-                                    ),
-                                    color = SecondaryText
-                                )
-                            }
+                                onClick = onProductManagementClick
+                            )
                         }
                     } else {
                         // Show products grouped by category in the same order as CategoryFilterBar
@@ -772,6 +757,48 @@ fun MainProductScreen(
                         )
                     }
                 }
+            )
+        }
+    }
+}
+
+@Composable
+internal fun EmptyProductsView(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.AddShoppingCart,
+                contentDescription = null,
+                tint = PlaceholderText,
+                modifier = Modifier.size(80.dp)
+            )
+            Text(
+                text = stringResource(id = R.string.empty_products_title),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Medium,
+                    size = FontSize.Large
+                ),
+                color = PrimaryText
+            )
+            Text(
+                text = stringResource(id = R.string.empty_products_message),
+                style = FontUtils.mainFont(
+                    style = AppFontStyle.Regular,
+                    size = FontSize.Medium
+                ),
+                color = SecondaryText,
+                textAlign = TextAlign.Center
             )
         }
     }

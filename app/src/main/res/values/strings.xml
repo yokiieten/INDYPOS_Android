@@ -392,6 +392,8 @@
     <string name="product_search">ค้นหา</string>
     <string name="product_change_view">เปลี่ยนมุมมอง</string>
     <string name="product_empty">ไม่มีสินค้า</string>
+    <string name="empty_products_title">ไม่มีสินค้า</string>
+    <string name="empty_products_message">ยังไม่มีสินค้าในหมวดหมู่นี้ แตะที่นี่เพื่อเพิ่มสินค้าแรกของคุณ</string>
     <string name="product_view_cart">ดูสินค้า (%1$d)</string>
     <string name="product_cart">ตะกร้า</string>
     <string name="product_barcode_scanner">สแกนบาร์โค้ด</string>

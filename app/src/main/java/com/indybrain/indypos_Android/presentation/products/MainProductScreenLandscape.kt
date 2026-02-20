@@ -121,6 +121,7 @@ fun MainProductScreenLandscape(
     onCartClick: () -> Unit = {},
     onBarcodeScannerClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
+    onProductManagementClick: () -> Unit = {},
     scannedBarcode: String? = null,
     viewModel: MainProductViewModel = hiltViewModel(),
     getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase = hiltViewModel<LandscapeCartViewModel>().getGroupedCartItemsUseCase
@@ -441,19 +442,10 @@ fun MainProductScreenLandscape(
                         }
                         !hasProducts && !uiState.isLoading -> {
                             // Show empty state only when not loading and no products
-                            Box(
+                            EmptyProductsView(
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = stringResource(id = R.string.product_empty),
-                                    style = FontUtils.mainFont(
-                                        style = AppFontStyle.Regular,
-                                        size = FontSize.Medium
-                                    ),
-                                    color = SecondaryText
-                                )
-                            }
+                                onClick = onProductManagementClick
+                            )
                         }
                         else -> {
                             val productsByCategoryId = uiState.allProducts
@@ -473,19 +465,10 @@ fun MainProductScreenLandscape(
                             ) {
                                 if (categoriesWithProducts.isEmpty()) {
                                     item {
-                                        Box(
+                                        EmptyProductsView(
                                             modifier = Modifier.fillMaxWidth(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = stringResource(id = R.string.product_empty),
-                                                style = FontUtils.mainFont(
-                                                    style = AppFontStyle.Regular,
-                                                    size = FontSize.Medium
-                                                ),
-                                                color = SecondaryText
-                                            )
-                                        }
+                                            onClick = onProductManagementClick
+                                        )
                                     }
                                 } else {
                                     categoriesWithProducts.forEach { category ->
