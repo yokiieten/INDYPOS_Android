@@ -28,8 +28,6 @@ class AddonGroupManagementViewModel @Inject constructor(
     init {
         // Observe addon groups from Room database
         observeAddonGroups()
-        // Load addon groups when ViewModel is created
-        loadAddonGroups()
     }
     
     /**
