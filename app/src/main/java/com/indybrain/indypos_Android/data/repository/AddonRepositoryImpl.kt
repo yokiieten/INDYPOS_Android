@@ -265,8 +265,7 @@ class AddonRepositoryImpl @Inject constructor(
             val apiAddonIds = addonsList.map { it.id }.toSet()
             val existingAddonIds = addonDao.getAllAddons().map { it.id }.toSet()
             (existingAddonIds - apiAddonIds).forEach { id ->
-                addonGroupAddonJunctionDao.deleteByAddonId(id)
-                addonDao.permanentlyDeleteAddon(id)
+                permanentlyDeleteAddon(id)
             }
             
             Result.success(Unit)
@@ -352,8 +351,8 @@ class AddonRepositoryImpl @Inject constructor(
                     val response = productsApi.deleteAddon(addonId)
                     
                     if (response.status == 200) {
-                        // API success - permanently delete from Room
-                        addonDao.permanentlyDeleteAddon(addonId)
+                        // API success - ลบความสัมพันธ์ (junction, cart, order) ก่อน แล้วค่อยลบ addon
+                        permanentlyDeleteAddon(addonId)
                         Result.success(Unit)
                     } else {
                         val errorMessage = response.message?.takeIf { it.isNotBlank() }
@@ -404,8 +403,8 @@ class AddonRepositoryImpl @Inject constructor(
                     val response = productsApi.deleteMultipleAddons(request)
                     
                     if (response.status == 200) {
-                        // API success - permanently delete from Room
-                        addonIds.forEach { addonDao.permanentlyDeleteAddon(it) }
+                        // API success - ลบความสัมพันธ์ (junction, cart, order) ก่อน แล้วค่อยลบ addon แต่ละรายการ
+                        addonIds.forEach { permanentlyDeleteAddon(it) }
                         Result.success(Unit)
                     } else {
                         val errorMessage = response.message?.takeIf { it.isNotBlank() }
@@ -531,7 +530,7 @@ class AddonRepositoryImpl @Inject constructor(
                 .filter { it.shouldDelete == true }
                 .mapNotNull { it.id }
             
-            idsToHardDelete.forEach { addonDao.permanentlyDeleteAddon(it) }
+            idsToHardDelete.forEach { permanentlyDeleteAddon(it) }
             
             Result.success(Unit)
         } catch (e: HttpException) {
