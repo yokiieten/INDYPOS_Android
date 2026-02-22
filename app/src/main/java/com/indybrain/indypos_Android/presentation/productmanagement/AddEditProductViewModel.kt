@@ -65,6 +65,11 @@ class AddEditProductViewModel @Inject constructor(
     init {
         loadCategories()
         loadAddonGroups()
+        // Always fetch addon groups from API when entering this screen (add or edit mode)
+        viewModelScope.launch {
+            addonGroupRepository.fetchAndSyncAddonGroups()
+            // Flow in loadAddonGroups() will auto-emit when Room is updated
+        }
     }
     
     /**
