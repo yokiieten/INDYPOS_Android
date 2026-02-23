@@ -726,6 +726,14 @@
     <string name="addon_management_delete_confirm_multiple">Are you sure you want to delete %1$d addons?</string>
     <string name="addon_management_delete_warning">This action cannot be undone</string>
     <string name="addon_management_select_items">Select %1$d items</string>
+    <string name="addon_management_error_loading">An error occurred while loading data</string>
+    <string name="addon_management_error_updating_status">An error occurred while updating status</string>
+    <string name="addon_management_error_deleting">An error occurred while deleting addon</string>
+    <string name="addon_management_error_not_found">Addon not found</string>
+    <string name="addon_management_error_syncing">An error occurred while syncing addons</string>
+    <string name="addon_management_error_select_to_delete">Please select addon(s) to delete</string>
+    <string name="addon_management_delete_success_single">Addon deleted successfully</string>
+    <string name="addon_management_delete_success_multiple">%1$d addons deleted successfully</string>
     
     <!-- Add/Edit Addon Screen -->
     <string name="addon_edit_title">Edit Addon</string>

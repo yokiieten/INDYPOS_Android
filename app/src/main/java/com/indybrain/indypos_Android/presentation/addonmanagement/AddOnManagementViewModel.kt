@@ -1,11 +1,16 @@
 package com.indybrain.indypos_Android.presentation.addonmanagement
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.AddonEntity
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,8 +26,35 @@ import javax.inject.Inject
 @HiltViewModel
 class AddOnManagementViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val languageLocalDataSource: LanguageLocalDataSource,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
+
+    private fun getLocalizedString(resId: Int, vararg formatArgs: Any): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId, *formatArgs)
+    }
+
+    /**
+     * Map API error messages to localized strings.
+     * API may return "Addon not found" in English regardless of app language.
+     */
+    private fun getLocalizedDeleteErrorMessage(apiMessage: String?): String {
+        val msg = apiMessage?.trim()?.takeIf { it.isNotBlank() }
+        return when {
+            msg == null -> getLocalizedString(R.string.addon_management_error_deleting)
+            msg.contains("not found", ignoreCase = true) -> getLocalizedString(R.string.addon_management_error_not_found)
+            else -> msg
+        }
+    }
     
     private val _uiState = MutableStateFlow(AddOnManagementUiState())
     val uiState: StateFlow<AddOnManagementUiState> = _uiState.asStateFlow()
@@ -54,7 +86,8 @@ class AddOnManagementViewModel @Inject constructor(
                     _uiState.update { current ->
                         current.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                            errorMessage = error.message ?: getLocalizedString(R.string.addon_management_error_loading),
+                            isDeleteError = false
                         )
                     }
                 }
@@ -230,8 +263,9 @@ class AddOnManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ",
-                        toggleSuccessMessage = null
+                        errorMessage = error.message ?: getLocalizedString(R.string.addon_management_error_updating_status),
+                        toggleSuccessMessage = null,
+                        isDeleteError = false
                     )
                 }
             }
@@ -262,14 +296,16 @@ class AddOnManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = null
+                        errorMessage = null,
+                        deleteSuccessMessage = getLocalizedString(R.string.addon_management_delete_success_single)
                     )
                 }
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบ Addon"
+                        errorMessage = getLocalizedDeleteErrorMessage(error.message),
+                        isDeleteError = true
                     )
                 }
             }
@@ -284,7 +320,7 @@ class AddOnManagementViewModel @Inject constructor(
             val selectedIds = _uiState.value.selectedAddonIds.toList()
             if (selectedIds.isEmpty()) {
                 _uiState.update { 
-                    it.copy(errorMessage = "กรุณาเลือก Addon ที่ต้องการลบ")
+                    it.copy(errorMessage = getLocalizedString(R.string.addon_management_error_select_to_delete), isDeleteError = false)
                 }
                 return@launch
             }
@@ -307,9 +343,9 @@ class AddOnManagementViewModel @Inject constructor(
             result.onSuccess {
                 val count = selectedIds.size
                 val successMessage = if (count == 1) {
-                    "ลบ Addon สำเร็จ"
+                    getLocalizedString(R.string.addon_management_delete_success_single)
                 } else {
-                    "ลบ Addon $count รายการสำเร็จ"
+                    getLocalizedString(R.string.addon_management_delete_success_multiple, count)
                 }
                 
                 _uiState.update { 
@@ -322,9 +358,10 @@ class AddOnManagementViewModel @Inject constructor(
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบ Addon",
+                        errorMessage = getLocalizedDeleteErrorMessage(error.message),
                         deleteSuccessMessage = null,
-                        pendingDeleteAddonIds = emptySet()
+                        pendingDeleteAddonIds = emptySet(),
+                        isDeleteError = true
                     )
                 }
             }
@@ -349,10 +386,14 @@ class AddOnManagementViewModel @Inject constructor(
     }
     
     /**
-     * Clear error message
+     * Clear error message. If error was from delete operation, refresh addons.
      */
     fun clearError() {
-        _uiState.update { it.copy(errorMessage = null) }
+        val wasDeleteError = _uiState.value.isDeleteError
+        _uiState.update { it.copy(errorMessage = null, isDeleteError = false) }
+        if (wasDeleteError) {
+            refreshAddons()
+        }
     }
     
     /**
@@ -377,7 +418,8 @@ class AddOnManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการ sync ตัวเลือกเพิ่มเติม"
+                        errorMessage = error.message ?: getLocalizedString(R.string.addon_management_error_syncing),
+                        isDeleteError = false
                     )
                 }
             }

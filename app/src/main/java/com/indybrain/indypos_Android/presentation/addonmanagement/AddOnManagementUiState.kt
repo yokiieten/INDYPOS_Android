@@ -14,6 +14,7 @@ data class AddOnManagementUiState(
     val isSelectionMode: Boolean = false,
     val selectedAddonIds: Set<String> = emptySet(),
     val errorMessage: String? = null,
+    val isDeleteError: Boolean = false, // true when error came from delete (single or multi)
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,
     val syncSuccessMessage: String? = null,
