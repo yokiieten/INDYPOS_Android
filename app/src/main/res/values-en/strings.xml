@@ -283,9 +283,9 @@
     <string name="settings_language">Language Settings</string>
     <string name="settings_sales">Sales Settings</string>
     <string name="settings_printer">Printer Settings</string>
-    <string name="settings_manage_stock">Manage Stock</string>
+    <string name="settings_manage_stock">Stock Management</string>
     <string name="settings_receipt">Receipt Settings</string>
-    <string name="settings_manage_data">Manage Data</string>
+    <string name="settings_manage_data">Data Management</string>
     <string name="settings_contact_us">Contact Us</string>
     <string name="settings_logout">Logout</string>
     
