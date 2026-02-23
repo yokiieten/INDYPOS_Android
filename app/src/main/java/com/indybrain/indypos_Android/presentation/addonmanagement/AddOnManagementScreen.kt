@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -248,18 +249,28 @@ fun AddOnManagementScreen(
                             }
                         }
                         addonsToShow.isEmpty() -> {
-                            Box(
+                            LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    text = stringResource(id = R.string.addon_management_empty),
-                                    style = FontUtils.mainFont(
-                                        style = AppFontStyle.Regular,
-                                        size = FontSize.Medium
-                                    ),
-                                    color = SecondaryText
-                                )
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = 600.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = stringResource(id = R.string.addon_management_empty),
+                                            style = FontUtils.mainFont(
+                                                style = AppFontStyle.Regular,
+                                                size = FontSize.Medium
+                                            ),
+                                            color = SecondaryText
+                                        )
+                                    }
+                                }
                             }
                         }
                         else -> {
