@@ -533,6 +533,22 @@
     <string name="product_error_duplicate_sku">รหัส SKU นี้มีอยู่แล้ว</string>
     <string name="product_error_duplicate_name">ชื่อนี้มีอยู่แล้ว</string>
     <string name="product_error_duplicate_code">รหัสสินค้านี้มีอยู่แล้ว</string>
+    <!-- Product Delete API errors -->
+    <string name="product_delete_id_required">กรุณาระบุรหัสสินค้า</string>
+    <string name="product_delete_ids_required">กรุณาเลือกสินค้าที่ต้องการลบอย่างน้อย 1 รายการ</string>
+    <string name="product_delete_not_found">ไม่พบสินค้าที่ต้องการลบ</string>
+    <string name="product_delete_forbidden">คุณสามารถลบเฉพาะสินค้าของคุณเองได้เท่านั้น</string>
+    <string name="product_delete_invalid_body">ข้อมูลที่ส่งไม่ถูกต้อง</string>
+    <string name="product_delete_unauthorized">กรุณาเข้าสู่ระบบใหม่</string>
+    <string name="product_delete_success_single">ลบสินค้าสำเร็จ</string>
+    <string name="product_delete_success_multiple">ลบสินค้า %1$d รายการสำเร็จ</string>
+    <string name="product_delete_partial_success">ลบได้ %1$d รายการ</string>
+    <string name="product_delete_partial_failed">มี %1$d รายการลบไม่สำเร็จ</string>
+    <string name="product_delete_partial_failed_with_errors">มี %1$d รายการลบไม่สำเร็จ: %2$s</string>
+    <string name="product_delete_failed_generic">ไม่สามารถลบสินค้าได้</string>
+    <string name="product_delete_failed_with_errors">ไม่สามารถลบได้: %1$s</string>
+    <string name="product_delete_error_generic">เกิดข้อผิดพลาดในการลบสินค้า</string>
+    <string name="product_delete_select_required">กรุณาเลือกสินค้าที่ต้องการลบ</string>
     <string name="product_form_error_edit_failed">เกิดข้อผิดพลาดในการแก้ไขสินค้า</string>
     <string name="product_form_error_load_not_found">ไม่พบสินค้าที่ต้องการแก้ไข</string>
     <string name="product_form_error_load_with_reason">เกิดข้อผิดพลาดในการโหลดข้อมูล: %1$s</string>

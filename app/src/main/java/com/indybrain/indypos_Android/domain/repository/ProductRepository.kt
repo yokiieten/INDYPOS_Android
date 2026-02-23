@@ -140,8 +140,10 @@ interface ProductRepository {
     
     /**
      * Delete multiple products
+     * Returns DeleteProductsResult with deleted count, failed count, and error messages
+     * (for partial success when some products could not be deleted)
      */
-    suspend fun deleteMultipleProducts(productIds: List<String>): Result<Unit>
+    suspend fun deleteMultipleProducts(productIds: List<String>): Result<DeleteProductsResult>
     
     /**
      * Toggle product status (activate/deactivate)
@@ -237,6 +239,16 @@ interface ProductRepository {
      */
     suspend fun clearAllProductsAndCategories()
 }
+
+/**
+ * Result of batch delete products operation
+ * Supports partial success (some deleted, some failed)
+ */
+data class DeleteProductsResult(
+    val deletedCount: Int,
+    val failedCount: Int = 0,
+    val errors: List<String> = emptyList()
+)
 
 /**
  * Product sync statistics

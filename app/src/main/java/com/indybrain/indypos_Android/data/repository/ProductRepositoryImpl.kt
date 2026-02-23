@@ -3,7 +3,9 @@ package com.indybrain.indypos_Android.data.repository
 import android.content.Context
 import android.net.Uri
 import com.google.gson.Gson
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.dao.*
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
@@ -14,6 +16,7 @@ import java.util.Locale
 import java.util.TimeZone
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
+import com.indybrain.indypos_Android.domain.repository.DeleteProductsResult
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.repository.ProductSyncStatistics
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,6 +45,7 @@ class ProductRepositoryImpl @Inject constructor(
     private val authRepository: AuthRepository,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val cartRepository: CartRepository,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     private val gson: Gson,
     @ApplicationContext private val context: Context
 ) : ProductRepository {
@@ -761,7 +765,7 @@ class ProductRepositoryImpl @Inject constructor(
                 val messageKey = errorResponse.message?.takeIf { it.isNotBlank() }
                 val combinedErrorText = "$errorText $messageText"
                 
-                // Helper function to get localized string
+                // Helper function to get localized string (respects user's selected language)
                 fun getLocalizedString(resourceName: String, fallback: String): String {
                     val resourceId = context.resources.getIdentifier(
                         resourceName,
@@ -769,7 +773,9 @@ class ProductRepositoryImpl @Inject constructor(
                         context.packageName
                     )
                     return if (resourceId != 0) {
-                        context.getString(resourceId)
+                        val localeCode = languageLocalDataSource.getLanguageLocale()
+                        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+                        localizedContext.getString(resourceId)
                     } else {
                         fallback
                     }
@@ -805,6 +811,35 @@ class ProductRepositoryImpl @Inject constructor(
                     }
                     combinedErrorText.contains("duplicate product code") || combinedErrorText.contains("duplicate code") -> {
                         return getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
+                    }
+                    // Product delete API errors (match both Thai and English API responses)
+                    combinedErrorText.contains("product id is required") ||
+                    combinedErrorText.contains("กรุณาระบุรหัสสินค้า") -> {
+                        return getLocalizedString("product_delete_id_required", "กรุณาระบุรหัสสินค้า")
+                    }
+                    combinedErrorText.contains("product ids are required") ||
+                    combinedErrorText.contains("at least one product id") ||
+                    combinedErrorText.contains("กรุณาเลือกสินค้า") -> {
+                        return getLocalizedString("product_delete_ids_required", "กรุณาเลือกสินค้าที่ต้องการลบอย่างน้อย 1 รายการ")
+                    }
+                    combinedErrorText.contains("product not found") ||
+                    combinedErrorText.contains("ไม่พบสินค้า") -> {
+                        return getLocalizedString("product_delete_not_found", "ไม่พบสินค้าที่ต้องการลบ")
+                    }
+                    combinedErrorText.contains("only delete your own products") ||
+                    combinedErrorText.contains("own products") ||
+                    combinedErrorText.contains("ลบเฉพาะสินค้าของคุณเอง") ||
+                    combinedErrorText.contains("สินค้าของคุณเอง") -> {
+                        return getLocalizedString("product_delete_forbidden", "คุณสามารถลบเฉพาะสินค้าของคุณเองได้เท่านั้น")
+                    }
+                    combinedErrorText.contains("invalid request body") ||
+                    combinedErrorText.contains("ข้อมูลที่ส่งไม่ถูกต้อง") -> {
+                        return getLocalizedString("product_delete_invalid_body", "ข้อมูลที่ส่งไม่ถูกต้อง")
+                    }
+                    combinedErrorText.contains("missing authorization") ||
+                    combinedErrorText.contains("authorization") ||
+                    combinedErrorText.contains("กรุณาเข้าสู่ระบบ") -> {
+                        return getLocalizedString("product_delete_unauthorized", "กรุณาเข้าสู่ระบบใหม่")
                     }
                 }
                 
@@ -891,7 +926,7 @@ class ProductRepositoryImpl @Inject constructor(
                 // If parsing fails, check raw string
                 val errorLower = errorJson.lowercase()
                 
-                // Helper function to get localized string
+                // Helper function to get localized string (respects user's selected language)
                 fun getLocalizedString(resourceName: String, fallback: String): String {
                     val resourceId = context.resources.getIdentifier(
                         resourceName,
@@ -899,7 +934,9 @@ class ProductRepositoryImpl @Inject constructor(
                         context.packageName
                     )
                     return if (resourceId != 0) {
-                        context.getString(resourceId)
+                        val localeCode = languageLocalDataSource.getLanguageLocale()
+                        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+                        localizedContext.getString(resourceId)
                     } else {
                         fallback
                     }
@@ -1006,7 +1043,7 @@ class ProductRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun deleteMultipleProducts(productIds: List<String>): Result<Unit> {
+    override suspend fun deleteMultipleProducts(productIds: List<String>): Result<DeleteProductsResult> {
         return try {
             if (productIds.isEmpty()) {
                 return Result.failure(Exception("กรุณาเลือกสินค้าที่ต้องการลบ"))
@@ -1019,20 +1056,24 @@ class ProductRepositoryImpl @Inject constructor(
                     val response = productsApi.deleteMultipleProducts(request)
                     
                     if (response.status == 200) {
-                        // API success - permanently delete from Room
-                        // Use deleted_ids from response to ensure we only delete what was actually deleted
-                        val deletedIds = response.deletedIds
-                        if (deletedIds.isNotEmpty()) {
-                            deletedIds.forEach { productId ->
-                                productDao.deleteProductById(productId)
-                            }
-                        } else {
-                            // Fallback: delete all requested IDs if response doesn't have deleted_ids
-                            productIds.forEach { productId ->
-                                productDao.deleteProductById(productId)
-                            }
+                        // API returns 200 for both full and partial success
+                        // Use deleted_ids from response - only delete what server actually deleted
+                        val deletedIds = response.deletedIds.orEmpty()
+                        val totalDeleted = response.data?.totalDeleted ?: response.count
+                        val totalFailed = response.data?.totalFailed ?: response.failedDeletions.orEmpty().size
+                        val errors = response.errors.orEmpty()
+                        
+                        deletedIds.forEach { productId ->
+                            productDao.deleteProductById(productId)
                         }
-                        Result.success(Unit)
+                        
+                        Result.success(
+                            DeleteProductsResult(
+                                deletedCount = totalDeleted,
+                                failedCount = totalFailed,
+                                errors = errors
+                            )
+                        )
                     } else {
                         val errorMessage = response.message.takeIf { it.isNotBlank() }
                             ?: "เกิดข้อผิดพลาดในการลบสินค้า"
@@ -1045,19 +1086,19 @@ class ProductRepositoryImpl @Inject constructor(
                 }
             } else {
                 // No network - mark as deleted locally and unsynced
+                var deletedCount = 0
                 productIds.forEach { productId ->
                     val product = productDao.getProductById(productId)
                     if (product != null) {
                         if (!product.isSynced && !product.isFromServer) {
-                            // Not synced and not from server - permanently delete
                             productDao.deleteProductById(productId)
                         } else {
-                            // Mark as deleted locally and unsynced for sync later
                             productDao.markAsDeletedLocallyAndUnsynced(productId)
                         }
+                        deletedCount++
                     }
                 }
-                Result.success(Unit)
+                Result.success(DeleteProductsResult(deletedCount = deletedCount))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบสินค้า"))

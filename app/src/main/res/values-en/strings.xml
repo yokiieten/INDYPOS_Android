@@ -520,6 +520,22 @@
     <string name="product_error_duplicate_sku">SKU code already exists</string>
     <string name="product_error_duplicate_name">Product name already exists</string>
     <string name="product_error_duplicate_code">Product code already exists</string>
+    <!-- Product Delete API errors -->
+    <string name="product_delete_id_required">Product ID is required</string>
+    <string name="product_delete_ids_required">Please select at least one product to delete</string>
+    <string name="product_delete_not_found">Product not found</string>
+    <string name="product_delete_forbidden">You can only delete your own products</string>
+    <string name="product_delete_invalid_body">Invalid request data</string>
+    <string name="product_delete_unauthorized">Please sign in again</string>
+    <string name="product_delete_success_single">Product deleted successfully</string>
+    <string name="product_delete_success_multiple">%1$d products deleted successfully</string>
+    <string name="product_delete_partial_success">%1$d deleted</string>
+    <string name="product_delete_partial_failed">%1$d items failed to delete</string>
+    <string name="product_delete_partial_failed_with_errors">%1$d items failed to delete: %2$s</string>
+    <string name="product_delete_failed_generic">Unable to delete products</string>
+    <string name="product_delete_failed_with_errors">Unable to delete: %1$s</string>
+    <string name="product_delete_error_generic">Error deleting product</string>
+    <string name="product_delete_select_required">Please select products to delete</string>
     <string name="product_form_error_edit_failed">Failed to update product</string>
     <string name="product_form_error_load_not_found">Product to edit was not found</string>
     <string name="product_form_error_load_with_reason">Failed to load data: %1$s</string>

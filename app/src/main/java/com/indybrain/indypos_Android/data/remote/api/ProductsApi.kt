@@ -164,9 +164,11 @@ interface ProductsApi {
     
     /**
      * Delete product endpoint
+     * Success (200): data contains deleted product
+     * Fail: 400 (ID required), 403 (not owner), 404 (not found), 401 (unauthorized), 500
      */
     @DELETE("protected/indypos/products/{id}")
-    suspend fun deleteProduct(@Path("id") id: String): ApiResponseDto<Any>
+    suspend fun deleteProduct(@Path("id") id: String): ApiResponseDto<ProductDto>
     
     /**
      * Delete multiple products endpoint

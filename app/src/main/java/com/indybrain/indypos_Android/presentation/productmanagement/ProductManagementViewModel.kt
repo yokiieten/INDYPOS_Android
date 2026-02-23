@@ -1,11 +1,16 @@
 package com.indybrain.indypos_Android.presentation.productmanagement
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,8 +26,22 @@ import javax.inject.Inject
 @HiltViewModel
 class ProductManagementViewModel @Inject constructor(
     private val productRepository: ProductRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val languageLocalDataSource: LanguageLocalDataSource,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
+
+    private fun getLocalizedString(resId: Int, vararg formatArgs: Any): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId, *formatArgs)
+    }
     
     private val _uiState = MutableStateFlow(ProductManagementUiState())
     val uiState: StateFlow<ProductManagementUiState> = _uiState.asStateFlow()
@@ -300,14 +319,16 @@ class ProductManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = null
+                        errorMessage = null,
+                        deleteSuccessMessage = getLocalizedString(R.string.product_delete_success_single)
                     )
                 }
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบสินค้า"
+                        errorMessage = error.message ?: getLocalizedString(R.string.product_delete_error_generic),
+                        deleteSuccessMessage = null
                     )
                 }
             }
@@ -322,7 +343,7 @@ class ProductManagementViewModel @Inject constructor(
             val selectedIds = _uiState.value.selectedProductIds.toList()
             if (selectedIds.isEmpty()) {
                 _uiState.update { 
-                    it.copy(errorMessage = "กรุณาเลือกสินค้าที่ต้องการลบ")
+                    it.copy(errorMessage = getLocalizedString(R.string.product_delete_select_required))
                 }
                 return@launch
             }
@@ -342,19 +363,38 @@ class ProductManagementViewModel @Inject constructor(
             
             val result = productRepository.deleteMultipleProducts(selectedIds)
             
-            result.onSuccess {
-                val count = selectedIds.size
-                val successMessage = if (count == 1) {
-                    "ลบสินค้าสำเร็จ"
-                } else {
-                    "ลบสินค้า $count รายการสำเร็จ"
+            result.onSuccess { deleteResult ->
+                val (deletedCount, failedCount, errors) = deleteResult
+                val successMessage: String?
+                val errorMessage: String?
+                
+                when {
+                    failedCount == 0 && deletedCount > 0 -> {
+                        // Full success - all deleted
+                        successMessage = if (deletedCount == 1) {
+                            getLocalizedString(R.string.product_delete_success_single)
+                        } else {
+                            getLocalizedString(R.string.product_delete_success_multiple, deletedCount)
+                        }
+                        errorMessage = null
+                    }
+                    failedCount >= 1 -> {
+                        // มี failed 1 รายการขึ้นไป - แสดง "ไม่พบสินค้า" เหมือนกรณีลบทีละตัว
+                        successMessage = null
+                        errorMessage = getLocalizedString(R.string.product_delete_not_found)
+                    }
+                    else -> {
+                        // All failed, no specific errors
+                        successMessage = null
+                        errorMessage = getLocalizedString(R.string.product_delete_failed_generic)
+                    }
                 }
                 
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
                         deleteSuccessMessage = successMessage,
-                        errorMessage = null,
+                        errorMessage = errorMessage,
                         pendingDeleteProductIds = emptySet()
                     )
                 }
@@ -362,7 +402,7 @@ class ProductManagementViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบสินค้า",
+                        errorMessage = error.message ?: getLocalizedString(R.string.product_delete_error_generic),
                         deleteSuccessMessage = null,
                         pendingDeleteProductIds = emptySet()
                     )
@@ -389,10 +429,10 @@ class ProductManagementViewModel @Inject constructor(
     }
     
     /**
-     * Clear error message
+     * Clear error message and refresh page
      */
     fun clearError() {
-        _uiState.update { it.copy(errorMessage = null) }
+        refreshProducts()
     }
 }
 
