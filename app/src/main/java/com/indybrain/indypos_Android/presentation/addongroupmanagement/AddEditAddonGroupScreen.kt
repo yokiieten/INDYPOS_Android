@@ -836,7 +836,7 @@ private fun AddAddonDialog(
                         showValidationError = true
                     } else {
                         val price = priceStr.toDoubleOrNull()
-                        if (price == null || price <= 0) {
+                        if (price == null || price < 0) {
                             showValidationError = true
                         } else {
                             val roundedPrice = BigDecimal(price.toString())
