@@ -3,6 +3,7 @@ package com.indybrain.indypos_Android.data.export
 import android.content.Context
 import android.util.Log
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
+import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
 import com.indybrain.indypos_Android.data.local.dao.CategoryDao
 import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
@@ -37,6 +38,7 @@ class ExportService @Inject constructor(
     private val categoryDao: CategoryDao,
     private val addonDao: AddonDao,
     private val addonGroupDao: AddonGroupDao,
+    private val addonGroupAddonJunctionDao: AddonGroupAddonJunctionDao,
     private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
     private val orderDao: OrderDao,
     private val orderItemDao: OrderItemDao
@@ -202,28 +204,41 @@ class ExportService @Inject constructor(
     suspend fun exportAddonGroups(format: ExportFormat): File? = withContext(Dispatchers.IO) {
         try {
             val addonGroups = addonGroupDao.getAllAddonGroups()
+            val allAddons = addonDao.getAllAddons().associateBy { it.id }
+            
+            Log.d("ExportService", "AddonGroup export: count=${addonGroups.size}")
+            
+            // iOS column order: ID, Name, Is Required, Is Single Selection, Max Selection, Is Active,
+            // Options Count, Options ID, Options Names, Created At
             val headers = arrayOf(
-                "ID", "Name", "Is Required", "Is Single Selection", "Min Selection", "Max Selection",
-                "Is Active", "Sort Order", "Created At", "Updated At"
+                "ID", "Name", "Is Required", "Is Single Selection", "Max Selection", "Is Active",
+                "Options Count", "Options ID", "Options Names", "Created At"
             )
             
             val rows = addonGroups.map { group ->
+                val addonIds = addonGroupAddonJunctionDao.getAddonIdsByAddonGroupIdSync(group.id)
+                val addonNames = addonIds.mapNotNull { allAddons[it]?.name }
+                val optionsCount = addonIds.size
+                val optionsId = addonIds.joinToString(", ")
+                val optionsNames = addonNames.joinToString(", ")
+                
                 arrayOf(
                     group.id,
                     group.name,
                     group.isRequired.toString(),
                     group.isSingleSelection.toString(),
-                    group.minSelection?.toString() ?: "",
                     group.maxSelection?.toString() ?: "",
                     group.isActive.toString(),
-                    group.sortOrder?.toString() ?: "",
-                    dateFormat.format(group.createdAt),
-                    dateFormat.format(group.updatedAt)
+                    optionsCount.toString(),
+                    optionsId,
+                    optionsNames,
+                    dateFormat.format(group.createdAt)
                 )
             }
             
             createFile("AddonGroups", format, headers, rows)
         } catch (e: Exception) {
+            Log.e("ExportService", "Export addon groups failed: ${e.message}", e)
             null
         }
     }

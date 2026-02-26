@@ -11,6 +11,7 @@ import com.indybrain.indypos_Android.data.export.ExportDataType
 import com.indybrain.indypos_Android.data.export.ExportFormat
 import com.indybrain.indypos_Android.data.export.ExportService
 import com.indybrain.indypos_Android.data.local.dao.OrderDao
+import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
@@ -33,6 +34,7 @@ import javax.inject.Inject
 class DataManagementViewModel @Inject constructor(
     private val productDao: ProductDao,
     private val productRepository: ProductRepository,
+    private val addonGroupRepository: AddonGroupRepository,
     private val categoryDao: CategoryDao,
     private val addonDao: AddonDao,
     private val addonGroupDao: AddonGroupDao,
@@ -126,10 +128,19 @@ class DataManagementViewModel @Inject constructor(
             _uiState.update { it.copy(isExporting = true, exportError = null, exportSuccess = false) }
             
             try {
-                // Sync products from API before export when exporting Products (ensures local DB has data)
-                if (dataType == ExportDataType.PRODUCTS && networkConnectivityChecker.isConnected()) {
-                    Log.d("DataManagement", "Syncing products from API before export...")
-                    productRepository.fetchAndSaveProducts()
+                // Sync from API before export when online (ensures local DB has data)
+                if (networkConnectivityChecker.isConnected()) {
+                    when (dataType) {
+                        ExportDataType.PRODUCTS -> {
+                            Log.d("DataManagement", "Syncing products from API before export...")
+                            productRepository.fetchAndSaveProducts()
+                        }
+                        ExportDataType.ADDON_GROUPS -> {
+                            Log.d("DataManagement", "Syncing addon groups from API before export...")
+                            addonGroupRepository.fetchAndSyncAddonGroups()
+                        }
+                        else -> Unit
+                    }
                 }
                 
                 val result = exportService.exportDataByType(dataType, format)
