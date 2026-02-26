@@ -11,6 +11,7 @@ import com.indybrain.indypos_Android.data.export.ExportDataType
 import com.indybrain.indypos_Android.data.export.ExportFormat
 import com.indybrain.indypos_Android.data.export.ExportService
 import com.indybrain.indypos_Android.data.local.dao.OrderDao
+import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
@@ -31,6 +32,7 @@ import javax.inject.Inject
 @HiltViewModel
 class DataManagementViewModel @Inject constructor(
     private val productDao: ProductDao,
+    private val productRepository: ProductRepository,
     private val categoryDao: CategoryDao,
     private val addonDao: AddonDao,
     private val addonGroupDao: AddonGroupDao,
@@ -124,6 +126,12 @@ class DataManagementViewModel @Inject constructor(
             _uiState.update { it.copy(isExporting = true, exportError = null, exportSuccess = false) }
             
             try {
+                // Sync products from API before export when exporting Products (ensures local DB has data)
+                if (dataType == ExportDataType.PRODUCTS && networkConnectivityChecker.isConnected()) {
+                    Log.d("DataManagement", "Syncing products from API before export...")
+                    productRepository.fetchAndSaveProducts()
+                }
+                
                 val result = exportService.exportDataByType(dataType, format)
                 
                 result.fold(

@@ -5,6 +5,7 @@ import android.util.Log
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
 import com.indybrain.indypos_Android.data.local.dao.CategoryDao
+import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
 import com.indybrain.indypos_Android.data.local.dao.OrderDao
 import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
@@ -36,12 +37,14 @@ class ExportService @Inject constructor(
     private val categoryDao: CategoryDao,
     private val addonDao: AddonDao,
     private val addonGroupDao: AddonGroupDao,
+    private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
     private val orderDao: OrderDao,
     private val orderItemDao: OrderItemDao
 ) {
     
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
     private val dateOnlyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    private val fileNameTimestampFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
     
     suspend fun exportAllData(format: ExportFormat): Result<List<File>> = withContext(Dispatchers.IO) {
         try {
@@ -102,33 +105,48 @@ class ExportService @Inject constructor(
     
     suspend fun exportProducts(format: ExportFormat): File? = withContext(Dispatchers.IO) {
         try {
-            val products = productDao.getAllProducts()
+            val allProducts = productDao.getAllProducts()
+            val products = allProducts.filter { !it.isDeletedLocally }
+            val categories = categoryDao.getAllCategories().associateBy { it.id }
+            val addonGroups = addonGroupDao.getAllAddonGroups().associateBy { it.id }
+            
+            Log.d("ExportService", "Product export: total=${allProducts.size}, non-deleted=${products.size}")
+            
+            // iOS column order: ID, Name, Price, Cost Price, Product Code, Unit, SKU Code, Stock Quantity,
+            // Category Name, Selected Unit, Selected Color Hex, Addon Groups, Is Active, Created At
             val headers = arrayOf(
-                "ID", "Name", "Category ID", "Price", "Cost Price", "Unit",
-                "Product Code", "SKU Code", "Stock Quantity", "Min Stock",
-                "Is Active", "Created At", "Updated At"
+                "ID", "Name", "Price", "Cost Price", "Product Code", "Unit",
+                "SKU Code", "Stock Quantity", "Category Name", "Selected Unit", "Selected Color Hex",
+                "Addon Groups", "Is Active", "Created At"
             )
             
             val rows = products.map { product ->
+                val categoryName = product.categoryId?.let { categories[it]?.name } ?: ""
+                val addonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(product.id)
+                val addonGroupNames = addonGroupIds.mapNotNull { addonGroups[it]?.name }
+                val addonGroupsStr = addonGroupNames.joinToString(", ")
+                
                 arrayOf(
                     product.id,
                     product.name,
-                    product.categoryId ?: "",
                     product.price.toString(),
                     product.costPrice?.toString() ?: "",
-                    product.unit ?: "",
                     product.productCode ?: "",
+                    product.unit ?: "",
                     product.skuCode ?: "",
                     product.stockQuantity?.toString() ?: "",
-                    product.minStockQuantity?.toString() ?: "",
+                    categoryName,
+                    product.selectedUnit ?: "",
+                    product.selectedColorHex ?: "",
+                    addonGroupsStr,
                     product.isActive.toString(),
-                    dateFormat.format(product.createdAt),
-                    dateFormat.format(product.updatedAt)
+                    dateFormat.format(product.createdAt)
                 )
             }
             
             createFile("Products", format, headers, rows)
         } catch (e: Exception) {
+            Log.e("ExportService", "Export products failed: ${e.message}", e)
             null
         }
     }
@@ -527,7 +545,9 @@ class ExportService @Inject constructor(
     ): File? {
         return try {
             val extension = if (format == ExportFormat.CSV) "csv" else "xlsx"
-            val file = File(context.getExternalFilesDir(null), "${fileName}_${System.currentTimeMillis()}.$extension")
+            val timestamp = fileNameTimestampFormat.format(Date())
+            val baseName = "INDYPOS_${fileName}_$timestamp"
+            val file = File(context.getExternalFilesDir(null), "$baseName.$extension")
             
             when (format) {
                 ExportFormat.CSV -> {
