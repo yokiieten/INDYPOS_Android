@@ -154,6 +154,8 @@
     <string name="home_edit_cover_image">แก้ไขรูปภาพหน้าปก</string>
     <string name="home_take_photo">ถ่ายรูป</string>
     <string name="home_choose_from_gallery">เลือกรูปจากแกลเลอรี</string>
+    <string name="home_crop_cover_title">เลือกรูปภาพหน้าปก</string>
+    <string name="home_crop_use_photo">ใช้รูป</string>
     <string name="home_edit_store_name_title">แก้ไขชื่อร้าน</string>
     <string name="home_store_name_placeholder">กรอกชื่อร้าน</string>
     <string name="home_edit_description_title">แก้ไขรายละเอียดร้าน</string>

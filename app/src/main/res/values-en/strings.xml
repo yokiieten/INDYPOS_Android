@@ -151,6 +151,11 @@
     <string name="home_nav_orders">Orders</string>
     <string name="home_nav_charts">Charts</string>
     <string name="home_nav_settings">Settings</string>
+    <string name="home_edit_cover_image">Edit cover image</string>
+    <string name="home_take_photo">Take photo</string>
+    <string name="home_choose_from_gallery">Choose from gallery</string>
+    <string name="home_crop_cover_title">Choose cover area</string>
+    <string name="home_crop_use_photo">Use Photo</string>
     <string name="home_error_title">Error</string>
     <string name="home_ok">OK</string>
     <string name="home_success_title">Success</string>

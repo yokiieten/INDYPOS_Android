@@ -6,7 +6,10 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
 import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import coil.request.ImageRequest
 import coil.request.CachePolicy
@@ -163,6 +166,68 @@ object ImageUtils {
         }
     }
     
+    /**
+     * Load bitmap from URI (with orientation handling)
+     */
+    fun loadBitmap(uri: Uri, context: Context): Bitmap? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            inputStream.close()
+            bitmap?.let { handleOrientation(it, uri, context) }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Crop a region from bitmap and resize to target dimensions.
+     * @param bitmap Source bitmap
+     * @param cropRect Region to crop in bitmap pixels (will be clamped to bitmap bounds)
+     * @param targetWidth Output width
+     * @param targetHeight Output height
+     * @param file Output file to save
+     * @return Uri of saved file or null on failure
+     */
+    fun cropBitmapToRegion(
+        bitmap: Bitmap,
+        cropRect: RectF,
+        targetWidth: Int,
+        targetHeight: Int,
+        file: File,
+        context: Context
+    ): Uri? {
+        return try {
+            val left = cropRect.left.toInt().coerceIn(0, bitmap.width - 1)
+            val top = cropRect.top.toInt().coerceIn(0, bitmap.height - 1)
+            val right = (cropRect.right.toInt().coerceIn(1, bitmap.width)).coerceAtLeast(left + 1)
+            val bottom = (cropRect.bottom.toInt().coerceIn(1, bitmap.height)).coerceAtLeast(top + 1)
+
+            val cropped = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top)
+
+            val matrix = Matrix().apply {
+                setScale(
+                    targetWidth.toFloat() / cropped.width,
+                    targetHeight.toFloat() / cropped.height
+                )
+            }
+            val scaled = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(scaled)
+            val paint = Paint().apply {
+                isAntiAlias = true
+                isFilterBitmap = true
+            }
+            canvas.drawBitmap(cropped, matrix, paint)
+
+            val saved = saveBitmapToFile(scaled, file, 95)
+            cropped.recycle()
+            scaled.recycle()
+            if (saved) FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file) else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     /**
      * Create a high-quality ImageRequest for Coil with optimized settings
      * This ensures images are loaded with maximum quality and clarity
