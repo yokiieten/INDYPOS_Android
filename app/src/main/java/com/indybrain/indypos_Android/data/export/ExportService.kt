@@ -177,9 +177,14 @@ class ExportService @Inject constructor(
     
     suspend fun exportAddons(format: ExportFormat): File? = withContext(Dispatchers.IO) {
         try {
-            val addons = addonDao.getAllAddons()
+            val allAddons = addonDao.getAllAddons()
+            val addons = allAddons.filter { !it.isDeletedLocally }
+            
+            Log.d("ExportService", "Addon export: total=${allAddons.size}, non-deleted=${addons.size}")
+            
+            // iOS column order: ID, Name, Price, Is Active, Created At
             val headers = arrayOf(
-                "ID", "Name", "Price", "Addon Group ID", "Is Active", "Sort Order", "Created At", "Updated At"
+                "ID", "Name", "Price", "Is Active", "Created At"
             )
             
             val rows = addons.map { addon ->
@@ -187,16 +192,14 @@ class ExportService @Inject constructor(
                     addon.id,
                     addon.name,
                     addon.price.toString(),
-                    addon.addonGroupId ?: "",
                     addon.isActive.toString(),
-                    addon.sortOrder?.toString() ?: "",
-                    dateFormat.format(addon.createdAt),
-                    dateFormat.format(addon.updatedAt)
+                    dateFormat.format(addon.createdAt)
                 )
             }
             
             createFile("Addons", format, headers, rows)
         } catch (e: Exception) {
+            Log.e("ExportService", "Export addons failed: ${e.message}", e)
             null
         }
     }
