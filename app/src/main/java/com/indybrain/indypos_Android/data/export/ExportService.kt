@@ -11,6 +11,8 @@ import com.indybrain.indypos_Android.data.local.dao.OrderDao
 import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.data.local.entity.*
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.opencsv.CSVWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,6 +36,7 @@ enum class ExportFormat {
 class ExportService @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext
     private val context: Context,
+    private val gson: Gson,
     private val productDao: ProductDao,
     private val categoryDao: CategoryDao,
     private val addonDao: AddonDao,
@@ -271,6 +274,7 @@ class ExportService @Inject constructor(
                     rows.add(orderCells + arrayOf("", "", "", "", "", "", ""))
                 } else {
                     for (item in items) {
+                        val addonsDisplay = formatAddonsForExport(item.addons)
                         rows.add(
                             orderCells + arrayOf(
                                 item.productName,
@@ -278,7 +282,7 @@ class ExportService @Inject constructor(
                                 item.productUnitPrice.toString(),
                                 item.unitCost?.toString() ?: "",
                                 item.totalPrice.toString(),
-                                item.addons ?: "",
+                                addonsDisplay,
                                 item.specialRequest ?: ""
                             )
                         )
@@ -287,7 +291,35 @@ class ExportService @Inject constructor(
             }
             createFile("Orders", format, headers, rows)
         } catch (e: Exception) {
+            Log.e("ExportService", "Export orders failed: ${e.message}", e)
             null
+        }
+    }
+    
+    /**
+     * Parse addons JSON and return only addon names (like iOS), e.g. "นมจืด, นม x 2, น้ำผึ้ง"
+     */
+    private fun formatAddonsForExport(addonsJson: String?): String {
+        if (addonsJson.isNullOrEmpty()) return ""
+        return try {
+            val listType = object : TypeToken<List<Map<String, Any?>>>() {}.type
+            @Suppress("UNCHECKED_CAST")
+            val list = gson.fromJson<List<Map<String, Any?>>>(addonsJson, listType) ?: return ""
+            if (list.isEmpty()) return ""
+            val grouped = mutableMapOf<String, Int>()
+            for (item in list) {
+                val name = (item["addon_name"] ?: item["addonName"])?.toString()?.takeIf { it.isNotBlank() } ?: continue
+                val qty = when (val q = item["quantity"]) {
+                    is Number -> q.toInt()
+                    else -> 1
+                }
+                grouped[name] = (grouped[name] ?: 0) + qty
+            }
+            grouped.map { (name, qty) ->
+                if (qty > 1) "$name x$qty" else name
+            }.joinToString(", ")
+        } catch (e: Exception) {
+            addonsJson
         }
     }
     
@@ -570,14 +602,16 @@ class ExportService @Inject constructor(
             when (format) {
                 ExportFormat.CSV -> {
                     FileOutputStream(file).use { out ->
-                        // UTF-8 BOM helps Excel on Windows recognize the file as UTF-8 (fixes Thai text showing as garbled)
+                        // UTF-8 BOM is required for Excel (especially Windows) to recognize Thai/special chars
                         out.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
+                        out.flush()
                         OutputStreamWriter(out, StandardCharsets.UTF_8).use { writer ->
                             val csvWriter = CSVWriter(writer)
                             csvWriter.writeNext(headers)
                             rows.forEach { row ->
                                 csvWriter.writeNext(row)
                             }
+                            csvWriter.flush()
                             csvWriter.close()
                         }
                     }
