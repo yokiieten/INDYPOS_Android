@@ -323,7 +323,7 @@
     <string name="data_export_zip_format_message">Select the data file format inside ZIP package</string>
     
     <!-- Export Data Types -->
-    <string name="export_data_type_categories">Product Categories</string>
+    <string name="export_data_type_categories">Categories</string>
     <string name="export_data_type_products">Products</string>
     <string name="export_data_type_addon_groups">Add-on Groups</string>
     <string name="export_data_type_addons">Add-ons</string>

@@ -16,7 +16,8 @@ import org.apache.poi.ss.usermodel.*
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
 import java.io.FileOutputStream
-import java.io.FileWriter
+import java.io.OutputStreamWriter
+import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
@@ -136,7 +137,7 @@ class ExportService @Inject constructor(
         try {
             val categories = categoryDao.getAllCategories()
             val headers = arrayOf(
-                "ID", "Name", "Is Active", "Sort Order", "Product Count", "Created At", "Updated At"
+                "ID", "Name", "Is Active", "Created At"
             )
             
             val rows = categories.map { category ->
@@ -144,10 +145,7 @@ class ExportService @Inject constructor(
                     category.id,
                     category.name,
                     category.isActive.toString(),
-                    category.sortOrder?.toString() ?: "",
-                    category.productCount?.toString() ?: "",
-                    dateFormat.format(category.createdAt),
-                    dateFormat.format(category.updatedAt)
+                    dateFormat.format(category.createdAt)
                 )
             }
             
@@ -533,13 +531,17 @@ class ExportService @Inject constructor(
             
             when (format) {
                 ExportFormat.CSV -> {
-                    FileWriter(file).use { writer ->
-                        val csvWriter = CSVWriter(writer)
-                        csvWriter.writeNext(headers)
-                        rows.forEach { row ->
-                            csvWriter.writeNext(row)
+                    FileOutputStream(file).use { out ->
+                        // UTF-8 BOM helps Excel on Windows recognize the file as UTF-8 (fixes Thai text showing as garbled)
+                        out.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
+                        OutputStreamWriter(out, StandardCharsets.UTF_8).use { writer ->
+                            val csvWriter = CSVWriter(writer)
+                            csvWriter.writeNext(headers)
+                            rows.forEach { row ->
+                                csvWriter.writeNext(row)
+                            }
+                            csvWriter.close()
                         }
-                        csvWriter.close()
                     }
                 }
                 ExportFormat.EXCEL -> {
