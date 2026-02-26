@@ -335,7 +335,9 @@
     <string name="export_format_excel">Excel (.xlsx)</string>
     <string name="export_format_csv">CSV (.csv)</string>
     
-    <!-- Export Error Messages -->
+    <!-- Export Loading/Error -->
+    <string name="data_export_loading">Exporting data…</string>
+    <string name="data_management_loading">Loading data…</string>
     <string name="data_export_error_failed">Export failed</string>
     
     <!-- Common -->

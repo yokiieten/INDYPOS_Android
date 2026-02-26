@@ -344,7 +344,9 @@
     <string name="export_format_excel">Excel (.xlsx)</string>
     <string name="export_format_csv">CSV (.csv)</string>
     
-    <!-- Export Error Messages -->
+    <!-- Export Loading/Error -->
+    <string name="data_export_loading">กำลังส่งออกข้อมูล\u2026</string>
+    <string name="data_management_loading">กำลังโหลดข้อมูล\u2026</string>
     <string name="data_export_error_failed">การส่งออกข้อมูลล้มเหลว</string>
     
     <!-- Common -->
