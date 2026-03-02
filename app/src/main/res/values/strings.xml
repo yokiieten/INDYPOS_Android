@@ -668,11 +668,11 @@
     <string name="product_form_loading_uploading_image">กำลังอัปโหลดรูปภาพ...</string>
     
     <!-- Addon Group Management Screen -->
-    <string name="addon_group_management_title">จัดการกลุ่ม Addon</string>
-    <string name="addon_group_management_select_title">เลือกกลุ่ม Addon</string>
+    <string name="addon_group_management_title">จัดการกลุ่มแอดออน</string>
+    <string name="addon_group_management_select_title">เลือกกลุ่มแอดออน</string>
     <string name="addon_group_management_edit">แก้ไข</string>
     <string name="addon_group_management_cancel">ยกเลิก</string>
-    <string name="addon_group_management_search_placeholder">ค้นหากลุ่ม Addon</string>
+    <string name="addon_group_management_search_placeholder">ค้นหากลุ่มแอดออน</string>
     <string name="addon_group_management_empty">ไม่มีกลุ่ม Addon</string>
     <string name="addon_group_management_add">เพิ่มกลุ่ม Addon</string>
     <string name="addon_group_management_sync_status_title">สถานะการ Sync</string>
@@ -707,6 +707,10 @@
     <string name="addon_group_management_action_delete">ลบ</string>
     <string name="addon_group_management_status_active">ใช้งาน</string>
     <string name="addon_group_management_status_inactive">ไม่ใช้งาน</string>
+    <!-- Addon Group Toggle Status (เปิด/ปิดใช้งาน) -->
+    <string name="addon_group_status_activated">เปิดใช้งาน</string>
+    <string name="addon_group_status_deactivated">ปิดใช้งาน</string>
+    <string name="addon_group_toggle_success">อัปเดตสถานะกลุ่ม Addon \'%1$s\' เป็น \'%2$s\' เรียบร้อยแล้ว</string>
     
     <!-- Add/Edit Addon Group Screen -->
     <string name="addon_group_edit_title">แก้ไขแอดออนกรุ๊ป</string>

@@ -695,6 +695,10 @@
     <string name="addon_group_management_action_delete">Delete</string>
     <string name="addon_group_management_status_active">Active</string>
     <string name="addon_group_management_status_inactive">Inactive</string>
+    <!-- Addon Group Toggle Status (Activate/Deactivate) -->
+    <string name="addon_group_status_activated">Activated</string>
+    <string name="addon_group_status_deactivated">Deactivated</string>
+    <string name="addon_group_toggle_success">Addon group \'%1$s\' status updated to \'%2$s\' successfully</string>
     
     <!-- Add/Edit Addon Group Screen -->
     <string name="addon_group_edit_title">Edit Addon Group</string>

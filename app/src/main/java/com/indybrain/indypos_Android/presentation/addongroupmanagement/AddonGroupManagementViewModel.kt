@@ -183,8 +183,12 @@ class AddonGroupManagementViewModel @Inject constructor(
             result.onSuccess { addonGroup ->
                 // Get addon group name for success message
                 val addonGroupName = addonGroup.name
-                val statusText = if (newStatus) "เปิดใช้งาน" else "ปิดใช้งาน"
-                val successMessage = "อัปเดตสถานะกลุ่ม Addon '$addonGroupName' เป็น '$statusText' เรียบร้อยแล้ว"
+                val statusText = if (newStatus) {
+                    getLocalizedString(R.string.addon_group_status_activated)
+                } else {
+                    getLocalizedString(R.string.addon_group_status_deactivated)
+                }
+                val successMessage = getLocalizedString(R.string.addon_group_toggle_success, addonGroupName, statusText)
                 
                 _uiState.update { 
                     it.copy(
