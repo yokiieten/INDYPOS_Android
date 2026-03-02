@@ -684,6 +684,19 @@
     <string name="addon_group_management_delete_title">ลบ</string>
     <string name="addon_group_management_delete_confirm_single">คุณต้องการลบกลุ่ม Addon \'%1$s\' ใช่หรือไม่?</string>
     <string name="addon_group_management_delete_confirm_multiple">คุณต้องการลบกลุ่ม Addon %1$d รายการใช่หรือไม่?</string>
+    <!-- Addon Group Delete - Success -->
+    <string name="addon_group_delete_not_found">ไม่พบกลุ่มแอดออน</string>
+    <string name="addon_group_delete_success_single">ลบกลุ่ม Addon เรียบร้อยแล้ว</string>
+    <string name="addon_group_delete_success_single_with_name">ลบกลุ่ม Addon \'%1$s\' เรียบร้อยแล้ว</string>
+    <string name="addon_group_delete_success_multiple">ลบกลุ่ม Addon %1$d รายการเรียบร้อยแล้ว</string>
+    <!-- Addon Group Delete API Errors -->
+    <string name="api_error_delete_addon_group_id_required">จำเป็นต้องระบุรหัสกลุ่มแอดออน</string>
+    <string name="api_error_delete_addon_group_ids_required">ต้องระบุรหัสกลุ่มแอดออนอย่างน้อย 1 รายการ</string>
+    <string name="api_error_delete_addon_group_bad_request">คำขอไม่ถูกต้อง กรุณาตรวจสอบข้อมูล</string>
+    <string name="api_error_delete_addon_group_access_denied">ไม่มีสิทธิ์เข้าถึง กลุ่มแอดออนนี้ไม่ใช่ของคุณ</string>
+    <string name="api_error_delete_addon_group_not_found">ไม่พบกลุ่มแอดออน</string>
+    <string name="api_error_delete_addon_group_server_error">เกิดข้อผิดพลาดของเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง</string>
+    <string name="api_error_delete_addon_group_generic">ไม่สามารถลบกลุ่มแอดออนได้ กรุณาลองใหม่อีกครั้ง</string>
     <string name="addon_group_management_delete_warning">การลบนี้ไม่สามารถยกเลิกได้</string>
     <string name="addon_group_management_select_items">เลือก %1$d รายการ</string>
     <string name="addon_group_management_action_title">ตัวเลือก</string>
@@ -753,6 +766,15 @@
     <string name="addon_management_error_select_to_delete">กรุณาเลือก Addon ที่ต้องการลบ</string>
     <string name="addon_management_delete_success_single">ลบตัวเลือกเพิ่มเติมสำเร็จ</string>
     <string name="addon_management_delete_success_multiple">ลบตัวเลือกเพิ่มเติม %1$d รายการสำเร็จ</string>
+    <!-- Addon Delete API Errors -->
+    <string name="api_error_delete_addon_id_required">จำเป็นต้องระบุรหัสแอดออน</string>
+    <string name="api_error_delete_addon_ids_required">ต้องระบุรหัสแอดออนอย่างน้อย 1 รายการ</string>
+    <string name="api_error_delete_addon_invalid_body">ข้อมูลที่ส่งไม่ถูกต้อง</string>
+    <string name="api_error_delete_addon_bad_request">คำขอไม่ถูกต้อง กรุณาตรวจสอบข้อมูล</string>
+    <string name="api_error_delete_addon_access_denied">ไม่มีสิทธิ์เข้าถึง แอดออนนี้ไม่ใช่ของคุณ</string>
+    <string name="api_error_delete_addon_not_found">ไม่พบแอดออน</string>
+    <string name="api_error_delete_addon_server_error">เกิดข้อผิดพลาดของเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง</string>
+    <string name="api_error_delete_addon_generic">ไม่สามารถลบแอดออนได้ กรุณาลองใหม่อีกครั้ง</string>
     
     <!-- Add/Edit Addon Screen -->
     <string name="addon_edit_title">แก้ไข Addon</string>

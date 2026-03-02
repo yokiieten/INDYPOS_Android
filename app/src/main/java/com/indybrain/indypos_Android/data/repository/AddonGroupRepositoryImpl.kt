@@ -2,7 +2,9 @@ package com.indybrain.indypos_Android.data.repository
 
 import android.content.Context
 import com.google.gson.Gson
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
@@ -11,7 +13,9 @@ import com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddons
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
 import com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto
+import com.indybrain.indypos_Android.data.remote.dto.DeleteAddonGroupsResponseDto
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
+import com.indybrain.indypos_Android.domain.repository.DeleteAddonGroupsResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -30,9 +34,25 @@ class AddonGroupRepositoryImpl @Inject constructor(
     private val addonDao: AddonDao,
     private val junctionDao: AddonGroupAddonJunctionDao,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     private val gson: Gson,
     @ApplicationContext private val context: Context
 ) : AddonGroupRepository {
+
+    private fun getLocalizedString(resourceName: String, fallback: String): String {
+        val resourceId = context.resources.getIdentifier(
+            resourceName,
+            "string",
+            context.packageName
+        )
+        return if (resourceId != 0) {
+            val localeCode = languageLocalDataSource.getLanguageLocale()
+            val localizedContext = LocaleHelper.setLocale(context, localeCode)
+            localizedContext.getString(resourceId)
+        } else {
+            fallback
+        }
+    }
     
     override fun getAllAddonGroupsFlow(): Flow<List<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity>> {
         return addonGroupDao.getAllAddonGroupsForManagementFlow()
@@ -482,7 +502,7 @@ class AddonGroupRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun deleteMultipleAddonGroups(addonGroupIds: List<String>): Result<Unit> {
+    override suspend fun deleteMultipleAddonGroups(addonGroupIds: List<String>): Result<DeleteAddonGroupsResult> {
         return try {
             if (addonGroupIds.isEmpty()) {
                 return Result.failure(Exception("กรุณาเลือกกลุ่ม Addon ที่ต้องการลบ"))
@@ -495,14 +515,27 @@ class AddonGroupRepositoryImpl @Inject constructor(
                     val response = productsApi.deleteMultipleAddonGroups(request)
                     
                     if (response.status == 200) {
-                        // API success - permanently delete from Room
-                        val deletedIds = response.data?.deletedIds ?: addonGroupIds
+                        // API returns 200 for both full and partial success
+                        // Use deleted_ids from response - only delete what server actually deleted
+                        val deletedIds = response.deletedIds.orEmpty()
+                        val totalDeleted = response.data?.totalDeleted ?: response.count
+                        val totalFailed = response.data?.totalFailed ?: response.failedDeletions.orEmpty().size
+                        val errors = response.errors.orEmpty()
+                        
                         deletedIds.forEach { id ->
+                            junctionDao.deleteByAddonGroupId(id)
                             addonGroupDao.permanentlyDeleteAddonGroup(id)
                         }
-                        Result.success(Unit)
+                        
+                        Result.success(
+                            DeleteAddonGroupsResult(
+                                deletedCount = totalDeleted,
+                                failedCount = totalFailed,
+                                errors = errors
+                            )
+                        )
                     } else {
-                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                        val errorMessage = response.message.takeIf { it.isNotBlank() }
                             ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
                         Result.failure(Exception(errorMessage))
                     }
@@ -528,17 +561,20 @@ class AddonGroupRepositoryImpl @Inject constructor(
                 }
             } else {
                 // No network - mark as deleted locally
+                var deletedCount = 0
                 addonGroupIds.forEach { id ->
                     val existing = addonGroupDao.getAddonGroupById(id)
                     if (existing != null) {
                         if (!existing.isSynced && !existing.isFromServer) {
+                            junctionDao.deleteByAddonGroupId(id)
                             addonGroupDao.permanentlyDeleteAddonGroup(id)
                         } else {
                             addonGroupDao.softDeleteAddonGroup(id, Date())
                         }
+                        deletedCount++
                     }
                 }
-                Result.success(Unit)
+                Result.success(DeleteAddonGroupsResult(deletedCount = deletedCount))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"))
@@ -760,6 +796,38 @@ class AddonGroupRepositoryImpl @Inject constructor(
                 val messageKey = errorResponse.message?.takeIf { it.isNotBlank() }
                 val combinedErrorText = "$errorText $messageText"
                 
+                // Addon group delete API errors (map en/th locale)
+                when {
+                    combinedErrorText.contains("addon group id is required") ||
+                    combinedErrorText.contains("กรุณาระบุกลุ่ม addon") -> {
+                        return getLocalizedString("api_error_delete_addon_group_id_required", "จำเป็นต้องระบุรหัสกลุ่มแอดออน")
+                    }
+                    combinedErrorText.contains("addon group ids are required") ||
+                    combinedErrorText.contains("at least one addon group id") ||
+                    combinedErrorText.contains("กรุณาเลือกกลุ่ม addon") -> {
+                        return getLocalizedString("api_error_delete_addon_group_ids_required", "ต้องระบุรหัสกลุ่มแอดออนอย่างน้อย 1 รายการ")
+                    }
+                    combinedErrorText.contains("addon group not found") ||
+                    combinedErrorText.contains("ไม่พบกลุ่ม addon") -> {
+                        return getLocalizedString("api_error_delete_addon_group_not_found", "ไม่พบกลุ่มแอดออน")
+                    }
+                    combinedErrorText.contains("access denied") ||
+                    combinedErrorText.contains("addon group does not belong") ||
+                    combinedErrorText.contains("กลุ่ม addon ของคุณเอง") -> {
+                        return getLocalizedString("api_error_delete_addon_group_access_denied", "ไม่มีสิทธิ์เข้าถึง กลุ่มแอดออนนี้ไม่ใช่ของคุณ")
+                    }
+                    combinedErrorText.contains("invalid request body") ||
+                    combinedErrorText.contains("invalid character") ||
+                    combinedErrorText.contains("ข้อมูลที่ส่งไม่ถูกต้อง") -> {
+                        return getLocalizedString("api_error_delete_addon_group_bad_request", "คำขอไม่ถูกต้อง กรุณาตรวจสอบข้อมูล")
+                    }
+                    combinedErrorText.contains("missing authorization") ||
+                    combinedErrorText.contains("authorization") ||
+                    combinedErrorText.contains("unauthorized") -> {
+                        return getLocalizedString("api_error_delete_addon_group_generic", "ไม่สามารถลบกลุ่มแอดออนได้ กรุณาลองใหม่อีกครั้ง")
+                    }
+                }
+                
                 // Handle specific status codes
                 when (statusCode) {
                     400 -> {
@@ -784,7 +852,7 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         // Unauthorized - return message or error field
                         errorResponse.message?.takeIf { it.isNotBlank() }
                             ?: errorResponse.error?.takeIf { it.isNotBlank() }
-                            ?: "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            ?: getLocalizedString("api_error_delete_addon_group_generic", "ไม่สามารถลบกลุ่มแอดออนได้ กรุณาลองใหม่อีกครั้ง")
                     }
                     403 -> {
                         // Forbidden - Free plan limit exceeded or Access denied
@@ -797,10 +865,10 @@ class AddonGroupRepositoryImpl @Inject constructor(
                                 "คุณใช้กลุ่มตัวเลือกเพิ่มเติมครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
                             }
                             message.contains("access denied", ignoreCase = true) -> {
-                                "คุณไม่มีสิทธิ์แก้ไขกลุ่ม Addon นี้"
+                                getLocalizedString("api_error_delete_addon_group_access_denied", "ไม่มีสิทธิ์เข้าถึง กลุ่มแอดออนนี้ไม่ใช่ของคุณ")
                             }
                             else -> {
-                                message.ifBlank { "คุณไม่มีสิทธิ์เข้าถึงกลุ่ม Addon นี้" }
+                                message.ifBlank { getLocalizedString("api_error_delete_addon_group_access_denied", "ไม่มีสิทธิ์เข้าถึง กลุ่มแอดออนนี้ไม่ใช่ของคุณ") }
                             }
                         }
                     }
@@ -808,7 +876,7 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         // Not Found - Addon group not found
                         errorResponse.message?.takeIf { it.isNotBlank() }
                             ?: errorResponse.error?.takeIf { it.isNotBlank() }
-                            ?: "ไม่พบกลุ่ม Addon ที่ต้องการ"
+                            ?: getLocalizedString("api_error_delete_addon_group_not_found", "ไม่พบกลุ่มแอดออน")
                     }
                     409 -> {
                         // Conflict - Duplicate addon group name
@@ -827,13 +895,13 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         // Internal Server Error
                         errorResponse.message?.takeIf { it.isNotBlank() }
                             ?: errorResponse.error?.takeIf { it.isNotBlank() }
-                            ?: "Server error - กรุณาลองใหม่อีกครั้ง"
+                            ?: getLocalizedString("api_error_delete_addon_group_server_error", "เกิดข้อผิดพลาดของเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง")
                     }
                     else -> {
                         // Return error or message if available
                         errorResponse.error?.takeIf { it.isNotBlank() }
                             ?: errorResponse.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+                            ?: getLocalizedString("api_error_delete_addon_group_generic", "ไม่สามารถลบกลุ่มแอดออนได้ กรุณาลองใหม่อีกครั้ง")
                     }
                 }
             } catch (e: Exception) {
@@ -859,16 +927,17 @@ class AddonGroupRepositoryImpl @Inject constructor(
     
     /**
      * Get default error message for status code
+     * Uses localized strings where applicable (delete errors)
      */
     private fun getDefaultErrorMessage(statusCode: Int): String {
         return when (statusCode) {
-            400 -> "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
-            401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-            403 -> "คุณไม่มีสิทธิ์เข้าถึงกลุ่ม Addon นี้"
-            404 -> "ไม่พบกลุ่ม Addon ที่ต้องการ"
+            400 -> getLocalizedString("api_error_delete_addon_group_bad_request", "คำขอไม่ถูกต้อง กรุณาตรวจสอบข้อมูล")
+            401 -> getLocalizedString("api_error_delete_addon_group_generic", "ไม่สามารถลบกลุ่มแอดออนได้ กรุณาลองใหม่อีกครั้ง")
+            403 -> getLocalizedString("api_error_delete_addon_group_access_denied", "ไม่มีสิทธิ์เข้าถึง กลุ่มแอดออนนี้ไม่ใช่ของคุณ")
+            404 -> getLocalizedString("api_error_delete_addon_group_not_found", "ไม่พบกลุ่มแอดออน")
             409 -> "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว"
-            500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-            else -> "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+            500 -> getLocalizedString("api_error_delete_addon_group_server_error", "เกิดข้อผิดพลาดของเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง")
+            else -> getLocalizedString("api_error_delete_addon_group_generic", "ไม่สามารถลบกลุ่มแอดออนได้ กรุณาลองใหม่อีกครั้ง")
         }
     }
     

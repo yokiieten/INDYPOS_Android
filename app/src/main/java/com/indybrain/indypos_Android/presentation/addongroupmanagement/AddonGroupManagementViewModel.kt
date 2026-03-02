@@ -1,10 +1,15 @@
 package com.indybrain.indypos_Android.presentation.addongroupmanagement
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,8 +24,22 @@ import javax.inject.Inject
 @HiltViewModel
 class AddonGroupManagementViewModel @Inject constructor(
     private val addonGroupRepository: AddonGroupRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val languageLocalDataSource: LanguageLocalDataSource,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
+
+    private fun getLocalizedString(resId: Int, vararg formatArgs: Any): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId, *formatArgs)
+    }
     
     private val _uiState = MutableStateFlow(AddonGroupManagementUiState())
     val uiState: StateFlow<AddonGroupManagementUiState> = _uiState.asStateFlow()
@@ -32,10 +51,11 @@ class AddonGroupManagementViewModel @Inject constructor(
     
     /**
      * Load addon groups - check internet and fetch from API or load from Room
+     * @param clearError if true, clears errorMessage when starting (default). Set false when refreshing after delete fail to preserve error popup.
      */
-    fun loadAddonGroups() {
+    private fun loadAddonGroups(clearError: Boolean = true) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = if (clearError) null else it.errorMessage) }
             
             // Check internet connectivity
             if (networkConnectivityChecker.isConnected()) {
@@ -120,9 +140,10 @@ class AddonGroupManagementViewModel @Inject constructor(
     
     /**
      * Refresh addon groups
+     * @param preserveErrorMessage if true, keeps current errorMessage (e.g. when refreshing after delete fail so error popup can show)
      */
-    fun refreshAddonGroups() {
-        loadAddonGroups()
+    fun refreshAddonGroups(preserveErrorMessage: Boolean = false) {
+        loadAddonGroups(clearError = !preserveErrorMessage)
     }
     
     /**
@@ -190,7 +211,7 @@ class AddonGroupManagementViewModel @Inject constructor(
     }
     
     /**
-     * Delete addon group
+     * Delete addon group (single)
      */
     fun deleteAddonGroup(addonGroupId: String) {
         viewModelScope.launch {
@@ -203,7 +224,7 @@ class AddonGroupManagementViewModel @Inject constructor(
             val result = addonGroupRepository.deleteAddonGroup(addonGroupId)
             
             result.onSuccess {
-                val successMessage = "ลบกลุ่ม Addon '$addonGroupName' เรียบร้อยแล้ว"
+                val successMessage = getLocalizedString(R.string.addon_group_delete_success_single_with_name, addonGroupName)
                 
                 _uiState.update { 
                     it.copy(
@@ -211,13 +232,15 @@ class AddonGroupManagementViewModel @Inject constructor(
                         deleteSuccessMessage = successMessage
                     )
                 }
+                refreshAddonGroups()
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
+                        errorMessage = error.message ?: getLocalizedString(R.string.api_error_delete_addon_group_generic)
                     )
                 }
+                refreshAddonGroups(preserveErrorMessage = true)
             }
         }
     }
@@ -291,7 +314,9 @@ class AddonGroupManagementViewModel @Inject constructor(
     }
     
     /**
-     * Delete selected addon groups
+     * Delete selected addon groups (batch)
+     * Uses batch API, shows same error as product multi fail when has failed items,
+     * always refreshes from API after success or fail
      */
     fun deleteSelectedAddonGroups() {
         viewModelScope.launch {
@@ -304,46 +329,56 @@ class AddonGroupManagementViewModel @Inject constructor(
                     isLoading = true,
                     errorMessage = null,
                     pendingDeleteAddonGroupIds = selectedIds.toSet(),
-                    // ออกจากโหมดแก้ไขและล้าง selection ทันที
                     selectedAddonGroupIds = emptySet(),
                     isEditMode = false
                 )
             }
             
-            var successCount = 0
-            var failureMessage: String? = null
+            val result = addonGroupRepository.deleteMultipleAddonGroups(selectedIds)
             
-            selectedIds.forEach { addonGroupId ->
-                val result = addonGroupRepository.deleteAddonGroup(addonGroupId)
-                result.onSuccess {
-                    successCount++
-                }.onFailure { error ->
-                    // เก็บข้อความ error ไว้ แต่ยังพยายามลบตัวถัดไปต่อ
-                    failureMessage = error.message ?: "เกิดข้อผิดพลาดในการลบกลุ่ม Addon"
+            result.onSuccess { deleteResult ->
+                val (deletedCount, failedCount, _) = deleteResult
+                val successMessage: String?
+                val errorMessage: String?
+                
+                when {
+                    failedCount == 0 && deletedCount > 0 -> {
+                        successMessage = if (deletedCount == 1) {
+                            getLocalizedString(R.string.addon_group_delete_success_single)
+                        } else {
+                            getLocalizedString(R.string.addon_group_delete_success_multiple, deletedCount)
+                        }
+                        errorMessage = null
+                    }
+                    failedCount >= 1 -> {
+                        // มี failed - แสดง error เดียวกับ product multi fail
+                        successMessage = null
+                        errorMessage = getLocalizedString(R.string.api_error_delete_addon_group_not_found)
+                    }
+                    else -> {
+                        successMessage = null
+                        errorMessage = getLocalizedString(R.string.api_error_delete_addon_group_not_found)
+                    }
                 }
-            }
-            
-            if (failureMessage != null) {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = failureMessage,
-                        pendingDeleteAddonGroupIds = emptySet()
-                    )
-                }
-            } else {
-                val successMessage = if (successCount == 1) {
-                    "ลบกลุ่ม Addon เรียบร้อยแล้ว"
-                } else {
-                    "ลบกลุ่ม Addon $successCount รายการเรียบร้อยแล้ว"
-                }
+                
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
                         deleteSuccessMessage = successMessage,
+                        errorMessage = errorMessage,
                         pendingDeleteAddonGroupIds = emptySet()
                     )
                 }
+                refreshAddonGroups(preserveErrorMessage = errorMessage != null)
+            }.onFailure { error ->
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: getLocalizedString(R.string.api_error_delete_addon_group_generic),
+                        pendingDeleteAddonGroupIds = emptySet()
+                    )
+                }
+                refreshAddonGroups(preserveErrorMessage = true)
             }
         }
     }

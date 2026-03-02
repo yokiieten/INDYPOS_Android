@@ -85,8 +85,10 @@ interface AddonGroupRepository {
     
     /**
      * Delete multiple addon groups
+     * Returns DeleteAddonGroupsResult with deleted count, failed count, and error messages
+     * (for partial success when some addon groups could not be deleted)
      */
-    suspend fun deleteMultipleAddonGroups(addonGroupIds: List<String>): Result<Unit>
+    suspend fun deleteMultipleAddonGroups(addonGroupIds: List<String>): Result<DeleteAddonGroupsResult>
     
     /**
      * Fetch addon groups from server and sync with local database
@@ -112,5 +114,14 @@ data class AddonGroupSyncStatistics(
     val synced: Int,
     val unsynced: Int,
     val deleted: Int
+)
+
+/**
+ * Result of batch delete addon groups operation
+ */
+data class DeleteAddonGroupsResult(
+    val deletedCount: Int,
+    val failedCount: Int = 0,
+    val errors: List<String> = emptyList()
 )
 

@@ -106,7 +106,7 @@ interface ProductsApi {
      * Delete multiple addon groups endpoint
      */
     @HTTP(method = "DELETE", path = "protected/indypos/addon-groups", hasBody = true)
-    suspend fun deleteMultipleAddonGroups(@Body request: DeleteAddonGroupsRequestDto): ApiResponseDto<DeleteMultipleAddonGroupsResponseDto>
+    suspend fun deleteMultipleAddonGroups(@Body request: DeleteAddonGroupsRequestDto): DeleteAddonGroupsResponseDto
     
     /**
      * Sync addon groups endpoint
@@ -490,15 +490,6 @@ data class AddonGroupAddonItemDto(
 data class DeleteAddonGroupResponseDto(
     @SerializedName("deleted_id")
     val deletedId: String
-)
-
-/**
- * Response DTO for deleting multiple addon groups
- */
-data class DeleteMultipleAddonGroupsResponseDto(
-    @SerializedName("deleted_ids")
-    val deletedIds: List<String>,
-    val count: Int
 )
 
 /**

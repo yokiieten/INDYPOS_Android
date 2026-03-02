@@ -672,6 +672,19 @@
     <string name="addon_group_management_delete_title">Delete</string>
     <string name="addon_group_management_delete_confirm_single">Are you sure you want to delete addon group \'%1$s\'?</string>
     <string name="addon_group_management_delete_confirm_multiple">Are you sure you want to delete %1$d addon groups?</string>
+    <!-- Addon Group Delete - Success -->
+    <string name="addon_group_delete_not_found">Addon group not found</string>
+    <string name="addon_group_delete_success_single">Addon group deleted successfully</string>
+    <string name="addon_group_delete_success_single_with_name">Addon group \'%1$s\' deleted successfully</string>
+    <string name="addon_group_delete_success_multiple">%1$d addon groups deleted successfully</string>
+    <!-- Addon Group Delete API Errors -->
+    <string name="api_error_delete_addon_group_id_required">Addon group ID is required</string>
+    <string name="api_error_delete_addon_group_ids_required">At least one addon group ID must be provided</string>
+    <string name="api_error_delete_addon_group_bad_request">Invalid request. Please check your input.</string>
+    <string name="api_error_delete_addon_group_access_denied">Access denied. Addon group does not belong to you.</string>
+    <string name="api_error_delete_addon_group_not_found">Addon group not found</string>
+    <string name="api_error_delete_addon_group_server_error">Server error. Please try again later.</string>
+    <string name="api_error_delete_addon_group_generic">Failed to delete addon group. Please try again.</string>
     <string name="addon_group_management_delete_warning">This action cannot be undone</string>
     <string name="addon_group_management_select_items">Select %1$d items</string>
     <string name="addon_group_management_action_title">Options</string>
@@ -741,6 +754,15 @@
     <string name="addon_management_error_select_to_delete">Please select addon(s) to delete</string>
     <string name="addon_management_delete_success_single">Addon deleted successfully</string>
     <string name="addon_management_delete_success_multiple">%1$d addons deleted successfully</string>
+    <!-- Addon Delete API Errors -->
+    <string name="api_error_delete_addon_id_required">Addon ID is required</string>
+    <string name="api_error_delete_addon_ids_required">At least one addon ID must be provided</string>
+    <string name="api_error_delete_addon_invalid_body">Invalid request body</string>
+    <string name="api_error_delete_addon_bad_request">Invalid request. Please check your input.</string>
+    <string name="api_error_delete_addon_access_denied">Access denied. Addon does not belong to you.</string>
+    <string name="api_error_delete_addon_not_found">Addon not found</string>
+    <string name="api_error_delete_addon_server_error">Failed to delete addon. Please try again later.</string>
+    <string name="api_error_delete_addon_generic">Failed to delete addon. Please try again.</string>
     
     <!-- Add/Edit Addon Screen -->
     <string name="addon_edit_title">Edit Addon</string>
