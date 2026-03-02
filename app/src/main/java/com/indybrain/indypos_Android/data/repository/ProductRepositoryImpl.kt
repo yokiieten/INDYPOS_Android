@@ -11,11 +11,13 @@ import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
+import com.indybrain.indypos_Android.data.remote.dto.DeleteCategoriesResponseDto
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
+import com.indybrain.indypos_Android.domain.repository.DeleteCategoriesResult
 import com.indybrain.indypos_Android.domain.repository.DeleteProductsResult
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.repository.ProductSyncStatistics
@@ -740,6 +742,72 @@ class ProductRepositoryImpl @Inject constructor(
         }
     }
     
+    override suspend fun deleteMultipleCategories(categoryIds: List<String>): Result<DeleteCategoriesResult> {
+        return try {
+            if (categoryIds.isEmpty()) {
+                return Result.failure(Exception("กรุณาเลือกหมวดหมู่ที่ต้องการลบ"))
+            }
+            
+            if (networkConnectivityChecker.isConnected()) {
+                try {
+                    val request = DeleteCategoriesRequestDto(categoryIds = categoryIds)
+                    val response = productsApi.deleteMultipleCategories(request)
+                    
+                    if (response.status == 200) {
+                        val deletedIds = response.deletedIds.orEmpty()
+                        val totalDeleted = response.data?.totalDeleted ?: response.count
+                        val totalFailed = response.data?.totalFailed ?: response.failedDeletions.orEmpty().size
+                        val errors = response.errors.orEmpty()
+                        
+                        deletedIds.forEach { id ->
+                            categoryDao.deleteCategoryById(id)
+                        }
+                        
+                        Result.success(
+                            DeleteCategoriesResult(
+                                deletedCount = totalDeleted,
+                                failedCount = totalFailed,
+                                errors = errors
+                            )
+                        )
+                    } else {
+                        val errorMessage = response.message.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
+                        Result.failure(Exception(errorMessage))
+                    }
+                } catch (e: HttpException) {
+                    val errorBody = e.response()?.errorBody()
+                    val errorMessage = when (e.code()) {
+                        400 -> parseApiErrorResponse(errorBody, e.code())
+                        401 -> {
+                            val parsed = parseApiErrorResponse(errorBody, e.code())
+                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                            } else parsed
+                        }
+                        403 -> parseApiErrorResponse(errorBody, e.code())
+                        404 -> parseApiErrorResponse(errorBody, e.code())
+                        500 -> parseApiErrorResponse(errorBody, e.code())
+                        else -> parseApiErrorResponse(errorBody, e.code())
+                    }
+                    Result.failure(Exception(errorMessage))
+                }
+            } else {
+                var deletedCount = 0
+                categoryIds.forEach { id ->
+                    val existing = categoryDao.getCategoryById(id)
+                    if (existing != null) {
+                        categoryDao.markAsDeletedLocally(id)
+                        deletedCount++
+                    }
+                }
+                Result.success(DeleteCategoriesResult(deletedCount = deletedCount))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"))
+        }
+    }
+    
     /**
      * Parse API error response body
      */
@@ -785,6 +853,38 @@ class ProductRepositoryImpl @Inject constructor(
                 when {
                     errorKey == "category_form_validation_exists" || messageKey == "category_form_validation_exists" -> {
                         return getLocalizedString("category_form_validation_exists", "หมวดหมู่นี้มีอยู่แล้ว")
+                    }
+                }
+                
+                // Category delete API errors (map en/th locale)
+                when {
+                    combinedErrorText.contains("category id is required") ||
+                    combinedErrorText.contains("กรุณาระบุรหัสหมวดหมู่") -> {
+                        return getLocalizedString("api_error_delete_category_id_required", "จำเป็นต้องระบุรหัสหมวดหมู่")
+                    }
+                    combinedErrorText.contains("category ids are required") ||
+                    combinedErrorText.contains("at least one category id") ||
+                    combinedErrorText.contains("กรุณาเลือกหมวดหมู่") -> {
+                        return getLocalizedString("api_error_delete_category_ids_required", "ต้องระบุรหัสหมวดหมู่อย่างน้อย 1 รายการ")
+                    }
+                    combinedErrorText.contains("category not found") ||
+                    combinedErrorText.contains("ไม่พบหมวดหมู่") -> {
+                        return getLocalizedString("api_error_delete_category_not_found", "ไม่พบหมวดหมู่")
+                    }
+                    combinedErrorText.contains("only delete your own categories") ||
+                    combinedErrorText.contains("own categories") ||
+                    combinedErrorText.contains("หมวดหมู่ของคุณ") -> {
+                        return getLocalizedString("api_error_delete_category_not_owner", "คุณสามารถลบได้เฉพาะหมวดหมู่ของคุณเท่านั้น")
+                    }
+                    combinedErrorText.contains("invalid request body") ||
+                    combinedErrorText.contains("invalid character") ||
+                    combinedErrorText.contains("ข้อมูลที่ส่งไม่ถูกต้อง") -> {
+                        return getLocalizedString("api_error_delete_category_bad_request", "คำขอไม่ถูกต้อง กรุณาตรวจสอบข้อมูล")
+                    }
+                    combinedErrorText.contains("missing authorization") ||
+                    combinedErrorText.contains("authorization") ||
+                    combinedErrorText.contains("unauthorized") -> {
+                        return getLocalizedString("api_error_delete_category_generic", "ไม่สามารถลบหมวดหมู่ได้ กรุณาลองใหม่อีกครั้ง")
                     }
                 }
                 

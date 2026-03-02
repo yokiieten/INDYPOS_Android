@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,8 +24,21 @@ import javax.inject.Inject
 class CategoryManagementViewModel @Inject constructor(
     private val productRepository: ProductRepository,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
+
+    private fun getLocalizedString(resId: Int, vararg formatArgs: Any): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId, *formatArgs)
+    }
     
     private val _uiState = MutableStateFlow(CategoryManagementUiState())
     val uiState: StateFlow<CategoryManagementUiState> = _uiState.asStateFlow()
@@ -36,11 +51,12 @@ class CategoryManagementViewModel @Inject constructor(
     
     /**
      * Load categories - check internet and fetch from API or load from Room
+     * @param clearError if true, clears errorMessage when starting (default). Set false when refreshing after delete fail to preserve error popup.
      */
-    fun loadCategories() {
+    private fun loadCategories(clearError: Boolean = true) {
         viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+                _uiState.update { it.copy(isLoading = true, errorMessage = if (clearError) null else it.errorMessage) }
                 
                 // Check internet connectivity
                 if (networkConnectivityChecker.isConnected()) {
@@ -154,9 +170,10 @@ class CategoryManagementViewModel @Inject constructor(
     
     /**
      * Refresh categories
+     * @param preserveErrorMessage if true, keeps current errorMessage (e.g. when refreshing after delete fail so error popup can show)
      */
-    fun refreshCategories() {
-        loadCategories()
+    fun refreshCategories(preserveErrorMessage: Boolean = false) {
+        loadCategories(clearError = !preserveErrorMessage)
     }
     
     /**
@@ -245,7 +262,7 @@ class CategoryManagementViewModel @Inject constructor(
             val result = productRepository.deleteCategory(categoryId)
             
             result.onSuccess {
-                val successMessage = context.getString(
+                val successMessage = getLocalizedString(
                     R.string.category_management_delete_success_with_name,
                     categoryName
                 )
@@ -256,13 +273,15 @@ class CategoryManagementViewModel @Inject constructor(
                         deleteSuccessMessage = successMessage
                     )
                 }
+                refreshCategories()
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: context.getString(R.string.category_management_error_deleting)
+                        errorMessage = error.message ?: getLocalizedString(R.string.api_error_delete_category_generic)
                     )
                 }
+                refreshCategories(preserveErrorMessage = true)
             }
         }
     }
@@ -336,59 +355,69 @@ class CategoryManagementViewModel @Inject constructor(
     }
     
     /**
-     * Delete selected categories
+     * Delete selected categories (batch)
+     * Uses batch API, shows same error as multi fail when has failed items,
+     * always refreshes from API after success or fail
      */
     fun deleteSelectedCategories() {
         viewModelScope.launch {
             val selectedIds = _uiState.value.selectedCategoryIds.toList()
             if (selectedIds.isEmpty()) return@launch
             
-            // ตั้งสถานะให้รู้ว่ารายการเหล่านี้กำลังถูกลบ และซ่อนออกจาก UI เลย
             _uiState.update { current ->
                 current.copy(
                     isLoading = true,
                     errorMessage = null,
                     pendingDeleteCategoryIds = selectedIds.toSet(),
-                    // ออกจากโหมดแก้ไขและล้าง selection ทันที
                     selectedCategoryIds = emptySet(),
                     isEditMode = false
                 )
             }
             
-            var successCount = 0
-            var failureMessage: String? = null
+            val result = productRepository.deleteMultipleCategories(selectedIds)
             
-            selectedIds.forEach { categoryId ->
-                val result = productRepository.deleteCategory(categoryId)
-                result.onSuccess {
-                    successCount++
-                }.onFailure { error ->
-                    // เก็บข้อความ error ไว้ แต่ยังพยายามลบตัวถัดไปต่อ
-                    failureMessage = error.message ?: context.getString(R.string.category_management_error_deleting)
+            result.onSuccess { deleteResult ->
+                val (deletedCount, failedCount, _) = deleteResult
+                val successMessage: String?
+                val errorMessage: String?
+                
+                when {
+                    failedCount == 0 && deletedCount > 0 -> {
+                        successMessage = if (deletedCount == 1) {
+                            getLocalizedString(R.string.category_management_delete_success_single)
+                        } else {
+                            getLocalizedString(R.string.category_management_delete_success_multiple, deletedCount)
+                        }
+                        errorMessage = null
+                    }
+                    failedCount >= 1 -> {
+                        successMessage = null
+                        errorMessage = getLocalizedString(R.string.api_error_delete_category_not_found)
+                    }
+                    else -> {
+                        successMessage = null
+                        errorMessage = getLocalizedString(R.string.api_error_delete_category_not_found)
+                    }
                 }
-            }
-            
-            if (failureMessage != null) {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = failureMessage,
-                        pendingDeleteCategoryIds = emptySet()
-                    )
-                }
-            } else {
-                val successMessage = if (successCount == 1) {
-                    context.getString(R.string.category_management_delete_success_single)
-                } else {
-                    context.getString(R.string.category_management_delete_success_multiple, successCount)
-                }
+                
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
                         deleteSuccessMessage = successMessage,
+                        errorMessage = errorMessage,
                         pendingDeleteCategoryIds = emptySet()
                     )
                 }
+                refreshCategories(preserveErrorMessage = errorMessage != null)
+            }.onFailure { error ->
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: getLocalizedString(R.string.api_error_delete_category_generic),
+                        pendingDeleteCategoryIds = emptySet()
+                    )
+                }
+                refreshCategories(preserveErrorMessage = true)
             }
         }
     }

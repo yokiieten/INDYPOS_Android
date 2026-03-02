@@ -111,6 +111,13 @@ interface ProductRepository {
     suspend fun deleteCategory(categoryId: String): Result<Unit>
     
     /**
+     * Delete multiple categories
+     * Returns DeleteCategoriesResult with deleted count, failed count, and error messages
+     * (for partial success when some categories could not be deleted)
+     */
+    suspend fun deleteMultipleCategories(categoryIds: List<String>): Result<DeleteCategoriesResult>
+    
+    /**
      * Get all products for management (including inactive, excluding deleted)
      */
     fun getAllProductsForManagement(): Flow<List<ProductEntity>>
@@ -245,6 +252,15 @@ interface ProductRepository {
  * Supports partial success (some deleted, some failed)
  */
 data class DeleteProductsResult(
+    val deletedCount: Int,
+    val failedCount: Int = 0,
+    val errors: List<String> = emptyList()
+)
+
+/**
+ * Result of batch delete categories operation
+ */
+data class DeleteCategoriesResult(
     val deletedCount: Int,
     val failedCount: Int = 0,
     val errors: List<String> = emptyList()

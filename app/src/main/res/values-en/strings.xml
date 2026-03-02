@@ -511,6 +511,15 @@
     <string name="category_management_delete_success_single">Category deleted successfully</string>
     <string name="category_management_delete_success_multiple">%1$d categories deleted successfully</string>
     <string name="category_management_delete_success_with_name">Category \'%1$s\' deleted successfully</string>
+    <!-- Category Delete API Errors -->
+    <string name="api_error_delete_category_id_required">Category ID is required</string>
+    <string name="api_error_delete_category_ids_required">At least one category ID must be provided</string>
+    <string name="api_error_delete_category_bad_request">Invalid request. Please check your input.</string>
+    <string name="api_error_delete_category_not_owner">You can only delete your own categories</string>
+    <string name="api_error_delete_category_forbidden">You do not have permission to delete this category</string>
+    <string name="api_error_delete_category_not_found">Category not found</string>
+    <string name="api_error_delete_category_server_error">Server error. Please try again later.</string>
+    <string name="api_error_delete_category_generic">Failed to delete category. Please try again.</string>
     <string name="category_management_status_activate">Activate</string>
     <string name="category_management_status_deactivate">Deactivate</string>
     <string name="category_management_status_update_success">Category \'%1$s\' status updated to \'%2$s\' successfully</string>

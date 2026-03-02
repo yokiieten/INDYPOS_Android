@@ -521,6 +521,15 @@
     <string name="category_management_delete_success_single">ลบหมวดหมู่เรียบร้อยแล้ว</string>
     <string name="category_management_delete_success_multiple">ลบหมวดหมู่ %1$d รายการเรียบร้อยแล้ว</string>
     <string name="category_management_delete_success_with_name">ลบหมวดหมู่ \'%1$s\' เรียบร้อยแล้ว</string>
+    <!-- Category Delete API Errors -->
+    <string name="api_error_delete_category_id_required">จำเป็นต้องระบุรหัสหมวดหมู่</string>
+    <string name="api_error_delete_category_ids_required">ต้องระบุรหัสหมวดหมู่อย่างน้อย 1 รายการ</string>
+    <string name="api_error_delete_category_bad_request">คำขอไม่ถูกต้อง กรุณาตรวจสอบข้อมูล</string>
+    <string name="api_error_delete_category_not_owner">คุณสามารถลบได้เฉพาะหมวดหมู่ของคุณเท่านั้น</string>
+    <string name="api_error_delete_category_forbidden">คุณไม่มีสิทธิ์ลบหมวดหมู่นี้</string>
+    <string name="api_error_delete_category_not_found">ไม่พบหมวดหมู่</string>
+    <string name="api_error_delete_category_server_error">เกิดข้อผิดพลาดของเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง</string>
+    <string name="api_error_delete_category_generic">ไม่สามารถลบหมวดหมู่ได้ กรุณาลองใหม่อีกครั้ง</string>
     <string name="category_management_status_activate">เปิดใช้งาน</string>
     <string name="category_management_status_deactivate">ปิดใช้งาน</string>
     <string name="category_management_status_update_success">อัปเดตสถานะหมวดหมู่ \'%1$s\' เป็น \'%2$s\' เรียบร้อยแล้ว</string>

@@ -56,6 +56,12 @@ interface ProductsApi {
     suspend fun deleteCategory(@Path("id") id: String): ApiResponseDto<CategoryDto>
     
     /**
+     * Delete multiple categories endpoint
+     */
+    @HTTP(method = "DELETE", path = "protected/indypos/categories", hasBody = true)
+    suspend fun deleteMultipleCategories(@Body request: DeleteCategoriesRequestDto): DeleteCategoriesResponseDto
+    
+    /**
      * Sync categories endpoint
      */
     @POST("protected/indypos/categories/sync")
@@ -261,6 +267,14 @@ data class UpdateCategoryRequestDto(
  */
 data class ToggleCategoryStatusRequestDto(
     val status: Boolean
+)
+
+/**
+ * Request DTO for deleting multiple categories
+ */
+data class DeleteCategoriesRequestDto(
+    @SerializedName("category_ids")
+    val categoryIds: List<String>
 )
 
 /**
