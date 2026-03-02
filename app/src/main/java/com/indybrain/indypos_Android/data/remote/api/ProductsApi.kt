@@ -160,7 +160,7 @@ interface ProductsApi {
      * Delete multiple addons endpoint
      */
     @HTTP(method = "DELETE", path = "protected/indypos/addons", hasBody = true)
-    suspend fun deleteMultipleAddons(@Body request: DeleteAddonsRequestDto): ApiResponseDto<DeleteMultipleAddonsResponseDto>
+    suspend fun deleteMultipleAddons(@Body request: DeleteAddonsRequestDto): DeleteAddonsResponseDto
     
     /**
      * Sync addons endpoint
@@ -592,15 +592,6 @@ data class SyncAddonItemDto(
 data class DeleteAddonResponseDto(
     @SerializedName("deleted_id")
     val deletedId: String
-)
-
-/**
- * Response DTO for deleting multiple addons
- */
-data class DeleteMultipleAddonsResponseDto(
-    @SerializedName("deleted_ids")
-    val deletedIds: List<String>,
-    val count: Int
 )
 
 /**

@@ -57,10 +57,10 @@ interface AddonRepository {
     
     /**
      * Delete multiple addons
-     * If network is available, calls API and soft deletes from Room
+     * If network is available, calls API. Returns DeleteAddonsResult with deleted/failed counts.
      * If network is not available, soft deletes in Room only (for sync later)
      */
-    suspend fun deleteMultipleAddons(addonIds: List<String>): Result<Unit>
+    suspend fun deleteMultipleAddons(addonIds: List<String>): Result<DeleteAddonsResult>
     
     /**
      * Permanently delete an addon from Room
@@ -77,6 +77,15 @@ interface AddonRepository {
      */
     suspend fun syncPendingAddons(): Result<Unit>
 }
+
+/**
+ * Result of batch delete addons operation
+ */
+data class DeleteAddonsResult(
+    val deletedCount: Int = 0,
+    val failedCount: Int = 0,
+    val errors: List<String> = emptyList()
+)
 
 /**
  * Sync statistics for addons

@@ -43,18 +43,6 @@ class AddOnManagementViewModel @Inject constructor(
         return localizedContext.getString(resId, *formatArgs)
     }
 
-    /**
-     * Map API error messages to localized strings.
-     * API may return "Addon not found" in English regardless of app language.
-     */
-    private fun getLocalizedDeleteErrorMessage(apiMessage: String?): String {
-        val msg = apiMessage?.trim()?.takeIf { it.isNotBlank() }
-        return when {
-            msg == null -> getLocalizedString(R.string.addon_management_error_deleting)
-            msg.contains("not found", ignoreCase = true) -> getLocalizedString(R.string.addon_management_error_not_found)
-            else -> msg
-        }
-    }
     
     private val _uiState = MutableStateFlow(AddOnManagementUiState())
     val uiState: StateFlow<AddOnManagementUiState> = _uiState.asStateFlow()
@@ -69,10 +57,11 @@ class AddOnManagementViewModel @Inject constructor(
     
     /**
      * Load addons - sync from API first, then load from Room
+     * @param clearError if true, clears errorMessage when starting (default). Set false when refreshing after delete fail to preserve error popup.
      */
-    fun loadAddons() {
+    private fun loadAddons(clearError: Boolean = true) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = if (clearError) null else it.errorMessage) }
             
             // Check internet connectivity
             if (networkConnectivityChecker.isConnected()) {
@@ -167,9 +156,10 @@ class AddOnManagementViewModel @Inject constructor(
     
     /**
      * Refresh addons
+     * @param preserveErrorMessage if true, keeps current errorMessage (e.g. when refreshing after delete fail so error popup can show)
      */
-    fun refreshAddons() {
-        loadAddons()
+    fun refreshAddons(preserveErrorMessage: Boolean = false) {
+        loadAddons(clearError = !preserveErrorMessage)
     }
     
     /**
@@ -280,15 +270,11 @@ class AddOnManagementViewModel @Inject constructor(
     }
     
     /**
-     * Delete addon
+     * Delete addon (single)
      */
     fun deleteAddon(addonId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            // Get addon name before deleting
-            val addon = addonRepository.getAddonById(addonId)
-            val addonName = addon?.name ?: "Addon"
             
             val result = addonRepository.deleteAddon(addonId)
             
@@ -300,20 +286,24 @@ class AddOnManagementViewModel @Inject constructor(
                         deleteSuccessMessage = getLocalizedString(R.string.addon_management_delete_success_single)
                     )
                 }
+                refreshAddons()
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = getLocalizedDeleteErrorMessage(error.message),
+                        errorMessage = error.message ?: getLocalizedString(R.string.api_error_delete_addon_generic),
                         isDeleteError = true
                     )
                 }
+                refreshAddons(preserveErrorMessage = true)
             }
         }
     }
     
     /**
-     * Delete selected addons
+     * Delete selected addons (batch)
+     * Uses batch API, shows same error as multi fail when has failed items,
+     * always refreshes from API after success or fail
      */
     fun deleteSelectedAddons() {
         viewModelScope.launch {
@@ -325,14 +315,11 @@ class AddOnManagementViewModel @Inject constructor(
                 return@launch
             }
             
-            // ตั้งสถานะให้รู้ว่ารายการเหล่านี้กำลังถูกลบ และซ่อนออกจาก UI เลย
-            // ไม่ตั้ง isLoading = true เพื่อป้องกันการกระพริบของ UI
             _uiState.update { current ->
                 current.copy(
+                    isLoading = true,
                     errorMessage = null,
-                    deleteSuccessMessage = null,
                     pendingDeleteAddonIds = selectedIds.toSet(),
-                    // ออกจากโหมดเลือกและล้าง selection ทันที
                     selectedAddonIds = emptySet(),
                     isSelectionMode = false
                 )
@@ -340,30 +327,50 @@ class AddOnManagementViewModel @Inject constructor(
             
             val result = addonRepository.deleteMultipleAddons(selectedIds)
             
-            result.onSuccess {
-                val count = selectedIds.size
-                val successMessage = if (count == 1) {
-                    getLocalizedString(R.string.addon_management_delete_success_single)
-                } else {
-                    getLocalizedString(R.string.addon_management_delete_success_multiple, count)
+            result.onSuccess { deleteResult ->
+                val (deletedCount, failedCount, _) = deleteResult
+                val successMessage: String?
+                val errorMessage: String?
+                
+                when {
+                    failedCount == 0 && deletedCount > 0 -> {
+                        successMessage = if (deletedCount == 1) {
+                            getLocalizedString(R.string.addon_management_delete_success_single)
+                        } else {
+                            getLocalizedString(R.string.addon_management_delete_success_multiple, deletedCount)
+                        }
+                        errorMessage = null
+                    }
+                    failedCount >= 1 -> {
+                        successMessage = null
+                        errorMessage = getLocalizedString(R.string.api_error_delete_addon_not_found)
+                    }
+                    else -> {
+                        successMessage = null
+                        errorMessage = getLocalizedString(R.string.api_error_delete_addon_not_found)
+                    }
                 }
                 
                 _uiState.update { 
                     it.copy(
+                        isLoading = false,
                         deleteSuccessMessage = successMessage,
-                        errorMessage = null,
+                        errorMessage = errorMessage,
                         pendingDeleteAddonIds = emptySet()
                     )
                 }
+                refreshAddons(preserveErrorMessage = errorMessage != null)
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
-                        errorMessage = getLocalizedDeleteErrorMessage(error.message),
+                        isLoading = false,
+                        errorMessage = error.message ?: getLocalizedString(R.string.api_error_delete_addon_generic),
                         deleteSuccessMessage = null,
                         pendingDeleteAddonIds = emptySet(),
                         isDeleteError = true
                     )
                 }
+                refreshAddons(preserveErrorMessage = true)
             }
         }
     }

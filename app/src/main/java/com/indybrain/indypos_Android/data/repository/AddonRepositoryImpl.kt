@@ -2,7 +2,9 @@ package com.indybrain.indypos_Android.data.repository
 
 import android.content.Context
 import com.google.gson.Gson
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.SelectedAddonJunctionDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
@@ -11,8 +13,10 @@ import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
 import com.indybrain.indypos_Android.data.remote.dto.AddonDto
+import com.indybrain.indypos_Android.data.remote.dto.DeleteAddonsResponseDto
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import com.indybrain.indypos_Android.domain.repository.AddonSyncStatistics
+import com.indybrain.indypos_Android.domain.repository.DeleteAddonsResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import okhttp3.ResponseBody
@@ -32,9 +36,25 @@ class AddonRepositoryImpl @Inject constructor(
     private val cartDao: CartDao,
     private val orderAddonDao: OrderAddonDao,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     private val gson: Gson,
     @ApplicationContext private val context: Context
 ) : AddonRepository {
+    
+    private fun getLocalizedString(resourceName: String, fallback: String): String {
+        val resourceId = context.resources.getIdentifier(
+            resourceName,
+            "string",
+            context.packageName
+        )
+        return if (resourceId != 0) {
+            val localeCode = languageLocalDataSource.getLanguageLocale()
+            val localizedContext = LocaleHelper.setLocale(context, localeCode)
+            localizedContext.getString(resourceId)
+        } else {
+            fallback
+        }
+    }
     
     private val dateFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
@@ -360,23 +380,8 @@ class AddonRepositoryImpl @Inject constructor(
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
-                    // Handle HTTP errors
                     val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> parseApiErrorResponse(errorBody, e.code())
-                        401 -> {
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> parseApiErrorResponse(errorBody, e.code())
-                        404 -> parseApiErrorResponse(errorBody, e.code())
-                        500 -> parseApiErrorResponse(errorBody, e.code())
-                        else -> parseApiErrorResponse(errorBody, e.code())
-                    }
+                    val errorMessage = parseAddonDeleteApiError(errorBody, e.code())
                     Result.failure(Exception(errorMessage))
                 }
             } else {
@@ -390,55 +395,49 @@ class AddonRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun deleteMultipleAddons(addonIds: List<String>): Result<Unit> {
+    override suspend fun deleteMultipleAddons(addonIds: List<String>): Result<DeleteAddonsResult> {
         return try {
             if (addonIds.isEmpty()) {
-                return Result.failure(Exception("กรุณาเลือก Addon ที่ต้องการลบ"))
+                return Result.failure(Exception(getLocalizedString("api_error_delete_addon_ids_required", "ต้องระบุรหัสแอดออนอย่างน้อย 1 รายการ")))
             }
             
             if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
                 try {
                     val request = DeleteAddonsRequestDto(addonIds = addonIds)
                     val response = productsApi.deleteMultipleAddons(request)
                     
                     if (response.status == 200) {
-                        // API success - ลบความสัมพันธ์ (junction, cart, order) ก่อน แล้วค่อยลบ addon แต่ละรายการ
-                        addonIds.forEach { permanentlyDeleteAddon(it) }
-                        Result.success(Unit)
+                        val deletedIds = response.deletedIds.orEmpty()
+                        val totalDeleted = response.data?.totalDeleted ?: response.count
+                        val totalFailed = response.data?.totalFailed ?: response.failedDeletions.orEmpty().size
+                        val errors = response.errors.orEmpty()
+                        
+                        deletedIds.forEach { id -> permanentlyDeleteAddon(id) }
+                        
+                        Result.success(
+                            DeleteAddonsResult(
+                                deletedCount = totalDeleted,
+                                failedCount = totalFailed,
+                                errors = errors
+                            )
+                        )
                     } else {
-                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการลบ"
+                        val errorMessage = response.message.takeIf { it.isNotBlank() }
+                            ?: getLocalizedString("api_error_delete_addon_generic", "ไม่สามารถลบแอดออนได้ กรุณาลองใหม่อีกครั้ง")
                         Result.failure(Exception(errorMessage))
                     }
                 } catch (e: HttpException) {
-                    // Handle HTTP errors
                     val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> parseApiErrorResponse(errorBody, e.code())
-                        401 -> {
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> parseApiErrorResponse(errorBody, e.code())
-                        404 -> parseApiErrorResponse(errorBody, e.code())
-                        500 -> parseApiErrorResponse(errorBody, e.code())
-                        else -> parseApiErrorResponse(errorBody, e.code())
-                    }
+                    val errorMessage = parseAddonDeleteApiError(errorBody, e.code())
                     Result.failure(Exception(errorMessage))
                 }
             } else {
-                // No network - soft delete in Room only (for sync later)
                 val updatedAt = Date()
                 addonIds.forEach { addonDao.softDeleteAddon(it, updatedAt) }
-                Result.success(Unit)
+                Result.success(DeleteAddonsResult(deletedCount = addonIds.size))
             }
         } catch (e: Exception) {
-            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบ"))
+            Result.failure(Exception(e.message ?: getLocalizedString("api_error_delete_addon_generic", "ไม่สามารถลบแอดออนได้ กรุณาลองใหม่อีกครั้ง")))
         }
     }
     
@@ -553,6 +552,49 @@ class AddonRepositoryImpl @Inject constructor(
             Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
+        }
+    }
+    
+    /**
+     * Parse API error response for addon delete operations (single and batch).
+     * Maps API errors to localized api_error_delete_addon_* strings.
+     */
+    private fun parseAddonDeleteApiError(errorBody: ResponseBody?, statusCode: Int): String {
+        return try {
+            if (errorBody == null) {
+                return getLocalizedString("api_error_delete_addon_generic", "ไม่สามารถลบแอดออนได้ กรุณาลองใหม่อีกครั้ง")
+            }
+            val errorJson = errorBody.string()
+            if (errorJson.isBlank()) {
+                return getLocalizedString("api_error_delete_addon_generic", "ไม่สามารถลบแอดออนได้ กรุณาลองใหม่อีกครั้ง")
+            }
+            val errorResponse = gson.fromJson(errorJson, AddonErrorResponse::class.java)
+            val errorText = errorResponse.error?.lowercase() ?: ""
+            val messageText = errorResponse.message?.lowercase() ?: ""
+            val combinedErrorText = "$errorText $messageText"
+            
+            when {
+                combinedErrorText.contains("addon id is required") -> 
+                    getLocalizedString("api_error_delete_addon_id_required", "จำเป็นต้องระบุรหัสแอดออน")
+                combinedErrorText.contains("addon ids are required") ||
+                combinedErrorText.contains("at least one addon id") -> 
+                    getLocalizedString("api_error_delete_addon_ids_required", "ต้องระบุรหัสแอดออนอย่างน้อย 1 รายการ")
+                combinedErrorText.contains("invalid request body") ||
+                combinedErrorText.contains("invalid character") -> 
+                    getLocalizedString("api_error_delete_addon_invalid_body", "ข้อมูลที่ส่งไม่ถูกต้อง")
+                combinedErrorText.contains("addon not found") -> 
+                    getLocalizedString("api_error_delete_addon_not_found", "ไม่พบแอดออน")
+                combinedErrorText.contains("access denied") ||
+                combinedErrorText.contains("addon does not belong") -> 
+                    getLocalizedString("api_error_delete_addon_access_denied", "ไม่มีสิทธิ์เข้าถึง แอดออนนี้ไม่ใช่ของคุณ")
+                statusCode == 500 || combinedErrorText.contains("failed to delete addon") -> 
+                    getLocalizedString("api_error_delete_addon_server_error", "เกิดข้อผิดพลาดในการลบแอดออน กรุณาลองใหม่อีกครั้ง")
+                else -> errorResponse.message?.takeIf { it.isNotBlank() }
+                    ?: errorResponse.error?.takeIf { it.isNotBlank() }
+                    ?: getLocalizedString("api_error_delete_addon_generic", "ไม่สามารถลบแอดออนได้ กรุณาลองใหม่อีกครั้ง")
+            }
+        } catch (e: Exception) {
+            getLocalizedString("api_error_delete_addon_generic", "ไม่สามารถลบแอดออนได้ กรุณาลองใหม่อีกครั้ง")
         }
     }
     
