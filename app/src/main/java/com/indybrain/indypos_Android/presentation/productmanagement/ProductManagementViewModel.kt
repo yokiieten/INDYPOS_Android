@@ -58,10 +58,11 @@ class ProductManagementViewModel @Inject constructor(
     
     /**
      * Load products - sync from API first, then load from Room
+     * @param clearError if true, clears errorMessage when starting (default). Set false when refreshing after delete fail to preserve error popup.
      */
-    fun loadProducts() {
+    private fun loadProducts(clearError: Boolean = true) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = if (clearError) null else it.errorMessage) }
             
             // Check internet connectivity
             if (networkConnectivityChecker.isConnected()) {
@@ -178,9 +179,10 @@ class ProductManagementViewModel @Inject constructor(
     
     /**
      * Refresh products
+     * @param preserveErrorMessage if true, keeps current errorMessage (e.g. when refreshing after delete fail so error popup can show)
      */
-    fun refreshProducts() {
-        loadProducts()
+    fun refreshProducts(preserveErrorMessage: Boolean = false) {
+        loadProducts(clearError = !preserveErrorMessage)
     }
     
     /**
@@ -323,14 +325,16 @@ class ProductManagementViewModel @Inject constructor(
                         deleteSuccessMessage = getLocalizedString(R.string.product_delete_success_single)
                     )
                 }
+                refreshProducts()
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: getLocalizedString(R.string.product_delete_error_generic),
+                        errorMessage = error.message ?: getLocalizedString(R.string.api_error_delete_generic),
                         deleteSuccessMessage = null
                     )
                 }
+                refreshProducts(preserveErrorMessage = true)
             }
         }
     }
@@ -370,7 +374,6 @@ class ProductManagementViewModel @Inject constructor(
                 
                 when {
                     failedCount == 0 && deletedCount > 0 -> {
-                        // Full success - all deleted
                         successMessage = if (deletedCount == 1) {
                             getLocalizedString(R.string.product_delete_success_single)
                         } else {
@@ -379,14 +382,12 @@ class ProductManagementViewModel @Inject constructor(
                         errorMessage = null
                     }
                     failedCount >= 1 -> {
-                        // มี failed 1 รายการขึ้นไป - แสดง "ไม่พบสินค้า" เหมือนกรณีลบทีละตัว
                         successMessage = null
-                        errorMessage = getLocalizedString(R.string.product_delete_not_found)
+                        errorMessage = getLocalizedString(R.string.api_error_delete_product_not_found)
                     }
                     else -> {
-                        // All failed, no specific errors
                         successMessage = null
-                        errorMessage = getLocalizedString(R.string.product_delete_failed_generic)
+                        errorMessage = getLocalizedString(R.string.api_error_delete_product_not_found)
                     }
                 }
                 
@@ -398,15 +399,17 @@ class ProductManagementViewModel @Inject constructor(
                         pendingDeleteProductIds = emptySet()
                     )
                 }
+                refreshProducts(preserveErrorMessage = errorMessage != null)
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: getLocalizedString(R.string.product_delete_error_generic),
+                        errorMessage = error.message ?: getLocalizedString(R.string.api_error_delete_generic),
                         deleteSuccessMessage = null,
                         pendingDeleteProductIds = emptySet()
                     )
                 }
+                refreshProducts(preserveErrorMessage = true)
             }
         }
     }

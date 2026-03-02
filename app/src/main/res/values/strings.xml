@@ -553,6 +553,17 @@
     <string name="product_delete_forbidden">คุณสามารถลบเฉพาะสินค้าของคุณเองได้เท่านั้น</string>
     <string name="product_delete_invalid_body">ข้อมูลที่ส่งไม่ถูกต้อง</string>
     <string name="product_delete_unauthorized">กรุณาเข้าสู่ระบบใหม่</string>
+    <!-- Product Delete API Error Mapping (api_error_delete_*) -->
+    <string name="api_error_delete_product_id_required">จำเป็นต้องระบุรหัสสินค้า</string>
+    <string name="api_error_delete_product_ids_required">ต้องระบุรหัสสินค้าอย่างน้อย 1 รายการ</string>
+    <string name="api_error_delete_invalid_request_body">ข้อมูลที่ส่งไม่ถูกต้อง</string>
+    <string name="api_error_delete_bad_request">คำขอไม่ถูกต้อง กรุณาตรวจสอบข้อมูล</string>
+    <string name="api_error_delete_not_owner">คุณสามารถลบได้เฉพาะสินค้าของคุณเท่านั้น</string>
+    <string name="api_error_delete_forbidden">คุณไม่มีสิทธิ์ลบสินค้านี้</string>
+    <string name="api_error_delete_product_not_found">ไม่พบสินค้า</string>
+    <string name="api_error_delete_server_error">เกิดข้อผิดพลาดของเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง</string>
+    <string name="api_error_delete_generic">ไม่สามารถลบสินค้าได้ กรุณาลองใหม่อีกครั้ง</string>
+    <string name="error_delete_failed">ไม่สามารถลบสินค้าได้ กรุณาลองใหม่อีกครั้ง</string>
     <string name="product_delete_success_single">ลบสินค้าสำเร็จ</string>
     <string name="product_delete_success_multiple">ลบสินค้า %1$d รายการสำเร็จ</string>
     <string name="product_delete_partial_success">ลบได้ %1$d รายการ</string>

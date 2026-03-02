@@ -543,6 +543,17 @@
     <string name="product_delete_forbidden">You can only delete your own products</string>
     <string name="product_delete_invalid_body">Invalid request data</string>
     <string name="product_delete_unauthorized">Please sign in again</string>
+    <!-- Product Delete API Error Mapping (api_error_delete_*) -->
+    <string name="api_error_delete_product_id_required">Product ID is required</string>
+    <string name="api_error_delete_product_ids_required">At least one product ID must be provided</string>
+    <string name="api_error_delete_invalid_request_body">Invalid request body</string>
+    <string name="api_error_delete_bad_request">Invalid request. Please check your input.</string>
+    <string name="api_error_delete_not_owner">You can only delete your own products</string>
+    <string name="api_error_delete_forbidden">You do not have permission to delete this product</string>
+    <string name="api_error_delete_product_not_found">Product not found</string>
+    <string name="api_error_delete_server_error">Server error. Please try again later.</string>
+    <string name="api_error_delete_generic">Failed to delete product. Please try again.</string>
+    <string name="error_delete_failed">Failed to delete product. Please try again.</string>
     <string name="product_delete_success_single">Product deleted successfully</string>
     <string name="product_delete_success_multiple">%1$d products deleted successfully</string>
     <string name="product_delete_partial_success">%1$d deleted</string>

@@ -912,34 +912,35 @@ class ProductRepositoryImpl @Inject constructor(
                     combinedErrorText.contains("duplicate product code") || combinedErrorText.contains("duplicate code") -> {
                         return getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
                     }
-                    // Product delete API errors (match both Thai and English API responses)
+                    // Product delete API errors (map en/th locale)
                     combinedErrorText.contains("product id is required") ||
                     combinedErrorText.contains("กรุณาระบุรหัสสินค้า") -> {
-                        return getLocalizedString("product_delete_id_required", "กรุณาระบุรหัสสินค้า")
+                        return getLocalizedString("api_error_delete_product_id_required", "จำเป็นต้องระบุรหัสสินค้า")
                     }
                     combinedErrorText.contains("product ids are required") ||
                     combinedErrorText.contains("at least one product id") ||
                     combinedErrorText.contains("กรุณาเลือกสินค้า") -> {
-                        return getLocalizedString("product_delete_ids_required", "กรุณาเลือกสินค้าที่ต้องการลบอย่างน้อย 1 รายการ")
+                        return getLocalizedString("api_error_delete_product_ids_required", "ต้องระบุรหัสสินค้าอย่างน้อย 1 รายการ")
                     }
                     combinedErrorText.contains("product not found") ||
                     combinedErrorText.contains("ไม่พบสินค้า") -> {
-                        return getLocalizedString("product_delete_not_found", "ไม่พบสินค้าที่ต้องการลบ")
+                        return getLocalizedString("api_error_delete_product_not_found", "ไม่พบสินค้า")
                     }
                     combinedErrorText.contains("only delete your own products") ||
                     combinedErrorText.contains("own products") ||
                     combinedErrorText.contains("ลบเฉพาะสินค้าของคุณเอง") ||
                     combinedErrorText.contains("สินค้าของคุณเอง") -> {
-                        return getLocalizedString("product_delete_forbidden", "คุณสามารถลบเฉพาะสินค้าของคุณเองได้เท่านั้น")
+                        return getLocalizedString("api_error_delete_not_owner", "คุณสามารถลบได้เฉพาะสินค้าของคุณเท่านั้น")
                     }
                     combinedErrorText.contains("invalid request body") ||
+                    combinedErrorText.contains("invalid character") ||
                     combinedErrorText.contains("ข้อมูลที่ส่งไม่ถูกต้อง") -> {
-                        return getLocalizedString("product_delete_invalid_body", "ข้อมูลที่ส่งไม่ถูกต้อง")
+                        return getLocalizedString("api_error_delete_invalid_request_body", "ข้อมูลที่ส่งไม่ถูกต้อง")
                     }
                     combinedErrorText.contains("missing authorization") ||
                     combinedErrorText.contains("authorization") ||
                     combinedErrorText.contains("กรุณาเข้าสู่ระบบ") -> {
-                        return getLocalizedString("product_delete_unauthorized", "กรุณาเข้าสู่ระบบใหม่")
+                        return getLocalizedString("api_error_delete_generic", "ไม่สามารถลบสินค้าได้ กรุณาลองใหม่อีกครั้ง")
                     }
                 }
                 
