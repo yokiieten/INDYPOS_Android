@@ -791,7 +791,7 @@
     <!-- Add/Edit Addon Screen -->
     <string name="addon_edit_title">Edit Addon</string>
     <string name="addon_add_title">Add Addon</string>
-    <string name="addon_form_name_label">Addon Name</string>
+    <string name="addon_form_name_label">Addon name</string>
     <string name="addon_form_name_placeholder">Enter addon name</string>
     <string name="addon_form_price_label">Price</string>
     <string name="addon_form_price_placeholder">Enter price</string>
@@ -805,6 +805,7 @@
     <string name="addon_form_free_plan_limit_message">You have reached the free plan limit. Please contact us to upgrade your plan.</string>
     <string name="addon_form_contact_us">Contact Us</string>
     <string name="addon_form_validation_name_required">Please enter addon name</string>
+    <string name="addon_form_validation_price_required">Please enter price</string>
     <string name="addon_form_validation_price_non_negative">Price must be a number greater than or equal to 0</string>
     <string name="addon_form_validation_price_invalid">Please enter a valid numeric price</string>
     <string name="addon_form_error_save_generic">An error occurred while saving</string>

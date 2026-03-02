@@ -191,25 +191,28 @@ class AddEditAddonViewModel @Inject constructor(
             return
         }
         
-        // Parse price - if empty, use 0
-        val price = if (priceString.isEmpty()) {
-            0.0
-        } else {
-            try {
-                val parsedPrice = priceString.toDouble()
-                if (parsedPrice < 0) {
-                    _uiState.update { 
-                        it.copy(errorMessage = getLocalizedString(R.string.addon_form_validation_price_non_negative))
-                    }
-                    return
-                }
-                parsedPrice
-            } catch (e: NumberFormatException) {
+        if (priceString.isEmpty()) {
+            _uiState.update { 
+                it.copy(errorMessage = getLocalizedString(R.string.addon_form_validation_price_required))
+            }
+            return
+        }
+        
+        // Parse price
+        val price = try {
+            val parsedPrice = priceString.toDouble()
+            if (parsedPrice < 0) {
                 _uiState.update { 
-                    it.copy(errorMessage = getLocalizedString(R.string.addon_form_validation_price_invalid))
+                    it.copy(errorMessage = getLocalizedString(R.string.addon_form_validation_price_non_negative))
                 }
                 return
             }
+            parsedPrice
+        } catch (e: NumberFormatException) {
+            _uiState.update { 
+                it.copy(errorMessage = getLocalizedString(R.string.addon_form_validation_price_invalid))
+            }
+            return
         }
         
         // Save addon
@@ -243,6 +246,7 @@ class AddEditAddonViewModel @Inject constructor(
                         "free_plan_limit_exceeded"
                     }
                     errorMessage.contains("ชื่อ Addon นี้มีอยู่แล้ว", ignoreCase = true) ||
+                    errorMessage.contains("ชื่อแอดออนนี้มีอยู่แล้ว", ignoreCase = true) ||
                     errorMessage.contains("This addon name already exists", ignoreCase = true) -> {
                         getLocalizedString(R.string.addon_form_error_duplicate_name)
                     }

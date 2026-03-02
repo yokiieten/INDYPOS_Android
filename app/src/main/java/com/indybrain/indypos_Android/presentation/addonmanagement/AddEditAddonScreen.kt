@@ -203,9 +203,17 @@ fun AddEditAddonScreen(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Addon Price Label (no asterisk - optional)
+                    // Addon Price Label with red asterisk (required)
+                    val priceLabelText = stringResource(id = R.string.addon_form_price_label)
+                    val annotatedPriceLabel = buildAnnotatedString {
+                        append(priceLabelText)
+                        append(" ")
+                        withStyle(style = SpanStyle(color = RedFailure)) {
+                            append("*")
+                        }
+                    }
                     Text(
-                        text = stringResource(id = R.string.addon_form_price_label),
+                        text = annotatedPriceLabel,
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium

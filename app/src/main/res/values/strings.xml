@@ -769,7 +769,7 @@
     <string name="addon_management_select_title">เลือก Addon</string>
     <string name="addon_management_search_placeholder">ค้นหา Addon</string>
     <string name="addon_management_empty">ไม่มี Addon</string>
-    <string name="addon_management_add">เพิ่ม Addon</string>
+    <string name="addon_management_add">เพิ่มแอดออน</string>
     <string name="addon_management_sync_status_title">สถานะการ Sync</string>
     <string name="addon_management_sync_total">ทั้งหมด: %1$d</string>
     <string name="addon_management_sync_synced">Sync แล้ว: %1$d</string>
@@ -801,14 +801,14 @@
     <string name="api_error_delete_addon_generic">ไม่สามารถลบแอดออนได้ กรุณาลองใหม่อีกครั้ง</string>
     
     <!-- Add/Edit Addon Screen -->
-    <string name="addon_edit_title">แก้ไข Addon</string>
-    <string name="addon_add_title">เพิ่ม Addon</string>
-    <string name="addon_form_name_label">ชื่อ Addon</string>
-    <string name="addon_form_name_placeholder">กรุณากรอกชื่อ Addon</string>
+    <string name="addon_edit_title">แก้ไขแอดออน</string>
+    <string name="addon_add_title">เพิ่มแอดออน</string>
+    <string name="addon_form_name_label">ชื่อแอดออน</string>
+    <string name="addon_form_name_placeholder">กรุณากรอกชื่อแอดออน</string>
     <string name="addon_form_price_label">ราคา</string>
-    <string name="addon_form_price_placeholder">กรุณากรอกราคา</string>
+    <string name="addon_form_price_placeholder">ระบุราคา</string>
     <string name="addon_form_save_edit">บันทึกการแก้ไข</string>
-    <string name="addon_form_save_add">เพิ่ม Addon</string>
+    <string name="addon_form_save_add">เพิ่มแอดออน</string>
     <string name="addon_form_success_edit_offline">แก้ไข Addon สำเร็จ (บันทึกในเครื่อง)</string>
     <string name="addon_form_success_edit">แก้ไข Addon สำเร็จ</string>
     <string name="addon_form_success_add_offline">เพิ่ม Addon สำเร็จ (บันทึกในเครื่อง)</string>
@@ -816,11 +816,12 @@
     <string name="addon_form_free_plan_limit_title">ถึงขีดจำกัด</string>
     <string name="addon_form_free_plan_limit_message">คุณถึงขีดจำกัดของแผนฟรีแล้ว กรุณาติดต่อเราเพื่ออัปเกรดแผน</string>
     <string name="addon_form_contact_us">ติดต่อเรา</string>
-    <string name="addon_form_validation_name_required">กรุณากรอกชื่อ Addon</string>
+    <string name="addon_form_validation_name_required">กรุณากรอกชื่อแอดออน</string>
+    <string name="addon_form_validation_price_required">กรุณาระบุราคา</string>
     <string name="addon_form_validation_price_non_negative">ราคาต้องเป็นตัวเลขที่มากกว่าหรือเท่ากับ 0</string>
     <string name="addon_form_validation_price_invalid">กรุณากรอกราคาเป็นตัวเลขที่ถูกต้อง</string>
     <string name="addon_form_error_save_generic">เกิดข้อผิดพลาดในการบันทึก</string>
-    <string name="addon_form_error_duplicate_name">ชื่อ Addon นี้มีอยู่แล้ว</string>
+    <string name="addon_form_error_duplicate_name">ชื่อแอดออนนี้มีอยู่แล้ว</string>
     <string name="addon_form_error_create_addon">เกิดข้อผิดพลาดในการสร้าง Addon</string>
     <string name="addon_form_success_add_single">เพิ่ม Addon สำเร็จ</string>
     
