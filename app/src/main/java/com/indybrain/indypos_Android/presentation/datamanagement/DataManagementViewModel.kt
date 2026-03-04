@@ -137,6 +137,10 @@ class DataManagementViewModel @Inject constructor(
                             Log.d("DataManagement", "Syncing products from API before export...")
                             productRepository.fetchAndSaveProducts()
                         }
+                        ExportDataType.CATEGORIES -> {
+                            Log.d("DataManagement", "Syncing categories from API before export...")
+                            productRepository.fetchAndSyncCategories()
+                        }
                         ExportDataType.ADDON_GROUPS -> {
                             Log.d("DataManagement", "Syncing addon groups from API before export...")
                             addonGroupRepository.fetchAndSyncAddonGroups()
