@@ -282,9 +282,9 @@ class ExportService @Inject constructor(
                 val orderCells = arrayOf(
                     order.orderNumber,
                     dateFormat.format(order.orderDate),
-                    order.subtotal.toString(),
-                    order.discount.toString(),
-                    order.total.toString(),
+                    String.format(Locale.US, "%.2f", order.subtotal),
+                    String.format(Locale.US, "%.2f", order.discount),
+                    String.format(Locale.US, "%.2f", order.total),
                     getPaymentTypeText(order.paymentTypeRaw),
                     getStatusText(order.statusRaw)
                 )
@@ -299,9 +299,9 @@ class ExportService @Inject constructor(
                             orderCells + arrayOf(
                                 item.productName,
                                 item.quantity.toString(),
-                                item.productUnitPrice.toString(),
-                                item.unitCost?.toString() ?: "",
-                                item.totalPrice.toString(),
+                                String.format(Locale.US, "%.2f", item.productUnitPrice),
+                                String.format(Locale.US, "%.2f", item.unitCost ?: 0.0),
+                                String.format(Locale.US, "%.2f", item.totalPrice),
                                 addonsDisplay,
                                 item.specialRequest ?: ""
                             )
