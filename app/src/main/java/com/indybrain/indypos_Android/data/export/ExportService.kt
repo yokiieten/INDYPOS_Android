@@ -17,6 +17,26 @@ import com.opencsv.CSVWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.poi.ss.usermodel.*
+import org.apache.poi.xddf.usermodel.chart.AxisCrossBetween
+import org.apache.poi.xddf.usermodel.chart.AxisCrosses
+import org.apache.poi.xddf.usermodel.chart.AxisPosition
+import org.apache.poi.xddf.usermodel.chart.BarDirection
+import org.apache.poi.xddf.usermodel.chart.ChartTypes
+import org.apache.poi.xddf.usermodel.chart.LegendPosition
+import org.apache.poi.xddf.usermodel.chart.XDDFBarChartData
+import org.apache.poi.xddf.usermodel.chart.XDDFCategoryAxis
+import org.apache.poi.xddf.usermodel.chart.XDDFChartData
+import org.apache.poi.xddf.usermodel.chart.XDDFChartLegend
+import org.apache.poi.xddf.usermodel.chart.XDDFDataSource
+import org.apache.poi.xddf.usermodel.chart.XDDFDataSourcesFactory
+import org.apache.poi.xddf.usermodel.chart.XDDFNumericalDataSource
+import org.apache.poi.xddf.usermodel.chart.XDDFValueAxis
+import org.apache.poi.xddf.usermodel.XDDFLineProperties
+import org.apache.poi.xddf.usermodel.XDDFSolidFillProperties
+import org.apache.poi.xddf.usermodel.XDDFShapeProperties
+import org.apache.poi.xssf.usermodel.XSSFChart
+import org.apache.poi.xssf.usermodel.XSSFClientAnchor
+import org.apache.poi.xssf.usermodel.XSSFDrawing
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
 import java.io.FileOutputStream
@@ -325,117 +345,248 @@ class ExportService @Inject constructor(
     
     suspend fun exportSalesReport(format: ExportFormat): List<File>? = withContext(Dispatchers.IO) {
         try {
-            val orders = orderDao.getAllOrdersSync()
+            val allOrders = orderDao.getAllOrdersSync()
+            val orders = allOrders.filter { it.statusRaw == 1 }
             
             when (format) {
                 ExportFormat.CSV -> {
-                    // For CSV, create separate files for each sheet
-                    val files = mutableListOf<File>()
-                    
-                    // Sheet 1: Order List
-                    val orderListHeaders = arrayOf(
-                        "Order ID", "Order Number", "Order Date", "Customer Name", "Customer Phone",
-                        "Subtotal", "Discount", "Total", "Payment Type", "Status"
-                    )
-                    val orderListRows = orders.map { order ->
-                        arrayOf(
-                            order.id,
-                            order.orderNumber,
-                            dateFormat.format(order.orderDate),
-                            order.customerName ?: "",
-                            order.customerPhone ?: "",
-                            order.subtotal.toString(),
-                            order.discount.toString(),
-                            order.total.toString(),
-                            getPaymentTypeText(order.paymentTypeRaw),
-                            getStatusText(order.statusRaw)
-                        )
-                    }
-                    createFile("Sales_Report_Order_List", format, orderListHeaders, orderListRows)?.let { files.add(it) }
-                    
-                    // Sheet 2: Sales Summary
-                    val totalSales = orders.sumOf { it.total }
-                    val orderCount = orders.size
-                    val averageOrder = if (orderCount > 0) totalSales / orderCount else 0.0
-                    val salesSummaryHeaders = arrayOf("Metric", "Value")
-                    val salesSummaryRows = listOf(
-                        arrayOf("Total Sales", totalSales.toString()),
-                        arrayOf("Total Orders", orderCount.toString()),
-                        arrayOf("Average Order Value", averageOrder.toString())
-                    )
-                    createFile("Sales_Report_Summary", format, salesSummaryHeaders, salesSummaryRows)?.let { files.add(it) }
-                    
-                    // Sheet 3: Sales By Date
-                    val salesByDate = orders.groupBy { dateOnlyFormat.format(it.orderDate) }
-                        .map { (date, dateOrders) ->
-                            val dateTotal = dateOrders.sumOf { it.total }
-                            arrayOf(date, dateOrders.size.toString(), dateTotal.toString())
-                        }
-                    val salesByDateHeaders = arrayOf("Date", "Order Count", "Total Sales")
-                    createFile("Sales_Report_By_Date", format, salesByDateHeaders, salesByDate)?.let { files.add(it) }
-                    
-                    files
+                    createSalesReportCsv(orders)
                 }
                 ExportFormat.EXCEL -> {
-                    // For Excel, create one file with multiple sheets
-                    val workbook = XSSFWorkbook()
-                    
-                    // Sheet 1: Order List
-                    val orderListSheet = workbook.createSheet("Order List")
-                    val orderListHeaders = arrayOf(
-                        "Order ID", "Order Number", "Order Date", "Customer Name", "Customer Phone",
-                        "Subtotal", "Discount", "Total", "Payment Type", "Status"
-                    )
-                    createExcelSheet(orderListSheet, orderListHeaders, orders.map { order ->
-                        arrayOf(
-                            order.id,
-                            order.orderNumber,
-                            dateFormat.format(order.orderDate),
-                            order.customerName ?: "",
-                            order.customerPhone ?: "",
-                            order.subtotal.toString(),
-                            order.discount.toString(),
-                            order.total.toString(),
-                            getPaymentTypeText(order.paymentTypeRaw),
-                            getStatusText(order.statusRaw)
-                        )
-                    })
-                    
-                    // Sheet 2: Sales Summary
-                    val summarySheet = workbook.createSheet("Sales Summary")
-                    val totalSales = orders.sumOf { it.total }
-                    val orderCount = orders.size
-                    val averageOrder = if (orderCount > 0) totalSales / orderCount else 0.0
-                    val salesSummaryHeaders = arrayOf("Metric", "Value")
-                    val salesSummaryRows = listOf(
-                        arrayOf("Total Sales", totalSales.toString()),
-                        arrayOf("Total Orders", orderCount.toString()),
-                        arrayOf("Average Order Value", averageOrder.toString())
-                    )
-                    createExcelSheet(summarySheet, salesSummaryHeaders, salesSummaryRows)
-                    
-                    // Sheet 3: Sales By Date
-                    val salesByDateSheet = workbook.createSheet("Sales By Date")
-                    val salesByDate = orders.groupBy { dateOnlyFormat.format(it.orderDate) }
-                        .map { (date, dateOrders) ->
-                            val dateTotal = dateOrders.sumOf { it.total }
-                            arrayOf(date, dateOrders.size.toString(), dateTotal.toString())
-                        }
-                    val salesByDateHeaders = arrayOf("Date", "Order Count", "Total Sales")
-                    createExcelSheet(salesByDateSheet, salesByDateHeaders, salesByDate)
-                    
-                    val file = File(context.getExternalFilesDir(null), "Sales_Report_${System.currentTimeMillis()}.xlsx")
-                    FileOutputStream(file).use { out ->
-                        workbook.write(out)
-                    }
-                    workbook.close()
-                    
-                    listOf(file)
+                    createSalesReportExcel(orders)
                 }
             }
         } catch (e: Exception) {
             null
         }
+    }
+    
+    private suspend fun createSalesReportCsv(orders: List<OrderEntity>): List<File>? {
+        val totalRevenue = orders.sumOf { it.total }
+        val orderCount = orders.size
+        val averageOrder = if (orderCount > 0) totalRevenue / orderCount else 0.0
+        
+        val productSales = buildProductSales(orders)
+        val paymentMethods = buildPaymentMethods(orders)
+        
+        val timestamp = fileNameTimestampFormat.format(Date())
+        val file = File(context.getExternalFilesDir(null), "data_type_sales_report_$timestamp.csv")
+        
+        return try {
+            FileOutputStream(file).use { out ->
+                out.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
+                out.flush()
+                OutputStreamWriter(out, StandardCharsets.UTF_8).use { writer ->
+                    val csvWriter = CSVWriter(writer)
+                    csvWriter.writeNext(arrayOf("=== Sale Report ==="))
+                    csvWriter.writeNext(arrayOf("Total Revenue", String.format(Locale.US, "%.2f", totalRevenue)))
+                    csvWriter.writeNext(arrayOf("Total Orders", orderCount.toString()))
+                    csvWriter.writeNext(arrayOf("Average Order Value", String.format(Locale.US, "%.2f", averageOrder)))
+                    csvWriter.writeNext(emptyArray())
+                    csvWriter.writeNext(arrayOf("=== Order History (ประวัติสั่งซื้อทั้งหมด) ==="))
+                    csvWriter.writeNext(arrayOf("Order Number", "Date", "Total", "Payment Type", "Status"))
+                    orders.forEach { order ->
+                        csvWriter.writeNext(arrayOf(
+                            order.orderNumber,
+                            dateFormat.format(order.orderDate),
+                            String.format(Locale.US, "%.2f", order.total),
+                            getPaymentTypeText(order.paymentTypeRaw),
+                            getStatusText(order.statusRaw)
+                        ))
+                    }
+                    csvWriter.writeNext(emptyArray())
+                    csvWriter.writeNext(arrayOf("=== Product Sales ==="))
+                    csvWriter.writeNext(arrayOf("Product Name", "Quantity Sold", "Total Revenue"))
+                    productSales.forEach { (name, qty, revenue) ->
+                        csvWriter.writeNext(arrayOf(name, qty.toString(), String.format(Locale.US, "%.2f", revenue)))
+                    }
+                    csvWriter.writeNext(emptyArray())
+                    csvWriter.writeNext(arrayOf("=== Payment Methods ==="))
+                    csvWriter.writeNext(arrayOf("Payment Method", "Number of Orders", "Total Revenue", "Percentage"))
+                    paymentMethods.forEach { (method, count, revenue, pct) ->
+                        csvWriter.writeNext(arrayOf(method, count.toString(), String.format(Locale.US, "%.2f", revenue), pct))
+                    }
+                    csvWriter.flush()
+                    csvWriter.close()
+                }
+            }
+            listOf(file)
+        } catch (e: Exception) {
+            Log.e("ExportService", "Error creating sales CSV: ${e.message}", e)
+            null
+        }
+    }
+    
+    private suspend fun createSalesReportExcel(orders: List<OrderEntity>): List<File>? {
+        val workbook = XSSFWorkbook()
+        val totalRevenue = orders.sumOf { it.total }
+        val orderCount = orders.size
+        val productSales = buildProductSales(orders)
+        val paymentMethods = buildPaymentMethods(orders)
+        
+        createSummarySheet(workbook, totalRevenue, orderCount)
+        createOrderHistorySheet(workbook, orders)
+        createProductSaleSheet(workbook, productSales)
+        createPaymentMethodsSheet(workbook, paymentMethods)
+        
+        val file = File(context.getExternalFilesDir(null), "Sales_Report_${System.currentTimeMillis()}.xlsx")
+        FileOutputStream(file).use { out ->
+            workbook.write(out)
+        }
+        workbook.close()
+        return listOf(file)
+    }
+    
+    private fun createSummarySheet(workbook: XSSFWorkbook, totalRevenue: Double, orderCount: Int) {
+        val sheet = workbook.createSheet("Summary")
+        val headerStyle = workbook.createCellStyle().apply {
+            fillForegroundColor = IndexedColors.GREY_25_PERCENT.index
+            fillPattern = FillPatternType.SOLID_FOREGROUND
+            val font = workbook.createFont()
+            font.bold = true
+            setFont(font)
+        }
+        val row0 = sheet.createRow(0)
+        row0.createCell(0).apply { setCellValue("Sales Report Summary"); cellStyle = headerStyle }
+        val row1 = sheet.createRow(1)
+        row1.createCell(0).setCellValue("Total Revenue:")
+        row1.createCell(1).setCellValue(String.format(Locale.US, "%.2f", totalRevenue))
+        val row2 = sheet.createRow(2)
+        row2.createCell(0).setCellValue("Total Orders")
+        row2.createCell(1).setCellValue(orderCount.toString())
+    }
+    
+    private fun createOrderHistorySheet(workbook: XSSFWorkbook, orders: List<OrderEntity>) {
+        val sheet = workbook.createSheet("Order History")
+        val headers = arrayOf("Order Number", "Date", "Total", "Payment Type", "Status")
+        val rows = orders.map { order ->
+            arrayOf(
+                order.orderNumber,
+                dateFormat.format(order.orderDate),
+                String.format(Locale.US, "฿%.2f", order.total),
+                getPaymentTypeText(order.paymentTypeRaw),
+                getStatusText(order.statusRaw)
+            )
+        }
+        createExcelSheet(sheet, headers, rows)
+    }
+    
+    private fun createProductSaleSheet(workbook: XSSFWorkbook, productSales: List<Triple<String, Int, Double>>) {
+        val sheet = workbook.createSheet("Product Sale")
+        val headers = arrayOf("Product Name", "Quantity Sold", "Total Revenue")
+        val rows = productSales.map { (name, qty, revenue) ->
+            arrayOf(name, qty.toString(), String.format(Locale.US, "฿%.2f", revenue))
+        }
+        createExcelSheet(sheet, headers, rows)
+    }
+    
+    private fun createPaymentMethodsSheet(workbook: XSSFWorkbook, paymentMethods: List<PaymentMethodRow>) {
+        val sheet = workbook.createSheet("Payment Methods")
+        val headers = arrayOf("Payment Method", "Number of Orders", "Total Revenue", "Percentage")
+        val rows = paymentMethods.map { (method, count, revenue, pct) ->
+            arrayOf(method, count.toString(), String.format(Locale.US, "฿%.2f", revenue), pct)
+        }
+        createExcelSheet(sheet, headers, rows)
+        
+        if (paymentMethods.isNotEmpty()) {
+            addPaymentMethodsBarChart(sheet, paymentMethods)
+        }
+    }
+    
+    /**
+     * Creates horizontal bar chart for Payment Methods using Apache POI.
+     * Chart is built programmatically: data (categories + values) -> XDDFDataSource -> ChartData -> plot.
+     * Text elements: title, axis labels, legend are set via chart.setTitleText(), valueAxis.setTitle(), series.setTitle().
+     */
+    private fun addPaymentMethodsBarChart(sheet: Sheet, paymentMethods: List<PaymentMethodRow>) {
+        try {
+            val sorted = paymentMethods.sortedByDescending { it.revenue }
+            val categories = sorted.map { it.method }.toTypedArray()
+            val values = sorted.map { it.revenue }.toTypedArray()
+            
+            val drawing = (sheet as org.apache.poi.xssf.usermodel.XSSFSheet).createDrawingPatriarch()
+            val anchor = drawing.createAnchor(0, 0, 0, 0, 7, 0, 12, 14)
+            val chart = drawing.createChart(anchor)
+            chart.setTitleText("ยอดขายตามช่องทางการจ่ายเงิน")
+            chart.setTitleOverlay(false)
+            
+            val legend = chart.getOrAddLegend()
+            legend.setPosition(LegendPosition.RIGHT)
+            
+            val categoryAxis = chart.createCategoryAxis(AxisPosition.LEFT)
+            categoryAxis.setTitle("ช่องทางการจ่ายเงิน")
+            
+            val valueAxis = chart.createValueAxis(AxisPosition.BOTTOM)
+            valueAxis.setTitle("ยอดขาย (บาท)")
+            valueAxis.setCrosses(AxisCrosses.AUTO_ZERO)
+            valueAxis.setCrossBetween(AxisCrossBetween.BETWEEN)
+            valueAxis.setNumberFormat("฿#,##0.00")
+            val maxVal = values.maxOrNull() ?: 0.0
+            val minVal = values.minOrNull() ?: 0.0
+            val dataRange = (maxVal - minVal).coerceAtLeast(1000.0)
+            val majorUnit = roundToNiceInterval(dataRange / 5)
+            val axisMin = (Math.floor((minVal - dataRange * 0.05).coerceAtLeast(0.0) / majorUnit) * majorUnit).toInt()
+            val axisMax = (Math.ceil((maxVal + dataRange * 0.05) / majorUnit) * majorUnit).toInt()
+            valueAxis.setMinimum(axisMin.toDouble())
+            valueAxis.setMaximum(axisMax.toDouble())
+            valueAxis.setMajorUnit(majorUnit)
+            val gridProps = valueAxis.getOrAddMajorGridProperties()
+            val gridLine = XDDFLineProperties(XDDFSolidFillProperties(org.apache.poi.xddf.usermodel.XDDFColor.from(org.apache.poi.xddf.usermodel.PresetColor.LIGHT_GRAY)))
+            gridProps.setLineProperties(gridLine)
+            
+            val catDataSource = XDDFDataSourcesFactory.fromArray(categories)
+            val valDataSource = XDDFDataSourcesFactory.fromArray(values)
+            
+            val barData = chart.createData(ChartTypes.BAR, categoryAxis, valueAxis) as XDDFBarChartData
+            barData.setBarDirection(BarDirection.BAR)
+            barData.setVaryColors(false)
+            val series = barData.addSeries(catDataSource, valDataSource)
+            series.setTitle("ยอดขาย", null)
+            chart.plot(barData)
+        } catch (e: Exception) {
+            Log.e("ExportService", "Error adding Payment Methods chart: ${e.message}", e)
+        }
+    }
+    
+    private fun roundToNiceInterval(value: Double): Double {
+        if (value <= 0) return 1000.0
+        val magnitude = Math.pow(10.0, Math.floor(Math.log10(value)))
+        val normalized = value / magnitude
+        val nice = when {
+            normalized <= 1 -> 1.0
+            normalized <= 2 -> 2.0
+            normalized <= 5 -> 5.0
+            else -> 10.0
+        }
+        return nice * magnitude
+    }
+    
+    private data class PaymentMethodRow(val method: String, val count: Int, val revenue: Double, val percentage: String)
+    
+    private suspend fun buildProductSales(orders: List<OrderEntity>): List<Triple<String, Int, Double>> {
+        val productMap = mutableMapOf<String, Pair<Int, Double>>()
+        for (order in orders) {
+            val items = orderItemDao.getOrderItemsSync(order.id)
+            for (item in items) {
+                val name = item.productName
+                val existing = productMap[name] ?: Pair(0, 0.0)
+                productMap[name] = Pair(existing.first + item.quantity, existing.second + item.totalPrice)
+            }
+        }
+        return productMap.entries
+            .map { (name, p) -> Triple(name, p.first, p.second) }
+            .sortedByDescending { it.third }
+    }
+    
+    private fun buildPaymentMethods(orders: List<OrderEntity>): List<PaymentMethodRow> {
+        val totalRevenue = orders.sumOf { it.total }
+        val byType = orders.groupBy { getPaymentTypeText(it.paymentTypeRaw) }
+        return byType.map { (method, list) ->
+            val count = list.size
+            val revenue = list.sumOf { it.total }
+            val pct = if (totalRevenue > 0) String.format(Locale.US, "%.1f%%", revenue / totalRevenue * 100) else "0%"
+            PaymentMethodRow(method, count, revenue, pct)
+        }.sortedByDescending { it.revenue }
     }
     
     suspend fun exportStockReport(format: ExportFormat): List<File>? = withContext(Dispatchers.IO) {
