@@ -42,6 +42,11 @@ interface AuthRepository {
      * @return Result containing User on success or error message
      */
     suspend fun resumeAuth(): Result<User>
+
+    /**
+     * Clear session locally without API call (e.g. when resumeAuth fails)
+     */
+    suspend fun clearSessionLocally()
     
     /**
      * Change password

@@ -274,6 +274,16 @@ class AuthRepositoryImpl @Inject constructor(
         return localDataSource.isLoggedIn()
     }
     
+    override suspend fun clearSessionLocally() {
+        try {
+            localDataSource.clearUser()
+            database.clearAllData()
+            android.util.Log.d("AuthRepository", "Session cleared locally (resumeAuth failure)")
+        } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "Error clearing session: ${e.message}", e)
+        }
+    }
+
     override suspend fun resumeAuth(): Result<User> {
         return try {
             // Check if we have a refresh token

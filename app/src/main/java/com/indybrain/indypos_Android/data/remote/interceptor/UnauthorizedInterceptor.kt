@@ -36,6 +36,14 @@ class UnauthorizedInterceptor @Inject constructor(
                 return response
             }
 
+            // For auth/resume endpoint, skip force logout - let repository handle it
+            // resumeAuth may return 401 when refresh token is invalid; we clear session gracefully
+            val isResumeEndpoint = request.url.encodedPath.contains("auth/resume")
+            if (isResumeEndpoint) {
+                Log.d(TAG, "🔒 401 on auth/resume endpoint - Skipping force logout, let repository handle")
+                return response
+            }
+
             // Parse response body to check for specific error messages
             val responseBody = response.peekBody(Long.MAX_VALUE).string()
             
