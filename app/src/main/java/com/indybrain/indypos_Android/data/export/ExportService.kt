@@ -234,10 +234,9 @@ class ExportService @Inject constructor(
             
             Log.d("ExportService", "AddonGroup export: count=${addonGroups.size}")
             
-            // iOS column order: ID, Name, Is Required, Is Single Selection, Max Selection, Is Active,
-            // Options Count, Options ID, Options Names, Created At
+            // ID, Name, Is Required, Max Selection, Is Active, Options Count, Options ID, Options Names, Created At
             val headers = arrayOf(
-                "ID", "Name", "Is Required", "Is Single Selection", "Max Selection", "Is Active",
+                "ID", "Name", "Is Required", "Max Selection", "Is Active",
                 "Options Count", "Options ID", "Options Names", "Created At"
             )
             
@@ -246,13 +245,12 @@ class ExportService @Inject constructor(
                 val addonNames = addonIds.mapNotNull { allAddons[it]?.name }
                 val optionsCount = addonIds.size
                 val optionsId = addonIds.joinToString(", ")
-                val optionsNames = addonNames.joinToString(", ")
+                val optionsNames = addonNames.joinToString("; ")
                 
                 arrayOf(
                     group.id,
                     group.name,
                     group.isRequired.toString(),
-                    group.isSingleSelection.toString(),
                     group.maxSelection?.toString() ?: "",
                     group.isActive.toString(),
                     optionsCount.toString(),
