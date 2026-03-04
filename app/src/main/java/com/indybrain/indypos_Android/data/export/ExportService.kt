@@ -591,143 +591,48 @@ class ExportService @Inject constructor(
         try {
             val products = productDao.getAllProducts()
             val allProducts = products.filter { it.isStockEnabled == true }
-            val lowStock = products.filter { 
-                it.isStockEnabled == true && 
-                it.stockQuantity != null && 
-                it.minStockQuantity != null &&
-                it.stockQuantity <= it.minStockQuantity
-            }
-            val outOfStock = products.filter { 
-                it.isStockEnabled == true && 
-                (it.stockQuantity == null || it.stockQuantity <= 0)
+            val categories = categoryDao.getAllCategories().associateBy { it.id }
+            
+            val headers = arrayOf("Product Name", "Product Code", "Current Stock", "Status", "Category")
+            val rows = allProducts.map { product ->
+                val currentStock = product.stockQuantity ?: 0
+                val status = if (currentStock <= 0) "หมด" else "พอเพียง"
+                val categoryName = product.categoryId?.let { categories[it]?.name } ?: ""
+                arrayOf(
+                    product.name,
+                    product.productCode ?: "",
+                    currentStock.toString(),
+                    status,
+                    categoryName
+                )
             }
             
             when (format) {
                 ExportFormat.CSV -> {
-                    val files = mutableListOf<File>()
-                    
-                    // Sheet 1: All Products
-                    val allProductsHeaders = arrayOf(
-                        "ID", "Name", "Product Code", "SKU Code", "Stock Quantity", "Min Stock", "Unit", "Price"
-                    )
-                    val allProductsRows = allProducts.map { product ->
-                        arrayOf(
-                            product.id,
-                            product.name,
-                            product.productCode ?: "",
-                            product.skuCode ?: "",
-                            product.stockQuantity?.toString() ?: "0",
-                            product.minStockQuantity?.toString() ?: "",
-                            product.unit ?: "",
-                            product.price.toString()
-                        )
+                    val timestamp = fileNameTimestampFormat.format(Date())
+                    val file = File(context.getExternalFilesDir(null), "data_type_stock_report_$timestamp.csv")
+                    FileOutputStream(file).use { out ->
+                        out.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
+                        out.flush()
+                        OutputStreamWriter(out, StandardCharsets.UTF_8).use { writer ->
+                            val csvWriter = CSVWriter(writer)
+                            csvWriter.writeNext(headers)
+                            rows.forEach { csvWriter.writeNext(it) }
+                            csvWriter.flush()
+                            csvWriter.close()
+                        }
                     }
-                    createFile("Stock_Report_All_Products", format, allProductsHeaders, allProductsRows)?.let { files.add(it) }
-                    
-                    // Sheet 2: Low Stock
-                    val lowStockHeaders = arrayOf(
-                        "ID", "Name", "Product Code", "SKU Code", "Stock Quantity", "Min Stock", "Unit", "Price"
-                    )
-                    val lowStockRows = lowStock.map { product ->
-                        arrayOf(
-                            product.id,
-                            product.name,
-                            product.productCode ?: "",
-                            product.skuCode ?: "",
-                            product.stockQuantity?.toString() ?: "0",
-                            product.minStockQuantity?.toString() ?: "",
-                            product.unit ?: "",
-                            product.price.toString()
-                        )
-                    }
-                    createFile("Stock_Report_Low_Stock", format, lowStockHeaders, lowStockRows)?.let { files.add(it) }
-                    
-                    // Sheet 3: Out of Stock
-                    val outOfStockHeaders = arrayOf(
-                        "ID", "Name", "Product Code", "SKU Code", "Stock Quantity", "Min Stock", "Unit", "Price"
-                    )
-                    val outOfStockRows = outOfStock.map { product ->
-                        arrayOf(
-                            product.id,
-                            product.name,
-                            product.productCode ?: "",
-                            product.skuCode ?: "",
-                            product.stockQuantity?.toString() ?: "0",
-                            product.minStockQuantity?.toString() ?: "",
-                            product.unit ?: "",
-                            product.price.toString()
-                        )
-                    }
-                    createFile("Stock_Report_Out_of_Stock", format, outOfStockHeaders, outOfStockRows)?.let { files.add(it) }
-                    
-                    files
+                    listOf(file)
                 }
                 ExportFormat.EXCEL -> {
                     val workbook = XSSFWorkbook()
-                    
-                    // Sheet 1: All Products
-                    val allProductsSheet = workbook.createSheet("All Products")
-                    val allProductsHeaders = arrayOf(
-                        "ID", "Name", "Product Code", "SKU Code", "Stock Quantity", "Min Stock", "Unit", "Price"
-                    )
-                    val allProductsRows = allProducts.map { product ->
-                        arrayOf(
-                            product.id,
-                            product.name,
-                            product.productCode ?: "",
-                            product.skuCode ?: "",
-                            product.stockQuantity?.toString() ?: "0",
-                            product.minStockQuantity?.toString() ?: "",
-                            product.unit ?: "",
-                            product.price.toString()
-                        )
-                    }
-                    createExcelSheet(allProductsSheet, allProductsHeaders, allProductsRows)
-                    
-                    // Sheet 2: Low Stock
-                    val lowStockSheet = workbook.createSheet("Low Stock")
-                    val lowStockHeaders = arrayOf(
-                        "ID", "Name", "Product Code", "SKU Code", "Stock Quantity", "Min Stock", "Unit", "Price"
-                    )
-                    val lowStockRows = lowStock.map { product ->
-                        arrayOf(
-                            product.id,
-                            product.name,
-                            product.productCode ?: "",
-                            product.skuCode ?: "",
-                            product.stockQuantity?.toString() ?: "0",
-                            product.minStockQuantity?.toString() ?: "",
-                            product.unit ?: "",
-                            product.price.toString()
-                        )
-                    }
-                    createExcelSheet(lowStockSheet, lowStockHeaders, lowStockRows)
-                    
-                    // Sheet 3: Out of Stock
-                    val outOfStockSheet = workbook.createSheet("Out of Stock")
-                    val outOfStockHeaders = arrayOf(
-                        "ID", "Name", "Product Code", "SKU Code", "Stock Quantity", "Min Stock", "Unit", "Price"
-                    )
-                    val outOfStockRows = outOfStock.map { product ->
-                        arrayOf(
-                            product.id,
-                            product.name,
-                            product.productCode ?: "",
-                            product.skuCode ?: "",
-                            product.stockQuantity?.toString() ?: "0",
-                            product.minStockQuantity?.toString() ?: "",
-                            product.unit ?: "",
-                            product.price.toString()
-                        )
-                    }
-                    createExcelSheet(outOfStockSheet, outOfStockHeaders, outOfStockRows)
-                    
-                    val file = File(context.getExternalFilesDir(null), "Stock_Report_${System.currentTimeMillis()}.xlsx")
+                    val sheet = workbook.createSheet("Stock Report")
+                    createExcelSheet(sheet, headers, rows)
+                    val file = File(context.getExternalFilesDir(null), "data_type_stock_report_${System.currentTimeMillis()}.xlsx")
                     FileOutputStream(file).use { out ->
                         workbook.write(out)
                     }
                     workbook.close()
-                    
                     listOf(file)
                 }
             }
