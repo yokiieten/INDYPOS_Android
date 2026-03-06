@@ -611,7 +611,7 @@ class AddEditProductViewModel @Inject constructor(
             0.0
         }
         
-        if (sellingPrice <= 0) {
+        if (sellingPrice < 0) {
             _uiState.update { 
                 it.copy(errorMessage = getLocalizedString(R.string.product_form_validation_selling_price_required))
             }
