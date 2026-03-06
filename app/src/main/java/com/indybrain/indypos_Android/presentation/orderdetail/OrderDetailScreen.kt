@@ -750,12 +750,15 @@ private fun formatAddons(addonsJson: String?): String {
         
         if (addons.isEmpty()) return ""
         
-        // Group by addon name and sum quantities
-        val grouped = addons.groupBy { it.addonName }
+        // Group by addon name and sum quantities (filter out entries with null name from stale cache)
+        val grouped = addons.filter { !it.addonName.isNullOrEmpty() }
+            .groupBy { it.addonName }
             .mapValues { (_, list) -> list.sumOf { it.quantity } }
-        
+
+        if (grouped.isEmpty()) return ""
+
         grouped.map { (name, quantity) ->
-            if (quantity > 1) "$name x$quantity" else name
+            if (quantity > 1) "$name x$quantity" else name ?: ""
         }.joinToString(", ")
     } catch (e: Exception) {
         // If parsing fails, try to return as-is (might be formatted string)

@@ -363,14 +363,14 @@ class CashPaymentViewModel @Inject constructor(
                 val itemTotalPrice = (cartItem.unitPrice ?: 0.0) * cartItem.quantity +
                     addons.sumOf { it.addonPrice } * cartItem.quantity
                 
-                // Convert addons to JSON
+                // Convert addons to JSON using snake_case keys to match OrderAddonDto @SerializedName
                 val addonsJson = if (addons.isNotEmpty()) {
                     Gson().toJson(addons.map { 
                         mapOf(
-                            "addonId" to it.addonId,
-                            "addonName" to it.addonName,
-                            "addonPrice" to it.addonPrice,
-                            "addonGroupId" to it.addonGroupId
+                            "addon_id" to it.addonId,
+                            "addon_name" to it.addonName,
+                            "addon_price" to it.addonPrice,
+                            "quantity" to 1
                         )
                     })
                 } else {
