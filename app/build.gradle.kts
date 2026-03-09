@@ -23,7 +23,7 @@ android {
         applicationId = "com.indybrain.indypos_Android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 23
+        versionCode = 36
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -99,6 +99,7 @@ android {
             buildConfigField("String", "BASE_API_URL", "\"https://dev.indy-pos.com/api/v1/\"")
             buildConfigField("String", "BASE_IMAGE_URL", "\"https://dev.indy-pos.com\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"Development\"")
+            buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "true")
         }
         
         create("stg") {
@@ -109,6 +110,7 @@ android {
             buildConfigField("String", "BASE_API_URL", "\"https://stg.indy-pos.com/api/v1/\"")
             buildConfigField("String", "BASE_IMAGE_URL", "\"https://stg.indy-pos.com\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"Staging\"")
+            buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "true")
         }
         
         create("prod") {
@@ -118,6 +120,7 @@ android {
             buildConfigField("String", "BASE_API_URL", "\"https://indy-pos.com/api/v1/\"")
             buildConfigField("String", "BASE_IMAGE_URL", "\"https://indy-pos.com\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"Production\"")
+            buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "false")
         }
     }
 }
@@ -190,6 +193,9 @@ dependencies {
     
     // ZXing for QR code generation
     implementation("com.google.zxing:core:3.5.2")
+
+    // EncryptedSharedPreferences
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     
     // Printer Library
     implementation(files("libs/printer-lib-3.2.0.aar"))
