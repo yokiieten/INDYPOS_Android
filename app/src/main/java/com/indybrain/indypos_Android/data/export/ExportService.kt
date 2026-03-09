@@ -214,7 +214,7 @@ class ExportService @Inject constructor(
                 arrayOf(
                     addon.id,
                     addon.name,
-                    String.format(Locale.US, "%.2f", addon.price),
+                    String.format(Locale.US, "฿%,.2f", addon.price),
                     addon.isActive.toString(),
                     dateFormat.format(addon.createdAt)
                 )
