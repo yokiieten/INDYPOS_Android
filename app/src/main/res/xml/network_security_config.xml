@@ -12,5 +12,15 @@
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
+        <!--
+            Certificate Pinning — pinned at Intermediate CA level (not leaf cert)
+            Primary : Google Trust Services WE1 (expires Feb 20, 2029)
+            Backup  : GlobalSign ECC Root CA R4  (expires Jan 19, 2038)
+            Update app when WE1 is replaced by Google (expected ~2029)
+        -->
+        <pin-set expiration="2029-02-20">
+            <pin digest="SHA-256">kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=</pin>
+            <pin digest="SHA-256">CLOmM1/OXvSPjw5UOYbAf9GKOxImEp9hhku9W90fHMk=</pin>
+        </pin-set>
     </domain-config>
 </network-security-config>
