@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.presentation.datamanagement
 
 import android.util.Log
+import com.indybrain.indypos_Android.BuildConfig
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
@@ -57,14 +58,13 @@ class DataManagementViewModel @Inject constructor(
             
             // Check network availability
             if (networkConnectivityChecker.isConnected()) {
-                Log.d("DataManagement", "🌐 Network available, fetching statistics from API...")
-                
+                if (BuildConfig.DEBUG) Log.d("DataManagement", "Network available, fetching statistics from API...")
+
                 try {
                     val response = productsApi.getStatistics()
                     
                     if (response.status == 200 && response.data != null) {
                         val data = response.data!!
-                        Log.d("DataManagement", "✅ Statistics API success - Products: ${data.productCount ?: 0}, Categories: ${data.categoryCount ?: 0}, Addons: ${data.addonCount ?: 0}, AddonGroups: ${data.addonGroupCount ?: 0}, Orders: ${data.orderCount ?: 0}")
                         
                         // Show API values as-is
                         _uiState.update { current ->
@@ -78,18 +78,16 @@ class DataManagementViewModel @Inject constructor(
                             )
                         }
                     } else {
-                        Log.w("DataManagement", "⚠️ Statistics API returned error, using local counts only")
                         val apiError = response.error?.takeIf { it.isNotBlank() } ?: response.message
                         _uiState.update { it.copy(errorMessage = apiError.ifBlank { null }) }
                         refreshDataStatsOffline()
                     }
                 } catch (e: Exception) {
-                    Log.e("DataManagement", "❌ Statistics API failed: ${e.message}, using local counts only")
+                    if (BuildConfig.DEBUG) Log.e("DataManagement", "Statistics API failed: ${e.message}")
                     _uiState.update { it.copy(errorMessage = e.message) }
                     refreshDataStatsOffline()
                 }
             } else {
-                Log.d("DataManagement", "📴 No network available, using local counts only")
                 _uiState.update { it.copy(errorMessage = context.getString(R.string.logout_no_internet_title)) }
                 refreshDataStatsOffline()
             }
@@ -128,25 +126,21 @@ class DataManagementViewModel @Inject constructor(
     fun exportData(dataType: ExportDataType, format: ExportFormat) {
         viewModelScope.launch {
             _uiState.update { it.copy(isExporting = true, exportError = null, exportSuccess = false) }
-            
+            cleanupOldExportFiles()
             try {
                 // Sync from API before export when online (ensures local DB has data)
                 if (networkConnectivityChecker.isConnected()) {
                     when (dataType) {
                         ExportDataType.PRODUCTS -> {
-                            Log.d("DataManagement", "Syncing products from API before export...")
                             productRepository.fetchAndSaveProducts()
                         }
                         ExportDataType.CATEGORIES -> {
-                            Log.d("DataManagement", "Syncing categories from API before export...")
                             productRepository.fetchAndSyncCategories()
                         }
                         ExportDataType.ADDON_GROUPS -> {
-                            Log.d("DataManagement", "Syncing addon groups from API before export...")
                             addonGroupRepository.fetchAndSyncAddonGroups()
                         }
                         ExportDataType.ADDONS -> {
-                            Log.d("DataManagement", "Syncing addons from API before export...")
                             addonRepository.fetchAndSyncAddons()
                         }
                         else -> Unit
@@ -211,6 +205,22 @@ class DataManagementViewModel @Inject constructor(
             )
         } catch (e: Exception) {
             null
+        }
+    }
+
+    private fun cleanupOldExportFiles() {
+        try {
+            val exportExtensions = setOf("csv", "xlsx")
+            val exportPrefixes = listOf("INDYPOS_", "data_type_", "Sales_Report_")
+            context.cacheDir.listFiles()
+                ?.filter { file ->
+                    file.isFile &&
+                    file.extension in exportExtensions &&
+                    exportPrefixes.any { file.name.startsWith(it) }
+                }
+                ?.forEach { it.delete() }
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) Log.e("DataManagement", "Error cleaning up export files: ${e.message}", e)
         }
     }
 }

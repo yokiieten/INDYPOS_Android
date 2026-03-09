@@ -381,7 +381,7 @@ class ExportService @Inject constructor(
         val paymentMethods = buildPaymentMethods(orders)
         
         val timestamp = fileNameTimestampFormat.format(Date())
-        val file = File(context.getExternalFilesDir(null), "data_type_sales_report_$timestamp.csv")
+        val file = File(context.cacheDir, "data_type_sales_report_$timestamp.csv")
         
         return try {
             FileOutputStream(file).use { out ->
@@ -440,7 +440,7 @@ class ExportService @Inject constructor(
         createProductSaleSheet(workbook, productSales)
         createPaymentMethodsSheet(workbook, paymentMethods)
         
-        val file = File(context.getExternalFilesDir(null), "Sales_Report_${System.currentTimeMillis()}.xlsx")
+        val file = File(context.cacheDir, "Sales_Report_${System.currentTimeMillis()}.xlsx")
         FileOutputStream(file).use { out ->
             workbook.write(out)
         }
@@ -624,7 +624,7 @@ class ExportService @Inject constructor(
             when (format) {
                 ExportFormat.CSV -> {
                     val timestamp = fileNameTimestampFormat.format(Date())
-                    val file = File(context.getExternalFilesDir(null), "data_type_stock_report_$timestamp.csv")
+                    val file = File(context.cacheDir, "data_type_stock_report_$timestamp.csv")
                     FileOutputStream(file).use { out ->
                         out.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
                         out.flush()
@@ -642,7 +642,7 @@ class ExportService @Inject constructor(
                     val workbook = XSSFWorkbook()
                     val sheet = workbook.createSheet("Stock Report")
                     createExcelSheet(sheet, headers, rows)
-                    val file = File(context.getExternalFilesDir(null), "data_type_stock_report_${System.currentTimeMillis()}.xlsx")
+                    val file = File(context.cacheDir, "data_type_stock_report_${System.currentTimeMillis()}.xlsx")
                     FileOutputStream(file).use { out ->
                         workbook.write(out)
                     }
@@ -665,7 +665,7 @@ class ExportService @Inject constructor(
             val extension = if (format == ExportFormat.CSV) "csv" else "xlsx"
             val timestamp = fileNameTimestampFormat.format(Date())
             val baseName = "INDYPOS_${fileName}_$timestamp"
-            val file = File(context.getExternalFilesDir(null), "$baseName.$extension")
+            val file = File(context.cacheDir, "$baseName.$extension")
             
             when (format) {
                 ExportFormat.CSV -> {
