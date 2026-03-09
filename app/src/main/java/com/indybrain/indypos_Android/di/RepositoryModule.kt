@@ -2,6 +2,8 @@ package com.indybrain.indypos_Android.di
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.indybrain.indypos_Android.data.repository.AddonGroupRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.AddonRepositoryImpl
 import com.indybrain.indypos_Android.data.repository.AuthRepositoryImpl
@@ -32,7 +34,16 @@ object RepositoryModule {
     fun provideSharedPreferences(
         @ApplicationContext context: Context
     ): SharedPreferences {
-        return context.getSharedPreferences("indypos_prefs", Context.MODE_PRIVATE)
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        return EncryptedSharedPreferences.create(
+            context,
+            "indypos_secure_prefs",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
     
     @Provides
