@@ -596,12 +596,13 @@ class ExportService @Inject constructor(
             val headers = arrayOf("Product Name", "Product Code", "Current Stock", "Status", "Category")
             val rows = allProducts.map { product ->
                 val currentStock = product.stockQuantity ?: 0
+                val currentStockFormatted = String.format(Locale.US, "%,d", currentStock)
                 val status = if (currentStock <= 0) "หมด" else "พอเพียง"
                 val categoryName = product.categoryId?.let { categories[it]?.name } ?: ""
                 arrayOf(
                     product.name,
                     product.productCode ?: "",
-                    currentStock.toString(),
+                    currentStockFormatted,
                     status,
                     categoryName
                 )
