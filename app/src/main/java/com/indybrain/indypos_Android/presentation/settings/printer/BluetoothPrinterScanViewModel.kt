@@ -56,9 +56,17 @@ class BluetoothPrinterScanViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
     
+    private val allowedBluetoothActions = setOf(
+        BluetoothDevice.ACTION_FOUND,
+        BluetoothAdapter.ACTION_DISCOVERY_FINISHED
+    )
+
     private val bluetoothReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
+            val action = intent.action ?: return
+            if (action !in allowedBluetoothActions) return
+
+            when (action) {
                 BluetoothDevice.ACTION_FOUND -> {
                     val device: BluetoothDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
@@ -88,7 +96,7 @@ class BluetoothPrinterScanViewModel @Inject constructor(
                     }
                 }
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
-                    // Scanning finished
+                    _uiState.value = _uiState.value.copy(isScanning = false)
                 }
             }
         }
@@ -325,7 +333,11 @@ class BluetoothPrinterScanViewModel @Inject constructor(
             addAction(BluetoothDevice.ACTION_FOUND)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
         }
-        context.registerReceiver(bluetoothReceiver, filter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(bluetoothReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(bluetoothReceiver, filter)
+        }
     }
     
     private fun unregisterBluetoothReceiver() {
