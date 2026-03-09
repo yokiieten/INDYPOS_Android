@@ -29,6 +29,7 @@ import com.indybrain.indypos_Android.domain.model.RegisterRequest
 import com.indybrain.indypos_Android.domain.model.User
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
+import com.indybrain.indypos_Android.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -213,7 +214,6 @@ class AuthRepositoryImpl @Inject constructor(
     }
     
     override suspend fun logout(): Result<Unit> {
-        android.util.Log.d("AuthRepository", "logout() called - Stack trace: ${Thread.currentThread().stackTrace.joinToString("\n")}")
         return try {
             // Get device UUID for logout request
             val deviceInfo = try {
@@ -223,9 +223,8 @@ class AuthRepositoryImpl @Inject constructor(
                 localDataSource.clearUser()
                 try {
                     database.clearAllData()
-                    android.util.Log.d("AuthRepository", "All Room database data cleared successfully (device info error)")
                 } catch (dbError: Exception) {
-                    android.util.Log.e("AuthRepository", "Error clearing Room database: ${dbError.message}", dbError)
+                    if (BuildConfig.DEBUG) android.util.Log.e("AuthRepository", "Error clearing Room database: ${dbError.message}", dbError)
                 }
                 return Result.failure(IllegalStateException("ไม่สามารถอ่านข้อมูลอุปกรณ์ได้: ${e.message}", e))
             }
@@ -244,27 +243,19 @@ class AuthRepositoryImpl @Inject constructor(
             
             // Clear local data regardless of API call result
             localDataSource.clearUser()
-            // Clear all Room database data when user logs out
-            // This ensures no user-specific data persists after logout
             try {
                 database.clearAllData()
-                android.util.Log.d("AuthRepository", "All Room database data cleared successfully")
             } catch (e: Exception) {
-                // Log error but don't fail logout if database clear fails
-                android.util.Log.e("AuthRepository", "Error clearing Room database: ${e.message}", e)
+                if (BuildConfig.DEBUG) android.util.Log.e("AuthRepository", "Error clearing Room database: ${e.message}", e)
             }
             Result.success(Unit)
         } catch (e: Exception) {
             // Clear local data even on error
             localDataSource.clearUser()
-            // Clear all Room database data when user logs out
-            // This ensures no user-specific data persists after logout
             try {
                 database.clearAllData()
-                android.util.Log.d("AuthRepository", "All Room database data cleared successfully (on error)")
             } catch (dbError: Exception) {
-                // Log error but don't fail logout if database clear fails
-                android.util.Log.e("AuthRepository", "Error clearing Room database: ${dbError.message}", dbError)
+                if (BuildConfig.DEBUG) android.util.Log.e("AuthRepository", "Error clearing Room database: ${dbError.message}", dbError)
             }
             Result.failure(IllegalStateException("เกิดข้อผิดพลาดในการออกจากระบบ: ${e.message}", e))
         }
@@ -278,9 +269,8 @@ class AuthRepositoryImpl @Inject constructor(
         try {
             localDataSource.clearUser()
             database.clearAllData()
-            android.util.Log.d("AuthRepository", "Session cleared locally (resumeAuth failure)")
         } catch (e: Exception) {
-            android.util.Log.e("AuthRepository", "Error clearing session: ${e.message}", e)
+            if (BuildConfig.DEBUG) android.util.Log.e("AuthRepository", "Error clearing session: ${e.message}", e)
         }
     }
 
@@ -369,7 +359,7 @@ class AuthRepositoryImpl @Inject constructor(
                     try {
                         database.clearAllData()
                     } catch (e: Exception) {
-                        android.util.Log.e("AuthRepository", "Error clearing database on admin password change: ${e.message}", e)
+                        if (BuildConfig.DEBUG) android.util.Log.e("AuthRepository", "Error clearing database on admin password change: ${e.message}", e)
                     }
                     Result.success(Unit)
                 }

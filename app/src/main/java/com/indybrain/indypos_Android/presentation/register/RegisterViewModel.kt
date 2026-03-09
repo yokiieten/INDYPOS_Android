@@ -1,7 +1,9 @@
 package com.indybrain.indypos_Android.presentation.register
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.BuildConfig
 import com.indybrain.indypos_Android.domain.model.RegisterRequest
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
@@ -206,84 +208,83 @@ class RegisterViewModel @Inject constructor(
      * Waits for all 4 APIs to succeed before allowing navigation to home
      */
     private suspend fun fetchAllDataAfterRegistration(completion: (errorMessage: String?) -> Unit) {
-        println("🔄 Starting to fetch all data after registration...")
-        
+        if (BuildConfig.DEBUG) Log.d(TAG, "Starting to fetch all data after registration...")
+
         val errorMessages = mutableListOf<String>()
-        
-        // Fetch all APIs in parallel using async/awaitAll within coroutineScope
+
         coroutineScope {
             val categoriesDeferred = async {
                 try {
                     val result = productRepository.fetchAndSyncCategories()
                     if (result.isSuccess) {
-                        println("✅ Categories fetched successfully")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Categories fetched successfully")
                         null
                     } else {
                         val error = "ไม่สามารถโหลดหมวดหมู่ได้: ${result.exceptionOrNull()?.message ?: "Unknown error"}"
-                        println("❌ Failed to fetch categories: $error")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Failed to fetch categories: $error")
                         error
                     }
                 } catch (e: Exception) {
                     val error = "ไม่สามารถโหลดหมวดหมู่ได้: ${e.message ?: "Unknown error"}"
-                    println("❌ Failed to fetch categories: $error")
+                    if (BuildConfig.DEBUG) Log.d(TAG, "Failed to fetch categories: $error")
                     error
                 }
             }
-            
+
             val productsDeferred = async {
                 try {
                     val result = productRepository.fetchAndSaveProducts()
                     if (result.isSuccess) {
-                        println("✅ Products fetched successfully")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Products fetched successfully")
                         null
                     } else {
                         val error = "ไม่สามารถโหลดสินค้าได้: ${result.exceptionOrNull()?.message ?: "Unknown error"}"
-                        println("❌ Failed to fetch products: $error")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Failed to fetch products: $error")
                         error
                     }
                 } catch (e: Exception) {
                     val error = "ไม่สามารถโหลดสินค้าได้: ${e.message ?: "Unknown error"}"
-                    println("❌ Failed to fetch products: $error")
+                    if (BuildConfig.DEBUG) Log.d(TAG, "Failed to fetch products: $error")
                     error
                 }
             }
-            
+
             val addonGroupsDeferred = async {
                 try {
                     val result = addonGroupRepository.fetchAndSyncAddonGroups()
                     if (result.isSuccess) {
-                        println("✅ Addon Groups fetched successfully")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Addon Groups fetched successfully")
                         null
                     } else {
                         val error = "ไม่สามารถโหลด AddOn Groups ได้: ${result.exceptionOrNull()?.message ?: "Unknown error"}"
-                        println("❌ Failed to fetch addon groups: $error")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Failed to fetch addon groups: $error")
                         error
                     }
                 } catch (e: Exception) {
                     val error = "ไม่สามารถโหลด AddOn Groups ได้: ${e.message ?: "Unknown error"}"
-                    println("❌ Failed to fetch addon groups: $error")
+                    if (BuildConfig.DEBUG) Log.d(TAG, "Failed to fetch addon groups: $error")
                     error
                 }
             }
-            
+
             val addonsDeferred = async {
                 try {
                     val result = addonRepository.fetchAndSyncAddons()
                     if (result.isSuccess) {
-                        println("✅ Addons fetched successfully")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Addons fetched successfully")
                         null
                     } else {
                         val error = "ไม่สามารถโหลด AddOns ได้: ${result.exceptionOrNull()?.message ?: "Unknown error"}"
-                        println("❌ Failed to fetch addons: $error")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Failed to fetch addons: $error")
                         error
                     }
                 } catch (e: Exception) {
                     val error = "ไม่สามารถโหลด AddOns ได้: ${e.message ?: "Unknown error"}"
-                    println("❌ Failed to fetch addons: $error")
+                    if (BuildConfig.DEBUG) Log.d(TAG, "Failed to fetch addons: $error")
                     error
                 }
             }
-            
+
             // Wait for all requests to complete
             val results = awaitAll(
                 categoriesDeferred,
@@ -291,21 +292,18 @@ class RegisterViewModel @Inject constructor(
                 addonGroupsDeferred,
                 addonsDeferred
             )
-            
-            // Collect all error messages
+
             results.forEach { error ->
-                if (error != null) {
-                    errorMessages.add(error)
-                }
+                if (error != null) errorMessages.add(error)
             }
         }
-        
+
         if (errorMessages.isNotEmpty()) {
             val combinedError = "ไม่สามารถโหลดข้อมูลบางส่วนได้:\n${errorMessages.joinToString("\n")}\n\nกรุณาลองใหม่อีกครั้ง"
-            println("❌ Some data fetching failed: $combinedError")
+            if (BuildConfig.DEBUG) Log.d(TAG, "Some data fetching failed: $combinedError")
             completion(combinedError)
         } else {
-            println("✅ All 4 APIs fetched successfully - ready to navigate to home")
+            if (BuildConfig.DEBUG) Log.d(TAG, "All 4 APIs fetched successfully - ready to navigate to home")
             completion(null)
         }
     }
@@ -469,5 +467,9 @@ class RegisterViewModel @Inject constructor(
         val isValid: Boolean,
         val message: String? // String resource key
     )
+
+    companion object {
+        private const val TAG = "RegisterViewModel"
+    }
 }
 
