@@ -145,17 +145,17 @@ class ExportService @Inject constructor(
                 "Addon Groups", "Is Active", "Created At"
             )
             
-            val rows = products.map { product ->
+            val baseRows = products.map { product ->
                 val categoryName = product.categoryId?.let { categories[it]?.name } ?: ""
                 val addonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(product.id)
                 val addonGroupNames = addonGroupIds.mapNotNull { addonGroups[it]?.name }
-                val addonGroupsStr = addonGroupNames.joinToString(", ")
+                val addonGroupsStr = addonGroupNames.joinToString("; ")
                 
                 arrayOf(
                     product.id,
                     product.name,
-                    product.price.toString(),
-                    product.costPrice?.toString() ?: "",
+                    String.format(Locale.US, "฿%,.2f", product.price),
+                    product.costPrice?.let { String.format(Locale.US, "฿%,.2f", it) } ?: "",
                     product.productCode ?: "",
                     product.unit ?: "",
                     product.skuCode ?: "",
@@ -168,8 +168,21 @@ class ExportService @Inject constructor(
                     dateFormat.format(product.createdAt)
                 )
             }
+
+            val rowsForFormat = if (format == ExportFormat.CSV) {
+                baseRows.map { row ->
+                    row.copyOf().also { copy ->
+                        // Column index 4 is Product Code
+                        if (copy[4].isNotEmpty()) {
+                            copy[4] = "'${copy[4]}'"
+                        }
+                    }
+                }
+            } else {
+                baseRows
+            }
             
-            createFile("Products", format, headers, rows)
+            createFile("Products", format, headers, rowsForFormat)
         } catch (e: Exception) {
             Log.e("ExportService", "Export products failed: ${e.message}", e)
             null
