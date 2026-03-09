@@ -39,17 +39,19 @@ object NetworkModule {
         authInterceptor: AuthInterceptor,
         unauthorizedInterceptor: UnauthorizedInterceptor
     ): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
-        
-        return OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
-            .addInterceptor(CurlLoggingInterceptor())
-            .addInterceptor(loggingInterceptor)
-            // Add UnauthorizedInterceptor to handle 401 errors globally
             .addInterceptor(unauthorizedInterceptor)
-            .build()
+
+        if (BuildConfig.ENABLE_HTTP_LOGGING) {
+            val loggingInterceptor = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            }
+            builder.addInterceptor(CurlLoggingInterceptor())
+            builder.addInterceptor(loggingInterceptor)
+        }
+
+        return builder.build()
     }
     
     @Provides
