@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Production: trust system CAs only — no user-installed CAs -->
+    <!-- Staging: allow user-installed CAs for debugging (Burp Suite, Charles Proxy) -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
+            <certificates src="user" />
         </trust-anchors>
     </base-config>
 
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">indy-pos.com</domain>
+        <domain includeSubdomains="true">stg.indy-pos.com</domain>
         <trust-anchors>
             <certificates src="system" />
+            <certificates src="user" />
         </trust-anchors>
     </domain-config>
 </network-security-config>
