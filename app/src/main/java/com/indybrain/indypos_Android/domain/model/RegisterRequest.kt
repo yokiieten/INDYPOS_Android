@@ -13,6 +13,7 @@ data class RegisterRequest(
     val shopName: String,
     val shopDescription: String? = null,
     val shopImageUrl: String? = null,
+    val gender: String? = null,
     val birthDate: String? = null,
     val termOfUse: Boolean,
     val privacyPolicy: Boolean

@@ -80,6 +80,7 @@
     <string name="register_gender_placeholder">เลือกเพศ</string>
     <string name="register_gender_male">ชาย</string>
     <string name="register_gender_female">หญิง</string>
+    <string name="register_gender_other">ไม่ระบุ</string>
     <string name="register_birth_date">วันเกิด</string>
     <string name="register_birth_date_placeholder">เลือกวันเกิดของคุณ</string>
     <string name="register_store_information">ข้อมูลร้านค้า</string>

@@ -769,22 +769,26 @@ private fun GenderFormField(
         
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(32.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val maleText = stringResource(R.string.register_gender_male)
-            val femaleText = stringResource(R.string.register_gender_female)
-            
             RadioButtonOption(
-                text = maleText,
-                isSelected = selectedGender == maleText,
-                onClick = { onGenderSelected(maleText) },
+                text = stringResource(R.string.register_gender_male),
+                isSelected = selectedGender == "male",
+                onClick = { onGenderSelected("male") },
                 enabled = enabled
             )
             
             RadioButtonOption(
-                text = femaleText,
-                isSelected = selectedGender == femaleText,
-                onClick = { onGenderSelected(femaleText) },
+                text = stringResource(R.string.register_gender_female),
+                isSelected = selectedGender == "female",
+                onClick = { onGenderSelected("female") },
+                enabled = enabled
+            )
+
+            RadioButtonOption(
+                text = stringResource(R.string.register_gender_other),
+                isSelected = selectedGender == "other",
+                onClick = { onGenderSelected("other") },
                 enabled = enabled
             )
         }

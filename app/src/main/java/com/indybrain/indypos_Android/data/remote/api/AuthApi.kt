@@ -222,6 +222,7 @@ data class RegisterRequestDto(
     val shopDescription: String? = null,
     @SerializedName("shop_image_url")
     val shopImageUrl: String? = null,
+    val gender: String? = null,
     @SerializedName("birth_date")
     val birthDate: String? = null,
     @SerializedName("birth_date_locale")

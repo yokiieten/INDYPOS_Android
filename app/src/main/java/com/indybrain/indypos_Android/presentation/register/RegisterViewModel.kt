@@ -133,6 +133,7 @@ class RegisterViewModel @Inject constructor(
                     shopName = _uiState.value.shopName.trim(),
                     shopDescription = _uiState.value.shopDescription.takeIf { it.isNotBlank() },
                     shopImageUrl = null,
+                    gender = _uiState.value.gender.takeIf { it.isNotBlank() },
                     birthDate = _uiState.value.birthDate.takeIf { it.isNotBlank() },
                     termOfUse = _uiState.value.termsAccepted,
                     privacyPolicy = _uiState.value.privacyAccepted

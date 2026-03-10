@@ -142,6 +142,7 @@ class AuthRepositoryImpl @Inject constructor(
                     shopName = request.shopName,
                     shopDescription = request.shopDescription ?: "", // Send empty string if null (matching iOS)
                     shopImageUrl = request.shopImageUrl ?: "", // Send empty string if null (matching iOS)
+                    gender = request.gender,
                     birthDate = request.birthDate,
                     birthDateLocale = birthDateLocale,
                     termOfUse = request.termOfUse,

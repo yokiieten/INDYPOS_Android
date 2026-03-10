@@ -80,6 +80,7 @@
     <string name="register_gender_placeholder">Select gender</string>
     <string name="register_gender_male">Male</string>
     <string name="register_gender_female">Female</string>
+    <string name="register_gender_other">Other</string>
     <string name="register_birth_date">Date of Birth</string>
     <string name="register_birth_date_placeholder">Select your date of birth</string>
     <string name="register_store_information">Store Information</string>
