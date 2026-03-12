@@ -390,9 +390,9 @@ class ExportService @Inject constructor(
                 OutputStreamWriter(out, StandardCharsets.UTF_8).use { writer ->
                     val csvWriter = CSVWriter(writer)
                     csvWriter.writeNext(arrayOf("=== Sale Report ==="))
-                    csvWriter.writeNext(arrayOf("Total Revenue", String.format(Locale.US, "%.2f", totalRevenue)))
+                    csvWriter.writeNext(arrayOf("Total Revenue", String.format(Locale.US, "฿%,.2f", totalRevenue)))
                     csvWriter.writeNext(arrayOf("Total Orders", orderCount.toString()))
-                    csvWriter.writeNext(arrayOf("Average Order Value", String.format(Locale.US, "%.2f", averageOrder)))
+                    csvWriter.writeNext(arrayOf("Average Order Value", String.format(Locale.US, "฿%,.2f", averageOrder)))
                     csvWriter.writeNext(emptyArray())
                     csvWriter.writeNext(arrayOf("=== Order History (ประวัติสั่งซื้อทั้งหมด) ==="))
                     csvWriter.writeNext(arrayOf("Order Number", "Date", "Total", "Payment Type", "Status"))
@@ -400,7 +400,7 @@ class ExportService @Inject constructor(
                         csvWriter.writeNext(arrayOf(
                             order.orderNumber,
                             dateFormat.format(order.orderDate),
-                            String.format(Locale.US, "%.2f", order.total),
+                            String.format(Locale.US, "฿%,.2f", order.total),
                             getPaymentTypeText(order.paymentTypeRaw),
                             getStatusText(order.statusRaw)
                         ))
@@ -409,13 +409,13 @@ class ExportService @Inject constructor(
                     csvWriter.writeNext(arrayOf("=== Product Sales ==="))
                     csvWriter.writeNext(arrayOf("Product Name", "Quantity Sold", "Total Revenue"))
                     productSales.forEach { (name, qty, revenue) ->
-                        csvWriter.writeNext(arrayOf(name, qty.toString(), String.format(Locale.US, "%.2f", revenue)))
+                        csvWriter.writeNext(arrayOf(name, qty.toString(), String.format(Locale.US, "฿%,.2f", revenue)))
                     }
                     csvWriter.writeNext(emptyArray())
                     csvWriter.writeNext(arrayOf("=== Payment Methods ==="))
                     csvWriter.writeNext(arrayOf("Payment Method", "Number of Orders", "Total Revenue", "Percentage"))
                     paymentMethods.forEach { (method, count, revenue, pct) ->
-                        csvWriter.writeNext(arrayOf(method, count.toString(), String.format(Locale.US, "%.2f", revenue), pct))
+                        csvWriter.writeNext(arrayOf(method, count.toString(), String.format(Locale.US, "฿%,.2f", revenue), pct))
                     }
                     csvWriter.flush()
                     csvWriter.close()
@@ -432,10 +432,11 @@ class ExportService @Inject constructor(
         val workbook = XSSFWorkbook()
         val totalRevenue = orders.sumOf { it.total }
         val orderCount = orders.size
+        val averageOrder = if (orderCount > 0) totalRevenue / orderCount else 0.0
         val productSales = buildProductSales(orders)
         val paymentMethods = buildPaymentMethods(orders)
         
-        createSummarySheet(workbook, totalRevenue, orderCount)
+        createSummarySheet(workbook, totalRevenue, orderCount, averageOrder)
         createOrderHistorySheet(workbook, orders)
         createProductSaleSheet(workbook, productSales)
         createPaymentMethodsSheet(workbook, paymentMethods)
@@ -448,7 +449,7 @@ class ExportService @Inject constructor(
         return listOf(file)
     }
     
-    private fun createSummarySheet(workbook: XSSFWorkbook, totalRevenue: Double, orderCount: Int) {
+    private fun createSummarySheet(workbook: XSSFWorkbook, totalRevenue: Double, orderCount: Int, averageOrder: Double) {
         val sheet = workbook.createSheet("Summary")
         val headerStyle = workbook.createCellStyle().apply {
             fillForegroundColor = IndexedColors.GREY_25_PERCENT.index
@@ -461,10 +462,13 @@ class ExportService @Inject constructor(
         row0.createCell(0).apply { setCellValue("Sales Report Summary"); cellStyle = headerStyle }
         val row1 = sheet.createRow(1)
         row1.createCell(0).setCellValue("Total Revenue:")
-        row1.createCell(1).setCellValue(String.format(Locale.US, "%.2f", totalRevenue))
+        row1.createCell(1).setCellValue(String.format(Locale.US, "฿%,.2f", totalRevenue))
         val row2 = sheet.createRow(2)
         row2.createCell(0).setCellValue("Total Orders")
         row2.createCell(1).setCellValue(orderCount.toString())
+        val row3 = sheet.createRow(3)
+        row3.createCell(0).setCellValue("Average Order Value:")
+        row3.createCell(1).setCellValue(String.format(Locale.US, "฿%,.2f", averageOrder))
     }
     
     private fun createOrderHistorySheet(workbook: XSSFWorkbook, orders: List<OrderEntity>) {
@@ -474,7 +478,7 @@ class ExportService @Inject constructor(
             arrayOf(
                 order.orderNumber,
                 dateFormat.format(order.orderDate),
-                String.format(Locale.US, "฿%.2f", order.total),
+                String.format(Locale.US, "฿%,.2f", order.total),
                 getPaymentTypeText(order.paymentTypeRaw),
                 getStatusText(order.statusRaw)
             )
@@ -486,7 +490,7 @@ class ExportService @Inject constructor(
         val sheet = workbook.createSheet("Product Sale")
         val headers = arrayOf("Product Name", "Quantity Sold", "Total Revenue")
         val rows = productSales.map { (name, qty, revenue) ->
-            arrayOf(name, qty.toString(), String.format(Locale.US, "฿%.2f", revenue))
+            arrayOf(name, qty.toString(), String.format(Locale.US, "฿%,.2f", revenue))
         }
         createExcelSheet(sheet, headers, rows)
     }
@@ -495,7 +499,7 @@ class ExportService @Inject constructor(
         val sheet = workbook.createSheet("Payment Methods")
         val headers = arrayOf("Payment Method", "Number of Orders", "Total Revenue", "Percentage")
         val rows = paymentMethods.map { (method, count, revenue, pct) ->
-            arrayOf(method, count.toString(), String.format(Locale.US, "฿%.2f", revenue), pct)
+            arrayOf(method, count.toString(), String.format(Locale.US, "฿%,.2f", revenue), pct)
         }
         createExcelSheet(sheet, headers, rows)
         
