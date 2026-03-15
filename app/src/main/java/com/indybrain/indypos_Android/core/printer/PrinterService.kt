@@ -17,7 +17,6 @@ import net.posprinter.IDeviceConnection
 import net.posprinter.POSPrinter
 import net.posprinter.POSConst
 import java.io.File
-import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Hashtable
 import java.util.Locale
@@ -143,17 +142,25 @@ class PrinterService @Inject constructor(
             // Print order number
             if (!orderNumber.isNullOrEmpty()) {
                 posPrinter.printText(
-                    "เลขที่ออเดอร์: $orderNumber\n",
+                    "เลขที่คำสั่งซื้อ: $orderNumber\n",
                     ALIGNMENT_LEFT,
                     FNT_DEFAULT,
                     TXT_1WIDTH or TXT_1HEIGHT
                 )
             }
             
-            // Print date
-            val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+            // Print date (พ.ศ. = ค.ศ. + 543)
+            val calendar = java.util.Calendar.getInstance()
+            val now = Date()
+            calendar.time = now
+            val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+            val month = calendar.get(java.util.Calendar.MONTH) + 1
+            val yearBuddhist = calendar.get(java.util.Calendar.YEAR) + 543
+            val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+            val minute = calendar.get(java.util.Calendar.MINUTE)
+            val dateStr = String.format(Locale.getDefault(), "%02d/%02d/%d %02d:%02d", day, month, yearBuddhist, hour, minute)
             posPrinter.printText(
-                "วันที่: ${dateFormat.format(Date())}\n",
+                "วันที่: $dateStr\n",
                 ALIGNMENT_LEFT,
                 FNT_DEFAULT,
                 TXT_1WIDTH or TXT_1HEIGHT
@@ -163,24 +170,24 @@ class PrinterService @Inject constructor(
             posPrinter.printString("----------------------------\n")
             
             // Print items
+            // Note: unitPrice in CartItemEntity already includes addon prices when item was added to cart
             cartItems.forEach { cartItem ->
                 val addons = cartAddonsMap[cartItem.id] ?: emptyList()
                 val itemName = cartItem.productName ?: ""
-                val itemPrice = (cartItem.unitPrice ?: 0.0) * cartItem.quantity +
-                    addons.sumOf { it.addonPrice } * cartItem.quantity
+                val itemPrice = (cartItem.unitPrice ?: 0.0) * cartItem.quantity
                 
-                // Print item with quantity and price on the same line
-                // Format: "1 x น้ำเปล่า                    10.00"
-                val itemLine = formatItemLine(
-                    label = "${cartItem.quantity} x $itemName",
-                    price = formatCurrencyWithoutSymbol(itemPrice)
-                )
-                posPrinter.printText(
-                    "$itemLine\n",
-                    ALIGNMENT_LEFT,
-                    FNT_DEFAULT,
-                    TXT_1WIDTH or TXT_1HEIGHT
-                )
+                // Print item - support multi-line for long product names, price aligned right on last line
+                val label = "${cartItem.quantity} x $itemName"
+                val priceStr = formatCurrencyWithoutSymbol(itemPrice)
+                val itemLines = formatItemLinesWithWrap(label = label, price = priceStr)
+                itemLines.forEach { line ->
+                    posPrinter.printText(
+                        "$line\n",
+                        ALIGNMENT_LEFT,
+                        FNT_DEFAULT,
+                        TXT_1WIDTH or TXT_1HEIGHT
+                    )
+                }
                 
                 // Print addons
                 if (addons.isNotEmpty()) {
@@ -216,16 +223,17 @@ class PrinterService @Inject constructor(
             // Separator
             posPrinter.printString("----------------------------\n")
             
-            // Print payment type (no price, but format for consistency)
+            // Print payment section (รูปแบบเหมือน iOS สำหรับเงินสด)
             val paymentTypeText = when (paymentType) {
-                PaymentType.CASH -> "เงินสด"
+                PaymentType.CASH -> "จ่ายเงินสด"
                 PaymentType.TRANSFER -> "โอนเงิน"
                 PaymentType.CARD -> "บัตรเครดิต"
                 PaymentType.QR_CODE -> "QR Code"
             }
+            // ส่วนสรุป: หัวข้อชิดซ้าย ค่าชิดขวา (ALIGNMENT_LEFT + formatItemLine จัดช่องว่างให้ค่าอยู่ระดับเดียวกับราคาสินค้า)
             val paymentLine = formatItemLine(
-                label = "วิธีการชำระเงิน: $paymentTypeText",
-                price = ""
+                label = "วิธีการชำระเงิน:",
+                price = paymentTypeText
             )
             posPrinter.printText(
                 "$paymentLine\n",
@@ -234,7 +242,6 @@ class PrinterService @Inject constructor(
                 TXT_1WIDTH or TXT_1HEIGHT
             )
             
-            // Print subtotal
             val subtotalLine = formatItemLine(
                 label = "ยอดรวมราคา:",
                 price = formatCurrencyWithoutSymbol(subtotal)
@@ -246,23 +253,21 @@ class PrinterService @Inject constructor(
                 TXT_1WIDTH or TXT_1HEIGHT
             )
             
-            // Print discount
-            if (discount > 0) {
-                val discountLine = formatItemLine(
-                    label = "ส่วนลด:",
-                    price = "-${formatCurrencyWithoutSymbol(discount)}"
-                )
-                posPrinter.printText(
-                    "$discountLine\n",
-                    ALIGNMENT_LEFT,
-                    FNT_DEFAULT,
-                    TXT_1WIDTH or TXT_1HEIGHT
-                )
-            }
+            val discountPriceStr = if (discount > 0) "-${formatCurrencyWithoutSymbol(discount)}" else formatCurrencyWithoutSymbol(0.0)
+            val discountLine = formatItemLine(
+                label = "ส่วนลด:",
+                price = discountPriceStr
+            )
+            posPrinter.printText(
+                "$discountLine\n",
+                ALIGNMENT_LEFT,
+                FNT_DEFAULT,
+                TXT_1WIDTH or TXT_1HEIGHT
+            )
             
-            // Print total - bold
+            val totalLabel = if (paymentType == PaymentType.CASH) "ยอดรวมทั้งหมด:" else "รวม:"
             val totalLine = formatItemLine(
-                label = "รวม:",
+                label = totalLabel,
                 price = formatCurrencyWithoutSymbol(total)
             )
             posPrinter.printText(
@@ -272,12 +277,11 @@ class PrinterService @Inject constructor(
                 TXT_1WIDTH or TXT_1HEIGHT
             )
             
-            // Print cash received and change if payment type is cash
             if (paymentType == PaymentType.CASH) {
                 receivedAmount?.let {
                     if (it > 0) {
                         val receivedLine = formatItemLine(
-                            label = "เงินที่รับ:",
+                            label = "เงินสด:",
                             price = formatCurrencyWithoutSymbol(it)
                         )
                         posPrinter.printText(
@@ -375,14 +379,27 @@ class PrinterService @Inject constructor(
         return formatter.format(value)
     }
     
+    
     /**
-     * Format price with fixed width for alignment
-     * Ensures all prices have the same display width
+     * Format item with long name - split into multiple lines, price aligned right on last line
+     * กระดาษ 58mm ปกติกว้าง ~32 ตัวอักษร
      */
-    private fun formatPriceFixedWidth(value: Double): String {
-        val formatted = formatCurrencyWithoutSymbol(value)
-        // Ensure consistent width by padding if needed (though DecimalFormat should handle this)
-        return formatted
+    private fun formatItemLinesWithWrap(label: String, price: String): List<String> {
+        val maxWidth = 32
+        val priceLength = price.length
+        val lastLineLabelMax = maxWidth - priceLength - 1 // space before price
+        if (label.length + 1 + priceLength <= maxWidth) {
+            return listOf(formatItemLine(label, price))
+        }
+        val lines = mutableListOf<String>()
+        var remaining = label
+        while (remaining.length > lastLineLabelMax) {
+            lines.add(remaining.take(lastLineLabelMax))
+            remaining = remaining.drop(lastLineLabelMax)
+        }
+        val spaces = " ".repeat((maxWidth - remaining.length - priceLength).coerceAtLeast(0))
+        lines.add("$remaining$spaces$price")
+        return lines
     }
     
     /**
