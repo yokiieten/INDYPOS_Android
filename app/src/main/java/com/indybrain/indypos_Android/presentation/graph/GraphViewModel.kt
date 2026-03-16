@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
+import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
 import java.util.Calendar
 import java.util.Locale
 import javax.inject.Inject
@@ -21,6 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class GraphViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
+    private val productRepository: ProductRepository,
     private val productDao: ProductDao,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -117,16 +120,26 @@ class GraphViewModel @Inject constructor(
     }
 
     /**
-     * Fetch orders from API and save to Room, then refresh current period data
+     * Fetch orders and products from API and save to Room, then refresh current period data
      * Called when GraphScreen opens
+     *
+     * Products must be loaded so that Best Seller Top 3 can display product images.
+     * Without this, images only show after visiting MainProductScreen (เริ่มออเดอร์) first.
      */
     fun refreshOrdersFromApi() {
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
-                // Fetch orders from API and save to Room
-                orderRepository.refreshOrdersList()
-                // After fetching, refresh current period data
+                // Fetch both products and orders in parallel so Best Seller images are available
+                coroutineScope {
+                    launch {
+                        productRepository.fetchAndSaveProducts()
+                    }
+                    launch {
+                        orderRepository.refreshOrdersList()
+                    }
+                }
+                // After fetching, refresh current period data (best sellers need products in Room)
                 refreshCurrentPeriod()
             } catch (e: Exception) {
                 // If API call fails, still try to load from Room
