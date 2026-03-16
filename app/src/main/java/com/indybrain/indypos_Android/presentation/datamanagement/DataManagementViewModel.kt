@@ -15,6 +15,7 @@ import com.indybrain.indypos_Android.data.local.dao.OrderDao
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
+import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
@@ -46,6 +47,7 @@ class DataManagementViewModel @Inject constructor(
     private val productsApi: ProductsApi,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val exportService: ExportService,
+    private val orderRepository: OrderRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
     
@@ -142,6 +144,11 @@ class DataManagementViewModel @Inject constructor(
                         }
                         ExportDataType.ADDONS -> {
                             addonRepository.fetchAndSyncAddons()
+                        }
+                        ExportDataType.ORDERS,
+                        ExportDataType.SALES_REPORT -> {
+                            // Ensure local orders in Room are up-to-date before exporting
+                            orderRepository.refreshOrdersList()
                         }
                         else -> Unit
                     }
