@@ -30,6 +30,16 @@ interface CartDao {
     @Query("SELECT COUNT(*) FROM cart_items")
     suspend fun getCartItemCountSync(): Int
     
+    /**
+     * Get total quantity for a product in cart (sum of quantity across all cart items for this product).
+     * Used for cart badge display in product list (iOS-style: query by productId).
+     */
+    @Query("""
+        SELECT COALESCE(SUM(quantity), 0) FROM cart_items 
+        WHERE productId = :productId
+    """)
+    suspend fun getQuantityForProduct(productId: String): Int
+    
     @Query("SELECT * FROM cart_addons WHERE cartItemId = :cartItemId")
     suspend fun getCartAddonsByItemId(cartItemId: String): List<CartAddonEntity>
     

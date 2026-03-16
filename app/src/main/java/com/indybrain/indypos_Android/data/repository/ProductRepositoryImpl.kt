@@ -1109,7 +1109,8 @@ class ProductRepositoryImpl @Inject constructor(
                     val response = productsApi.deleteProduct(productId)
                     
                     if (response.status == 200) {
-                        // API success - permanently delete from Room
+                        // API success - clear cart items first (FK NO_ACTION จะ error ถ้ามี cart อ้างอิง)
+                        cartRepository.clearCartItemsByProduct(productId)
                         productDao.deleteProductById(productId)
                         Result.success(Unit)
                     } else {
@@ -1131,7 +1132,8 @@ class ProductRepositoryImpl @Inject constructor(
                 }
                 
                 if (!product.isSynced && !product.isFromServer) {
-                    // Not synced and not from server - permanently delete
+                    // Not synced and not from server - clear cart first then permanently delete
+                    cartRepository.clearCartItemsByProduct(productId)
                     productDao.deleteProductById(productId)
                 } else {
                     // Mark as deleted locally and unsynced for sync later
@@ -1165,6 +1167,7 @@ class ProductRepositoryImpl @Inject constructor(
                         val errors = response.errors.orEmpty()
                         
                         deletedIds.forEach { productId ->
+                            cartRepository.clearCartItemsByProduct(productId)
                             productDao.deleteProductById(productId)
                         }
                         
@@ -1192,6 +1195,7 @@ class ProductRepositoryImpl @Inject constructor(
                     val product = productDao.getProductById(productId)
                     if (product != null) {
                         if (!product.isSynced && !product.isFromServer) {
+                            cartRepository.clearCartItemsByProduct(productId)
                             productDao.deleteProductById(productId)
                         } else {
                             productDao.markAsDeletedLocallyAndUnsynced(productId)

@@ -10,12 +10,14 @@ import java.util.Date
 @Entity(
     tableName = "cart_items",
     foreignKeys = [
+        // ไม่ใช้ onDelete = SET_NULL เพราะ productDao.insertAll(REPLACE) จะทำ DELETE+INSERT
+        // ตอนอัปเดตสินค้า → SET_NULL จะทำให้ cart productId เป็น null และ badge หาย
+        // ใช้ default NO_ACTION → cart ยังอ้างอิง productId ได้หลังแก้ไขสินค้า
+        // หมายเหตุ: ก่อนลบสินค้าต้อง clearCartItemsByProduct() ก่อนเสมอ
         ForeignKey(
             entity = ProductEntity::class,
             parentColumns = ["id"],
-            childColumns = ["productId"],
-            onDelete = ForeignKey.SET_NULL // Use SET_NULL instead of CASCADE to preserve cart items when product is deleted
-            // This ensures cart items are NOT deleted when products are updated or removed from API
+            childColumns = ["productId"]
         )
     ]
 )

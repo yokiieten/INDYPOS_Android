@@ -38,6 +38,10 @@ class CartRepositoryImpl @Inject constructor(
         return cartDao.getCartItemCount()
     }
     
+    override suspend fun getQuantityForProduct(productId: String): Int {
+        return cartDao.getQuantityForProduct(productId)
+    }
+    
     override suspend fun addToCart(
         productId: String?,
         productName: String,

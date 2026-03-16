@@ -10,6 +10,12 @@ interface CartRepository {
     suspend fun getCartItemsSync(): List<CartItemEntity>
     suspend fun getCartAddonsByItemId(itemId: String): List<CartAddonEntity>
     fun getCartItemCount(): Flow<Int>
+    
+    /**
+     * Get total quantity for a product in cart (for badge display in product list).
+     * Uses productId reference - matches iOS logic.
+     */
+    suspend fun getQuantityForProduct(productId: String): Int
     suspend fun addToCart(
         productId: String?,
         productName: String,

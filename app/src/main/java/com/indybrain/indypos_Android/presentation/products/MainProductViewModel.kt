@@ -53,7 +53,9 @@ class MainProductViewModel @Inject constructor(
     }
     
     /**
-     * Load products when screen opens
+     * Load products when screen opens.
+     * Fetches from API if connected (uses REPLACE/upsert, does NOT clear - preserves cart productId).
+     * Otherwise loads from local DB.
      */
     fun loadProducts() {
         viewModelScope.launch {
@@ -61,22 +63,15 @@ class MainProductViewModel @Inject constructor(
             isApiCallInProgress = true
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             
-            // Clear all products and categories from Room before fetching fresh data
-            productRepository.clearAllProductsAndCategories()
+            // Do NOT clear products - fetchAndSaveProducts uses insertAll(REPLACE) which updates in place.
+            // This preserves cart productId references so name/price update automatically when product is edited.
             
-            // Try to fetch from API if connected, otherwise use local data
             if (networkConnectivityChecker.isConnected()) {
                 val result = productRepository.fetchAndSaveProducts()
                 result.onSuccess {
-                    // After successfully fetching and saving products, restore productId for cart items
-                    // that may have been set to null due to previous deleteAll() calls
-                    val products = productRepository.getAllActiveProducts().first()
-                    cartRepository.restoreProductIdsForCartItems(products)
-                    // API call completed, mark as not in progress
                     isApiCallInProgress = false
-                    // Wait a bit for Room to process and emit new data
                     delay(100)
-                    // Force update products and stop loading (in case Room doesn't emit immediately)
+                    val products = productRepository.getAllActiveProducts().first()
                     val productsWithCategory = products.filter { 
                         it.categoryId != null && it.categoryId.isNotBlank() 
                     }
@@ -88,7 +83,6 @@ class MainProductViewModel @Inject constructor(
                         )
                     }
                 }.onFailure { error ->
-                    // API call failed, stop loading and show error
                     isApiCallInProgress = false
                     _uiState.update { current ->
                         current.copy(
@@ -98,23 +92,30 @@ class MainProductViewModel @Inject constructor(
                     }
                 }
             } else {
-                // No internet, use local data
-                // Mark as not in progress so observeProducts() can stop loading when data arrives
+                // No internet, load from local DB only
                 isApiCallInProgress = false
-                // Wait a bit for Room to emit initial data
-                delay(100)
-                // If no data after delay, stop loading anyway
-                val products = productRepository.getAllActiveProducts().first()
-                val productsWithCategory = products.filter { 
-                    it.categoryId != null && it.categoryId.isNotBlank() 
-                }
-                _uiState.update { current ->
-                    current.copy(
-                        allProducts = productsWithCategory,
-                        products = productsWithCategory,
-                        isLoading = false
-                    )
-                }
+                reloadProductsFromLocalDb()
+            }
+        }
+    }
+    
+    /**
+     * Reload products from local DB only (no API, no clear).
+     * Call when returning to this screen (onResume) so UI shows latest Product data
+     * (e.g. after editing a product - name/price update automatically).
+     */
+    fun reloadProductsFromLocalDb() {
+        viewModelScope.launch {
+            val products = productRepository.getAllActiveProducts().first()
+            val productsWithCategory = products.filter { 
+                it.categoryId != null && it.categoryId.isNotBlank() 
+            }
+            _uiState.update { current ->
+                current.copy(
+                    allProducts = productsWithCategory,
+                    products = productsWithCategory,
+                    isLoading = false
+                )
             }
         }
     }
