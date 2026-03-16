@@ -104,12 +104,7 @@ fun GraphScreen(
     var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    // Fetch orders from API when screen first opens, then save to Room and display
-    LaunchedEffect(Unit) {
-        viewModel.refreshOrdersFromApi()
-    }
-    
-    // รีโหลดข้อมูลทุกครั้งที่เปิดหน้ากราฟ (ตามช่วงเวลาที่เลือกปัจจุบัน)
+    // โหลดข้อมูลจาก API เมื่อเปิดหน้าหรือเปลี่ยนช่วงเวลา (ยิงรอบเดียว)
     LaunchedEffect(uiState.selectedPeriod, uiState.customStartDateMillis, uiState.customEndDateMillis) {
         viewModel.refreshCurrentPeriod()
     }
