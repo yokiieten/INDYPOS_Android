@@ -89,6 +89,46 @@ object ProductMapper {
             updatedAt = parseDate(dto.updatedAt)
         )
     }
+
+    fun toEntity(dto: CategoryListItemDto): CategoryEntity {
+        val now = Date()
+        return CategoryEntity(
+            id = dto.id,
+            name = dto.name,
+            sortOrder = dto.sortOrder,
+            isActive = dto.isActive,
+            createdAt = now,
+            updatedAt = now
+        )
+    }
+
+    fun toEntity(dto: ProductListItemDto): ProductEntity {
+        val now = Date()
+        return ProductEntity(
+            id = dto.id,
+            name = dto.name,
+            description = null,
+            price = dto.price,
+            costPrice = null,
+            imageUrl = dto.imageUrl,
+            categoryId = dto.categoryId,
+            userId = null,
+            popularityRank = dto.popularityRank,
+            productCode = dto.productCode,
+            unit = null,
+            skuCode = dto.skuCode,
+            stockQuantity = dto.stockQuantity,
+            minStockQuantity = null,
+            selectedUnit = null,
+            selectedColorHex = dto.selectedColorHex,
+            isSkuEnabled = null,
+            isStockEnabled = dto.isStockEnabled,
+            hasAdditionalOptions = dto.hasAdditionalOptions,
+            isActive = true,
+            createdAt = now,
+            updatedAt = now
+        )
+    }
     
     private fun parseDate(dateString: String): Date {
         return try {

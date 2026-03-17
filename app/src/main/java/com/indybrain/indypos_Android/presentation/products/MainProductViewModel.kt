@@ -10,10 +10,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -35,145 +33,74 @@ class MainProductViewModel @Inject constructor(
     private val selectedCategoryFlow = MutableStateFlow<String?>(null)
     
     private var hideAdjusterJob: Job? = null
-    
-    // Track if API call is in progress
-    private var isApiCallInProgress = false
-    
+
     init {
         // Set loading state immediately to show skeleton
         _uiState.update { it.copy(isLoading = true) }
-        // Start observing local Room data immediately
-        observeCategories()
-        observeProducts()
-        // Load latest products from API once when ViewModel is created
-        // NOTE: Cart items are automatically observed via cartItems Flow
-        // Cart is persisted in Room database and will NOT be cleared when opening this screen
-        // Cart is only cleared when user logs out (see AuthRepositoryImpl.logout())
-        loadProducts()
     }
-    
+
     /**
-     * Load products when screen opens.
-     * Fetches from API if connected (uses REPLACE/upsert, does NOT clear - preserves cart productId).
-     * Otherwise loads from local DB.
+     * Load products when screen opens (called from onResume).
+     * When online: fetches from Main Product List API (products/list).
+     * When offline: loads from local DB.
      */
     fun loadProducts() {
         viewModelScope.launch {
-            // Set loading state immediately
-            isApiCallInProgress = true
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            // Do NOT clear products - fetchAndSaveProducts uses insertAll(REPLACE) which updates in place.
-            // This preserves cart productId references so name/price update automatically when product is edited.
-            
+
             if (networkConnectivityChecker.isConnected()) {
-                val result = productRepository.fetchAndSaveProducts()
-                result.onSuccess {
-                    isApiCallInProgress = false
-                    delay(100)
-                    val products = productRepository.getAllActiveProducts().first()
-                    val productsWithCategory = products.filter { 
-                        it.categoryId != null && it.categoryId.isNotBlank() 
-                    }
+                productRepository.getProductListFromApi().onSuccess { data ->
+                    val sortedCategories = data.categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
+                    val firstCategoryId = sortedCategories.firstOrNull()?.id
                     _uiState.update { current ->
                         current.copy(
-                            allProducts = productsWithCategory,
-                            products = productsWithCategory,
+                            categories = sortedCategories,
+                            allProducts = data.products,
+                            products = data.products,
+                            focusedCategoryId = current.focusedCategoryId ?: firstCategoryId,
+                            selectedCategoryId = current.selectedCategoryId ?: firstCategoryId,
                             isLoading = false
                         )
                     }
-                }.onFailure { error ->
-                    isApiCallInProgress = false
+                }.onFailure {
+                    reloadProductsFromLocalDb()
                     _uiState.update { current ->
                         current.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                            errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูล"
                         )
                     }
                 }
             } else {
-                // No internet, load from local DB only
-                isApiCallInProgress = false
                 reloadProductsFromLocalDb()
             }
         }
     }
     
     /**
-     * Reload products from local DB only (no API, no clear).
-     * Call when returning to this screen (onResume) so UI shows latest Product data
-     * (e.g. after editing a product - name/price update automatically).
+     * Reload products and categories from local DB only (no API).
+     * Used when offline, when API fails, or when returning to screen (onResume).
      */
     fun reloadProductsFromLocalDb() {
         viewModelScope.launch {
+            val categories = productRepository.getAllActiveCategories().first()
+            val sortedCategories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
+            val firstCategoryId = sortedCategories.firstOrNull()?.id
+
             val products = productRepository.getAllActiveProducts().first()
-            val productsWithCategory = products.filter { 
-                it.categoryId != null && it.categoryId.isNotBlank() 
+            val productsWithCategory = products.filter {
+                it.categoryId != null && it.categoryId.isNotBlank()
             }
+
             _uiState.update { current ->
                 current.copy(
+                    categories = sortedCategories,
                     allProducts = productsWithCategory,
                     products = productsWithCategory,
+                    focusedCategoryId = current.focusedCategoryId ?: firstCategoryId,
+                    selectedCategoryId = current.selectedCategoryId ?: firstCategoryId,
                     isLoading = false
                 )
-            }
-        }
-    }
-    
-    /**
-     * Observe categories from Room database
-     */
-    private fun observeCategories() {
-        viewModelScope.launch {
-            productRepository.getAllActiveCategories().collect { categories ->
-                // Sort categories by sortOrder (handle null values)
-                val sortedCategories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
-                val firstCategoryId = sortedCategories.firstOrNull()?.id
-                
-                _uiState.update { current ->
-                    // Set initial focused category to first category if not set
-                    val newFocusedCategoryId = current.focusedCategoryId ?: firstCategoryId
-                    current.copy(
-                        categories = sortedCategories,
-                        focusedCategoryId = newFocusedCategoryId,
-                        selectedCategoryId = current.selectedCategoryId ?: firstCategoryId
-                    )
-                }
-            }
-        }
-    }
-    
-    /**
-     * Observe products from Room database
-     * Always show all products - category selection is for scrolling, not filtering
-     * Filter out products without categoryId (null or empty string)
-     */
-    private fun observeProducts() {
-        viewModelScope.launch {
-            productRepository.getAllActiveProducts().collect { allProducts ->
-                // Filter out products without categoryId (null or empty/blank string)
-                val productsWithCategory = allProducts.filter { 
-                    it.categoryId != null && it.categoryId.isNotBlank() 
-                }
-                
-                _uiState.update { current ->
-                    // If API call is in progress, don't update products yet (to prevent showing old data)
-                    // Only update products after API call completes
-                    if (isApiCallInProgress) {
-                        // Keep loading state and don't update products (to prevent showing old data)
-                        current.copy(
-                            isLoading = true
-                        )
-                    } else {
-                        // API call completed, update products and stop loading
-                        // This will be called when Room emits data after API completes
-                        current.copy(
-                            allProducts = productsWithCategory,
-                            products = productsWithCategory, // Always show all products with category
-                            isLoading = false
-                        )
-                    }
-                }
             }
         }
     }
@@ -222,6 +149,10 @@ class MainProductViewModel @Inject constructor(
      */
     fun addQuickToCart(product: ProductEntity) {
         viewModelScope.launch {
+            // Ensure product exists in Room (for FK) when coming from API list
+            val category = _uiState.value.categories.find { it.id == product.categoryId }
+            productRepository.ensureProductExists(product, category)
+
             // Check stock if stock management is enabled
             if (product.isStockEnabled == true && product.stockQuantity != null) {
                 // Get existing cart items for this product
@@ -294,6 +225,10 @@ class MainProductViewModel @Inject constructor(
      */
     fun increaseQuantity(product: ProductEntity) {
         viewModelScope.launch {
+            // Ensure product exists in Room (for FK) when coming from API list
+            val category = _uiState.value.categories.find { it.id == product.categoryId }
+            productRepository.ensureProductExists(product, category)
+
             // Reset timer
             showQuantityAdjuster(product.id)
             

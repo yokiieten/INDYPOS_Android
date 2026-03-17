@@ -167,13 +167,13 @@ fun MainProductScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle(initialValue = emptyList())
     
-    // Reload products from local DB when returning to this screen (onResume)
-    // Ensures name/price reflect latest Product data after editing
+    // Reload products when returning to this screen (onResume)
+    // When online: fetches from API. When offline: loads from local DB.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.reloadProductsFromLocalDb()
+                viewModel.loadProducts()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

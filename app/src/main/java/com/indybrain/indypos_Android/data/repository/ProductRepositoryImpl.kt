@@ -19,6 +19,8 @@ import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.DeleteCategoriesResult
 import com.indybrain.indypos_Android.domain.repository.DeleteProductsResult
+import com.indybrain.indypos_Android.domain.repository.ProductDetailData
+import com.indybrain.indypos_Android.domain.repository.ProductListData
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.repository.ProductSyncStatistics
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -1099,6 +1101,90 @@ class ProductRepositoryImpl @Inject constructor(
     
     override suspend fun getProductByCode(code: String): ProductEntity? {
         return productDao.getProductByCode(code)
+    }
+
+    override suspend fun getProductDetailFromApi(productId: String): Result<ProductDetailData> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception("No network connection"))
+        }
+        return try {
+            val response = productsApi.getProductDetail(productId)
+            if (response.status == 200 && response.data != null) {
+                val dto = response.data
+                val product = ProductMapper.toEntity(dto)
+                val addonGroups = dto.addonGroups
+                    ?.filter { it.isActive }
+                    ?.map { ProductMapper.toEntity(it) }
+                    ?.sortedBy { it.sortOrder ?: 0 }
+                    ?: emptyList()
+                val addonsByGroup = addonGroups.associate { group ->
+                    val addons = (dto.addonGroups?.find { it.id == group.id }?.addons)
+                        ?.filter { it.isActive }
+                        ?.map { ProductMapper.toEntity(it, group.id) }
+                        ?.sortedBy { it.sortOrder ?: 0 }
+                        ?: emptyList()
+                    group.id to addons
+                }
+                val category = dto.category?.let { ProductMapper.toEntity(it) }
+                Result.success(
+                    ProductDetailData(
+                        product = product,
+                        addonGroups = addonGroups,
+                        addonsByGroup = addonsByGroup,
+                        category = category
+                    )
+                )
+            } else {
+                Result.failure(Exception(response.message ?: "Unknown error"))
+            }
+        } catch (e: HttpException) {
+            val errorBody = e.response()?.errorBody()
+            val message = parseApiErrorResponse(errorBody, e.code())
+            Result.failure(Exception(message))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getProductListFromApi(categoryId: String?): Result<ProductListData> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception("No network connection"))
+        }
+        return try {
+            val response = productsApi.getProductList(categoryId)
+            if (response.status == 200 && response.data != null) {
+                val data = response.data
+                val categories = data.categories.map { ProductMapper.toEntity(it) }
+                val products = data.products
+                    .filter { it.categoryId != null && it.categoryId.isNotBlank() }
+                    .map { ProductMapper.toEntity(it) }
+                    .sortedBy { it.popularityRank ?: Int.MAX_VALUE }
+
+                Result.success(
+                    ProductListData(
+                        categories = categories,
+                        products = products
+                    )
+                )
+            } else {
+                Result.failure(Exception(response.message ?: "Unknown error"))
+            }
+        } catch (e: HttpException) {
+            val errorBody = e.response()?.errorBody()
+            val message = parseApiErrorResponse(errorBody, e.code())
+            Result.failure(Exception(message))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun ensureProductExists(product: ProductEntity, category: CategoryEntity?) {
+        if (product.categoryId != null && category != null && categoryDao.getCategoryById(category.id) == null) {
+            categoryDao.insert(category)
+        }
+        if (productDao.getProductById(product.id) == null) {
+            productDao.insertAll(listOf(product))
+        }
     }
     
     override suspend fun deleteProduct(productId: String): Result<Unit> {

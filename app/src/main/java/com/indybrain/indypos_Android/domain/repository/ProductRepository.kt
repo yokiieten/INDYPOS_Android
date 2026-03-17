@@ -1,5 +1,7 @@
 package com.indybrain.indypos_Android.domain.repository
 
+import com.indybrain.indypos_Android.data.local.entity.AddonEntity
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import kotlinx.coroutines.flow.Flow
@@ -131,6 +133,24 @@ interface ProductRepository {
      * Get product by ID
      */
     suspend fun getProductById(id: String): ProductEntity?
+
+    /**
+     * Fetch product detail from API (product + addon groups + addons).
+     * Returns null/error when offline or API fails.
+     */
+    suspend fun getProductDetailFromApi(productId: String): Result<ProductDetailData>
+
+    /**
+     * Fetch product list from API (categories + products for Main Product Screen).
+     * Returns error when offline or API fails.
+     */
+    suspend fun getProductListFromApi(categoryId: String? = null): Result<ProductListData>
+
+    /**
+     * Ensure product (and its category if needed) exists in Room before adding to cart.
+     * Inserts only if not already present. Call before addToCart when product may come from API.
+     */
+    suspend fun ensureProductExists(product: ProductEntity, category: CategoryEntity? = null)
     
     /**
      * Get product by barcode (productCode or skuCode)
@@ -264,6 +284,24 @@ data class DeleteCategoriesResult(
     val deletedCount: Int,
     val failedCount: Int = 0,
     val errors: List<String> = emptyList()
+)
+
+/**
+ * Product list data from API (categories + products for Main Product Screen)
+ */
+data class ProductListData(
+    val categories: List<CategoryEntity>,
+    val products: List<ProductEntity>
+)
+
+/**
+ * Product detail data from API (product + addon groups + addons by group)
+ */
+data class ProductDetailData(
+    val product: ProductEntity,
+    val addonGroups: List<AddonGroupEntity>,
+    val addonsByGroup: Map<String, List<AddonEntity>>,
+    val category: CategoryEntity? = null
 )
 
 /**

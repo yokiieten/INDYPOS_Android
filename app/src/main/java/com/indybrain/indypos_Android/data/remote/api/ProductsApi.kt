@@ -74,6 +74,22 @@ interface ProductsApi {
     suspend fun getMyProductsAll(
         @Query("category_id") categoryId: String? = null
     ): ApiResponseDto<List<ProductDto>>
+
+    /**
+     * Get product list for Main Product Screen (categories + products summary)
+     * GET /api/v1/protected/indypos/products/list
+     */
+    @GET("protected/indypos/products/list")
+    suspend fun getProductList(
+        @Query("category_id") categoryId: String? = null
+    ): ApiResponseDto<ProductListResponseDto>
+
+    /**
+     * Get product detail by ID (single product with addon groups)
+     * GET /api/v1/protected/indypos/products/{productId}
+     */
+    @GET("protected/indypos/products/{productId}")
+    suspend fun getProductDetail(@Path("productId") productId: String): ApiResponseDto<ProductDto>
     
     /**
      * Get addon groups endpoint

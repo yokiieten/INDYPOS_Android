@@ -2,13 +2,19 @@ package com.indybrain.indypos_Android.presentation.products
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
+import com.indybrain.indypos_Android.data.local.entity.AddonEntity
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
+import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
+import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.repository.CartRepository
+import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +24,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private data class ProductDetailLoadResult(
+    val product: ProductEntity,
+    val addonGroups: List<AddonGroupEntity>,
+    val addonsByGroup: Map<String, List<AddonEntity>>,
+    val category: CategoryEntity?
+)
+
 @HiltViewModel
 class ProductDetailViewModel @Inject constructor(
     private val productDao: ProductDao,
@@ -25,7 +38,9 @@ class ProductDetailViewModel @Inject constructor(
     private val addonDao: AddonDao,
     private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
     private val addonGroupAddonJunctionDao: AddonGroupAddonJunctionDao,
-    private val cartRepository: CartRepository
+    private val cartRepository: CartRepository,
+    private val productRepository: ProductRepository,
+    private val networkConnectivityChecker: NetworkConnectivityChecker
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ProductDetailUiState())
@@ -36,59 +51,32 @@ class ProductDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // Get product
-                val product = productDao.getAllActiveProducts().find { it.id == productId }
-                
-                if (product == null) {
-                    _uiState.update { it.copy(isLoading = false, product = null) }
-                    return@launch
-                }
-                
-                // Get addon groups that are associated with this product via junction table
-                val addonGroups = if (product.hasAdditionalOptions == true) {
-                    // Get addon group IDs for this product from junction table
-                    val addonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
-                    
-                    // Get addon groups by IDs and filter to show only active groups
-                    // getAddonGroupById already filters isDeletedLocally = 0, but we need to check isActive = true
-                    if (addonGroupIds.isNotEmpty()) {
-                        addonGroupIds.mapNotNull { groupId ->
-                            addonGroupDao.getAddonGroupById(groupId)
-                        }.filter { addonGroup ->
-                            // Only show addon groups that are active and not deleted
-                            addonGroup.isActive && !addonGroup.isDeletedLocally
-                        }
-                    } else {
-                        emptyList()
-                    }
+                // Try API first when online
+                val apiResult = if (networkConnectivityChecker.isConnected()) {
+                    productRepository.getProductDetailFromApi(productId)
                 } else {
-                    emptyList()
+                    Result.failure(Exception("No network"))
                 }
                 
-                // Get addons for each group using junction table
-                // First get addon IDs from junction table, then get addon entities
-                val addonsByGroup = addonGroups.associate { group ->
-                    // Get addon IDs from junction table
-                    val addonIds = addonGroupAddonJunctionDao.getAddonIdsByAddonGroupIdSync(group.id)
-                    
-                    // Get addon entities by IDs and filter only active ones
-                    val addons = if (addonIds.isNotEmpty()) {
-                        addonIds.mapNotNull { addonId ->
-                            addonDao.getAddonById(addonId)
-                        }.filter { addon ->
-                            addon.isActive && !addon.isDeletedLocally
+                val loadResult = when {
+                    apiResult.isSuccess -> {
+                        val data = apiResult.getOrNull()!!
+                        ProductDetailLoadResult(data.product, data.addonGroups, data.addonsByGroup, data.category)
+                    }
+                    else -> {
+                        // Fallback to local
+                        val local = loadProductFromLocal(productId) ?: run {
+                            _uiState.update { it.copy(isLoading = false, product = null) }
+                            return@launch
                         }
-                    } else {
-                        emptyList()
+                        val cat = productRepository.getCategoryById(local.first.categoryId ?: "")
+                        ProductDetailLoadResult(local.first, local.second, local.third, cat)
                     }
-                    
-                    // Debug: Log if group has no addons
-                    if (addons.isEmpty()) {
-                        android.util.Log.d("ProductDetailVM", "AddonGroup ${group.name} (${group.id}) has no active addons. Junction addonIds: $addonIds")
-                    }
-                    
-                    group.id to addons
                 }
+                val product = loadResult.product
+                val addonGroups = loadResult.addonGroups
+                val addonsByGroup = loadResult.addonsByGroup
+                val category = loadResult.category
                 
                 // Check if product is already in cart and load existing data
                 val existingCartItems = cartRepository.getCartItemsByProduct(productId).first()
@@ -136,6 +124,7 @@ class ProductDetailViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         product = product,
+                        category = category,
                         addonGroups = addonGroups,
                         addonsByGroup = addonsByGroup,
                         selectedAddons = existingSelectedAddons,
@@ -148,6 +137,39 @@ class ProductDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
+    }
+
+    /**
+     * Load product from local database (fallback when offline or API fails)
+     */
+    private suspend fun loadProductFromLocal(productId: String): Triple<com.indybrain.indypos_Android.data.local.entity.ProductEntity, List<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity>, Map<String, List<com.indybrain.indypos_Android.data.local.entity.AddonEntity>>>? {
+        val product = productDao.getAllActiveProducts().find { it.id == productId }
+            ?: return null
+
+        val addonGroups = if (product.hasAdditionalOptions == true) {
+            val addonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
+            if (addonGroupIds.isNotEmpty()) {
+                addonGroupIds.mapNotNull { addonGroupDao.getAddonGroupById(it) }
+                    .filter { it.isActive && !it.isDeletedLocally }
+            } else {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+
+        val addonsByGroup = addonGroups.associate { group ->
+            val addonIds = addonGroupAddonJunctionDao.getAddonIdsByAddonGroupIdSync(group.id)
+            val addons = if (addonIds.isNotEmpty()) {
+                addonIds.mapNotNull { addonDao.getAddonById(it) }
+                    .filter { it.isActive && !it.isDeletedLocally }
+            } else {
+                emptyList()
+            }
+            group.id to addons
+        }
+
+        return Triple(product, addonGroups, addonsByGroup)
     }
     
     fun toggleAddon(addonGroupId: String, addonId: String) {
@@ -385,6 +407,9 @@ class ProductDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = _uiState.value
             val product = currentState.product ?: return@launch
+
+            // Ensure product exists in Room (for FK) when coming from API
+            productRepository.ensureProductExists(product, currentState.category)
             
             // Validate required addon groups
             val validationError = validateRequiredAddonGroups()
