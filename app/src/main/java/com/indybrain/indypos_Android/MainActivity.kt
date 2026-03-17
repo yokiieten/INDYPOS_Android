@@ -263,14 +263,18 @@ class MainActivity : ComponentActivity() {
                     }
                     
                     // Separate effect for resume authentication - only on ON_RESUME
+                    // Skip when on Splash route: SplashViewModel already calls resumeAuth on cold start
                     DisposableEffect(lifecycleOwner) {
                         val resumeObserver = LifecycleEventObserver { _, event ->
                             if (event == Lifecycle.Event.ON_RESUME) {
-                                val currentTime = System.currentTimeMillis()
-                                // Prevent multiple calls within 1 second
-                                if (currentTime - lastResumeTime > 1000) {
-                                    lastResumeTime = currentTime
-                                    resumeAuthentication(navController, coroutineScope)
+                                val currentRoute = navController.currentBackStackEntry?.destination?.route
+                                if (currentRoute != NavRoutes.Splash.route) {
+                                    val currentTime = System.currentTimeMillis()
+                                    // Prevent multiple calls within 1 second
+                                    if (currentTime - lastResumeTime > 1000) {
+                                        lastResumeTime = currentTime
+                                        resumeAuthentication(navController, coroutineScope)
+                                    }
                                 }
                             }
                         }
