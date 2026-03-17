@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.domain.model.User
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
+import com.indybrain.indypos_Android.domain.repository.HomeRepository
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -18,7 +19,8 @@ import android.net.Uri
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val orderRepository: OrderRepository
+    private val orderRepository: OrderRepository,
+    private val homeRepository: HomeRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -31,22 +33,36 @@ class HomeViewModel @Inject constructor(
     
     /**
      * Refresh data when screen appears (like viewWillAppear in iOS)
-     * Uses the new orders list endpoint (non-paginated).
-     * After refresh, we update statistics from DB so top product is correct (avoids race with order items insert).
+     * Tries Today's Sales API only. Falls back to local calculation if API fails or no network.
+     * Orders list is not synced here; OrderScreen handles its own refresh.
      */
     fun refreshData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            orderRepository.refreshOrdersList()
-            // Update statistics after insert so getTodayTopProduct() sees order items
-            orderRepository.getOrdersSync().onSuccess { orders ->
-                val topProduct = orderRepository.getTodayTopProduct()
-                val statistics = buildStatistics(orders, topProduct)
+
+            // Try Today's Sales API first
+            homeRepository.getTodaySales().onSuccess { apiResult ->
+                val statistics = HomeStatistics(
+                    todaysSales = apiResult.todaysSales,
+                    ordersToday = apiResult.ordersToday,
+                    topProductName = apiResult.topProductName,
+                    topProductQuantity = apiResult.topProductQuantity,
+                    topProductAmount = apiResult.topProductAmount
+                )
                 _uiState.update { current ->
                     current.copy(statistics = statistics, isLoading = false)
                 }
             }.onFailure {
-                _uiState.update { it.copy(isLoading = false) }
+                // Fallback to local calculation
+                orderRepository.getOrdersSync().onSuccess { orders ->
+                    val topProduct = orderRepository.getTodayTopProduct()
+                    val statistics = buildStatistics(orders, topProduct)
+                    _uiState.update { current ->
+                        current.copy(statistics = statistics, isLoading = false)
+                    }
+                }.onFailure {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
             }
         }
     }
