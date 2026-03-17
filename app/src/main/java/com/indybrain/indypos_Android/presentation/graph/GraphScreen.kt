@@ -66,6 +66,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.AsyncImage
@@ -1000,17 +1001,19 @@ private fun RevenueComparisonCard(
             // Legend
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 LegendItem(
                     color = PrimaryButton,
                     title = stringResource(id = R.string.graph_transfer_payment),
-                    amount = revenueComparison.transferAmount
+                    amount = revenueComparison.transferAmount,
+                    modifier = Modifier.weight(1f)
                 )
                 LegendItem(
                     color = GreenComplete,
                     title = stringResource(id = R.string.graph_cash_payment),
-                    amount = revenueComparison.cashAmount
+                    amount = revenueComparison.cashAmount,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -1074,11 +1077,12 @@ private fun DonutChart(
 private fun LegendItem(
     color: Color,
     title: String,
-    amount: Double
+    amount: Double,
+    modifier: Modifier = Modifier
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(100.dp)
+        modifier = modifier
     ) {
         Box(
             modifier = Modifier
@@ -1102,7 +1106,9 @@ private fun LegendItem(
                 style = AppFontStyle.Bold,
                 size = FontSize.Medium
             ),
-            color = PrimaryText
+            color = PrimaryText,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
         )
     }
 }
