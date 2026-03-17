@@ -551,13 +551,13 @@ private fun SummaryCardsSection(
         ) {
             SummaryCard(
                 title = salesLabel,
-                value = formatCurrency(summary.todaySales),
+                value = "${formatCurrency(summary.todaySales)} ${stringResource(id = R.string.graph_currency_baht)}",
                 valueColor = GreenComplete,
                 modifier = Modifier.weight(1f)
             )
             SummaryCard(
                 title = stringResource(id = R.string.graph_cost_expenses),
-                value = formatCurrency(summary.costOfExpenses),
+                value = "${formatCurrency(summary.costOfExpenses)} ${stringResource(id = R.string.graph_currency_baht)}",
                 valueColor = RedFailure,
                 modifier = Modifier.weight(1f)
             )
@@ -566,7 +566,7 @@ private fun SummaryCardsSection(
         // Profit row: กำไร (ยอดขายหักต้นทุน)
         SummaryCard(
             title = profitLabel,
-            value = formatCurrency(profitValue),
+            value = "${formatCurrency(profitValue)} ${stringResource(id = R.string.graph_currency_baht)}",
             valueColor = if (profitValue >= 0) GreenComplete else RedFailure,
             modifier = Modifier.fillMaxWidth()
         )
