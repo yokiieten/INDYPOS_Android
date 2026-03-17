@@ -66,6 +66,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.AsyncImage
@@ -104,12 +105,7 @@ fun GraphScreen(
     var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    // Fetch orders from API when screen first opens, then save to Room and display
-    LaunchedEffect(Unit) {
-        viewModel.refreshOrdersFromApi()
-    }
-    
-    // รีโหลดข้อมูลทุกครั้งที่เปิดหน้ากราฟ (ตามช่วงเวลาที่เลือกปัจจุบัน)
+    // โหลดข้อมูลจาก API เมื่อเปิดหน้าหรือเปลี่ยนช่วงเวลา (ยิงรอบเดียว)
     LaunchedEffect(uiState.selectedPeriod, uiState.customStartDateMillis, uiState.customEndDateMillis) {
         viewModel.refreshCurrentPeriod()
     }
@@ -556,13 +552,13 @@ private fun SummaryCardsSection(
         ) {
             SummaryCard(
                 title = salesLabel,
-                value = formatCurrency(summary.todaySales),
+                value = "${formatCurrency(summary.todaySales)} ${stringResource(id = R.string.graph_currency_baht)}",
                 valueColor = GreenComplete,
                 modifier = Modifier.weight(1f)
             )
             SummaryCard(
                 title = stringResource(id = R.string.graph_cost_expenses),
-                value = formatCurrency(summary.costOfExpenses),
+                value = "${formatCurrency(summary.costOfExpenses)} ${stringResource(id = R.string.graph_currency_baht)}",
                 valueColor = RedFailure,
                 modifier = Modifier.weight(1f)
             )
@@ -571,7 +567,7 @@ private fun SummaryCardsSection(
         // Profit row: กำไร (ยอดขายหักต้นทุน)
         SummaryCard(
             title = profitLabel,
-            value = formatCurrency(profitValue),
+            value = "${formatCurrency(profitValue)} ${stringResource(id = R.string.graph_currency_baht)}",
             valueColor = if (profitValue >= 0) GreenComplete else RedFailure,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1005,17 +1001,19 @@ private fun RevenueComparisonCard(
             // Legend
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 LegendItem(
                     color = PrimaryButton,
                     title = stringResource(id = R.string.graph_transfer_payment),
-                    amount = revenueComparison.transferAmount
+                    amount = revenueComparison.transferAmount,
+                    modifier = Modifier.weight(1f)
                 )
                 LegendItem(
                     color = GreenComplete,
                     title = stringResource(id = R.string.graph_cash_payment),
-                    amount = revenueComparison.cashAmount
+                    amount = revenueComparison.cashAmount,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -1079,11 +1077,12 @@ private fun DonutChart(
 private fun LegendItem(
     color: Color,
     title: String,
-    amount: Double
+    amount: Double,
+    modifier: Modifier = Modifier
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(100.dp)
+        modifier = modifier
     ) {
         Box(
             modifier = Modifier
@@ -1107,7 +1106,9 @@ private fun LegendItem(
                 style = AppFontStyle.Bold,
                 size = FontSize.Medium
             ),
-            color = PrimaryText
+            color = PrimaryText,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
         )
     }
 }
