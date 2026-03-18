@@ -87,6 +87,18 @@ interface ProductsApi {
     ): ApiResponseDto<List<ProductDto>>
 
     /**
+     * Get products paginated for Product Management
+     * GET /api/v1/protected/indypos/products/paginated
+     */
+    @GET("protected/indypos/products/paginated")
+    suspend fun getProductsPaginated(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20,
+        @Query("search") search: String? = null,
+        @Query("category_id") categoryId: String? = null
+    ): ApiResponseDto<ProductsPaginatedDataDto>
+
+    /**
      * Get product list for Main Product Screen (categories + products summary)
      * GET /api/v1/protected/indypos/products/list
      */

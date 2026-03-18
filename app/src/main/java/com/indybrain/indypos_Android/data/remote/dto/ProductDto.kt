@@ -2,6 +2,32 @@ package com.indybrain.indypos_Android.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
 
+/**
+ * Response data for products paginated API
+ * GET /api/v1/protected/indypos/products/paginated
+ */
+data class ProductsPaginatedDataDto(
+    val products: List<ProductDto>?,
+    val pagination: ProductsPaginationDto?
+)
+
+/**
+ * Pagination info for products
+ */
+data class ProductsPaginationDto(
+    @SerializedName("current_page")
+    val currentPage: Int,
+    val limit: Int,
+    @SerializedName("total_count")
+    val totalCount: Int,
+    @SerializedName("total_pages")
+    val totalPages: Int,
+    @SerializedName("has_next")
+    val hasNext: Boolean,
+    @SerializedName("has_previous")
+    val hasPrevious: Boolean
+)
+
 data class ProductDto(
     val id: String,
     val name: String,

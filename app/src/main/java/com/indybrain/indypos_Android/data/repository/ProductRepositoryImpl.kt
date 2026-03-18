@@ -18,6 +18,7 @@ import java.util.TimeZone
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.CategoriesPaginatedResult
+import com.indybrain.indypos_Android.domain.repository.ProductsPaginatedResult
 import com.indybrain.indypos_Android.domain.repository.DeleteCategoriesResult
 import com.indybrain.indypos_Android.domain.repository.DeleteProductsResult
 import com.indybrain.indypos_Android.domain.repository.ProductDetailData
@@ -1128,6 +1129,51 @@ class ProductRepositoryImpl @Inject constructor(
     
     override fun getAllProductsForManagement(): Flow<List<ProductEntity>> {
         return productDao.getAllProductsForManagementFlow()
+    }
+
+    override suspend fun getProductsPaginated(
+        page: Int,
+        limit: Int,
+        search: String?,
+        categoryId: String?
+    ): Result<ProductsPaginatedResult> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception("No network connection"))
+        }
+        return try {
+            val response = productsApi.getProductsPaginated(
+                page = page,
+                limit = limit,
+                search = search?.takeIf { it.isNotBlank() },
+                categoryId = categoryId?.takeIf { it.isNotBlank() }
+            )
+            if (response.status != 200) {
+                return Result.failure(Exception(response.message ?: "Failed to fetch products"))
+            }
+            val data = response.data
+            val productsList = data?.products ?: emptyList()
+            val pagination = data?.pagination
+            val products = productsList.map { ProductMapper.toEntity(it) }
+            Result.success(
+                ProductsPaginatedResult(
+                    products = products,
+                    currentPage = pagination?.currentPage ?: page,
+                    totalCount = pagination?.totalCount ?: products.size,
+                    totalPages = pagination?.totalPages ?: 1,
+                    hasNext = pagination?.hasNext ?: false,
+                    hasPrevious = pagination?.hasPrevious ?: false
+                )
+            )
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
     }
     
     override fun searchProducts(query: String, categoryId: String?): Flow<List<ProductEntity>> {

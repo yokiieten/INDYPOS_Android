@@ -65,10 +65,13 @@ class AddEditProductViewModel @Inject constructor(
     init {
         loadCategories()
         loadAddonGroups()
-        // Always fetch addon groups from API when entering this screen (add or edit mode)
+        // Fetch categories and addon groups from API when online
         viewModelScope.launch {
-            addonGroupRepository.fetchAndSyncAddonGroups()
-            // Flow in loadAddonGroups() will auto-emit when Room is updated
+            if (networkConnectivityChecker.isConnected()) {
+                productRepository.fetchAndSyncCategories()
+                addonGroupRepository.fetchAndSyncAddonGroups()
+            }
+            // Flow in loadCategories() and loadAddonGroups() will auto-emit when Room is updated
         }
     }
     
@@ -110,54 +113,64 @@ class AddEditProductViewModel @Inject constructor(
     
     /**
      * Load product data for editing
+     * Tries Room first, then API (for products from paginated list that may not be in Room)
      */
     fun loadProduct(productId: String) {
         this.productId = productId
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-                val product = productRepository.getProductById(productId)
+                var product = productRepository.getProductById(productId)
+                var addonGroupIdsFromApi: List<String>? = null
+                
+                // If not in Room, try API (products from paginated list may not be synced to Room)
+                if (product == null && networkConnectivityChecker.isConnected()) {
+                    val apiResult = productRepository.getProductDetailFromApi(productId)
+                    apiResult.onSuccess { detailData ->
+                        product = detailData.product
+                        addonGroupIdsFromApi = detailData.addonGroups.map { it.id }
+                        // Save to Room for future use
+                        productRepository.ensureProductExists(detailData.product, detailData.category)
+                    }
+                }
+                
                 if (product != null) {
-                    loadedProduct = product
+                    val p = product!!
+                    loadedProduct = p
                     // Normalize imageUrl: treat blank string as null
-                    val normalizedImageUrl = product.imageUrl?.takeIf { it.isNotBlank() }
+                    val normalizedImageUrl = p.imageUrl?.takeIf { it.isNotBlank() }
                     // Decide initial mode: image vs color
-                    val isColorMode = (product.selectedUnit == SELECTED_UNIT_COLOR) ||
-                        (normalizedImageUrl == null && !product.selectedColorHex.isNullOrBlank())
+                    val isColorMode = (p.selectedUnit == SELECTED_UNIT_COLOR) ||
+                        (normalizedImageUrl == null && !p.selectedColorHex.isNullOrBlank())
                     val isImageMode = !isColorMode
-                    // Load selected addon group IDs
-                    val selectedAddonGroupIds = try {
+                    // Load selected addon group IDs (from API response if loaded from API, else from Room)
+                    val selectedAddonGroupIds = addonGroupIdsFromApi ?: try {
                         productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
                     } catch (e: Exception) {
-                        emptyList() // Fallback to empty list if there's an error
+                        emptyList()
                     }
                     
                     // Format prices for display when loading
-                    val formattedSellingPrice = product.price?.let { 
-                        formatPriceForDisplay(it.toString()) 
-                    } ?: "0"
-                    val formattedCostPrice = product.costPrice?.let { 
-                        formatPriceForDisplay(it.toString()) 
-                    } ?: ""
+                    val formattedSellingPrice = p.price?.let { formatPriceForDisplay(it.toString()) } ?: "0"
+                    val formattedCostPrice = p.costPrice?.let { formatPriceForDisplay(it.toString()) } ?: ""
                     
                     _uiState.update { 
                         it.copy(
-                            productName = product.name ?: "",
-                            productCode = product.productCode ?: "",
+                            productName = p.name ?: "",
+                            productCode = p.productCode ?: "",
                             sellingPrice = formattedSellingPrice,
                             costPrice = formattedCostPrice,
-                            unit = product.unit ?: "",
+                            unit = p.unit ?: "",
                             imageUrl = normalizedImageUrl,
-                            selectedColorHex = product.selectedColorHex,
+                            selectedColorHex = p.selectedColorHex,
                             isImageSelected = isImageMode,
-                            categoryId = product.categoryId,
-                            isSkuEnabled = product.isSkuEnabled ?: false,
-                            skuCode = product.skuCode ?: "",
-                            isStockEnabled = product.isStockEnabled ?: false,
-                            stockQuantity = product.stockQuantity?.toString() ?: "",
+                            categoryId = p.categoryId,
+                            isSkuEnabled = p.isSkuEnabled ?: false,
+                            skuCode = p.skuCode ?: "",
+                            isStockEnabled = p.isStockEnabled ?: false,
+                            stockQuantity = p.stockQuantity?.toString() ?: "",
                             addonGroupIds = selectedAddonGroupIds,
-                            // ใช้ค่า product.hasAdditionalOptions เป็นหลักในการเปิด/ปิด Switch
-                            hasAdditionalOptions = product.hasAdditionalOptions ?: false,
+                            hasAdditionalOptions = p.hasAdditionalOptions ?: false,
                             isLoading = false
                         )
                     }

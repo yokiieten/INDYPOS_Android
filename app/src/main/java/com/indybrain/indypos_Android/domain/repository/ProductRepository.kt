@@ -135,6 +135,17 @@ interface ProductRepository {
     fun getAllProductsForManagement(): Flow<List<ProductEntity>>
     
     /**
+     * Get products paginated from API for Product Management
+     * @return Result with ProductsPaginatedResult (products + pagination info)
+     */
+    suspend fun getProductsPaginated(
+        page: Int = 1,
+        limit: Int = 20,
+        search: String? = null,
+        categoryId: String? = null
+    ): Result<ProductsPaginatedResult>
+    
+    /**
      * Search products by name and category
      */
     fun searchProducts(query: String, categoryId: String?): Flow<List<ProductEntity>>
@@ -312,6 +323,18 @@ data class ProductDetailData(
     val addonGroups: List<AddonGroupEntity>,
     val addonsByGroup: Map<String, List<AddonEntity>>,
     val category: CategoryEntity? = null
+)
+
+/**
+ * Result of paginated products API
+ */
+data class ProductsPaginatedResult(
+    val products: List<ProductEntity>,
+    val currentPage: Int,
+    val totalCount: Int,
+    val totalPages: Int,
+    val hasNext: Boolean,
+    val hasPrevious: Boolean
 )
 
 /**

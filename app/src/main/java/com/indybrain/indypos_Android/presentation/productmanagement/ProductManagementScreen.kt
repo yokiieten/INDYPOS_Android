@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -154,9 +155,27 @@ fun ProductManagementScreen(
         }
     }
     
-    // Update search when query changes
+    // Update search when query changes (debounced in ViewModel)
+    // Skip initial composition - ON_RESUME already triggers refreshProducts()
+    var isFirstSearch by remember { mutableStateOf(true) }
     LaunchedEffect(searchQuery) {
+        if (isFirstSearch) {
+            isFirstSearch = false
+            return@LaunchedEffect
+        }
         viewModel.searchProducts(searchQuery)
+    }
+    
+    // Load more when scrolling near end
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState, uiState.hasNextPage, uiState.isLoadingMore, uiState.isLoading) {
+        if (!uiState.hasNextPage || uiState.isLoadingMore || uiState.isLoading) return@LaunchedEffect
+        val layoutInfo = listState.layoutInfo
+        val totalItems = layoutInfo.totalItemsCount
+        val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        if (totalItems > 0 && lastVisibleItem >= totalItems - 3) {
+            viewModel.loadMoreProducts()
+        }
     }
     
     Scaffold(
@@ -325,6 +344,7 @@ fun ProductManagementScreen(
                         }
                         else -> {
                             LazyColumn(
+                                state = listState,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
@@ -348,6 +368,22 @@ fun ProductManagementScreen(
                                             }
                                         }
                                     )
+                                }
+                                // Load more indicator
+                                if (uiState.isLoadingMore) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                color = PrimaryButton
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
