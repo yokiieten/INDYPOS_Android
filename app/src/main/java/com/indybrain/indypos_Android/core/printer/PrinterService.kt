@@ -56,11 +56,54 @@ class PrinterService @Inject constructor(
         // Receipt bitmap width for 58mm thermal paper (384 dots at 203 DPI)
         private const val RECEIPT_BITMAP_WIDTH = 384
         
-        // Addon - ชิดซ้ายเหมือนสินค้าอื่น (ไม่มี indent)
+        // Addon - ชิดซ้ายเหมือนเดิม (ไม่มี indent)
         private const val ADDON_INDENT = ""
         
         // Addon separator - คั่น addon ด้วยคอมม่าเหมือนในภาพ
         private const val ADDON_SEPARATOR = ", "
+    }
+    
+    /** ความสูงแต่ละบรรทัด - ชิดกันมากที่สุด (เท่าความสูงตัวอักษร) */
+    private fun getReceiptLineHeight(paint: Paint): Float {
+        val fm = paint.fontMetrics
+        return (fm.descent - fm.ascent)
+    }
+    
+    /** Paint สำหรับ receipt - ชัดคม ไม่ blur (ไม่มี anti-alias สำหรับ thermal printer) */
+    private fun createReceiptPaint(textSize: Float, isBold: Boolean = true): Paint {
+        return Paint(0).apply {
+            color = Color.BLACK
+            typeface = Typeface.create(Typeface.MONOSPACE, if (isBold) Typeface.BOLD else Typeface.NORMAL)
+            this.textSize = textSize
+            isAntiAlias = false
+            isFilterBitmap = false
+            setHinting(Paint.HINTING_ON)
+        }
+    }
+    
+    /** แสดงข้อความบรรทัดเดียว ไม่ปัด - สำหรับ separator, order number */
+    private fun textToBitmapSingleLine(text: String, alignment: Int): Bitmap {
+        val paint = createReceiptPaint(textSize = 30f)
+        var drawText = text
+        val textWidth = paint.measureText(text)
+        if (textWidth > RECEIPT_BITMAP_WIDTH) {
+            val scale = RECEIPT_BITMAP_WIDTH / textWidth
+            paint.textSize = 30f * scale
+            drawText = text
+        }
+        val lineHeight = getReceiptLineHeight(paint)
+        val totalHeight = lineHeight.toInt().coerceAtLeast(1)
+        val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.WHITE)
+        val baselineOffset = -paint.fontMetrics.ascent
+        val x = when (alignment) {
+            ALIGNMENT_CENTER -> ((RECEIPT_BITMAP_WIDTH - paint.measureText(drawText)) / 2f).coerceAtLeast(0f)
+            ALIGNMENT_RIGHT -> (RECEIPT_BITMAP_WIDTH - paint.measureText(drawText)).coerceAtLeast(0f)
+            else -> 0f
+        }
+        canvas.drawText(drawText, x, baselineOffset, paint)
+        return bitmap
     }
     
     /**
@@ -111,7 +154,7 @@ class PrinterService @Inject constructor(
                 val logoBitmap = loadShopLogo(receiptSettings.shopLogoImagePath)
                 if (logoBitmap != null) {
                     posPrinter.printBitmap(logoBitmap, ALIGNMENT_CENTER, 200)
-                    posPrinter.feedLine(1)
+                    posPrinter.feedLine(0)
                 }
             }
             
@@ -119,21 +162,24 @@ class PrinterService @Inject constructor(
             if (shopName.isNotEmpty()) {
                 val bitmap = textToBitmap(shopName, ALIGNMENT_CENTER, isBold = true, isDoubleSize = true)
                 posPrinter.printBitmap(bitmap, ALIGNMENT_CENTER, RECEIPT_BITMAP_WIDTH)
-                posPrinter.feedLine(1)
+                posPrinter.feedLine(0)
             }
             
             // Print TIN if enabled
             if (receiptSettings?.taxIdentificationNumber == true && !receiptSettings.tinNumber.isNullOrEmpty()) {
                 val bitmap = textToBitmap("เลขประจำตัวผู้เสียภาษี: ${receiptSettings.tinNumber}", ALIGNMENT_LEFT)
                 posPrinter.printBitmap(bitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                posPrinter.feedLine(1)
+                posPrinter.feedLine(0)
             }
             
-            // Print order number (label ชิดซ้าย, เลขชิดขวา)
+            // Print order number - label บรรทัดหนึ่ง, value บรรทัดสองชิดขวา
             if (!orderNumber.isNullOrEmpty()) {
-                val orderBitmap = textToBitmapLabelPrice("เลขที่คำสั่งซื้อ:", orderNumber)
-                posPrinter.printBitmap(orderBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                posPrinter.feedLine(1)
+                val labelBitmap = textToBitmapSingleLine("เลขที่คำสั่งซื้อ:", ALIGNMENT_LEFT)
+                posPrinter.printBitmap(labelBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
+                posPrinter.feedLine(0)
+                val valueBitmap = textToBitmapSingleLine(orderNumber, ALIGNMENT_RIGHT)
+                posPrinter.printBitmap(valueBitmap, ALIGNMENT_RIGHT, RECEIPT_BITMAP_WIDTH)
+                posPrinter.feedLine(0)
             }
             
             // Print date (พ.ศ. = ค.ศ. + 543)
@@ -148,12 +194,12 @@ class PrinterService @Inject constructor(
             val dateStr = String.format(Locale.getDefault(), "%02d/%02d/%d %02d:%02d", day, month, yearBuddhist, hour, minute)
             val dateBitmap = textToBitmap("วันที่: $dateStr", ALIGNMENT_LEFT)
             posPrinter.printBitmap(dateBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(1)
+            posPrinter.feedLine(0)
             
-            // Separator
-            val separatorBitmap = textToBitmap("----------------------------", ALIGNMENT_CENTER)
+            // Separator - บรรทัดเดียว ไม่ปัด
+            val separatorBitmap = textToBitmapSingleLine("--------------------------------", ALIGNMENT_CENTER)
             posPrinter.printBitmap(separatorBitmap, ALIGNMENT_CENTER, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(1)
+            posPrinter.feedLine(0)
             
             // Print items
             // Note: unitPrice in CartItemEntity already includes addon prices when item was added to cart
@@ -173,7 +219,7 @@ class PrinterService @Inject constructor(
                         textToBitmap(lineLabel, ALIGNMENT_LEFT)
                     }
                     posPrinter.printBitmap(lineBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                    posPrinter.feedLine(1)
+                    posPrinter.feedLine(0)
                 }
                 
                 // Print addons
@@ -193,7 +239,7 @@ class PrinterService @Inject constructor(
                             continuationIndent = ADDON_INDENT
                         )
                         posPrinter.printBitmap(addonBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                        posPrinter.feedLine(1)
+                        posPrinter.feedLine(0)
                     }
                 }
                 
@@ -205,14 +251,14 @@ class PrinterService @Inject constructor(
                         continuationIndent = ADDON_INDENT
                     )
                     posPrinter.printBitmap(noteBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                    posPrinter.feedLine(1)
+                    posPrinter.feedLine(0)
                 }
             }
             
-            // Separator
-            val sepBitmap = textToBitmap("----------------------------", ALIGNMENT_CENTER)
+            // Separator - บรรทัดเดียว ไม่ปัด
+            val sepBitmap = textToBitmapSingleLine("--------------------------------", ALIGNMENT_CENTER)
             posPrinter.printBitmap(sepBitmap, ALIGNMENT_CENTER, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(1)
+            posPrinter.feedLine(0)
             
             // Print payment section (รูปแบบเหมือน iOS สำหรับเงินสด)
             val paymentTypeText = when (paymentType) {
@@ -224,34 +270,34 @@ class PrinterService @Inject constructor(
             // ส่วนสรุป: หัวข้อชิดซ้าย ค่าชิดขวา (pixel-perfect)
             val payBitmap = textToBitmapLabelPrice("วิธีการชำระเงิน:", paymentTypeText)
             posPrinter.printBitmap(payBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(1)
+            posPrinter.feedLine(0)
             
             val subBitmap = textToBitmapLabelPrice("ยอดรวมราคา:", formatCurrencyWithoutSymbol(subtotal))
             posPrinter.printBitmap(subBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(1)
+            posPrinter.feedLine(0)
             
             val discountPriceStr = if (discount > 0) "-${formatCurrencyWithoutSymbol(discount)}" else formatCurrencyWithoutSymbol(0.0)
             val discBitmap = textToBitmapLabelPrice("ส่วนลด:", discountPriceStr)
             posPrinter.printBitmap(discBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(1)
+            posPrinter.feedLine(0)
             
             val totalLabel = if (paymentType == PaymentType.CASH) "ยอดรวมทั้งหมด:" else "รวม:"
             val totalBitmap = textToBitmapLabelPrice(totalLabel, formatCurrencyWithoutSymbol(total), isBold = true)
             posPrinter.printBitmap(totalBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(1)
+            posPrinter.feedLine(0)
             
             if (paymentType == PaymentType.CASH) {
                 receivedAmount?.let {
                     if (it > 0) {
                         val receivedBitmap = textToBitmapLabelPrice("เงินสด:", formatCurrencyWithoutSymbol(it))
                         posPrinter.printBitmap(receivedBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                        posPrinter.feedLine(1)
+                        posPrinter.feedLine(0)
                     }
                 }
                 change?.let {
                     val changeBitmap = textToBitmapLabelPrice("เงินทอน:", formatCurrencyWithoutSymbol(it))
                     posPrinter.printBitmap(changeBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                    posPrinter.feedLine(1)
+                    posPrinter.feedLine(0)
                 }
             }
             
@@ -259,7 +305,7 @@ class PrinterService @Inject constructor(
             if (!receiptSettings?.footer.isNullOrEmpty()) {
                 val footerBitmap = textToBitmap(receiptSettings!!.footer!!, ALIGNMENT_CENTER)
                 posPrinter.printBitmap(footerBitmap, ALIGNMENT_CENTER, RECEIPT_BITMAP_WIDTH)
-                posPrinter.feedLine(1)
+                posPrinter.feedLine(0)
             }
             
             // Print QR code if enabled and payment is not cash
@@ -281,7 +327,7 @@ class PrinterService @Inject constructor(
                     val qrBitmap = generateQRCodeBitmap(qrData, 200)
                     if (qrBitmap != null) {
                         posPrinter.printBitmap(qrBitmap, ALIGNMENT_CENTER, 200)
-                        posPrinter.feedLine(1)
+                        posPrinter.feedLine(0)
                     }
                 }
             }
@@ -328,18 +374,13 @@ class PrinterService @Inject constructor(
                 Canvas(this).drawColor(Color.WHITE)
             }
         }
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            typeface = Typeface.create(Typeface.MONOSPACE, if (isBold) Typeface.BOLD else Typeface.NORMAL)
-            textSize = when {
-                isDoubleSize -> 44f
-                else -> 22f
-            }
-            isSubpixelText = true
-        }
-        val lineHeight = paint.fontSpacing
+        val paint = createReceiptPaint(
+            textSize = if (isDoubleSize) 52f else 30f,
+            isBold = isBold
+        )
+        val lineHeight = getReceiptLineHeight(paint)
         val allLines = lines.flatMap { wrapTextByPixel(it, paint, RECEIPT_BITMAP_WIDTH.toFloat(), continuationIndent) }
-        val totalHeight = (lineHeight * allLines.size + 8).toInt()
+        val totalHeight = (lineHeight * allLines.size).toInt().coerceAtLeast(1)
         val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
@@ -352,7 +393,7 @@ class PrinterService @Inject constructor(
                 ALIGNMENT_LEFT -> 0f
                 else -> 0f
             }
-            val y = 4f + baselineOffset + index * lineHeight
+            val y = baselineOffset + index * lineHeight
             canvas.drawText(drawLine, x, y, paint)
         }
         return bitmap
@@ -398,44 +439,39 @@ class PrinterService @Inject constructor(
     }
     
     /**
-     * Draw label (left) + price (right) - ราคาชิดขวาพิกเซลแบบแน่นอน
+     * Draw label (left) + price (right) - ไม่ใช้ ... แบบปัดบรรทัดแทน
      */
     private fun textToBitmapLabelPrice(
         label: String,
         price: String,
         isBold: Boolean = false
     ): Bitmap {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            typeface = Typeface.create(Typeface.MONOSPACE, if (isBold) Typeface.BOLD else Typeface.NORMAL)
-            textSize = 22f
-            isSubpixelText = true
+        val paint = createReceiptPaint(textSize = 30f, isBold = isBold)
+        val lineHeight = getReceiptLineHeight(paint)
+        val priceWidth = paint.measureText(price)
+        val labelMaxWidth = RECEIPT_BITMAP_WIDTH - priceWidth
+        if (paint.measureText(label) <= labelMaxWidth) {
+            val totalHeight = lineHeight.toInt().coerceAtLeast(1)
+            val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(Color.WHITE)
+            val baselineOffset = -paint.fontMetrics.ascent
+            canvas.drawText(label, 0f, baselineOffset, paint)
+            canvas.drawText(price, RECEIPT_BITMAP_WIDTH - priceWidth, baselineOffset, paint)
+            return bitmap
         }
-        val lineHeight = paint.fontSpacing
-        val totalHeight = (lineHeight + 8).toInt()
+        val labelLines = wrapTextByPixel(label, paint, labelMaxWidth, "")
+        val totalHeight = (lineHeight * labelLines.size).toInt().coerceAtLeast(1)
         val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
         val baselineOffset = -paint.fontMetrics.ascent
-        val priceWidth = paint.measureText(price)
-        val ellipsis = "..."
-        val labelMaxWidth = RECEIPT_BITMAP_WIDTH - priceWidth - 8f - paint.measureText(ellipsis)
-        var drawLabel = label
-        if (paint.measureText(label) > labelMaxWidth) {
-            val charWidth = paint.measureText("0")
-            val maxChars = (labelMaxWidth / charWidth).toInt().coerceAtLeast(4)
-            // ตัดเฉพาะชื่อสินค้า เหลือ "N x " ไว้ (รูปแบบ "2 x ชื่อสินค้า")
-            val prefix = Regex("""^(\d+)\s+x\s+""").find(label)?.value
-            drawLabel = if (prefix != null && label.startsWith(prefix)) {
-                val productName = label.removePrefix(prefix)
-                val nameMaxChars = (maxChars - prefix.length - ellipsis.length).coerceAtLeast(1)
-                prefix + productName.take(nameMaxChars) + ellipsis
-            } else {
-                label.take(maxChars) + ellipsis
-            }
+        labelLines.dropLast(1).forEachIndexed { index, line ->
+            canvas.drawText(line, 0f, baselineOffset + index * lineHeight, paint)
         }
-        canvas.drawText(drawLabel, 0f, 4f + baselineOffset, paint)
-        canvas.drawText(price, RECEIPT_BITMAP_WIDTH - priceWidth, 4f + baselineOffset, paint)
+        val lastLine = labelLines.last()
+        canvas.drawText(lastLine, 0f, baselineOffset + (labelLines.size - 1) * lineHeight, paint)
+        canvas.drawText(price, RECEIPT_BITMAP_WIDTH - priceWidth, baselineOffset + (labelLines.size - 1) * lineHeight, paint)
         return bitmap
     }
     
@@ -456,26 +492,26 @@ class PrinterService @Inject constructor(
     
     /**
      * Format item with long name - split into multiple lines, price on last line only
-     * ใช้ pixel-based measurement เพื่อใช้พื้นที่จริงของ receipt ให้เต็ม
+     * ใช้ pixel-based measurement จริง ไม่ใช้จำนวนตัวอักษร (เพราะไทย/อังกฤษกว้างไม่เท่ากัน)
      */
     private fun formatItemLinesWithWrap(label: String, price: String): List<Pair<String, String?>> {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
-            textSize = 22f
-        }
+        val paint = createReceiptPaint(textSize = 30f)
         val priceWidth = paint.measureText(price)
-        val labelMaxWidth = RECEIPT_BITMAP_WIDTH - priceWidth - 8f // margin ให้ตรงกับ textToBitmapLabelPrice
+        val labelMaxWidth = RECEIPT_BITMAP_WIDTH - priceWidth
         if (paint.measureText(label) <= labelMaxWidth) {
             return listOf(label to price)
         }
-        val charWidth = paint.measureText("0")
-        val lastLineLabelMax = (labelMaxWidth / charWidth).toInt().coerceAtLeast(16)
         val lines = mutableListOf<Pair<String, String?>>()
         var remaining = label
-        while (remaining.length > lastLineLabelMax) {
-            val chunk = remaining.take(lastLineLabelMax)
-            val breakAt = chunk.lastIndexOf(' ').takeIf { it > 0 } ?: (lastLineLabelMax - 1)
-            val splitPoint = breakAt + 1
+        while (paint.measureText(remaining) > labelMaxWidth) {
+            var fitLength = remaining.length
+            while (fitLength > 0 && paint.measureText(remaining.take(fitLength)) > labelMaxWidth) {
+                fitLength--
+            }
+            if (fitLength <= 0) fitLength = 1
+            val chunk = remaining.take(fitLength)
+            val breakAt = listOf(chunk.lastIndexOf(' '), chunk.lastIndexOf(',')).filter { it > 0 }.maxOrNull() ?: (fitLength - 1)
+            val splitPoint = (breakAt + 1).coerceAtLeast(1)
             val firstPart = remaining.take(splitPoint).trimEnd()
             lines.add(firstPart to null)
             remaining = remaining.drop(splitPoint).trimStart()
