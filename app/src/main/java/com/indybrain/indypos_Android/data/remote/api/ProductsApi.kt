@@ -26,6 +26,17 @@ interface ProductsApi {
     suspend fun getCategories(): ApiResponseDto<List<CategoryDto>>
     
     /**
+     * Get categories paginated endpoint
+     * GET /api/v1/protected/indypos/categories/paginated
+     */
+    @GET("protected/indypos/categories/paginated")
+    suspend fun getCategoriesPaginated(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20,
+        @Query("search") search: String? = null
+    ): ApiResponseDto<CategoriesPaginatedDataDto>
+    
+    /**
      * Create category endpoint
      */
     @POST("protected/indypos/categories")

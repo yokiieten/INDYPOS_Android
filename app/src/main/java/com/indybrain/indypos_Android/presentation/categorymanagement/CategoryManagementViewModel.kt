@@ -7,6 +7,7 @@ import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
+import com.indybrain.indypos_Android.domain.repository.CategoriesPaginatedResult
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -44,38 +45,46 @@ class CategoryManagementViewModel @Inject constructor(
     val uiState: StateFlow<CategoryManagementUiState> = _uiState.asStateFlow()
     
     init {
-        // Observe categories from Room database
-        observeCategories()
         // Load categories will be called from screen's ON_RESUME lifecycle
+        // When online: uses paginated API. When offline: uses Room.
     }
     
     /**
-     * Load categories - check internet and fetch from API or load from Room
+     * Load categories - when online uses paginated API, when offline loads from Room
      * @param clearError if true, clears errorMessage when starting (default). Set false when refreshing after delete fail to preserve error popup.
      */
     private fun loadCategories(clearError: Boolean = true) {
         viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isLoading = true, errorMessage = if (clearError) null else it.errorMessage) }
+                _uiState.update { 
+                    it.copy(
+                        isLoading = true,
+                        isLoadingMore = false,
+                        errorMessage = if (clearError) null else it.errorMessage
+                    )
+                }
                 
-                // Check internet connectivity
+                val searchQuery = _uiState.value.searchQuery
+                
                 if (networkConnectivityChecker.isConnected()) {
-                    // Has internet - fetch from API and sync with Room
-                    val result = productRepository.fetchAndSyncCategories()
-                    result.onSuccess {
-                        // When list is empty, Room Flow may not emit (no DB change) -> load and set isLoading=false
-                        val categories = productRepository.getAllCategories()
-                            .sortedBy { it.createdAt }
+                    // Online - use paginated API
+                    val result = productRepository.getCategoriesPaginated(
+                        page = 1,
+                        limit = 20,
+                        search = searchQuery.takeIf { it.isNotBlank() }
+                    )
+                    result.onSuccess { paginatedResult ->
                         _uiState.update { current ->
                             val pendingDeleteIds = current.pendingDeleteCategoryIds
-                            val visibleCategories = categories.filterNot { pendingDeleteIds.contains(it.id) }
-                            val filtered = if (current.searchQuery.isNotBlank()) {
-                                visibleCategories.filter { it.name.contains(current.searchQuery, ignoreCase = true) }
-                            } else null
+                            val visibleCategories = paginatedResult.categories
+                                .filterNot { pendingDeleteIds.contains(it.id) }
                             current.copy(
                                 categories = visibleCategories,
-                                filteredCategories = filtered,
-                                isLoading = false
+                                filteredCategories = null, // API already filters by search
+                                isLoading = false,
+                                currentPage = paginatedResult.currentPage,
+                                hasNextPage = paginatedResult.hasNext,
+                                isLoadingMore = false
                             )
                         }
                     }.onFailure { error ->
@@ -87,76 +96,27 @@ class CategoryManagementViewModel @Inject constructor(
                         }
                     }
                 } else {
-                    // No internet - load from Room, Flow may not emit again if data unchanged/empty
+                    // Offline - load from Room
                     val categories = productRepository.getAllCategories()
                         .sortedBy { it.createdAt }
                     _uiState.update { current ->
                         val pendingDeleteIds = current.pendingDeleteCategoryIds
                         val visibleCategories = categories.filterNot { pendingDeleteIds.contains(it.id) }
-                        val filtered = if (current.searchQuery.isNotBlank()) {
-                            visibleCategories.filter { it.name.contains(current.searchQuery, ignoreCase = true) }
+                        val filtered = if (searchQuery.isNotBlank()) {
+                            visibleCategories.filter { it.name.contains(searchQuery, ignoreCase = true) }
                         } else null
                         current.copy(
                             categories = visibleCategories,
                             filteredCategories = filtered,
-                            isLoading = false
+                            isLoading = false,
+                            hasNextPage = false,
+                            currentPage = 1
                         )
                     }
                 }
             } catch (e: Exception) {
                 _uiState.update { current ->
                     current.copy(
-                        isLoading = false,
-                        errorMessage = context.getString(
-                            R.string.category_management_error_loading_with_reason,
-                            e.message ?: context.getString(R.string.category_management_error_unknown)
-                        )
-                    )
-                }
-            }
-        }
-    }
-    
-    /**
-     * Observe categories from Room database
-     */
-    private fun observeCategories() {
-        viewModelScope.launch {
-            try {
-                productRepository.getAllCategoriesFlow().collect { categories ->
-                    // Always keep the visual order of categories stable and
-                    // independent from server-side sort changes (e.g. when
-                    // toggling active/inactive status). We therefore rely on
-                    // createdAt instead of sortOrder so that enabling/disabling
-                    // a category does not move it to the bottom of the list.
-                    _uiState.update { current ->
-                        // ถ้ามีหมวดหมู่ที่กำลังถูกลบหลายรายการอยู่ ให้ซ่อนออกจาก UI ทันที
-                        val pendingDeleteIds = current.pendingDeleteCategoryIds
-                        val visibleCategories = categories
-                            .sortedBy { it.createdAt }
-                            .filterNot { pendingDeleteIds.contains(it.id) }
-
-                        // Re-apply search filter if there's an active search query
-                        val filteredCategories = if (current.searchQuery.isNotBlank()) {
-                            visibleCategories.filter { 
-                                it.name.contains(current.searchQuery, ignoreCase = true) 
-                            }
-                        } else {
-                            null // Clear filter when query is blank
-                        }
-
-                        current.copy(
-                            categories = visibleCategories,
-                            filteredCategories = filteredCategories,
-                            isLoading = false // Clear loading state once we have data from Room
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                // Handle any exceptions during collection
-                _uiState.update { current ->
-                    current.copy(
-                        categories = emptyList(),
                         isLoading = false,
                         errorMessage = context.getString(
                             R.string.category_management_error_loading_with_reason,
@@ -177,19 +137,63 @@ class CategoryManagementViewModel @Inject constructor(
     }
     
     /**
-     * Search categories
+     * Load more categories (next page) - only when online and hasNextPage
+     */
+    fun loadMoreCategories() {
+        val state = _uiState.value
+        if (!networkConnectivityChecker.isConnected() || !state.hasNextPage || state.isLoadingMore) return
+        
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoadingMore = true) }
+                val nextPage = state.currentPage + 1
+                val result = productRepository.getCategoriesPaginated(
+                    page = nextPage,
+                    limit = 20,
+                    search = state.searchQuery.takeIf { it.isNotBlank() }
+                )
+                result.onSuccess { paginatedResult ->
+                    _uiState.update { current ->
+                        val existing = current.categories ?: emptyList()
+                        val pendingDeleteIds = current.pendingDeleteCategoryIds
+                        val newCategories = paginatedResult.categories
+                            .filterNot { pendingDeleteIds.contains(it.id) }
+                        val combined = existing + newCategories
+                        current.copy(
+                            categories = combined,
+                            currentPage = paginatedResult.currentPage,
+                            hasNextPage = paginatedResult.hasNext,
+                            isLoadingMore = false
+                        )
+                    }
+                }.onFailure {
+                    _uiState.update { it.copy(isLoadingMore = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoadingMore = false) }
+            }
+        }
+    }
+    
+    /**
+     * Search categories - when online reloads from API with search param, when offline filters client-side.
+     * Skips API call when query is "" on initial load (avoids duplicate with ON_RESUME refreshCategories).
      */
     fun searchCategories(query: String) {
-        _uiState.update { current ->
-            val categories = current.categories ?: emptyList()
-            val filteredCategories = if (query.isBlank()) {
-                null // Clear filter when query is blank
-            } else {
-                categories.filter { 
-                    it.name.contains(query, ignoreCase = true) 
-                }
+        val previousQuery = _uiState.value.searchQuery
+        _uiState.update { it.copy(searchQuery = query) }
+        if (networkConnectivityChecker.isConnected()) {
+            // Skip load when both previous and current are "" - initial load already done by ON_RESUME
+            if (query.isNotBlank() || previousQuery.isNotBlank()) {
+                loadCategories(clearError = true)
             }
-            current.copy(searchQuery = query, filteredCategories = filteredCategories)
+        } else {
+            _uiState.update { current ->
+                val categories = current.categories ?: emptyList()
+                val filteredCategories = if (query.isBlank()) null
+                else categories.filter { it.name.contains(query, ignoreCase = true) }
+                current.copy(filteredCategories = filteredCategories)
+            }
         }
     }
     

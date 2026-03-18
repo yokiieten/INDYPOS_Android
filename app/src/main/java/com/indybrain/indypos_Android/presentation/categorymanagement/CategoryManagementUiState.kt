@@ -10,6 +10,9 @@ data class CategoryManagementUiState(
     val filteredCategories: List<CategoryEntity>? = null,
     val searchQuery: String = "",
     val isLoading: Boolean = true, // Start with loading = true
+    val isLoadingMore: Boolean = false, // Loading next page
+    val hasNextPage: Boolean = false,
+    val currentPage: Int = 1,
     val errorMessage: String? = null,
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,

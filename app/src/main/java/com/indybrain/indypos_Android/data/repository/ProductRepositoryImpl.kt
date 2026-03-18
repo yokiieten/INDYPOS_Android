@@ -17,6 +17,7 @@ import java.util.Locale
 import java.util.TimeZone
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
+import com.indybrain.indypos_Android.domain.repository.CategoriesPaginatedResult
 import com.indybrain.indypos_Android.domain.repository.DeleteCategoriesResult
 import com.indybrain.indypos_Android.domain.repository.DeleteProductsResult
 import com.indybrain.indypos_Android.domain.repository.ProductDetailData
@@ -398,7 +399,45 @@ class ProductRepositoryImpl @Inject constructor(
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
         }
     }
-    
+
+    override suspend fun getCategoriesPaginated(
+        page: Int,
+        limit: Int,
+        search: String?
+    ): Result<CategoriesPaginatedResult> {
+        return try {
+            val response = productsApi.getCategoriesPaginated(
+                page = page,
+                limit = limit,
+                search = search?.takeIf { it.isNotBlank() }
+            )
+            if (response.status != 200) {
+                return Result.failure(Exception(response.message ?: "Failed to fetch categories"))
+            }
+            val data = response.data
+            val categoriesList = data?.categories ?: emptyList()
+            val pagination = data?.pagination
+            val categories = categoriesList.map { ProductMapper.toEntity(it) }
+            Result.success(
+                CategoriesPaginatedResult(
+                    categories = categories,
+                    currentPage = pagination?.currentPage ?: page,
+                    totalCount = pagination?.totalCount ?: categories.size,
+                    hasNext = pagination?.hasNext ?: false
+                )
+            )
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
+    }
+
     override suspend fun getAllCategories(): List<CategoryEntity> {
         return categoryDao.getAllCategories()
     }

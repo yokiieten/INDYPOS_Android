@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -43,6 +44,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
@@ -126,8 +129,9 @@ fun CategoryManagementScreen(
     // Avoid showing full-screen loading during actions like delete to prevent flicker
     val shouldShowLoading = uiState.isLoading && uiState.categories == null
     
-    // Update search when query changes
+    // Update search when query changes (debounce 300ms for API calls)
     LaunchedEffect(searchQuery) {
+        delay(300)
         viewModel.searchCategories(searchQuery)
     }
     
@@ -278,7 +282,23 @@ fun CategoryManagementScreen(
                             }
                         }
                         else -> {
+                            val listState = rememberLazyListState()
+                            val shouldLoadMore by remember {
+                                derivedStateOf {
+                                    val layoutInfo = listState.layoutInfo
+                                    val totalItems = layoutInfo.totalItemsCount
+                                    val lastVisibleIndex = layoutInfo.visibleItemsInfo
+                                        .lastOrNull()?.index ?: 0
+                                    totalItems > 0 && lastVisibleIndex >= totalItems - 3
+                                }
+                            }
+                            LaunchedEffect(shouldLoadMore) {
+                                if (shouldLoadMore && uiState.hasNextPage && !uiState.isLoadingMore) {
+                                    viewModel.loadMoreCategories()
+                                }
+                            }
                             LazyColumn(
+                                state = listState,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
@@ -302,6 +322,21 @@ fun CategoryManagementScreen(
                                             }
                                         }
                                     )
+                                }
+                                if (uiState.isLoadingMore) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                color = PrimaryButton
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

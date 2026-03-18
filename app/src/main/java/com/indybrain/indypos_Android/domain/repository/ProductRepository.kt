@@ -43,6 +43,16 @@ interface ProductRepository {
     suspend fun fetchAndSyncCategories(): Result<Unit>
     
     /**
+     * Fetch categories from paginated API
+     * @return Result with CategoriesPaginatedResult (categories + pagination info)
+     */
+    suspend fun getCategoriesPaginated(
+        page: Int = 1,
+        limit: Int = 20,
+        search: String? = null
+    ): Result<CategoriesPaginatedResult>
+    
+    /**
      * Get all categories from local database (including inactive)
      */
     suspend fun getAllCategories(): List<CategoryEntity>
@@ -302,6 +312,16 @@ data class ProductDetailData(
     val addonGroups: List<AddonGroupEntity>,
     val addonsByGroup: Map<String, List<AddonEntity>>,
     val category: CategoryEntity? = null
+)
+
+/**
+ * Result of paginated categories API
+ */
+data class CategoriesPaginatedResult(
+    val categories: List<CategoryEntity>,
+    val currentPage: Int,
+    val totalCount: Int,
+    val hasNext: Boolean
 )
 
 /**
