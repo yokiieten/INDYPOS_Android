@@ -11,11 +11,12 @@ import com.indybrain.indypos_Android.data.local.entity.AddonEntity
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -48,47 +49,74 @@ class AddOnManagementViewModel @Inject constructor(
     val uiState: StateFlow<AddOnManagementUiState> = _uiState.asStateFlow()
     
     private val searchQueryFlow = MutableStateFlow("")
+    private var searchJob: Job? = null
+    private val pageSize = 20
     
     init {
-        // Observe addons from Room database
-        observeAddons()
         // Load addons will be called from screen's ON_RESUME lifecycle
     }
     
     /**
-     * Load addons - sync from API first, then load from Room
-     * @param clearError if true, clears errorMessage when starting (default). Set false when refreshing after delete fail to preserve error popup.
+     * Load addons - uses paginated API when online, Room when offline
+     * @param clearError if true, clears errorMessage when starting (default).
+     * @param page page to load (1 = first page, resets list)
      */
-    private fun loadAddons(clearError: Boolean = true) {
+    private fun loadAddons(clearError: Boolean = true, page: Int = 1) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = if (clearError) null else it.errorMessage) }
+            val isFirstPage = page == 1
+            _uiState.update { 
+                it.copy(
+                    isLoading = isFirstPage,
+                    isLoadingMore = !isFirstPage,
+                    errorMessage = if (clearError) null else it.errorMessage
+                )
+            }
             
-            // Check internet connectivity
             if (networkConnectivityChecker.isConnected()) {
-                // Has internet - sync from API first
-                val result = addonRepository.fetchAndSyncAddons()
-                result.onSuccess {
-                    // When list is empty, Flow may not emit -> load and set isLoading=false
-                    loadAddonsFromRoomAndUpdateState()
-                }
-                result.onFailure { error ->
+                val result = addonRepository.getAddonsPaginated(
+                    page = page,
+                    limit = pageSize,
+                    search = searchQueryFlow.value.takeIf { it.isNotBlank() }
+                )
+                
+                result.onSuccess { paginatedResult ->
+                    _uiState.update { current ->
+                        val pendingDeleteIds = current.pendingDeleteAddonIds
+                        val visibleAddons = paginatedResult.addons.filterNot { 
+                            pendingDeleteIds.contains(it.id) 
+                        }
+                        val existingAddons = if (isFirstPage) emptyList() else (current.filteredAddons ?: current.addons ?: emptyList())
+                        val newAddons = if (isFirstPage) visibleAddons else existingAddons + visibleAddons
+                        
+                        current.copy(
+                            addons = newAddons,
+                            filteredAddons = newAddons,
+                            currentPage = paginatedResult.currentPage,
+                            totalPages = paginatedResult.totalPages,
+                            totalCount = paginatedResult.totalCount,
+                            hasNextPage = paginatedResult.hasNext,
+                            isLoading = false,
+                            isLoadingMore = false
+                        )
+                    }
+                }.onFailure { error ->
                     _uiState.update { current ->
                         current.copy(
                             isLoading = false,
+                            isLoadingMore = false,
                             errorMessage = error.message ?: getLocalizedString(R.string.addon_management_error_loading),
                             isDeleteError = false
                         )
                     }
                 }
             } else {
-                // No internet - Flow may not emit again if data unchanged/empty
                 loadAddonsFromRoomAndUpdateState()
             }
         }
     }
     
     /**
-     * Load addons from Room and update state - used when Flow may not emit (e.g. empty list)
+     * Load addons from Room - used when offline
      */
     private suspend fun loadAddonsFromRoomAndUpdateState() {
         val addons = addonRepository.getAllAddonsForManagementFlow().first()
@@ -107,73 +135,55 @@ class AddOnManagementViewModel @Inject constructor(
                 addons = visibleAll,
                 filteredAddons = visibleFiltered,
                 searchQuery = query,
-                isLoading = false
+                currentPage = 1,
+                totalPages = 1,
+                totalCount = visibleFiltered.size,
+                hasNextPage = false,
+                isLoading = false,
+                isLoadingMore = false
             )
         }
     }
     
     /**
-     * Observe addons from Room database
-     */
-    private fun observeAddons() {
-        viewModelScope.launch {
-            combine(
-                addonRepository.getAllAddonsForManagementFlow(),
-                searchQueryFlow
-            ) { addons, query ->
-                // Filter addons
-                val filtered = addons.filter { addon ->
-                    query.isBlank() || 
-                    addon.name.contains(query, ignoreCase = true)
-                }
-                // Sort: unsynced first, then by name
-                val sorted = filtered.sortedWith(
-                    compareBy<AddonEntity> { if (it.isSynced) 1 else 0 }
-                        .thenBy { it.name }
-                )
-                Pair(addons, sorted)
-            }.collect { (allAddons, filteredAddons) ->
-                _uiState.update { current ->
-                    // ซ่อน Addon ใน UI ทันทีถ้ากำลังถูกลบหลายรายการอยู่
-                    val pendingDeleteIds = current.pendingDeleteAddonIds
-                    val visibleAllAddons = allAddons.filter { addon ->
-                        !pendingDeleteIds.contains(addon.id)
-                    }
-                    val visibleFilteredAddons = filteredAddons.filter { addon ->
-                        !pendingDeleteIds.contains(addon.id)
-                    }
-
-                    current.copy(
-                        addons = visibleAllAddons,
-                        filteredAddons = visibleFilteredAddons,
-                        searchQuery = searchQueryFlow.value,
-                        isLoading = false // Clear loading state once we have data from Room
-                    )
-                }
-            }
-        }
-    }
-    
-    /**
-     * Refresh addons
+     * Refresh addons (load page 1)
      * @param preserveErrorMessage if true, keeps current errorMessage (e.g. when refreshing after delete fail so error popup can show)
      */
     fun refreshAddons(preserveErrorMessage: Boolean = false) {
-        loadAddons(clearError = !preserveErrorMessage)
+        loadAddons(clearError = !preserveErrorMessage, page = 1)
     }
     
     /**
-     * Search addons
+     * Refresh addons and clear search - used when returning from Add/Edit Addon screen.
+     * Resets search to empty and reloads page 1.
+     */
+    fun refreshAddonsAndClearSearch() {
+        searchJob?.cancel()
+        searchQueryFlow.value = ""
+        _uiState.update { it.copy(searchQuery = "") }
+        loadAddons(clearError = true, page = 1)
+    }
+    
+    /**
+     * Load more addons (next page)
+     */
+    fun loadMoreAddons() {
+        val state = _uiState.value
+        if (!state.hasNextPage || state.isLoadingMore || state.isLoading) return
+        loadAddons(clearError = true, page = state.currentPage + 1)
+    }
+    
+    /**
+     * Search addons - debounced, resets to page 1
      */
     fun searchAddons(query: String) {
         searchQueryFlow.value = query
-        _uiState.update { current ->
-            if (query.isBlank()) {
-                // Clear selection when clearing search
-                current.copy(selectedAddonIds = emptySet())
-            } else {
-                current.copy(selectedAddonIds = emptySet())
-            }
+        _uiState.update { it.copy(searchQuery = query, selectedAddonIds = emptySet()) }
+        
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(300) // Debounce
+            loadAddons(clearError = true, page = 1)
         }
     }
     
@@ -420,7 +430,7 @@ class AddOnManagementViewModel @Inject constructor(
                     )
                 }
                 // Refresh addons after sync
-                loadAddons()
+                loadAddons(page = 1)
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(

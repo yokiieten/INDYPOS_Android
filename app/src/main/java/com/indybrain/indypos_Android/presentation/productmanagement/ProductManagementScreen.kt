@@ -51,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
@@ -78,6 +79,7 @@ import dagger.hilt.components.SingletonComponent
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.config.AppConfig
@@ -124,7 +126,6 @@ fun ProductManagementScreen(
     viewModel: ProductManagementViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var searchQuery by remember { mutableStateOf("") }
     var selectedProduct by remember { mutableStateOf<ProductEntity?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var productToDelete by remember { mutableStateOf<ProductEntity?>(null) }
@@ -134,13 +135,19 @@ fun ProductManagementScreen(
     
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     
     // Refresh products when screen becomes visible (returns from AddEditProductScreen)
+    // Reset search, reload API, and scroll to top so new/edited product appears in list
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshProducts()
+                viewModel.refreshProductsAndClearSearch()
+                scope.launch {
+                    listState.animateScrollToItem(0)
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -156,19 +163,7 @@ fun ProductManagementScreen(
         }
     }
     
-    // Update search when query changes (debounced in ViewModel)
-    // Skip initial composition - ON_RESUME already triggers refreshProducts()
-    var isFirstSearch by remember { mutableStateOf(true) }
-    LaunchedEffect(searchQuery) {
-        if (isFirstSearch) {
-            isFirstSearch = false
-            return@LaunchedEffect
-        }
-        viewModel.searchProducts(searchQuery)
-    }
-    
     // Load more when scrolling near end - use snapshotFlow to react to scroll changes
-    val listState = rememberLazyListState()
     LaunchedEffect(listState) {
         snapshotFlow {
             val layoutInfo = listState.layoutInfo
@@ -254,8 +249,8 @@ fun ProductManagementScreen(
                 // Search Bar - Hide in selection mode
                 if (!uiState.isSelectionMode) {
                     OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                        value = uiState.searchQuery,
+                        onValueChange = { viewModel.searchProducts(it) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 12.dp),

@@ -11,6 +11,8 @@ import com.indybrain.indypos_Android.domain.repository.CategoriesPaginatedResult
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +45,8 @@ class CategoryManagementViewModel @Inject constructor(
     
     private val _uiState = MutableStateFlow(CategoryManagementUiState())
     val uiState: StateFlow<CategoryManagementUiState> = _uiState.asStateFlow()
+    
+    private var searchJob: Job? = null
     
     init {
         // Load categories will be called from screen's ON_RESUME lifecycle
@@ -137,6 +141,16 @@ class CategoryManagementViewModel @Inject constructor(
     }
     
     /**
+     * Refresh categories and clear search - used when returning from Add/Edit Category screen.
+     * Resets search to empty and reloads page 1.
+     */
+    fun refreshCategoriesAndClearSearch() {
+        searchJob?.cancel()
+        _uiState.update { it.copy(searchQuery = "") }
+        loadCategories(clearError = true)
+    }
+    
+    /**
      * Load more categories (next page) - only when online and hasNextPage
      */
     fun loadMoreCategories() {
@@ -176,23 +190,24 @@ class CategoryManagementViewModel @Inject constructor(
     }
     
     /**
-     * Search categories - when online reloads from API with search param, when offline filters client-side.
-     * Skips API call when query is "" on initial load (avoids duplicate with ON_RESUME refreshCategories).
+     * Search categories - debounced, when online reloads from API with search param, when offline filters client-side.
      */
     fun searchCategories(query: String) {
-        val previousQuery = _uiState.value.searchQuery
         _uiState.update { it.copy(searchQuery = query) }
-        if (networkConnectivityChecker.isConnected()) {
-            // Skip load when both previous and current are "" - initial load already done by ON_RESUME
-            if (query.isNotBlank() || previousQuery.isNotBlank()) {
+        
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(300) // Debounce
+            val currentQuery = _uiState.value.searchQuery
+            if (networkConnectivityChecker.isConnected()) {
                 loadCategories(clearError = true)
-            }
-        } else {
-            _uiState.update { current ->
-                val categories = current.categories ?: emptyList()
-                val filteredCategories = if (query.isBlank()) null
-                else categories.filter { it.name.contains(query, ignoreCase = true) }
-                current.copy(filteredCategories = filteredCategories)
+            } else {
+                _uiState.update { current ->
+                    val categories = current.categories ?: emptyList()
+                    val filteredCategories = if (currentQuery.isBlank()) null
+                    else categories.filter { it.name.contains(currentQuery, ignoreCase = true) }
+                    current.copy(filteredCategories = filteredCategories)
+                }
             }
         }
     }

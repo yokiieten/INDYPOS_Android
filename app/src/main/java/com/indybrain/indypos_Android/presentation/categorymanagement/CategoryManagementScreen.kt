@@ -47,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
@@ -60,8 +61,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
@@ -87,7 +88,6 @@ fun CategoryManagementScreen(
     viewModel: CategoryManagementViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<com.indybrain.indypos_Android.data.local.entity.CategoryEntity?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var categoryToDelete by remember { mutableStateOf<com.indybrain.indypos_Android.data.local.entity.CategoryEntity?>(null) }
@@ -103,13 +103,19 @@ fun CategoryManagementScreen(
     
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     
     // Refresh categories when screen becomes visible (returns from AddEditCategoryScreen)
+    // Reset search, reload API, and scroll to top so new/edited category appears in list
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshCategories()
+                viewModel.refreshCategoriesAndClearSearch()
+                scope.launch {
+                    listState.animateScrollToItem(0)
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -129,11 +135,6 @@ fun CategoryManagementScreen(
     // Avoid showing full-screen loading during actions like delete to prevent flicker
     val shouldShowLoading = uiState.isLoading && uiState.categories == null
     
-    // Update search when query changes (debounce 300ms for API calls)
-    LaunchedEffect(searchQuery) {
-        delay(300)
-        viewModel.searchCategories(searchQuery)
-    }
     
     Scaffold(
         containerColor = BaseBackground,
@@ -207,8 +208,8 @@ fun CategoryManagementScreen(
                 // Search Bar - Hide in edit mode
                 if (!uiState.isEditMode) {
                     OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                        value = uiState.searchQuery,
+                        onValueChange = { viewModel.searchCategories(it) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -282,7 +283,6 @@ fun CategoryManagementScreen(
                             }
                         }
                         else -> {
-                            val listState = rememberLazyListState()
                             // Load more when scrolling near end - use snapshotFlow to react to scroll changes
                             LaunchedEffect(listState) {
                                 snapshotFlow {

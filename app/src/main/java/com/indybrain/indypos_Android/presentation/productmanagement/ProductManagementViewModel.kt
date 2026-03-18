@@ -181,6 +181,18 @@ class ProductManagementViewModel @Inject constructor(
     }
     
     /**
+     * Refresh products and clear search - used when returning from Add/Edit Product screen.
+     * Resets search and category filter to empty and reloads page 1.
+     */
+    fun refreshProductsAndClearSearch() {
+        searchJob?.cancel()
+        searchQueryFlow.value = ""
+        selectedCategoryFlow.value = null
+        _uiState.update { it.copy(searchQuery = "", selectedCategoryId = null, selectedProductIds = emptySet()) }
+        loadProducts(clearError = true, page = 1)
+    }
+    
+    /**
      * Load more products (next page)
      */
     fun loadMoreProducts() {
@@ -194,7 +206,7 @@ class ProductManagementViewModel @Inject constructor(
      */
     fun searchProducts(query: String) {
         searchQueryFlow.value = query
-        _uiState.update { it.copy(selectedProductIds = emptySet()) }
+        _uiState.update { it.copy(searchQuery = query, selectedProductIds = emptySet()) }
         
         searchJob?.cancel()
         searchJob = viewModelScope.launch {

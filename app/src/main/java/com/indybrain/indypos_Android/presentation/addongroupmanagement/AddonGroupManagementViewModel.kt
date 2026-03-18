@@ -151,6 +151,17 @@ class AddonGroupManagementViewModel @Inject constructor(
     }
     
     /**
+     * Refresh addon groups and clear search - used when returning from Add/Edit Addon Group screen.
+     * Resets search to empty and reloads page 1.
+     */
+    fun refreshAddonGroupsAndClearSearch() {
+        searchJob?.cancel()
+        searchQueryFlow.value = ""
+        _uiState.update { it.copy(searchQuery = "") }
+        loadAddonGroups(clearError = true, page = 1)
+    }
+    
+    /**
      * Load more addon groups (next page)
      */
     fun loadMoreAddonGroups() {
