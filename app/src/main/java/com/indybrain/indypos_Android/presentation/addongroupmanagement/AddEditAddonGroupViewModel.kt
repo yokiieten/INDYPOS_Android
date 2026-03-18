@@ -84,11 +84,19 @@ class AddEditAddonGroupViewModel @Inject constructor(
     
     /**
      * Initialize for edit mode
+     * Tries Room first, then syncs from API when not found (addon groups from paginated list may not be in Room)
      */
     fun initializeForEdit(addonGroupId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val addonGroupWithAddons = addonGroupRepository.getAddonGroupWithAddonsById(addonGroupId)
+            var addonGroupWithAddons = addonGroupRepository.getAddonGroupWithAddonsById(addonGroupId)
+            
+            // If not in Room, sync from API (addon groups from paginated list may not be synced to Room)
+            if (addonGroupWithAddons == null && networkConnectivityChecker.isConnected()) {
+                addonGroupRepository.fetchAndSyncAddonGroups()
+                addonGroupWithAddons = addonGroupRepository.getAddonGroupWithAddonsById(addonGroupId)
+            }
+            
             if (addonGroupWithAddons != null) {
                 _uiState.update { current ->
                     current.copy(
