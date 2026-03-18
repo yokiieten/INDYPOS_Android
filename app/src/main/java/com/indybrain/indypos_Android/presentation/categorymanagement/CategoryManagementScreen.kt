@@ -44,10 +44,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -283,18 +283,17 @@ fun CategoryManagementScreen(
                         }
                         else -> {
                             val listState = rememberLazyListState()
-                            val shouldLoadMore by remember {
-                                derivedStateOf {
+                            // Load more when scrolling near end - use snapshotFlow to react to scroll changes
+                            LaunchedEffect(listState) {
+                                snapshotFlow {
                                     val layoutInfo = listState.layoutInfo
                                     val totalItems = layoutInfo.totalItemsCount
-                                    val lastVisibleIndex = layoutInfo.visibleItemsInfo
-                                        .lastOrNull()?.index ?: 0
-                                    totalItems > 0 && lastVisibleIndex >= totalItems - 3
-                                }
-                            }
-                            LaunchedEffect(shouldLoadMore) {
-                                if (shouldLoadMore && uiState.hasNextPage && !uiState.isLoadingMore) {
-                                    viewModel.loadMoreCategories()
+                                    val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                                    totalItems > 0 && lastVisibleItem >= totalItems - 3
+                                }.collect { nearEnd ->
+                                    if (nearEnd) {
+                                        viewModel.loadMoreCategories()
+                                    }
                                 }
                             }
                             LazyColumn(

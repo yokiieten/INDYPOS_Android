@@ -51,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -166,15 +167,18 @@ fun ProductManagementScreen(
         viewModel.searchProducts(searchQuery)
     }
     
-    // Load more when scrolling near end
+    // Load more when scrolling near end - use snapshotFlow to react to scroll changes
     val listState = rememberLazyListState()
-    LaunchedEffect(listState, uiState.hasNextPage, uiState.isLoadingMore, uiState.isLoading) {
-        if (!uiState.hasNextPage || uiState.isLoadingMore || uiState.isLoading) return@LaunchedEffect
-        val layoutInfo = listState.layoutInfo
-        val totalItems = layoutInfo.totalItemsCount
-        val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-        if (totalItems > 0 && lastVisibleItem >= totalItems - 3) {
-            viewModel.loadMoreProducts()
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItem >= totalItems - 3
+        }.collect { nearEnd ->
+            if (nearEnd) {
+                viewModel.loadMoreProducts()
+            }
         }
     }
     
