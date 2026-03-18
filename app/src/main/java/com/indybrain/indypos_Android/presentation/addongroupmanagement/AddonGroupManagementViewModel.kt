@@ -10,6 +10,8 @@ import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,44 +46,76 @@ class AddonGroupManagementViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AddonGroupManagementUiState())
     val uiState: StateFlow<AddonGroupManagementUiState> = _uiState.asStateFlow()
     
+    private val searchQueryFlow = MutableStateFlow("")
+    private var searchJob: Job? = null
+    private val pageSize = 20
+    
     init {
-        // Observe addon groups from Room database
-        observeAddonGroups()
+        // Load addon groups on ON_RESUME
     }
     
     /**
-     * Load addon groups - check internet and fetch from API or load from Room
-     * @param clearError if true, clears errorMessage when starting (default). Set false when refreshing after delete fail to preserve error popup.
+     * Load addon groups - uses paginated API when online, Room when offline
+     * @param clearError if true, clears errorMessage when starting (default).
+     * @param page page to load (1 = first page, resets list)
      */
-    private fun loadAddonGroups(clearError: Boolean = true) {
+    private fun loadAddonGroups(clearError: Boolean = true, page: Int = 1) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = if (clearError) null else it.errorMessage) }
+            val isFirstPage = page == 1
+            _uiState.update { 
+                it.copy(
+                    isLoading = isFirstPage,
+                    isLoadingMore = !isFirstPage,
+                    errorMessage = if (clearError) null else it.errorMessage
+                )
+            }
             
-            // Check internet connectivity
             if (networkConnectivityChecker.isConnected()) {
-                // Has internet - fetch from API and sync with Room
-                val result = addonGroupRepository.fetchAndSyncAddonGroups()
-                result.onSuccess {
-                    // When list is empty, Flow may not emit -> load and set isLoading=false
-                    loadAddonGroupsFromRoomAndUpdateState()
-                }
-                result.onFailure { error ->
+                val result = addonGroupRepository.getAddonGroupsPaginated(
+                    page = page,
+                    limit = pageSize,
+                    search = searchQueryFlow.value.takeIf { it.isNotBlank() }
+                )
+                
+                result.onSuccess { paginatedResult ->
+                    _uiState.update { current ->
+                        val pendingDeleteIds = current.pendingDeleteAddonGroupIds
+                        val visibleGroups = paginatedResult.addonGroups.filterNot { 
+                            pendingDeleteIds.contains(it.id) 
+                        }
+                        val existingGroups = if (isFirstPage) emptyList() else (current.filteredAddonGroups ?: current.addonGroups ?: emptyList())
+                        val newGroups = if (isFirstPage) visibleGroups else existingGroups + visibleGroups
+                        val newCounts = if (isFirstPage) paginatedResult.addonCounts else current.addonCounts + paginatedResult.addonCounts
+                        
+                        current.copy(
+                            addonGroups = if (isFirstPage) newGroups else (current.addonGroups ?: emptyList()) + paginatedResult.addonGroups,
+                            filteredAddonGroups = newGroups,
+                            addonCounts = newCounts,
+                            currentPage = paginatedResult.currentPage,
+                            totalPages = paginatedResult.totalPages,
+                            totalCount = paginatedResult.totalCount,
+                            hasNextPage = paginatedResult.hasNext,
+                            isLoading = false,
+                            isLoadingMore = false
+                        )
+                    }
+                }.onFailure { error ->
                     _uiState.update { current ->
                         current.copy(
                             isLoading = false,
+                            isLoadingMore = false,
                             errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
                         )
                     }
                 }
             } else {
-                // No internet - Flow may not emit again if data unchanged/empty
                 loadAddonGroupsFromRoomAndUpdateState()
             }
         }
     }
     
     /**
-     * Load addon groups from Room and update state - used when Flow may not emit (e.g. empty list)
+     * Load addon groups from Room - used when offline
      */
     private suspend fun loadAddonGroupsFromRoomAndUpdateState() {
         val groupsWithCount = addonGroupRepository.getAllAddonGroupsWithCountFlow().first()
@@ -96,70 +130,46 @@ class AddonGroupManagementViewModel @Inject constructor(
             } else null
             current.copy(
                 addonGroups = visibleAddonGroups,
-                filteredAddonGroups = filtered,
+                filteredAddonGroups = filtered ?: visibleAddonGroups,
                 addonCounts = counts,
-                isLoading = false
+                currentPage = 1,
+                totalPages = 1,
+                totalCount = visibleAddonGroups.size,
+                hasNextPage = false,
+                isLoading = false,
+                isLoadingMore = false
             )
         }
     }
     
     /**
-     * Observe addon groups from Room database
-     */
-    private fun observeAddonGroups() {
-        viewModelScope.launch {
-            addonGroupRepository.getAllAddonGroupsWithCountFlow().collect { groupsWithCount ->
-                val sortedGroups = groupsWithCount.sortedBy { it.addonGroup.sortOrder ?: 0 }
-                val addonGroups = sortedGroups.map { it.addonGroup }
-                val counts = sortedGroups.associate { it.addonGroup.id to it.addonCount }
-                
-                _uiState.update { current ->
-                    // ถ้ามีกลุ่มที่กำลังถูกลบหลายรายการอยู่ ให้ซ่อนออกจาก UI เลย
-                    val pendingDeleteIds = current.pendingDeleteAddonGroupIds
-                    val visibleAddonGroups = addonGroups.filterNot { pendingDeleteIds.contains(it.id) }
-                    
-                    // Re-apply search filter if there's an active search query
-                    val filteredAddonGroups = if (current.searchQuery.isNotBlank()) {
-                        visibleAddonGroups.filter { 
-                            it.name.contains(current.searchQuery, ignoreCase = true) 
-                        }
-                    } else {
-                        null // Clear filter when query is blank
-                    }
-                    
-                    current.copy(
-                        addonGroups = visibleAddonGroups,
-                        filteredAddonGroups = filteredAddonGroups,
-                        addonCounts = counts,
-                        isLoading = false // Clear loading state once we have data from Room
-                    )
-                }
-            }
-        }
-    }
-    
-    /**
-     * Refresh addon groups
+     * Refresh addon groups (load page 1)
      * @param preserveErrorMessage if true, keeps current errorMessage (e.g. when refreshing after delete fail so error popup can show)
      */
     fun refreshAddonGroups(preserveErrorMessage: Boolean = false) {
-        loadAddonGroups(clearError = !preserveErrorMessage)
+        loadAddonGroups(clearError = !preserveErrorMessage, page = 1)
     }
     
     /**
-     * Search addon groups
+     * Load more addon groups (next page)
+     */
+    fun loadMoreAddonGroups() {
+        val state = _uiState.value
+        if (!state.hasNextPage || state.isLoadingMore || state.isLoading) return
+        loadAddonGroups(clearError = true, page = state.currentPage + 1)
+    }
+    
+    /**
+     * Search addon groups - debounced, resets to page 1
      */
     fun searchAddonGroups(query: String) {
-        _uiState.update { current ->
-            val addonGroups = current.addonGroups ?: emptyList()
-            val filteredAddonGroups = if (query.isBlank()) {
-                null // Clear filter when query is blank
-            } else {
-                addonGroups.filter { 
-                    it.name.contains(query, ignoreCase = true) 
-                }
-            }
-            current.copy(searchQuery = query, filteredAddonGroups = filteredAddonGroups)
+        searchQueryFlow.value = query
+        _uiState.update { it.copy(searchQuery = query) }
+        
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(300) // Debounce
+            loadAddonGroups(clearError = true, page = 1)
         }
     }
     
@@ -289,12 +299,12 @@ class AddonGroupManagementViewModel @Inject constructor(
     }
     
     /**
-     * Select all addon groups
+     * Select all addon groups (from visible/filtered list)
      */
     fun selectAllAddonGroups() {
         _uiState.update { current ->
-            val addonGroups = current.addonGroups ?: emptyList()
-            val allAddonGroupIds = addonGroups.map { it.id }.toSet()
+            val groupsToSelect = current.filteredAddonGroups ?: current.addonGroups ?: emptyList()
+            val allAddonGroupIds = groupsToSelect.map { it.id }.toSet()
             current.copy(selectedAddonGroupIds = allAddonGroupIds)
         }
     }

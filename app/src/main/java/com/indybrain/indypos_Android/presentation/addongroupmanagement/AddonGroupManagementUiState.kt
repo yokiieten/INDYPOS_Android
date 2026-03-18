@@ -11,6 +11,7 @@ data class AddonGroupManagementUiState(
     val addonCounts: Map<String, Int> = emptyMap(),
     val searchQuery: String = "",
     val isLoading: Boolean = true, // Start with loading = true
+    val isLoadingMore: Boolean = false,
     val errorMessage: String? = null,
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,
@@ -18,6 +19,11 @@ data class AddonGroupManagementUiState(
     val isEditMode: Boolean = false,
     val selectedAddonGroupIds: Set<String> = emptySet(),
     val syncStatistics: com.indybrain.indypos_Android.domain.repository.AddonGroupSyncStatistics? = null,
+    // Pagination
+    val currentPage: Int = 1,
+    val totalPages: Int = 1,
+    val totalCount: Int = 0,
+    val hasNextPage: Boolean = false,
     // IDs ที่กำลังอยู่ระหว่างการลบแบบหลายรายการ เพื่อไม่ให้ UI แสดงไล่ลบทีละอัน
     val pendingDeleteAddonGroupIds: Set<String> = emptySet()
 )

@@ -20,6 +20,16 @@ interface AddonGroupRepository {
     fun getAllAddonGroupsWithCountFlow(): Flow<List<AddonGroupWithAddonCount>>
     
     /**
+     * Get addon groups paginated from API for Addon Group Management
+     * @return Result with AddonGroupsPaginatedResult (addon groups + pagination info)
+     */
+    suspend fun getAddonGroupsPaginated(
+        page: Int = 1,
+        limit: Int = 20,
+        search: String? = null
+    ): Result<AddonGroupsPaginatedResult>
+    
+    /**
      * Get addon group by ID
      */
     suspend fun getAddonGroupById(id: String): AddonGroupEntity?
@@ -105,6 +115,19 @@ interface AddonGroupRepository {
      */
     suspend fun getSyncStatistics(): AddonGroupSyncStatistics
 }
+
+/**
+ * Result of paginated addon groups API
+ */
+data class AddonGroupsPaginatedResult(
+    val addonGroups: List<AddonGroupEntity>,
+    val addonCounts: Map<String, Int>,
+    val currentPage: Int,
+    val totalCount: Int,
+    val totalPages: Int,
+    val hasNext: Boolean,
+    val hasPrevious: Boolean
+)
 
 /**
  * Sync statistics for addon groups

@@ -119,6 +119,17 @@ interface ProductsApi {
      */
     @GET("protected/indypos/addon-groups")
     suspend fun getAddonGroups(): ApiResponseDto<List<AddonGroupDto>>
+
+    /**
+     * Get addon groups paginated for Addon Group Management
+     * GET /api/v1/protected/indypos/addon-groups/paginated
+     */
+    @GET("protected/indypos/addon-groups/paginated")
+    suspend fun getAddonGroupsPaginated(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20,
+        @Query("search") search: String? = null
+    ): ApiResponseDto<AddonGroupsPaginatedDataDto>
     
     /**
      * Create addon group endpoint

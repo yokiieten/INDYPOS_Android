@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -46,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -103,17 +105,10 @@ fun AddonGroupManagementScreen(
     
     // Refresh addon groups when screen becomes visible (returns from AddEditAddonGroupScreen)
     val lifecycleOwner = LocalLifecycleOwner.current
-    var lastResumeTime by remember { mutableStateOf(0L) }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                val currentTime = System.currentTimeMillis()
-                // Only refresh if it's been more than 1 second since last refresh
-                // This prevents multiple refreshes but allows refresh when returning from AddEditAddonGroupScreen
-                if (currentTime - lastResumeTime > 1000) {
-                    viewModel.refreshAddonGroups()
-                    lastResumeTime = currentTime
-                }
+                viewModel.refreshAddonGroups()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -122,9 +117,30 @@ fun AddonGroupManagementScreen(
         }
     }
     
-    // Update search when query changes
+    // Update search when query changes (debounced in ViewModel)
+    // Skip initial composition - ON_RESUME already triggers refreshAddonGroups
+    var isFirstSearch by remember { mutableStateOf(true) }
     LaunchedEffect(searchQuery) {
+        if (isFirstSearch) {
+            isFirstSearch = false
+            return@LaunchedEffect
+        }
         viewModel.searchAddonGroups(searchQuery)
+    }
+    
+    // Load more when scrolling near end - use snapshotFlow to react to scroll changes
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItem >= totalItems - 3
+        }.collect { nearEnd ->
+            if (nearEnd) {
+                viewModel.loadMoreAddonGroups()
+            }
+        }
     }
     
     Scaffold(
@@ -238,12 +254,8 @@ fun AddonGroupManagementScreen(
                     state = swipeRefreshState,
                     onRefresh = { viewModel.refreshAddonGroups() }
                 ) {
-                    // Calculate addon groups to show
-                    val groupsToShow = if (uiState.searchQuery.isNotBlank()) {
-                        uiState.filteredAddonGroups ?: emptyList()
-                    } else {
-                        uiState.addonGroups ?: emptyList()
-                    }
+                    // Display list (filteredAddonGroups is the accumulated paginated list)
+                    val groupsToShow = uiState.filteredAddonGroups ?: uiState.addonGroups ?: emptyList()
                     // Show loading only for initial load when data hasn't been loaded yet (addonGroups is null)
                     // Avoid showing full-screen loading during actions like delete to prevent flicker
                     val shouldShowLoading = uiState.isLoading && uiState.addonGroups == null
@@ -285,6 +297,7 @@ fun AddonGroupManagementScreen(
                         }
                         else -> {
                             LazyColumn(
+                                state = listState,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
@@ -310,6 +323,22 @@ fun AddonGroupManagementScreen(
                                         }
                                     )
                                 }
+                                // Load more indicator
+                                if (uiState.isLoadingMore) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                color = PrimaryButton
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -319,11 +348,7 @@ fun AddonGroupManagementScreen(
             // Bottom Action Bar - Show different UI based on edit mode
             if (uiState.isEditMode) {
                 // Edit Mode - Show selection actions
-                val groupsToShow = if (uiState.searchQuery.isNotBlank()) {
-                    uiState.filteredAddonGroups ?: emptyList()
-                } else {
-                    uiState.addonGroups ?: emptyList()
-                }
+                val groupsToShow = uiState.filteredAddonGroups ?: uiState.addonGroups ?: emptyList()
                 val allSelected = uiState.selectedAddonGroupIds.size == groupsToShow.size && groupsToShow.isNotEmpty()
                 EditModeBottomBar(
                     selectedCount = uiState.selectedAddonGroupIds.size,

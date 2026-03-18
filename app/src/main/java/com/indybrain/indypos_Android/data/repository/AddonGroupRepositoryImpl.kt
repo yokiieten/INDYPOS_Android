@@ -14,6 +14,7 @@ import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
 import com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto
 import com.indybrain.indypos_Android.data.remote.dto.DeleteAddonGroupsResponseDto
+import com.indybrain.indypos_Android.domain.repository.AddonGroupsPaginatedResult
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.DeleteAddonGroupsResult
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -60,6 +61,51 @@ class AddonGroupRepositoryImpl @Inject constructor(
 
     override fun getAllAddonGroupsWithCountFlow(): Flow<List<com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddonCount>> {
         return addonGroupDao.getAddonGroupsWithAddonCountForManagementFlow()
+    }
+
+    override suspend fun getAddonGroupsPaginated(
+        page: Int,
+        limit: Int,
+        search: String?
+    ): Result<AddonGroupsPaginatedResult> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception("No network connection"))
+        }
+        return try {
+            val response = productsApi.getAddonGroupsPaginated(
+                page = page,
+                limit = limit,
+                search = search?.takeIf { it.isNotBlank() }
+            )
+            if (response.status != 200) {
+                return Result.failure(Exception(response.message ?: "Failed to fetch addon groups"))
+            }
+            val data = response.data
+            val groupsList = data?.addonGroups ?: emptyList()
+            val pagination = data?.pagination
+            val addonGroups = groupsList.map { ProductMapper.toEntity(it) }
+            val addonCounts = groupsList.associate { it.id to (it.addons?.size ?: 0) }
+            Result.success(
+                AddonGroupsPaginatedResult(
+                    addonGroups = addonGroups,
+                    addonCounts = addonCounts,
+                    currentPage = pagination?.currentPage ?: page,
+                    totalCount = pagination?.totalCount ?: addonGroups.size,
+                    totalPages = pagination?.totalPages ?: 1,
+                    hasNext = pagination?.hasNext ?: false,
+                    hasPrevious = pagination?.hasPrevious ?: false
+                )
+            )
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
     }
     
     override suspend fun getAddonGroupById(id: String): com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity? {
