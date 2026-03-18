@@ -15,6 +15,7 @@ import com.indybrain.indypos_Android.data.remote.api.*
 import com.indybrain.indypos_Android.data.remote.dto.AddonDto
 import com.indybrain.indypos_Android.data.remote.dto.DeleteAddonsResponseDto
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
+import com.indybrain.indypos_Android.domain.repository.AddonsPaginatedResult
 import com.indybrain.indypos_Android.domain.repository.AddonSyncStatistics
 import com.indybrain.indypos_Android.domain.repository.DeleteAddonsResult
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -66,6 +67,43 @@ class AddonRepositoryImpl @Inject constructor(
     
     override suspend fun getAddonById(id: String): com.indybrain.indypos_Android.data.local.entity.AddonEntity? {
         return addonDao.getAddonById(id)
+    }
+    
+    override suspend fun getAddonsPaginated(
+        page: Int,
+        limit: Int,
+        search: String?
+    ): Result<AddonsPaginatedResult> {
+        return try {
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(getLocalizedString("error_no_internet", "ไม่มีการเชื่อมต่ออินเทอร์เน็ต")))
+            }
+            val searchParam = search?.takeIf { it.isNotBlank() }
+            val response = productsApi.getAddonsPaginated(page = page, limit = limit, search = searchParam)
+            val data = response.data
+            if (data == null) {
+                return Result.failure(Exception(response.message ?: "ไม่พบข้อมูล"))
+            }
+            val addons = (data.addons ?: emptyList()).map { ProductMapper.toEntity(it) }
+            // Upsert addons to Room so AddEditAddonScreen can load by id
+            addons.forEach { addonDao.insert(it) }
+            val pagination = data.pagination
+            val result = AddonsPaginatedResult(
+                addons = addons,
+                currentPage = pagination?.currentPage ?: page,
+                totalCount = pagination?.totalCount ?: addons.size,
+                totalPages = pagination?.totalPages ?: 1,
+                hasNext = pagination?.hasNext ?: false,
+                hasPrevious = pagination?.hasPrevious ?: false
+            )
+            Result.success(result)
+        } catch (e: HttpException) {
+            val errorBody = e.response()?.errorBody()
+            val errorMessage = parseApiErrorResponse(errorBody, e.code())
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการโหลด Addons"))
+        }
     }
     
     override suspend fun createAddon(name: String, price: Double): Result<com.indybrain.indypos_Android.data.local.entity.AddonEntity> {

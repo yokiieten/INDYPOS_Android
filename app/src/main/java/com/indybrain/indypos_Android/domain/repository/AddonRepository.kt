@@ -13,6 +13,16 @@ interface AddonRepository {
     fun getAllAddonsForManagementFlow(): Flow<List<AddonEntity>>
     
     /**
+     * Get addons paginated from API for AddOn Management
+     * @return Result with AddonsPaginatedResult (addons + pagination info)
+     */
+    suspend fun getAddonsPaginated(
+        page: Int = 1,
+        limit: Int = 20,
+        search: String? = null
+    ): Result<AddonsPaginatedResult>
+    
+    /**
      * Get addon by ID
      */
     suspend fun getAddonById(id: String): AddonEntity?
@@ -77,6 +87,18 @@ interface AddonRepository {
      */
     suspend fun syncPendingAddons(): Result<Unit>
 }
+
+/**
+ * Result of paginated addons API
+ */
+data class AddonsPaginatedResult(
+    val addons: List<AddonEntity>,
+    val currentPage: Int,
+    val totalCount: Int,
+    val totalPages: Int,
+    val hasNext: Boolean,
+    val hasPrevious: Boolean
+)
 
 /**
  * Result of batch delete addons operation

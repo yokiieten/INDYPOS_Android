@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -43,6 +44,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -58,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
@@ -85,7 +89,6 @@ fun AddOnManagementScreen(
     viewModel: AddOnManagementViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var searchQuery by remember { mutableStateOf("") }
     var selectedAddon by remember { mutableStateOf<AddonEntity?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var addonToDelete by remember { mutableStateOf<AddonEntity?>(null) }
@@ -94,13 +97,19 @@ fun AddOnManagementScreen(
     
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     
     // Refresh addons when screen becomes visible (returns from AddEditAddonScreen)
+    // Reset search, reload API, and scroll to top so new/edited addon appears in list
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshAddons()
+                viewModel.refreshAddonsAndClearSearch()
+                scope.launch {
+                    listState.animateScrollToItem(0)
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -116,9 +125,18 @@ fun AddOnManagementScreen(
         }
     }
     
-    // Update search when query changes
-    LaunchedEffect(searchQuery) {
-        viewModel.searchAddons(searchQuery)
+    // Load more when scrolling near end - use snapshotFlow to react to scroll changes
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItem >= totalItems - 3
+        }.collect { nearEnd ->
+            if (nearEnd) {
+                viewModel.loadMoreAddons()
+            }
+        }
     }
     
     Scaffold(
@@ -193,8 +211,8 @@ fun AddOnManagementScreen(
                 // Search Bar - Hide in selection mode
                 if (!uiState.isSelectionMode) {
                     OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                        value = uiState.searchQuery,
+                        onValueChange = { viewModel.searchAddons(it) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -275,6 +293,7 @@ fun AddOnManagementScreen(
                         }
                         else -> {
                             LazyColumn(
+                                state = listState,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
@@ -297,6 +316,21 @@ fun AddOnManagementScreen(
                                             }
                                         }
                                     )
+                                }
+                                if (uiState.isLoadingMore) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                color = PrimaryButton
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

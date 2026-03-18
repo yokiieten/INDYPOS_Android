@@ -175,6 +175,17 @@ interface ProductsApi {
      */
     @GET("protected/indypos/addons")
     suspend fun getAddons(): ApiResponseDto<List<AddonDto>>
+
+    /**
+     * Get addons paginated for AddOn Management
+     * GET /api/v1/protected/indypos/addons/paginated
+     */
+    @GET("protected/indypos/addons/paginated")
+    suspend fun getAddonsPaginated(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20,
+        @Query("search") search: String? = null
+    ): ApiResponseDto<AddonsPaginatedDataDto>
     
     /**
      * Create addon endpoint
