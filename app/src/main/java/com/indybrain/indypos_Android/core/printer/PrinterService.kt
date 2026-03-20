@@ -26,6 +26,9 @@ import java.util.Hashtable
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * Service for printing receipts and opening cash drawer
@@ -55,6 +58,10 @@ class PrinterService @Inject constructor(
         
         // Receipt bitmap width for 58mm thermal paper (384 dots at 203 DPI)
         private const val RECEIPT_BITMAP_WIDTH = 384
+
+        /** โลโก้สเกลก่อนพิมพ์ — เล็กพอส่งเร็ว ตรงกับความกว้างสูงสุดใน printBitmap ของโลโก้ */
+        private const val SHOP_LOGO_MAX_WIDTH = 200
+        private const val SHOP_LOGO_MAX_HEIGHT = 160
         
         // Addon - ชิดซ้ายเหมือนเดิม (ไม่มี indent)
         private const val ADDON_INDENT = ""
@@ -153,7 +160,7 @@ class PrinterService @Inject constructor(
             if (receiptSettings?.printShopLogo == true && receiptSettings.shopLogoImagePath != null) {
                 val logoBitmap = loadShopLogo(receiptSettings.shopLogoImagePath)
                 if (logoBitmap != null) {
-                    posPrinter.printBitmap(logoBitmap, ALIGNMENT_CENTER, 200)
+                    posPrinter.printBitmap(logoBitmap, ALIGNMENT_CENTER, SHOP_LOGO_MAX_WIDTH)
                     posPrinter.feedLine(0)
                 }
             }
@@ -340,20 +347,65 @@ class PrinterService @Inject constructor(
         }
     }
     
+    /**
+     * โหลดโลโก้แบบ downsample + สเกลเล็ก — ไม่ decode ภาพความละเอียดเต็ม (ลดเวลาก่อนส่งไปเครื่องพิมพ์)
+     */
     private fun loadShopLogo(imagePath: String?): Bitmap? {
         if (imagePath.isNullOrEmpty()) return null
         return try {
-            // imagePath is a relative path like "shop_logos/shop_logo_xxx.jpg"
-            // Need to combine with context.filesDir
             val file = File(context.filesDir, imagePath)
-            if (file.exists()) {
-                BitmapFactory.decodeFile(file.absolutePath)
-            } else {
-                null
+            if (!file.exists()) return null
+            val path = file.absolutePath
+
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(path, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+            val decodeOpts = BitmapFactory.Options().apply {
+                inSampleSize = calculateBitmapInSampleSize(
+                    bounds.outWidth,
+                    bounds.outHeight,
+                    SHOP_LOGO_MAX_WIDTH,
+                    SHOP_LOGO_MAX_HEIGHT
+                )
+                inPreferredConfig = Bitmap.Config.RGB_565
             }
+            var bitmap = BitmapFactory.decodeFile(path, decodeOpts) ?: return null
+
+            val w = bitmap.width
+            val h = bitmap.height
+            if (w > SHOP_LOGO_MAX_WIDTH || h > SHOP_LOGO_MAX_HEIGHT) {
+                val scale = min(
+                    SHOP_LOGO_MAX_WIDTH.toFloat() / w,
+                    SHOP_LOGO_MAX_HEIGHT.toFloat() / h
+                )
+                val newW = max(1, (w * scale).roundToInt())
+                val newH = max(1, (h * scale).roundToInt())
+                val scaled = Bitmap.createScaledBitmap(bitmap, newW, newH, false)
+                if (scaled !== bitmap) bitmap.recycle()
+                bitmap = scaled
+            }
+            bitmap
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun calculateBitmapInSampleSize(
+        srcWidth: Int,
+        srcHeight: Int,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
+        var inSampleSize = 1
+        if (srcHeight > reqHeight || srcWidth > reqWidth) {
+            var halfH = srcHeight / 2
+            var halfW = srcWidth / 2
+            while (halfH / inSampleSize >= reqHeight && halfW / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
     
     /**
