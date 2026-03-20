@@ -62,6 +62,12 @@ class PrinterService @Inject constructor(
         /** โลโก้สเกลก่อนพิมพ์ — เล็กพอส่งเร็ว ตรงกับความกว้างสูงสุดใน printBitmap ของโลโก้ */
         private const val SHOP_LOGO_MAX_WIDTH = 200
         private const val SHOP_LOGO_MAX_HEIGHT = 160
+
+        /** รวมบรรทัดเป็น bitmap ยาว — จำกัดความสูงต่อก้อน (แบ่งส่งหลายครั้งถ้าใบยาวมาก) */
+        private const val MAX_RECEIPT_STRIP_HEIGHT_PX = 6144
+
+        /** โหมดขาว–ดำ thermal — 2 ไบต์/พิกเซล ลด buffer และงานแปลงใน SDK เทียบ ARGB_8888 */
+        private val RECEIPT_BITMAP_CONFIG: Bitmap.Config = Bitmap.Config.RGB_565
         
         // Addon - ชิดซ้ายเหมือนเดิม (ไม่มี indent)
         private const val ADDON_INDENT = ""
@@ -100,7 +106,7 @@ class PrinterService @Inject constructor(
         }
         val lineHeight = getReceiptLineHeight(paint)
         val totalHeight = lineHeight.toInt().coerceAtLeast(1)
-        val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, RECEIPT_BITMAP_CONFIG)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
         val baselineOffset = -paint.fontMetrics.ascent
@@ -111,6 +117,31 @@ class PrinterService @Inject constructor(
         }
         canvas.drawText(drawText, x, baselineOffset, paint)
         return bitmap
+    }
+
+    /**
+     * ต่อแนวตั้งหลายแถบความกว้าง [RECEIPT_BITMAP_WIDTH] เป็น bitmap เดียว — recycle แถบต้นทางหลังวาดแล้ว
+     */
+    private fun combineBitmapsVertically(strips: List<Bitmap>): Bitmap {
+        require(strips.isNotEmpty())
+        val totalHeight = strips.sumOf { it.height }
+        val out = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, RECEIPT_BITMAP_CONFIG)
+        val canvas = Canvas(out)
+        canvas.drawColor(Color.WHITE)
+        var y = 0f
+        for (b in strips) {
+            check(b.width == RECEIPT_BITMAP_WIDTH) { "strip width ${b.width} != $RECEIPT_BITMAP_WIDTH" }
+            canvas.drawBitmap(b, 0f, y, null)
+            y += b.height
+            b.recycle()
+        }
+        return out
+    }
+
+    private fun printFullWidthStrip(posPrinter: POSPrinter, strip: Bitmap) {
+        posPrinter.printBitmap(strip, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
+        posPrinter.feedLine(0)
+        strip.recycle()
     }
     
     /**
@@ -155,41 +186,54 @@ class PrinterService @Inject constructor(
         
         try {
             val posPrinter = POSPrinter(connection)
-            
-            // Print shop logo if enabled
+
+            fun flushStripAccumulator(acc: MutableList<Bitmap>, heightSoFar: IntArray) {
+                if (acc.isEmpty()) return
+                printFullWidthStrip(posPrinter, combineBitmapsVertically(acc.toList()))
+                acc.clear()
+                heightSoFar[0] = 0
+            }
+
+            fun addStripOrFlush(
+                acc: MutableList<Bitmap>,
+                heightSoFar: IntArray,
+                strip: Bitmap
+            ) {
+                if (heightSoFar[0] + strip.height > MAX_RECEIPT_STRIP_HEIGHT_PX && acc.isNotEmpty()) {
+                    flushStripAccumulator(acc, heightSoFar)
+                }
+                acc.add(strip)
+                heightSoFar[0] += strip.height
+            }
+
+            // Print shop logo if enabled (ความกว้างไม่เต็มแถบ — ส่งแยกเหมือนเดิม)
             if (receiptSettings?.printShopLogo == true && receiptSettings.shopLogoImagePath != null) {
                 val logoBitmap = loadShopLogo(receiptSettings.shopLogoImagePath)
                 if (logoBitmap != null) {
-                    posPrinter.printBitmap(logoBitmap, ALIGNMENT_CENTER, SHOP_LOGO_MAX_WIDTH)
-                    posPrinter.feedLine(0)
+                    try {
+                        posPrinter.printBitmap(logoBitmap, ALIGNMENT_CENTER, SHOP_LOGO_MAX_WIDTH)
+                        posPrinter.feedLine(0)
+                    } finally {
+                        logoBitmap.recycle()
+                    }
                 }
             }
-            
-            // Print shop name (header) - centered and bold, double size
+
+            val headerStrips = mutableListOf<Bitmap>()
+
             if (shopName.isNotEmpty()) {
-                val bitmap = textToBitmap(shopName, ALIGNMENT_CENTER, isBold = true, isDoubleSize = true)
-                posPrinter.printBitmap(bitmap, ALIGNMENT_CENTER, RECEIPT_BITMAP_WIDTH)
-                posPrinter.feedLine(0)
+                headerStrips += textToBitmap(shopName, ALIGNMENT_CENTER, isBold = true, isDoubleSize = true)
             }
-            
-            // Print TIN if enabled
+
             if (receiptSettings?.taxIdentificationNumber == true && !receiptSettings.tinNumber.isNullOrEmpty()) {
-                val bitmap = textToBitmap("เลขประจำตัวผู้เสียภาษี: ${receiptSettings.tinNumber}", ALIGNMENT_LEFT)
-                posPrinter.printBitmap(bitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                posPrinter.feedLine(0)
+                headerStrips += textToBitmap("เลขประจำตัวผู้เสียภาษี: ${receiptSettings.tinNumber}", ALIGNMENT_LEFT)
             }
-            
-            // Print order number - label บรรทัดหนึ่ง, value บรรทัดสองชิดขวา
+
             if (!orderNumber.isNullOrEmpty()) {
-                val labelBitmap = textToBitmapSingleLine("เลขที่คำสั่งซื้อ:", ALIGNMENT_LEFT)
-                posPrinter.printBitmap(labelBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                posPrinter.feedLine(0)
-                val valueBitmap = textToBitmapSingleLine(orderNumber, ALIGNMENT_RIGHT)
-                posPrinter.printBitmap(valueBitmap, ALIGNMENT_RIGHT, RECEIPT_BITMAP_WIDTH)
-                posPrinter.feedLine(0)
+                headerStrips += textToBitmapSingleLine("เลขที่คำสั่งซื้อ:", ALIGNMENT_LEFT)
+                headerStrips += textToBitmapSingleLine(orderNumber, ALIGNMENT_RIGHT)
             }
-            
-            // Print date (พ.ศ. = ค.ศ. + 543)
+
             val calendar = java.util.Calendar.getInstance()
             val now = Date()
             calendar.time = now
@@ -199,23 +243,21 @@ class PrinterService @Inject constructor(
             val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
             val minute = calendar.get(java.util.Calendar.MINUTE)
             val dateStr = String.format(Locale.getDefault(), "%02d/%02d/%d %02d:%02d", day, month, yearBuddhist, hour, minute)
-            val dateBitmap = textToBitmap("วันที่: $dateStr", ALIGNMENT_LEFT)
-            posPrinter.printBitmap(dateBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(0)
-            
-            // Separator - บรรทัดเดียว ไม่ปัด
-            val separatorBitmap = textToBitmapSingleLine("--------------------------------", ALIGNMENT_CENTER)
-            posPrinter.printBitmap(separatorBitmap, ALIGNMENT_CENTER, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(0)
-            
-            // Print items
-            // Note: unitPrice in CartItemEntity already includes addon prices when item was added to cart
+            headerStrips += textToBitmap("วันที่: $dateStr", ALIGNMENT_LEFT)
+            headerStrips += textToBitmapSingleLine("--------------------------------", ALIGNMENT_CENTER)
+
+            if (headerStrips.isNotEmpty()) {
+                printFullWidthStrip(posPrinter, combineBitmapsVertically(headerStrips))
+            }
+
+            val itemAcc = mutableListOf<Bitmap>()
+            val itemAccHeight = intArrayOf(0)
+
             cartItems.forEach { cartItem ->
                 val addons = cartAddonsMap[cartItem.id] ?: emptyList()
                 val itemName = cartItem.productName ?: ""
                 val itemPrice = (cartItem.unitPrice ?: 0.0) * cartItem.quantity
-                
-                // Print item - support multi-line for long product names, price ชิดขวาแน่นอน
+
                 val label = "${cartItem.quantity} x $itemName"
                 val priceStr = formatCurrencyWithoutSymbol(itemPrice)
                 val itemLines = formatItemLinesWithWrap(label = label, price = priceStr)
@@ -225,95 +267,79 @@ class PrinterService @Inject constructor(
                     } else {
                         textToBitmap(lineLabel, ALIGNMENT_LEFT)
                     }
-                    posPrinter.printBitmap(lineBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                    posPrinter.feedLine(0)
+                    addStripOrFlush(itemAcc, itemAccHeight, lineBitmap)
                 }
-                
-                // Print addons
+
                 if (addons.isNotEmpty()) {
-                    // Group addons by name and count
                     val addonCounts = addons.groupBy { it.addonName }
                         .mapValues { (_, addonsList) -> addonsList.size * cartItem.quantity }
-                    
+
                     val addonTexts = addonCounts.map { (name, count) ->
                         if (count > 1) "$name x $count" else name
                     }
-                    
+
                     if (addonTexts.isNotEmpty()) {
-                        val addonBitmap = textToBitmap(
-                            "${ADDON_INDENT}${addonTexts.joinToString(separator = ADDON_SEPARATOR)}",
+                        addStripOrFlush(
+                            itemAcc,
+                            itemAccHeight,
+                            textToBitmap(
+                                "${ADDON_INDENT}${addonTexts.joinToString(separator = ADDON_SEPARATOR)}",
+                                ALIGNMENT_LEFT,
+                                continuationIndent = ADDON_INDENT
+                            )
+                        )
+                    }
+                }
+
+                if (!cartItem.specialRequest.isNullOrEmpty()) {
+                    addStripOrFlush(
+                        itemAcc,
+                        itemAccHeight,
+                        textToBitmap(
+                            "${ADDON_INDENT}หมายเหตุ: ${cartItem.specialRequest}",
                             ALIGNMENT_LEFT,
                             continuationIndent = ADDON_INDENT
                         )
-                        posPrinter.printBitmap(addonBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                        posPrinter.feedLine(0)
-                    }
-                }
-                
-                // Print special request (indent เท่ากับ addon)
-                if (!cartItem.specialRequest.isNullOrEmpty()) {
-                    val noteBitmap = textToBitmap(
-                        "${ADDON_INDENT}หมายเหตุ: ${cartItem.specialRequest}",
-                        ALIGNMENT_LEFT,
-                        continuationIndent = ADDON_INDENT
                     )
-                    posPrinter.printBitmap(noteBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                    posPrinter.feedLine(0)
                 }
             }
-            
-            // Separator - บรรทัดเดียว ไม่ปัด
-            val sepBitmap = textToBitmapSingleLine("--------------------------------", ALIGNMENT_CENTER)
-            posPrinter.printBitmap(sepBitmap, ALIGNMENT_CENTER, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(0)
-            
-            // Print payment section (รูปแบบเหมือน iOS สำหรับเงินสด)
+
+            flushStripAccumulator(itemAcc, itemAccHeight)
+
+            val tailStrips = mutableListOf<Bitmap>()
+            tailStrips += textToBitmapSingleLine("--------------------------------", ALIGNMENT_CENTER)
+
             val paymentTypeText = when (paymentType) {
                 PaymentType.CASH -> "จ่ายเงินสด"
                 PaymentType.TRANSFER -> "โอนเงิน"
                 PaymentType.CARD -> "บัตรเครดิต"
                 PaymentType.QR_CODE -> "QR Code"
             }
-            // ส่วนสรุป: หัวข้อชิดซ้าย ค่าชิดขวา (pixel-perfect)
-            val payBitmap = textToBitmapLabelPrice("วิธีการชำระเงิน:", paymentTypeText)
-            posPrinter.printBitmap(payBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(0)
-            
-            val subBitmap = textToBitmapLabelPrice("ยอดรวมราคา:", formatCurrencyWithoutSymbol(subtotal))
-            posPrinter.printBitmap(subBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(0)
-            
+            tailStrips += textToBitmapLabelPrice("วิธีการชำระเงิน:", paymentTypeText)
+            tailStrips += textToBitmapLabelPrice("ยอดรวมราคา:", formatCurrencyWithoutSymbol(subtotal))
+
             val discountPriceStr = if (discount > 0) "-${formatCurrencyWithoutSymbol(discount)}" else formatCurrencyWithoutSymbol(0.0)
-            val discBitmap = textToBitmapLabelPrice("ส่วนลด:", discountPriceStr)
-            posPrinter.printBitmap(discBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(0)
-            
+            tailStrips += textToBitmapLabelPrice("ส่วนลด:", discountPriceStr)
+
             val totalLabel = if (paymentType == PaymentType.CASH) "ยอดรวมทั้งหมด:" else "รวม:"
-            val totalBitmap = textToBitmapLabelPrice(totalLabel, formatCurrencyWithoutSymbol(total), isBold = true)
-            posPrinter.printBitmap(totalBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-            posPrinter.feedLine(0)
-            
+            tailStrips += textToBitmapLabelPrice(totalLabel, formatCurrencyWithoutSymbol(total), isBold = true)
+
             if (paymentType == PaymentType.CASH) {
                 receivedAmount?.let {
                     if (it > 0) {
-                        val receivedBitmap = textToBitmapLabelPrice("เงินสด:", formatCurrencyWithoutSymbol(it))
-                        posPrinter.printBitmap(receivedBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                        posPrinter.feedLine(0)
+                        tailStrips += textToBitmapLabelPrice("เงินสด:", formatCurrencyWithoutSymbol(it))
                     }
                 }
                 change?.let {
-                    val changeBitmap = textToBitmapLabelPrice("เงินทอน:", formatCurrencyWithoutSymbol(it))
-                    posPrinter.printBitmap(changeBitmap, ALIGNMENT_LEFT, RECEIPT_BITMAP_WIDTH)
-                    posPrinter.feedLine(0)
+                    tailStrips += textToBitmapLabelPrice("เงินทอน:", formatCurrencyWithoutSymbol(it))
                 }
             }
-            
-            // Print footer
+
             if (!receiptSettings?.footer.isNullOrEmpty()) {
-                val footerBitmap = textToBitmap(receiptSettings!!.footer!!, ALIGNMENT_CENTER)
-                posPrinter.printBitmap(footerBitmap, ALIGNMENT_CENTER, RECEIPT_BITMAP_WIDTH)
-                posPrinter.feedLine(0)
+                tailStrips += textToBitmap(receiptSettings!!.footer!!, ALIGNMENT_CENTER)
             }
+
+            printFullWidthStrip(posPrinter, combineBitmapsVertically(tailStrips))
             
             // Print QR code if enabled and payment is not cash
             if (receiptSettings?.showQRCode == true && paymentType != PaymentType.CASH) {
@@ -333,8 +359,12 @@ class PrinterService @Inject constructor(
                     )
                     val qrBitmap = generateQRCodeBitmap(qrData, 200)
                     if (qrBitmap != null) {
-                        posPrinter.printBitmap(qrBitmap, ALIGNMENT_CENTER, 200)
-                        posPrinter.feedLine(0)
+                        try {
+                            posPrinter.printBitmap(qrBitmap, ALIGNMENT_CENTER, 200)
+                            posPrinter.feedLine(0)
+                        } finally {
+                            qrBitmap.recycle()
+                        }
                     }
                 }
             }
@@ -422,7 +452,7 @@ class PrinterService @Inject constructor(
     ): Bitmap {
         val lines = text.split("\n").filter { it.isNotEmpty() }
         if (lines.isEmpty()) {
-            return Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, 24, Bitmap.Config.ARGB_8888).apply {
+            return Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, 24, RECEIPT_BITMAP_CONFIG).apply {
                 Canvas(this).drawColor(Color.WHITE)
             }
         }
@@ -433,7 +463,7 @@ class PrinterService @Inject constructor(
         val lineHeight = getReceiptLineHeight(paint)
         val allLines = lines.flatMap { wrapTextByPixel(it, paint, RECEIPT_BITMAP_WIDTH.toFloat(), continuationIndent) }
         val totalHeight = (lineHeight * allLines.size).toInt().coerceAtLeast(1)
-        val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, RECEIPT_BITMAP_CONFIG)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
         val baselineOffset = -paint.fontMetrics.ascent
@@ -504,7 +534,7 @@ class PrinterService @Inject constructor(
         val labelMaxWidth = RECEIPT_BITMAP_WIDTH - priceWidth
         if (paint.measureText(label) <= labelMaxWidth) {
             val totalHeight = lineHeight.toInt().coerceAtLeast(1)
-            val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
+            val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, RECEIPT_BITMAP_CONFIG)
             val canvas = Canvas(bitmap)
             canvas.drawColor(Color.WHITE)
             val baselineOffset = -paint.fontMetrics.ascent
@@ -514,7 +544,7 @@ class PrinterService @Inject constructor(
         }
         val labelLines = wrapTextByPixel(label, paint, labelMaxWidth, "")
         val totalHeight = (lineHeight * labelLines.size).toInt().coerceAtLeast(1)
-        val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(RECEIPT_BITMAP_WIDTH, totalHeight, RECEIPT_BITMAP_CONFIG)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
         val baselineOffset = -paint.fontMetrics.ascent
@@ -775,13 +805,14 @@ class PrinterService @Inject constructor(
             val width = bitMatrix.width
             val height = bitMatrix.height
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
-
-            for (x in 0 until width) {
-                for (y in 0 until height) {
-                    bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+            val pixels = IntArray(width * height)
+            var i = 0
+            for (y in 0 until height) {
+                for (x in 0 until width) {
+                    pixels[i++] = if (bitMatrix[x, y]) Color.BLACK else Color.WHITE
                 }
             }
-
+            bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
             bitmap
         } catch (e: Exception) {
             null
