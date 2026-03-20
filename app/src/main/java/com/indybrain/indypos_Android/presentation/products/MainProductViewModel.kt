@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
+import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -177,17 +178,7 @@ class MainProductViewModel @Inject constructor(
                 }
             }
             
-            // Add to cart
-            cartRepository.addToCart(
-                productId = product.id,
-                productName = product.name,
-                productImageUrl = product.imageUrl,
-                productColorHex = product.selectedColorHex,
-                unitPrice = product.price,
-                quantity = 1,
-                specialRequest = null,
-                addons = emptyList()
-            )
+            addOneQuickCartUnit(product)
         }
     }
     
@@ -253,17 +244,7 @@ class MainProductViewModel @Inject constructor(
                 }
             }
             
-            // Add to cart
-            cartRepository.addToCart(
-                productId = product.id,
-                productName = product.name,
-                productImageUrl = product.imageUrl,
-                productColorHex = product.selectedColorHex,
-                unitPrice = product.price,
-                quantity = 1,
-                specialRequest = null,
-                addons = emptyList()
-            )
+            addOneQuickCartUnit(product)
         }
     }
     
@@ -291,5 +272,35 @@ class MainProductViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * One tap on quick add / + : merge into an existing "plain" line (no addons, no special note)
+     * so receipt/kitchen printers show a single row with the total qty instead of many "1 x" lines.
+     */
+    private suspend fun addOneQuickCartUnit(product: ProductEntity) {
+        val existing = cartRepository.getCartItemsByProduct(product.id).first()
+        val mergeTarget = existing.firstOrNull { it.isMergeableQuickLine() }
+        if (mergeTarget != null) {
+            cartRepository.updateCartItemQuantity(mergeTarget.id, mergeTarget.quantity + 1)
+        } else {
+            cartRepository.addToCart(
+                productId = product.id,
+                productName = product.name,
+                productImageUrl = product.imageUrl,
+                productColorHex = product.selectedColorHex,
+                unitPrice = product.price,
+                quantity = 1,
+                specialRequest = null,
+                addons = emptyList()
+            )
+        }
+    }
+}
+
+/** Plain cart line from main list quick +/- — safe to stack quantity without merging option/detail rows. */
+private fun CartItem.isMergeableQuickLine(): Boolean {
+    if (!specialRequest.isNullOrBlank()) return false
+    if (selectedAddons.isEmpty()) return true
+    return selectedAddons.values.all { it.isEmpty() }
 }
 
