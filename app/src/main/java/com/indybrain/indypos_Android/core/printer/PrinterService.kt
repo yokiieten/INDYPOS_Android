@@ -491,32 +491,48 @@ class PrinterService @Inject constructor(
     
     
     /**
-     * Format item with long name - split into multiple lines, price on last line only
-     * ใช้ pixel-based measurement จริง ไม่ใช้จำนวนตัวอักษร (เพราะไทย/อังกฤษกว้างไม่เท่ากัน)
+     * Format item with long name - บรรทัดแรกมีราคาชิดขวาคู่กับต้นชื่อ; บรรทัดต่อใช้ความกว้างเต็ม
+     * ใช้ pixel-based measurement จริง (ไทย/อังกฤษกว้างไม่เท่ากัน)
      */
     private fun formatItemLinesWithWrap(label: String, price: String): List<Pair<String, String?>> {
         val paint = createReceiptPaint(textSize = 30f)
         val priceWidth = paint.measureText(price)
-        val labelMaxWidth = RECEIPT_BITMAP_WIDTH - priceWidth
-        if (paint.measureText(label) <= labelMaxWidth) {
+        val firstLineLabelMax = RECEIPT_BITMAP_WIDTH - priceWidth
+        if (paint.measureText(label) <= firstLineLabelMax) {
             return listOf(label to price)
         }
         val lines = mutableListOf<Pair<String, String?>>()
         var remaining = label
-        while (paint.measureText(remaining) > labelMaxWidth) {
-            var fitLength = remaining.length
-            while (fitLength > 0 && paint.measureText(remaining.take(fitLength)) > labelMaxWidth) {
+
+        fun takeOneLine(text: String, maxWidthPx: Float): Pair<String, String> {
+            if (text.isEmpty()) return "" to ""
+            if (paint.measureText(text) <= maxWidthPx) return text to ""
+            var fitLength = text.length
+            while (fitLength > 0 && paint.measureText(text.take(fitLength)) > maxWidthPx) {
                 fitLength--
             }
             if (fitLength <= 0) fitLength = 1
-            val chunk = remaining.take(fitLength)
+            val chunk = text.take(fitLength)
             val breakAt = listOf(chunk.lastIndexOf(' '), chunk.lastIndexOf(',')).filter { it > 0 }.maxOrNull() ?: (fitLength - 1)
             val splitPoint = (breakAt + 1).coerceAtLeast(1)
-            val firstPart = remaining.take(splitPoint).trimEnd()
-            lines.add(firstPart to null)
-            remaining = remaining.drop(splitPoint).trimStart()
+            val part = text.take(splitPoint).trimEnd()
+            val rest = text.drop(splitPoint).trimStart()
+            return part to rest
         }
-        lines.add(remaining to price)
+
+        val (firstPart, afterFirst) = takeOneLine(remaining, firstLineLabelMax)
+        lines.add(firstPart to price)
+        remaining = afterFirst
+        val continuationMax = RECEIPT_BITMAP_WIDTH.toFloat()
+        while (remaining.isNotEmpty()) {
+            if (paint.measureText(remaining) <= continuationMax) {
+                lines.add(remaining to null)
+                break
+            }
+            val (line, rest) = takeOneLine(remaining, continuationMax)
+            lines.add(line to null)
+            remaining = rest
+        }
         return lines
     }
     
