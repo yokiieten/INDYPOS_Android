@@ -590,6 +590,8 @@
     <string name="product_management_add_product">เพิ่มสินค้าใหม่</string>
     <string name="product_management_empty">ไม่มีสินค้า</string>
     <string name="product_management_loading">กำลังโหลด...</string>
+    <string name="product_management_no_internet">จัดการสินค้าต้องเชื่อมต่ออินเทอร์เน็ตเพื่อโหลดรายการและหมวดหมู่</string>
+    <string name="product_management_load_error">เกิดข้อผิดพลาดในการโหลดข้อมูล</string>
     <string name="product_management_select_products">เลือกสินค้า</string>
     <string name="product_management_select_all">เลือกทั้งหมด</string>
     <string name="product_management_deselect_all">ยกเลิกเลือกทั้งหมด</string>

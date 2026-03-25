@@ -38,7 +38,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.util.Date
-import java.util.UUID
 import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
@@ -1456,115 +1455,22 @@ class ProductRepositoryImpl @Inject constructor(
         hasAdditionalOptions: Boolean?,
         addonGroupIds: List<String>?
     ): Result<ProductEntity> {
-        val userId = getCurrentUserId() ?: return Result.failure(
+        getCurrentUserId() ?: return Result.failure(
             Exception("ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่")
         )
-        
+
         return try {
-            val productEntity: ProductEntity
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val request = CreateProductRequestDto(
-                        name = name,
-                        description = null,
-                        price = price,
-                        costPrice = costPrice,
-                        imageUrl = imageUrl,
-                        categoryId = categoryId,
-                        productCode = productCode,
-                        unit = unit,
-                        skuCode = skuCode,
-                        stockQuantity = stockQuantity,
-                        minStockQuantity = null,
-                        selectedUnit = null,
-                        selectedColorHex = selectedColorHex,
-                        isSkuEnabled = isSkuEnabled,
-                        isStockEnabled = isStockEnabled,
-                        hasAdditionalOptions = hasAdditionalOptions,
-                        isActive = true,
-                        addonGroupIds = addonGroupIds
-                    )
-                    
-                    val response = productsApi.createProduct(request)
-                    
-                    if (response.status == 201 && response.data != null) {
-                        // API success (201 Created) - convert to entity and save to Room
-                        // Response has nested structure: data.product
-                        val productDto = response.data.product
-                        productEntity = ProductMapper.toEntity(productDto)
-                        productDao.insertAll(listOf(productEntity))
-                        
-                        // Delete old addon group relationships before inserting new ones
-                        // This ensures we remove old junctions if product was updated
-                        productAddonGroupJunctionDao.deleteByProductId(productEntity.id)
-                        
-                        // Save addon group relationships from response
-                        productDto.addonGroups?.forEach { addonGroupDto ->
-                            productAddonGroupJunctionDao.insert(
-                                com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
-                                    productId = productEntity.id,
-                                    addonGroupId = addonGroupDto.id
-                                )
-                            )
-                        }
-                        
-                        Result.success(productEntity)
-                    } else {
-                        // API returned error status
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการสร้างสินค้า"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    // Handle HTTP errors
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> {
-                            // Bad Request - parse error message
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        401 -> {
-                            // Unauthorized - parse specific error
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> {
-                            // Forbidden
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        409 -> {
-                            // Conflict - Duplicate product code or name
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        500 -> {
-                            // Internal Server Error
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        else -> {
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                    }
-                    Result.failure(Exception(errorMessage))
-                }
-            } else {
-                // No network - save to Room only (for sync later)
-                productEntity = ProductEntity(
-                    id = UUID.randomUUID().toString(),
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.product_management_no_internet)))
+            }
+            try {
+                val request = CreateProductRequestDto(
                     name = name,
                     description = null,
                     price = price,
                     costPrice = costPrice,
                     imageUrl = imageUrl,
                     categoryId = categoryId,
-                    userId = userId,
-                    popularityRank = null,
                     productCode = productCode,
                     unit = unit,
                     skuCode = skuCode,
@@ -1576,24 +1482,38 @@ class ProductRepositoryImpl @Inject constructor(
                     isStockEnabled = isStockEnabled,
                     hasAdditionalOptions = hasAdditionalOptions,
                     isActive = true,
-                    createdAt = Date(),
-                    updatedAt = Date(),
-                    isDeletedLocally = false,
-                    isFromServer = false,
-                    isSynced = false
+                    addonGroupIds = addonGroupIds
                 )
-                productDao.insertAll(listOf(productEntity))
-                
-                // Save addon group relationships locally
-                addonGroupIds?.forEach { addonGroupId ->
-                    productAddonGroupJunctionDao.insert(
-                        com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
-                            productId = productEntity.id,
-                            addonGroupId = addonGroupId
-                        )
-                    )
+
+                val response = productsApi.createProduct(request)
+
+                if (response.status == 201 && response.data != null) {
+                    val productDto = response.data.product
+                    Result.success(ProductMapper.toEntity(productDto))
+                } else {
+                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                        ?: response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการสร้างสินค้า"
+                    Result.failure(Exception(errorMessage))
                 }
-                Result.success(productEntity)
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = when (e.code()) {
+                    400 -> parseApiErrorResponse(errorBody, e.code())
+                    401 -> {
+                        val parsed = parseApiErrorResponse(errorBody, e.code())
+                        if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                            "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        } else {
+                            parsed
+                        }
+                    }
+                    403 -> parseApiErrorResponse(errorBody, e.code())
+                    409 -> parseApiErrorResponse(errorBody, e.code())
+                    500 -> parseApiErrorResponse(errorBody, e.code())
+                    else -> parseApiErrorResponse(errorBody, e.code())
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการสร้างสินค้า"))
@@ -1618,99 +1538,56 @@ class ProductRepositoryImpl @Inject constructor(
         addonGroupIds: List<String>?
     ): Result<ProductEntity> {
         return try {
-            val existingProduct = productDao.getProductById(productId)
-                ?: return Result.failure(Exception("ไม่พบสินค้าที่ต้องการอัปเดต"))
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val request = UpdateProductRequestDto(
-                        name = name,
-                        description = existingProduct.description,
-                        price = price,
-                        costPrice = costPrice,
-                        imageUrl = imageUrl,
-                        categoryId = categoryId,
-                        popularityRank = existingProduct.popularityRank,
-                        productCode = productCode,
-                        unit = unit,
-                        skuCode = skuCode,
-                        stockQuantity = stockQuantity,
-                        minStockQuantity = existingProduct.minStockQuantity,
-                        selectedUnit = existingProduct.selectedUnit,
-                        selectedColorHex = selectedColorHex,
-                        isSkuEnabled = isSkuEnabled,
-                        isStockEnabled = isStockEnabled,
-                        hasAdditionalOptions = hasAdditionalOptions,
-                        isActive = existingProduct.isActive,
-                        addonGroupIds = addonGroupIds
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.product_management_no_internet)))
+            }
+            val detailResult = getProductDetailFromApi(productId)
+            val existingProduct = detailResult.getOrNull()?.product
+                ?: return Result.failure(
+                    Exception(
+                        detailResult.exceptionOrNull()?.message
+                            ?: context.getString(R.string.product_form_error_load_not_found)
                     )
-                    
-                    val response = productsApi.updateProduct(productId, request)
-                    
-                    if (response.status == 200 && response.data != null) {
-                        // API success - response has nested structure: data.product
-                        val productDto = response.data.product
-                        val productEntity = ProductMapper.toEntity(productDto)
-                        productDao.insertAll(listOf(productEntity))
-                        
-                        // Refresh addon group relationships using addon_group_ids from response
-                        productAddonGroupJunctionDao.deleteByProductId(productId)
-                        response.data.addonGroupIds?.forEach { addonGroupId ->
-                            productAddonGroupJunctionDao.insert(
-                                com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
-                                    productId = productId,
-                                    addonGroupId = addonGroupId
-                                )
-                            )
-                        }
-                        
-                        Result.success(productEntity)
-                    } else {
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการอัปเดตสินค้า"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
-                    Result.failure(Exception(errorMessage))
-                }
-            } else {
-                // No network - update in Room only (for sync later)
-                val updatedProduct = existingProduct.copy(
+                )
+
+            try {
+                val request = UpdateProductRequestDto(
                     name = name,
-                    productCode = productCode,
+                    description = existingProduct.description,
                     price = price,
                     costPrice = costPrice,
-                    unit = unit,
                     imageUrl = imageUrl,
-                    selectedColorHex = selectedColorHex,
                     categoryId = categoryId,
+                    popularityRank = existingProduct.popularityRank,
+                    productCode = productCode,
+                    unit = unit,
                     skuCode = skuCode,
                     stockQuantity = stockQuantity,
+                    minStockQuantity = existingProduct.minStockQuantity,
+                    selectedUnit = existingProduct.selectedUnit,
+                    selectedColorHex = selectedColorHex,
                     isSkuEnabled = isSkuEnabled,
                     isStockEnabled = isStockEnabled,
                     hasAdditionalOptions = hasAdditionalOptions,
-                    isSynced = false,
-                    updatedAt = Date()
+                    isActive = existingProduct.isActive,
+                    addonGroupIds = addonGroupIds
                 )
-                
-                productDao.insertAll(listOf(updatedProduct))
-                
-                // Refresh addon group relationships locally
-                productAddonGroupJunctionDao.deleteByProductId(productId)
-                addonGroupIds?.forEach { addonGroupId ->
-                    productAddonGroupJunctionDao.insert(
-                        com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
-                            productId = productId,
-                            addonGroupId = addonGroupId
-                        )
-                    )
+
+                val response = productsApi.updateProduct(productId, request)
+
+                if (response.status == 200 && response.data != null) {
+                    val productDto = response.data.product
+                    Result.success(ProductMapper.toEntity(productDto))
+                } else {
+                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                        ?: response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการอัปเดตสินค้า"
+                    Result.failure(Exception(errorMessage))
                 }
-                
-                Result.success(updatedProduct)
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสินค้า"))

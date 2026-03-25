@@ -138,8 +138,7 @@ fun ProductManagementScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     
-    // Refresh products when screen becomes visible (returns from AddEditProductScreen)
-    // Reset search, reload API, and scroll to top so new/edited product appears in list
+    // On resume: reload products (search cleared), refetch categories for the filter, scroll to top
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->

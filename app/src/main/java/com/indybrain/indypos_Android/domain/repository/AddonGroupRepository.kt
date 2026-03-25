@@ -28,6 +28,11 @@ interface AddonGroupRepository {
         limit: Int = 20,
         search: String? = null
     ): Result<AddonGroupsPaginatedResult>
+
+    /**
+     * Get all addon groups from API (`GET .../addon-groups`) — full list, not paginated.
+     */
+    suspend fun getAllAddonGroupsFromApi(): Result<List<AddonGroupEntity>>
     
     /**
      * Get addon group by ID

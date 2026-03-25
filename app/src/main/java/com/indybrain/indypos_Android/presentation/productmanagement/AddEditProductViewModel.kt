@@ -8,7 +8,7 @@ import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
-import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -34,7 +33,6 @@ import javax.inject.Inject
 class AddEditProductViewModel @Inject constructor(
     private val productRepository: ProductRepository,
     private val addonGroupRepository: AddonGroupRepository,
-    private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
@@ -65,126 +63,119 @@ class AddEditProductViewModel @Inject constructor(
     init {
         loadCategories()
         loadAddonGroups()
-        // Fetch categories and addon groups from API when online
-        viewModelScope.launch {
-            if (networkConnectivityChecker.isConnected()) {
-                productRepository.fetchAndSyncCategories()
-                addonGroupRepository.fetchAndSyncAddonGroups()
-            }
-        }
     }
     
     /**
-     * Load categories
+     * Load categories from API only.
      */
     private fun loadCategories() {
         viewModelScope.launch {
             try {
-                if (networkConnectivityChecker.isConnected()) {
-                    productRepository.getAllCategoriesFromApi().onSuccess { categories ->
+                if (!networkConnectivityChecker.isConnected()) {
+                    _categories.value = emptyList()
+                    return@launch
+                }
+                productRepository.getAllCategoriesFromApi()
+                    .onSuccess { categories ->
                         _categories.value = categories.sortedBy { it.sortOrder ?: 0 }
                     }
-                } else {
-                    _categories.value = productRepository.getAllCategories()
-                        .sortedBy { it.sortOrder ?: 0 }
-                }
+                    .onFailure {
+                        _categories.value = emptyList()
+                    }
             } catch (e: Exception) {
+                _categories.value = emptyList()
             }
         }
     }
     
     /**
-     * Load addon groups
+     * Load addon groups from API (`GET .../addon-groups` — full list).
      */
     private fun loadAddonGroups() {
         viewModelScope.launch {
+            if (!networkConnectivityChecker.isConnected()) {
+                _uiState.update { it.copy(availableAddonGroups = emptyList()) }
+                return@launch
+            }
             try {
-                addonGroupRepository.getAllAddonGroupsFlow().collect { addonGroups ->
-                    if (addonGroups != null) {
-                        _uiState.update { it.copy(availableAddonGroups = addonGroups.sortedBy { it.sortOrder ?: 0 }) }
+                addonGroupRepository.getAllAddonGroupsFromApi().fold(
+                    onSuccess = { list ->
+                        _uiState.update {
+                            it.copy(availableAddonGroups = list.sortedBy { g -> g.sortOrder ?: 0 })
+                        }
+                    },
+                    onFailure = {
+                        _uiState.update { it.copy(availableAddonGroups = emptyList()) }
                     }
-                }
+                )
             } catch (e: Exception) {
-                // Handle error silently or log it
-                // Addon groups will remain empty if there's an error
+                _uiState.update { it.copy(availableAddonGroups = emptyList()) }
             }
         }
     }
     
     /**
-     * Load product data for editing
-     * Tries Room first, then API (for products from paginated list that may not be in Room)
+     * Load product for editing from API only.
      */
     fun loadProduct(productId: String) {
         this.productId = productId
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-                var product = productRepository.getProductById(productId)
-                var addonGroupIdsFromApi: List<String>? = null
-                
-                // If not in Room, try API (products from paginated list may not be synced to Room)
-                if (product == null && networkConnectivityChecker.isConnected()) {
-                    val apiResult = productRepository.getProductDetailFromApi(productId)
-                    apiResult.onSuccess { detailData ->
-                        product = detailData.product
-                        addonGroupIdsFromApi = detailData.addonGroups.map { it.id }
-                        // Save to Room for future use
-                        productRepository.ensureProductExists(detailData.product, detailData.category)
-                    }
-                }
-                
-                if (product != null) {
-                    val p = product!!
-                    loadedProduct = p
-                    // Normalize imageUrl: treat blank string as null
-                    val normalizedImageUrl = p.imageUrl?.takeIf { it.isNotBlank() }
-                    // Decide initial mode: image vs color
-                    val isColorMode = (p.selectedUnit == SELECTED_UNIT_COLOR) ||
-                        (normalizedImageUrl == null && !p.selectedColorHex.isNullOrBlank())
-                    val isImageMode = !isColorMode
-                    // Load selected addon group IDs (from API response if loaded from API, else from Room)
-                    val selectedAddonGroupIds = addonGroupIdsFromApi ?: try {
-                        productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
-                    } catch (e: Exception) {
-                        emptyList()
-                    }
-                    
-                    // Format prices for display when loading
-                    val formattedSellingPrice = p.price?.let { formatPriceForDisplay(it.toString()) } ?: "0"
-                    val formattedCostPrice = p.costPrice?.let { formatPriceForDisplay(it.toString()) } ?: ""
-                    
-                    _uiState.update { 
-                        it.copy(
-                            productName = p.name ?: "",
-                            productCode = p.productCode ?: "",
-                            sellingPrice = formattedSellingPrice,
-                            costPrice = formattedCostPrice,
-                            unit = p.unit ?: "",
-                            imageUrl = normalizedImageUrl,
-                            selectedColorHex = p.selectedColorHex,
-                            isImageSelected = isImageMode,
-                            categoryId = p.categoryId,
-                            isSkuEnabled = p.isSkuEnabled ?: false,
-                            skuCode = p.skuCode ?: "",
-                            isStockEnabled = p.isStockEnabled ?: false,
-                            stockQuantity = p.stockQuantity?.toString() ?: "",
-                            addonGroupIds = selectedAddonGroupIds,
-                            hasAdditionalOptions = p.hasAdditionalOptions ?: false,
-                            isLoading = false
-                        )
-                    }
-                } else {
-                    _uiState.update { 
+                if (!networkConnectivityChecker.isConnected()) {
+                    _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = getLocalizedString(R.string.product_form_error_load_not_found)
+                            errorMessage = getLocalizedString(R.string.product_management_no_internet)
                         )
                     }
+                    return@launch
                 }
+                productRepository.getProductDetailFromApi(productId).fold(
+                    onSuccess = { detailData ->
+                        val p = detailData.product
+                        loadedProduct = p
+                        val selectedAddonGroupIds = detailData.addonGroups.map { it.id }
+                        val normalizedImageUrl = p.imageUrl?.takeIf { it.isNotBlank() }
+                        val isColorMode = (p.selectedUnit == SELECTED_UNIT_COLOR) ||
+                            (normalizedImageUrl == null && !p.selectedColorHex.isNullOrBlank())
+                        val isImageMode = !isColorMode
+                        val formattedSellingPrice = p.price?.let { formatPriceForDisplay(it.toString()) } ?: "0"
+                        val formattedCostPrice = p.costPrice?.let { formatPriceForDisplay(it.toString()) } ?: ""
+                        _uiState.update {
+                            it.copy(
+                                productName = p.name ?: "",
+                                productCode = p.productCode ?: "",
+                                sellingPrice = formattedSellingPrice,
+                                costPrice = formattedCostPrice,
+                                unit = p.unit ?: "",
+                                imageUrl = normalizedImageUrl,
+                                selectedColorHex = p.selectedColorHex,
+                                isImageSelected = isImageMode,
+                                categoryId = p.categoryId,
+                                isSkuEnabled = p.isSkuEnabled ?: false,
+                                skuCode = p.skuCode ?: "",
+                                isStockEnabled = p.isStockEnabled ?: false,
+                                stockQuantity = p.stockQuantity?.toString() ?: "",
+                                addonGroupIds = selectedAddonGroupIds,
+                                hasAdditionalOptions = p.hasAdditionalOptions ?: false,
+                                isLoading = false
+                            )
+                        }
+                    },
+                    onFailure = { err ->
+                        _uiState.update { state ->
+                            state.copy(
+                                isLoading = false,
+                                errorMessage = err.message
+                                    ?: getLocalizedString(R.string.product_form_error_load_not_found)
+                            )
+                        }
+                    }
+                )
             } catch (e: Exception) {
                 val reason = e.message ?: getLocalizedString(R.string.product_form_error_unknown_reason)
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = getLocalizedString(R.string.product_form_error_load_with_reason, reason)
@@ -547,6 +538,18 @@ class AddEditProductViewModel @Inject constructor(
             }
             return
         }
+
+        if (!networkConnectivityChecker.isConnected()) {
+            _uiState.update {
+                it.copy(
+                    showAddCategoryDialog = false,
+                    categoryName = "",
+                    categoryError = null,
+                    errorMessage = getLocalizedString(R.string.product_management_no_internet)
+                )
+            }
+            return
+        }
         
         viewModelScope.launch {
             _uiState.update { 
@@ -557,15 +560,9 @@ class AddEditProductViewModel @Inject constructor(
                 ) 
             }
             
-            val maxSortOrder = if (networkConnectivityChecker.isConnected()) {
-                productRepository.getAllCategoriesFromApi().getOrNull()
-                    ?.mapNotNull { it.sortOrder }
-                    ?.maxOrNull() ?: 0
-            } else {
-                productRepository.getAllCategories()
-                    .mapNotNull { it.sortOrder }
-                    .maxOrNull() ?: 0
-            }
+            val maxSortOrder = productRepository.getAllCategoriesFromApi().getOrNull()
+                ?.mapNotNull { it.sortOrder }
+                ?.maxOrNull() ?: 0
             
             val result = productRepository.createCategory(
                 name = categoryName,
@@ -603,8 +600,7 @@ class AddEditProductViewModel @Inject constructor(
     }
     
     /**
-     * Save product (add new or update existing)
-     * For create mode: calls API if network available, otherwise saves to Room with isFromServer=false, isSynced=false
+     * Save product (add new or update existing) via API only — requires network.
      */
     fun saveProduct(onSuccess: () -> Unit) {
         val state = _uiState.value
@@ -710,21 +706,12 @@ class AddEditProductViewModel @Inject constructor(
             }
         }
         
-        // Check network connectivity
-        val hasNetwork = networkConnectivityChecker.isConnected()
-        
-        // If no network and image is selected, show dialog
-        if (!hasNetwork && state.isImageSelected && state.imageUrl != null) {
-            // Check if imageUrl is a local URI (content:// or file://)
-            val isLocalUri = state.imageUrl.startsWith("content://") || state.imageUrl.startsWith("file://")
-            if (isLocalUri) {
-                _uiState.update { 
-                    it.copy(showNoInternetDialog = true)
-                }
-                return
+        if (!networkConnectivityChecker.isConnected()) {
+            _uiState.update {
+                it.copy(errorMessage = getLocalizedString(R.string.product_management_no_internet))
             }
+            return
         }
-        
         viewModelScope.launch {
             _uiState.update { 
                 it.copy(
@@ -752,7 +739,7 @@ class AddEditProductViewModel @Inject constructor(
                 var finalImageUrl = state.imageUrl
                 
                 // If has network and image is selected, upload image first
-                if (hasNetwork && state.isImageSelected && state.imageUrl != null) {
+                if (state.isImageSelected && state.imageUrl != null) {
                     // Check if imageUrl is a local URI (needs upload)
                     val isLocalUri = state.imageUrl.startsWith("content://") || state.imageUrl.startsWith("file://")
                     if (isLocalUri) {
@@ -804,10 +791,8 @@ class AddEditProductViewModel @Inject constructor(
                     }
                 } else {
                     // No image or offline, show saving message
-                    if (hasNetwork) {
-                        _uiState.update { 
-                            it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
-                        }
+                    _uiState.update { 
+                        it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
                     }
                 }
                 
@@ -872,7 +857,7 @@ class AddEditProductViewModel @Inject constructor(
                 var finalImageUrl = state.imageUrl
                 
                 // If has network and image is selected, upload image first
-                if (hasNetwork && state.isImageSelected && state.imageUrl != null) {
+                if (state.isImageSelected && state.imageUrl != null) {
                     val isLocalUri = state.imageUrl.startsWith("content://") || state.imageUrl.startsWith("file://")
                     if (isLocalUri) {
                         _uiState.update { 
@@ -919,10 +904,8 @@ class AddEditProductViewModel @Inject constructor(
                         }
                     }
                 } else {
-                    if (hasNetwork) {
-                        _uiState.update { 
-                            it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
-                        }
+                    _uiState.update { 
+                        it.copy(loadingMessage = getLocalizedString(R.string.product_form_loading_saving_product))
                     }
                 }
                 

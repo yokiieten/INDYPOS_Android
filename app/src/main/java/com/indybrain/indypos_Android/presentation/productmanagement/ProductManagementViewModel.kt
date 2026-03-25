@@ -7,7 +7,6 @@ import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
-import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -16,8 +15,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -54,18 +51,8 @@ class ProductManagementViewModel @Inject constructor(
     private var searchJob: Job? = null
     private val pageSize = 20
     
-    init {
-        observeCategories()
-        // Sync categories when online (for dropdown) - load products on ON_RESUME
-        viewModelScope.launch {
-            if (networkConnectivityChecker.isConnected()) {
-                productRepository.fetchAndSyncCategories()
-            }
-        }
-    }
-    
     /**
-     * Load products - uses paginated API when online, Room when offline
+     * Load products via paginated API only (requires network).
      * @param clearError if true, clears errorMessage when starting (default). Set false when refreshing after delete fail to preserve error popup.
      * @param page page to load (1 = first page, resets list)
      */
@@ -80,104 +67,83 @@ class ProductManagementViewModel @Inject constructor(
                 )
             }
             
-            if (networkConnectivityChecker.isConnected()) {
-                // Online - use paginated API
-                val result = productRepository.getProductsPaginated(
-                    page = page,
-                    limit = pageSize,
-                    search = searchQueryFlow.value.takeIf { it.isNotBlank() },
-                    categoryId = selectedCategoryFlow.value
-                )
-                
-                result.onSuccess { paginatedResult ->
-                    _uiState.update { current ->
-                        val pendingDeleteIds = current.pendingDeleteProductIds
-                        val visibleProducts = paginatedResult.products.filter { 
-                            it.id == null || !pendingDeleteIds.contains(it.id) 
-                        }
-                        val existingProducts = if (isFirstPage) emptyList() else (current.filteredProducts ?: emptyList())
-                        val newProducts = if (isFirstPage) visibleProducts else existingProducts + visibleProducts
-                        
-                        current.copy(
-                            products = if (isFirstPage) newProducts else (current.products ?: emptyList()) + paginatedResult.products,
-                            filteredProducts = newProducts,
-                            currentPage = paginatedResult.currentPage,
-                            totalPages = paginatedResult.totalPages,
-                            totalCount = paginatedResult.totalCount,
-                            hasNextPage = paginatedResult.hasNext,
-                            isLoading = false,
-                            isLoadingMore = false
-                        )
-                    }
-                }.onFailure { error ->
-                    _uiState.update { current ->
-                        current.copy(
-                            isLoading = false,
-                            isLoadingMore = false,
-                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
-                        )
-                    }
+            if (!networkConnectivityChecker.isConnected()) {
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        isLoadingMore = false,
+                        errorMessage = getLocalizedString(R.string.product_management_no_internet),
+                        products = if (isFirstPage) emptyList() else current.products,
+                        filteredProducts = if (isFirstPage) emptyList() else current.filteredProducts,
+                        currentPage = if (isFirstPage) 1 else current.currentPage,
+                        totalPages = if (isFirstPage) 1 else current.totalPages,
+                        totalCount = if (isFirstPage) 0 else current.totalCount,
+                        hasNextPage = if (isFirstPage) false else current.hasNextPage
+                    )
                 }
-            } else {
-                // Offline - fall back to Room
-                loadProductsFromRoomAndUpdateState()
+                return@launch
+            }
+
+            val result = productRepository.getProductsPaginated(
+                page = page,
+                limit = pageSize,
+                search = searchQueryFlow.value.takeIf { it.isNotBlank() },
+                categoryId = selectedCategoryFlow.value
+            )
+
+            result.onSuccess { paginatedResult ->
+                _uiState.update { current ->
+                    val pendingDeleteIds = current.pendingDeleteProductIds
+                    val visibleProducts = paginatedResult.products.filter {
+                        !pendingDeleteIds.contains(it.id)
+                    }
+                    val existingProducts = if (isFirstPage) emptyList() else (current.filteredProducts ?: emptyList())
+                    val newProducts = if (isFirstPage) visibleProducts else existingProducts + visibleProducts
+
+                    current.copy(
+                        products = if (isFirstPage) newProducts else (current.products ?: emptyList()) + paginatedResult.products,
+                        filteredProducts = newProducts,
+                        currentPage = paginatedResult.currentPage,
+                        totalPages = paginatedResult.totalPages,
+                        totalCount = paginatedResult.totalCount,
+                        hasNextPage = paginatedResult.hasNext,
+                        isLoading = false,
+                        isLoadingMore = false
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        isLoadingMore = false,
+                        errorMessage = error.message ?: getLocalizedString(R.string.product_management_load_error)
+                    )
+                }
             }
         }
     }
-    
+
     /**
-     * Load products from Room and update state - used when offline
+     * Reload category list for the filter dropdown from API.
+     * Called from [refreshProductsAndClearSearch] on each screen resume so categories stay fresh after e.g. category management.
      */
-    private suspend fun loadProductsFromRoomAndUpdateState() {
-        val products = productRepository.getAllProductsForManagement().first()
-        val query = searchQueryFlow.value
-        val categoryId = selectedCategoryFlow.value
-        val filtered = products.filter { product ->
-            val matchesSearch = query.isBlank() || product.name?.contains(query, ignoreCase = true) == true
-            val matchesCategory = categoryId == null || product.categoryId == categoryId
-            matchesSearch && matchesCategory
-        }
-        val sorted = filtered.sortedWith(
-            compareBy<ProductEntity> { if (it.isSynced == true) 1 else 0 }.thenBy { it.name ?: "" }
-        )
-        _uiState.update { current ->
-            val pendingDeleteIds = current.pendingDeleteProductIds
-            val visibleAll = products.filter { it.id == null || !pendingDeleteIds.contains(it.id) }
-            val visibleFiltered = sorted.filter { it.id == null || !pendingDeleteIds.contains(it.id) }
-            current.copy(
-                products = visibleAll,
-                filteredProducts = visibleFiltered,
-                currentPage = 1,
-                totalPages = 1,
-                totalCount = visibleFiltered.size,
-                hasNextPage = false,
-                isLoading = false,
-                isLoadingMore = false
-            )
-        }
-    }
-    
-    /**
-     * Load category filter list from API when online; falls back to Room cache when offline.
-     */
-    private fun observeCategories() {
+    private fun refreshCategoriesFromApi() {
         viewModelScope.launch {
-            if (networkConnectivityChecker.isConnected()) {
-                productRepository.getAllCategoriesFromApi().onSuccess { categories ->
+            if (!networkConnectivityChecker.isConnected()) {
+                _uiState.update { current -> current.copy(categories = emptyList()) }
+                return@launch
+            }
+            productRepository.getAllCategoriesFromApi()
+                .onSuccess { categories ->
                     _uiState.update { current ->
                         current.copy(
                             categories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
                         )
                     }
                 }
-            } else {
-                val categories = productRepository.getAllCategories()
-                _uiState.update { current ->
-                    current.copy(
-                        categories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
-                    )
+                .onFailure {
+                    _uiState.update { current -> current.copy(categories = emptyList()) }
                 }
-            }
         }
     }
     
@@ -198,6 +164,7 @@ class ProductManagementViewModel @Inject constructor(
         searchQueryFlow.value = ""
         selectedCategoryFlow.value = null
         _uiState.update { it.copy(searchQuery = "", selectedCategoryId = null, selectedProductIds = emptySet()) }
+        refreshCategoriesFromApi()
         loadProducts(clearError = true, page = 1)
     }
     
@@ -335,11 +302,7 @@ class ProductManagementViewModel @Inject constructor(
     fun deleteProduct(productId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            // Get product name before deleting
-            val product = productRepository.getProductById(productId)
-            val productName = product?.name ?: "สินค้า"
-            
+
             val result = productRepository.deleteProduct(productId)
             
             result.onSuccess {

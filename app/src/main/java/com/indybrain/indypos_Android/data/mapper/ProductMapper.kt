@@ -34,6 +34,8 @@ object ProductMapper {
     }
     
     fun toEntity(dto: ProductDto): ProductEntity {
+        // Detail API often returns nested `category` while omitting top-level category_id
+        val categoryId = dto.categoryId ?: dto.category?.id
         return ProductEntity(
             id = dto.id,
             name = dto.name,
@@ -41,7 +43,7 @@ object ProductMapper {
             price = dto.price,
             costPrice = dto.costPrice,
             imageUrl = dto.imageUrl,
-            categoryId = dto.categoryId,
+            categoryId = categoryId,
             userId = dto.userId,
             popularityRank = dto.popularityRank,
             productCode = dto.productCode,

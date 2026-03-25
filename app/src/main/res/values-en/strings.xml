@@ -578,6 +578,8 @@
     <string name="product_management_add_product">Add New Product</string>
     <string name="product_management_empty">No products</string>
     <string name="product_management_loading">Loading...</string>
+    <string name="product_management_no_internet">Product management needs an internet connection to load products and categories</string>
+    <string name="product_management_load_error">Failed to load data</string>
     <string name="product_management_select_products">Select Products</string>
     <string name="product_management_select_all">Select all</string>
     <string name="product_management_deselect_all">Deselect all</string>

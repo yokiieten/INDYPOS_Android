@@ -6,6 +6,7 @@ import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
 import com.indybrain.indypos_Android.data.local.entity.AddonGroupAddonJunctionEntity
@@ -17,6 +18,7 @@ import com.indybrain.indypos_Android.data.remote.dto.DeleteAddonGroupsResponseDt
 import com.indybrain.indypos_Android.domain.repository.AddonGroupsPaginatedResult
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.DeleteAddonGroupsResult
+import com.indybrain.indypos_Android.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -96,6 +98,29 @@ class AddonGroupRepositoryImpl @Inject constructor(
                     hasPrevious = pagination?.hasPrevious ?: false
                 )
             )
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
+    }
+
+    override suspend fun getAllAddonGroupsFromApi(): Result<List<AddonGroupEntity>> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.product_management_no_internet)))
+        }
+        return try {
+            val response = productsApi.getAddonGroups()
+            if (response.status != 200) {
+                return Result.failure(Exception(response.message ?: "Failed to fetch addon groups"))
+            }
+            val list = (response.data ?: emptyList()).map { ProductMapper.toEntity(it) }
+            Result.success(list)
         } catch (e: HttpException) {
             val errorMessage = when (e.code()) {
                 401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
