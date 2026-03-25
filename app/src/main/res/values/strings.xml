@@ -704,6 +704,10 @@
     <string name="addon_group_management_sync_pending">รอ Sync: %1$d</string>
     <string name="addon_group_management_sync_deleted">ถูกลบ: %1$d</string>
     <string name="addon_group_management_sync_now">Sync ตอนนี้</string>
+    <string name="addon_group_management_no_internet">จัดการกลุ่มแอดออนต้องเชื่อมต่ออินเทอร์เน็ตเพื่อโหลดรายการ</string>
+    <string name="addon_group_management_load_error">เกิดข้อผิดพลาดในการโหลดข้อมูล</string>
+    <string name="addon_group_management_sync_refresh_success">ดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์แล้ว</string>
+    <string name="addon_group_default_name">กลุ่ม Addon</string>
     <string name="addon_group_management_delete_title">ลบ</string>
     <string name="addon_group_management_delete_confirm_single">คุณต้องการลบกลุ่ม Addon \'%1$s\' ใช่หรือไม่?</string>
     <string name="addon_group_management_delete_confirm_multiple">คุณต้องการลบกลุ่ม Addon %1$d รายการใช่หรือไม่?</string>

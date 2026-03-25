@@ -601,7 +601,7 @@ private fun AddonGroupSyncStatusDialog(
             }
         },
         confirmButton = {
-            if (statistics != null && statistics.unsynced > 0) {
+            if (statistics != null) {
                 TextButton(onClick = onSyncNow) {
                     Text(
                         text = stringResource(id = R.string.addon_group_management_sync_now),

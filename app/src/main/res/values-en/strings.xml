@@ -692,6 +692,10 @@
     <string name="addon_group_management_sync_pending">Pending: %1$d</string>
     <string name="addon_group_management_sync_deleted">Deleted: %1$d</string>
     <string name="addon_group_management_sync_now">Sync Now</string>
+    <string name="addon_group_management_no_internet">Addon group management needs an internet connection to load the list</string>
+    <string name="addon_group_management_load_error">Failed to load data</string>
+    <string name="addon_group_management_sync_refresh_success">Loaded the latest data from the server</string>
+    <string name="addon_group_default_name">Addon group</string>
     <string name="addon_group_management_delete_title">Delete</string>
     <string name="addon_group_management_delete_confirm_single">Are you sure you want to delete addon group \'%1$s\'?</string>
     <string name="addon_group_management_delete_confirm_multiple">Are you sure you want to delete %1$d addon groups?</string>

@@ -11,6 +11,11 @@ interface AddonRepository {
      * Get all addons from local database (including inactive, excluding deleted)
      */
     fun getAllAddonsForManagementFlow(): Flow<List<AddonEntity>>
+
+    /**
+     * Get all addons from API (`GET .../addons`) — no Room write.
+     */
+    suspend fun getAllAddonsFromApi(): Result<List<AddonEntity>>
     
     /**
      * Get addons paginated from API for AddOn Management

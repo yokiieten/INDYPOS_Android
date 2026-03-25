@@ -43,6 +43,11 @@ interface AddonGroupRepository {
      * Get addon group with addons by ID
      */
     suspend fun getAddonGroupWithAddonsById(id: String): AddonGroupWithAddons?
+
+    /**
+     * Load addon group with nested addons from API (`GET .../addon-groups`), no Room.
+     */
+    suspend fun getAddonGroupWithAddonsFromApi(id: String): Result<AddonGroupWithAddons>
     
     /**
      * Create a new addon group
@@ -75,11 +80,6 @@ interface AddonGroupRepository {
         isActive: Boolean? = null,
         selectedAddonIds: List<String>? = null
     ): Result<AddonGroupEntity>
-    
-    /**
-     * Check for duplicate name (case-insensitive, trimmed)
-     */
-    suspend fun isDuplicateName(name: String, excludeId: String? = null): Boolean
     
     /**
      * Toggle addon group status (activate/deactivate)

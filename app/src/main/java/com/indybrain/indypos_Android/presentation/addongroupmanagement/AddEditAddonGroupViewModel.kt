@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
-import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.AddonEntity
@@ -15,8 +14,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,7 +25,6 @@ import javax.inject.Inject
 class AddEditAddonGroupViewModel @Inject constructor(
     private val addonGroupRepository: AddonGroupRepository,
     private val addonRepository: AddonRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -61,6 +57,8 @@ class AddEditAddonGroupViewModel @Inject constructor(
         val successMessage: String? = null,
         val isEditMode: Boolean = false,
         val editingAddonGroupId: String? = null,
+        /** Preserved from server when opening edit — needed for PUT without a pre-save GET */
+        val editingAddonGroupIsActive: Boolean = true,
         val isSuccess: Boolean = false,
         val isOfflineSuccess: Boolean = false
     )
@@ -69,82 +67,65 @@ class AddEditAddonGroupViewModel @Inject constructor(
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
     
     init {
-        // ดึงรายการ Addon ล่าสุดจาก API -> Sync ลง Room ก่อน
-        // จากนั้นค่อยให้ UI subscribe จาก Room ผ่าน Flow
         viewModelScope.launch {
-            try {
-                addonRepository.fetchAndSyncAddons()
-                // ถ้า fail (เช่น ไม่มีเน็ต) ก็ยังให้ UI ใช้ข้อมูลใน Room ต่อได้ตามปกติ
-            } catch (_: Exception) {
-                // ไม่ต้องโชว์ error ที่นี่ ปล่อยให้ flow ใน Room ทำงานต่อไป
-            }
+            loadAvailableAddonsFromApi()
         }
-        loadAvailableAddons()
     }
     
     /**
-     * Initialize for edit mode
-     * Tries Room first, then syncs from API when not found (addon groups from paginated list may not be in Room)
+     * Initialize for edit mode — loads group + linked addons from API only.
      */
     fun initializeForEdit(addonGroupId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            var addonGroupWithAddons = addonGroupRepository.getAddonGroupWithAddonsById(addonGroupId)
-            
-            // If not in Room, sync from API (addon groups from paginated list may not be synced to Room)
-            if (addonGroupWithAddons == null && networkConnectivityChecker.isConnected()) {
-                addonGroupRepository.fetchAndSyncAddonGroups()
-                addonGroupWithAddons = addonGroupRepository.getAddonGroupWithAddonsById(addonGroupId)
-            }
-            
-            if (addonGroupWithAddons != null) {
-                _uiState.update { current ->
-                    current.copy(
-                        isEditMode = true,
-                        editingAddonGroupId = addonGroupWithAddons.addonGroup.id,
-                        formState = FormState(
-                            groupName = addonGroupWithAddons.addonGroup.name,
-                            isRequired = addonGroupWithAddons.addonGroup.isRequired,
-                            maxSelection = if (addonGroupWithAddons.addonGroup.maxSelection != null && addonGroupWithAddons.addonGroup.maxSelection!! > 0) {
-                                addonGroupWithAddons.addonGroup.maxSelection.toString()
-                            } else "",
-                            selectedAddonIds = addonGroupWithAddons.addons.mapNotNull { it.id }.toSet()
-                        ),
-                        isLoading = false
-                    )
+            addonGroupRepository.getAddonGroupWithAddonsFromApi(addonGroupId).fold(
+                onSuccess = { addonGroupWithAddons ->
+                    _uiState.update { current ->
+                        current.copy(
+                            isEditMode = true,
+                            editingAddonGroupId = addonGroupWithAddons.addonGroup.id,
+                            editingAddonGroupIsActive = addonGroupWithAddons.addonGroup.isActive,
+                            formState = FormState(
+                                groupName = addonGroupWithAddons.addonGroup.name,
+                                isRequired = addonGroupWithAddons.addonGroup.isRequired,
+                                maxSelection = if (addonGroupWithAddons.addonGroup.maxSelection != null && addonGroupWithAddons.addonGroup.maxSelection!! > 0) {
+                                    addonGroupWithAddons.addonGroup.maxSelection.toString()
+                                } else "",
+                                selectedAddonIds = addonGroupWithAddons.addons.mapNotNull { it.id }.toSet()
+                            ),
+                            isLoading = false
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = e.message ?: getLocalizedString(R.string.addon_group_form_error_not_found)
+                        )
+                    }
                 }
-            } else {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = getLocalizedString(R.string.addon_group_form_error_not_found)
-                    )
-                }
-            }
+            )
         }
     }
     
-    /**
-     * Load available addons
-     */
-    private fun loadAvailableAddons() {
-        viewModelScope.launch {
-            addonRepository.getAllAddonsForManagementFlow()
-                .catch { e ->
-                    val reason = e.message ?: getLocalizedString(R.string.common_error)
-                    _uiState.update { 
-                        it.copy(
-                            errorMessage = getLocalizedString(
-                                R.string.addon_group_form_error_load_addons_with_reason,
-                                reason
-                            )
-                        ) 
-                    }
+    private suspend fun loadAvailableAddonsFromApi() {
+        addonRepository.getAllAddonsFromApi().fold(
+            onSuccess = { addons ->
+                _uiState.update { it.copy(availableAddons = addons) }
+            },
+            onFailure = { e ->
+                val reason = e.message ?: getLocalizedString(R.string.common_error)
+                _uiState.update {
+                    it.copy(
+                        errorMessage = getLocalizedString(
+                            R.string.addon_group_form_error_load_addons_with_reason,
+                            reason
+                        )
+                    )
                 }
-                .collect { addons ->
-                    _uiState.update { it.copy(availableAddons = addons) }
-                }
-        }
+            }
+        )
     }
     
     /**
@@ -218,27 +199,15 @@ class AddEditAddonGroupViewModel @Inject constructor(
         val maxSelection = if (formState.maxSelection.isEmpty()) 1 else formState.maxSelection.toIntOrNull() ?: 1
         
         viewModelScope.launch {
-            // Check for duplicate name
-            val excludeId = if (_uiState.value.isEditMode) {
-                _uiState.value.editingAddonGroupId
-            } else {
-                null
-            }
-            
-            if (addonGroupRepository.isDuplicateName(formState.groupName, excludeId)) {
-                _uiState.update { 
-                    it.copy(
-                        errorMessage = getLocalizedString(R.string.addon_group_form_error_duplicate_name)
-                    ) 
-                }
-                return@launch
-            }
-            
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
+
             val selectedAddonIds = formState.selectedAddonIds.toList()
-            
+
             if (_uiState.value.isEditMode) {
+                if (_uiState.value.editingAddonGroupId == null) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    return@launch
+                }
                 updateAddonGroup(formState, maxSelection, selectedAddonIds)
             } else {
                 createAddonGroup(formState, maxSelection, selectedAddonIds)
@@ -261,18 +230,13 @@ class AddEditAddonGroupViewModel @Inject constructor(
         )
         
         result.fold(
-            onSuccess = { addonGroup ->
-                val isOffline = !addonGroup.isSynced || !addonGroup.isFromServer
+            onSuccess = { _ ->
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         isSuccess = true,
-                        isOfflineSuccess = isOffline,
-                        successMessage = if (isOffline) {
-                            getLocalizedString(R.string.addon_group_form_success_add_offline)
-                        } else {
-                            getLocalizedString(R.string.addon_group_form_success_add)
-                        }
+                        isOfflineSuccess = false,
+                        successMessage = getLocalizedString(R.string.addon_group_form_success_add)
                     )
                 }
             },
@@ -287,7 +251,8 @@ class AddEditAddonGroupViewModel @Inject constructor(
      */
     private suspend fun updateAddonGroup(formState: FormState, maxSelection: Int, selectedAddonIds: List<String>) {
         val editingGroupId = _uiState.value.editingAddonGroupId ?: return
-        
+        val isActive = _uiState.value.editingAddonGroupIsActive
+
         val result = addonGroupRepository.updateAddonGroup(
             addonGroupId = editingGroupId,
             name = formState.groupName,
@@ -296,23 +261,18 @@ class AddEditAddonGroupViewModel @Inject constructor(
             maxSelection = maxSelection,
             minSelection = 0,
             sortOrder = 1,
-            isActive = null,
+            isActive = isActive,
             selectedAddonIds = selectedAddonIds
         )
         
         result.fold(
-            onSuccess = { addonGroup ->
-                val isOffline = !addonGroup.isSynced || !addonGroup.isFromServer
+            onSuccess = { _ ->
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         isSuccess = true,
-                        isOfflineSuccess = isOffline,
-                        successMessage = if (isOffline) {
-                            getLocalizedString(R.string.addon_group_form_success_edit_offline)
-                        } else {
-                            getLocalizedString(R.string.addon_group_form_success_edit)
-                        }
+                        isOfflineSuccess = false,
+                        successMessage = getLocalizedString(R.string.addon_group_form_success_edit)
                     )
                 }
             },
@@ -369,7 +329,7 @@ class AddEditAddonGroupViewModel @Inject constructor(
             val result = addonRepository.createAddon(name, price)
             result.fold(
                 onSuccess = {
-                    addonRepository.fetchAndSyncAddons()
+                    loadAvailableAddonsFromApi()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -378,7 +338,6 @@ class AddEditAddonGroupViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
-                    addonRepository.fetchAndSyncAddons()
                     val errorMessage = error.message ?: getLocalizedString(R.string.addon_form_error_create_addon)
                     _uiState.update {
                         it.copy(

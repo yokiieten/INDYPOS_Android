@@ -18,6 +18,7 @@ import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import com.indybrain.indypos_Android.domain.repository.AddonsPaginatedResult
 import com.indybrain.indypos_Android.domain.repository.AddonSyncStatistics
 import com.indybrain.indypos_Android.domain.repository.DeleteAddonsResult
+import com.indybrain.indypos_Android.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import okhttp3.ResponseBody
@@ -63,6 +64,29 @@ class AddonRepositoryImpl @Inject constructor(
     
     override fun getAllAddonsForManagementFlow(): Flow<List<com.indybrain.indypos_Android.data.local.entity.AddonEntity>> {
         return addonDao.getAllAddonsForManagementFlow()
+    }
+
+    override suspend fun getAllAddonsFromApi(): Result<List<com.indybrain.indypos_Android.data.local.entity.AddonEntity>> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.addon_group_management_no_internet)))
+        }
+        return try {
+            val response = productsApi.getAddons()
+            if (response.status != 200) {
+                return Result.failure(Exception(response.message ?: "Failed to fetch addons"))
+            }
+            val list = (response.data ?: emptyList()).map { ProductMapper.toEntity(it) }
+            Result.success(list)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
     }
     
     override suspend fun getAddonById(id: String): com.indybrain.indypos_Android.data.local.entity.AddonEntity? {

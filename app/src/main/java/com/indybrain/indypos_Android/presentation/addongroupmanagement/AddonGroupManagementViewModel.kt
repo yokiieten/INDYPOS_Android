@@ -8,11 +8,11 @@ import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
+import com.indybrain.indypos_Android.domain.repository.AddonGroupSyncStatistics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,90 +55,80 @@ class AddonGroupManagementViewModel @Inject constructor(
     }
     
     /**
-     * Load addon groups - uses paginated API when online, Room when offline
-     * @param clearError if true, clears errorMessage when starting (default).
-     * @param page page to load (1 = first page, resets list)
+     * Load addon groups via paginated API only (requires network).
      */
     private fun loadAddonGroups(clearError: Boolean = true, page: Int = 1) {
         viewModelScope.launch {
-            val isFirstPage = page == 1
-            _uiState.update { 
-                it.copy(
-                    isLoading = isFirstPage,
-                    isLoadingMore = !isFirstPage,
-                    errorMessage = if (clearError) null else it.errorMessage
-                )
-            }
-            
-            if (networkConnectivityChecker.isConnected()) {
-                val result = addonGroupRepository.getAddonGroupsPaginated(
-                    page = page,
-                    limit = pageSize,
-                    search = searchQueryFlow.value.takeIf { it.isNotBlank() }
-                )
-                
-                result.onSuccess { paginatedResult ->
-                    _uiState.update { current ->
-                        val pendingDeleteIds = current.pendingDeleteAddonGroupIds
-                        val visibleGroups = paginatedResult.addonGroups.filterNot { 
-                            pendingDeleteIds.contains(it.id) 
-                        }
-                        val existingGroups = if (isFirstPage) emptyList() else (current.filteredAddonGroups ?: current.addonGroups ?: emptyList())
-                        val newGroups = if (isFirstPage) visibleGroups else existingGroups + visibleGroups
-                        val newCounts = if (isFirstPage) paginatedResult.addonCounts else current.addonCounts + paginatedResult.addonCounts
-                        
-                        current.copy(
-                            addonGroups = if (isFirstPage) newGroups else (current.addonGroups ?: emptyList()) + paginatedResult.addonGroups,
-                            filteredAddonGroups = newGroups,
-                            addonCounts = newCounts,
-                            currentPage = paginatedResult.currentPage,
-                            totalPages = paginatedResult.totalPages,
-                            totalCount = paginatedResult.totalCount,
-                            hasNextPage = paginatedResult.hasNext,
-                            isLoading = false,
-                            isLoadingMore = false
-                        )
-                    }
-                }.onFailure { error ->
-                    _uiState.update { current ->
-                        current.copy(
-                            isLoading = false,
-                            isLoadingMore = false,
-                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
-                        )
-                    }
-                }
-            } else {
-                loadAddonGroupsFromRoomAndUpdateState()
-            }
+            loadAddonGroupsInternal(clearError, page)
         }
     }
-    
-    /**
-     * Load addon groups from Room - used when offline
-     */
-    private suspend fun loadAddonGroupsFromRoomAndUpdateState() {
-        val groupsWithCount = addonGroupRepository.getAllAddonGroupsWithCountFlow().first()
-        val sortedGroups = groupsWithCount.sortedBy { it.addonGroup.sortOrder ?: 0 }
-        val addonGroups = sortedGroups.map { it.addonGroup }
-        val counts = sortedGroups.associate { it.addonGroup.id to it.addonCount }
-        _uiState.update { current ->
-            val pendingDeleteIds = current.pendingDeleteAddonGroupIds
-            val visibleAddonGroups = addonGroups.filterNot { pendingDeleteIds.contains(it.id) }
-            val filtered = if (current.searchQuery.isNotBlank()) {
-                visibleAddonGroups.filter { it.name.contains(current.searchQuery, ignoreCase = true) }
-            } else null
-            current.copy(
-                addonGroups = visibleAddonGroups,
-                filteredAddonGroups = filtered ?: visibleAddonGroups,
-                addonCounts = counts,
-                currentPage = 1,
-                totalPages = 1,
-                totalCount = visibleAddonGroups.size,
-                hasNextPage = false,
-                isLoading = false,
-                isLoadingMore = false
+
+    private suspend fun loadAddonGroupsInternal(clearError: Boolean = true, page: Int = 1) {
+        val isFirstPage = page == 1
+        _uiState.update {
+            it.copy(
+                isLoading = isFirstPage,
+                isLoadingMore = !isFirstPage,
+                errorMessage = if (clearError) null else it.errorMessage
             )
+        }
+
+        if (!networkConnectivityChecker.isConnected()) {
+            _uiState.update { current ->
+                current.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    errorMessage = getLocalizedString(R.string.addon_group_management_no_internet),
+                    addonGroups = if (isFirstPage) emptyList() else current.addonGroups,
+                    filteredAddonGroups = if (isFirstPage) emptyList() else current.filteredAddonGroups,
+                    addonCounts = if (isFirstPage) emptyMap() else current.addonCounts,
+                    currentPage = if (isFirstPage) 1 else current.currentPage,
+                    totalPages = if (isFirstPage) 1 else current.totalPages,
+                    totalCount = if (isFirstPage) 0 else current.totalCount,
+                    hasNextPage = if (isFirstPage) false else current.hasNextPage
+                )
+            }
+            return
+        }
+
+        val result = addonGroupRepository.getAddonGroupsPaginated(
+            page = page,
+            limit = pageSize,
+            search = searchQueryFlow.value.takeIf { it.isNotBlank() }
+        )
+
+        result.onSuccess { paginatedResult ->
+            _uiState.update { current ->
+                val pendingDeleteIds = current.pendingDeleteAddonGroupIds
+                val visibleGroups = paginatedResult.addonGroups.filterNot {
+                    pendingDeleteIds.contains(it.id)
+                }
+                val existingGroups =
+                    if (isFirstPage) emptyList() else (current.filteredAddonGroups ?: current.addonGroups ?: emptyList())
+                val newGroups = if (isFirstPage) visibleGroups else existingGroups + visibleGroups
+                val newCounts =
+                    if (isFirstPage) paginatedResult.addonCounts else current.addonCounts + paginatedResult.addonCounts
+
+                current.copy(
+                    addonGroups = if (isFirstPage) newGroups else (current.addonGroups ?: emptyList()) + paginatedResult.addonGroups,
+                    filteredAddonGroups = newGroups,
+                    addonCounts = newCounts,
+                    currentPage = paginatedResult.currentPage,
+                    totalPages = paginatedResult.totalPages,
+                    totalCount = paginatedResult.totalCount,
+                    hasNextPage = paginatedResult.hasNext,
+                    isLoading = false,
+                    isLoadingMore = false
+                )
+            }
+        }.onFailure { error ->
+            _uiState.update { current ->
+                current.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    errorMessage = error.message ?: getLocalizedString(R.string.addon_group_management_load_error)
+                )
+            }
         }
     }
     
@@ -241,10 +231,10 @@ class AddonGroupManagementViewModel @Inject constructor(
     fun deleteAddonGroup(addonGroupId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            // Get addon group name before deleting
-            val addonGroup = addonGroupRepository.getAddonGroupById(addonGroupId)
-            val addonGroupName = addonGroup?.name ?: "กลุ่ม Addon"
+
+            val addonGroupName = (_uiState.value.filteredAddonGroups ?: _uiState.value.addonGroups)
+                ?.firstOrNull { it.id == addonGroupId }?.name
+                ?: getLocalizedString(R.string.addon_group_default_name)
             
             val result = addonGroupRepository.deleteAddonGroup(addonGroupId)
             
@@ -413,25 +403,11 @@ class AddonGroupManagementViewModel @Inject constructor(
      */
     fun syncAddonGroups() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, syncSuccessMessage = null) }
-            
-            val result = addonGroupRepository.syncAddonGroups()
-            
-            result.onSuccess {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        syncSuccessMessage = "Sync กลุ่มตัวเลือกเพิ่มเติมสำเร็จ"
-                    )
-                }
-                // Refresh addon groups after sync
-                loadAddonGroups()
-            }.onFailure { error ->
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการ sync กลุ่มตัวเลือกเพิ่มเติม"
-                    )
+            _uiState.update { it.copy(syncSuccessMessage = null, errorMessage = null) }
+            loadAddonGroupsInternal(clearError = true, page = 1)
+            if (_uiState.value.errorMessage == null) {
+                _uiState.update {
+                    it.copy(syncSuccessMessage = getLocalizedString(R.string.addon_group_management_sync_refresh_success))
                 }
             }
         }
@@ -448,9 +424,16 @@ class AddonGroupManagementViewModel @Inject constructor(
      * Load sync statistics
      */
     fun loadSyncStatistics() {
-        viewModelScope.launch {
-            val stats = addonGroupRepository.getSyncStatistics()
-            _uiState.update { it.copy(syncStatistics = stats) }
+        _uiState.update { current ->
+            val total = current.totalCount
+            current.copy(
+                syncStatistics = AddonGroupSyncStatistics(
+                    total = total,
+                    synced = total,
+                    unsynced = 0,
+                    deleted = 0
+                )
+            )
         }
     }
     
