@@ -30,18 +30,22 @@ class OrderDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             
             try {
-                val order = orderRepository.getOrderById(orderId)
+                var order = orderRepository.getOrderById(orderId)
                 var orderItems = orderRepository.getOrderItems(orderId)
-                
-                // If order exists but items are empty, try to refresh from API
-                if (order != null && orderItems.isEmpty() && networkConnectivityChecker.isConnected()) {
+
+                if (networkConnectivityChecker.isConnected()) {
                     try {
-                        // Refresh orders list from API to get items
-                        orderRepository.refreshOrdersList()
-                        // Reload items after refresh
-                        orderItems = orderRepository.getOrderItems(orderId)
-                    } catch (e: Exception) {
-                        // Silently fail - use empty items list
+                        if (order == null) {
+                            orderRepository.refreshOrdersList()
+                            order = orderRepository.getOrderById(orderId)
+                            orderItems = orderRepository.getOrderItems(orderId)
+                        } else if (orderItems.isEmpty()) {
+                            orderRepository.refreshOrdersList()
+                            orderItems = orderRepository.getOrderItems(orderId)
+                            order = orderRepository.getOrderById(orderId) ?: order
+                        }
+                    } catch (_: Exception) {
+                        // keep existing order / items
                     }
                 }
                 

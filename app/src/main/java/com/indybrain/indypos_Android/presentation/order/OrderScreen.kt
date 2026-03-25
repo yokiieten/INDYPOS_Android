@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -178,6 +180,7 @@ fun OrderScreen(
                         isLoading = uiState.isLoading,
                         isLoadingMore = uiState.isLoadingMore,
                         hasMore = uiState.hasMore,
+                        enableAutoLoadMore = page == pagerState.currentPage,
                         onLoadMore = { viewModel.loadMore() },
                         onRefresh = { viewModel.refreshOrders() },
                         onOrderClick = onOrderClick
@@ -187,6 +190,7 @@ fun OrderScreen(
                         isLoading = uiState.isLoading,
                         isLoadingMore = uiState.isLoadingMore,
                         hasMore = uiState.hasMore,
+                        enableAutoLoadMore = page == pagerState.currentPage,
                         onLoadMore = { viewModel.loadMore() },
                         onRefresh = { viewModel.refreshOrders() },
                         onOrderClick = onOrderClick
@@ -881,11 +885,15 @@ private fun OrderListContent(
     isLoading: Boolean,
     isLoadingMore: Boolean,
     hasMore: Boolean,
+    /** เฉพาะแท็บที่เปิดอยู่ — กัน HorizontalPager คอมโพสสองหน้าแล้วยิง loadMore พร้อมกัน */
+    enableAutoLoadMore: Boolean,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
     onOrderClick: (String) -> Unit = {}
 ) {
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isLoading)
+    // SwipeRefresh (Accompanist) ต้องมีลูกที่ร่วม nested scroll — Box เปล่าไม่ดึงรีเฟรชได้
+    val refreshScrollState = rememberScrollState()
 
     SwipeRefresh(
         state = swipeRefreshState,
@@ -894,7 +902,9 @@ private fun OrderListContent(
         when {
             isLoading && orders.isEmpty() -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(refreshScrollState),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -909,7 +919,9 @@ private fun OrderListContent(
             }
             orders.isEmpty() -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(refreshScrollState),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -925,21 +937,28 @@ private fun OrderListContent(
             else -> {
                 val listState = rememberLazyListState()
 
-                // Trigger load more automatically when scrolled near the end
-                LaunchedEffect(listState, hasMore, isLoadingMore) {
+                // โหลดเพิ่มเมื่อเลื่อนใกล้ท้ายรายการเท่านั้น — ถ้ารายการสั้นมองเห็นหมดจอ (เลื่อนไม่ได้) จะไม่ยิง API
+                LaunchedEffect(listState, hasMore, isLoadingMore, enableAutoLoadMore) {
+                    if (!enableAutoLoadMore) return@LaunchedEffect
                     snapshotFlow {
                         try {
-                            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                            val totalItems = listState.layoutInfo.totalItemsCount
-                            // When user scrolls to last 3 items
-                            lastVisible >= totalItems - 3
+                            val listFullyVisible =
+                                !listState.canScrollForward && !listState.canScrollBackward
+                            if (listFullyVisible) {
+                                false
+                            } else {
+                                val lastVisible =
+                                    listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                                val totalItems = listState.layoutInfo.totalItemsCount
+                                lastVisible >= totalItems - 3
+                            }
                         } catch (e: Exception) {
-                            false // Don't trigger load more if there's an error
+                            false
                         }
                     }
                         .distinctUntilChanged()
                         .collect { shouldLoadMore ->
-                            if (shouldLoadMore && hasMore && !isLoadingMore) {
+                            if (shouldLoadMore && hasMore && !isLoadingMore && enableAutoLoadMore) {
                                 try {
                                     onLoadMore()
                                 } catch (e: Exception) {

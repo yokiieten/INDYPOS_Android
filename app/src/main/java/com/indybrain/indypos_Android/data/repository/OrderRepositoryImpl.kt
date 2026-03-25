@@ -1,86 +1,69 @@
 package com.indybrain.indypos_Android.data.repository
 
+import android.util.Log
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
-import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
-import com.indybrain.indypos_Android.data.local.dao.OrderDao
-import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
-import com.indybrain.indypos_Android.data.local.entity.OrderAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.OrderEntity
 import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
 import com.indybrain.indypos_Android.data.mapper.OrderMapper
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.api.UpdateOrderStatusRequestDto
+import com.indybrain.indypos_Android.data.remote.dto.OrderDto
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
-import android.util.Log
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import java.util.Date
 import javax.inject.Inject
 
+private data class CachedOrders(
+    val orders: List<OrderEntity> = emptyList(),
+    val itemsByOrderId: Map<String, List<OrderItemEntity>> = emptyMap()
+)
+
+/**
+ * Order list + detail lines are kept in memory from API responses only (no Room read/write for UX).
+ * Room order tables may still exist for legacy/export paths elsewhere.
+ */
 class OrderRepositoryImpl @Inject constructor(
     private val ordersApi: OrdersApi,
-    private val orderDao: OrderDao,
-    private val orderItemDao: OrderItemDao,
-    private val orderAddonDao: OrderAddonDao,
     private val networkConnectivityChecker: NetworkConnectivityChecker
 ) : OrderRepository {
-    
+
+    private val ordersCache = MutableStateFlow(CachedOrders())
+
     override fun getOrders(): Flow<Result<List<OrderEntity>>> {
-        return orderDao.getAllOrders().map { Result.success(it) }
+        return ordersCache.map { Result.success(it.orders) }
     }
 
     override suspend fun getOrdersSync(): Result<List<OrderEntity>> {
-        return Result.success(orderDao.getAllOrdersSync())
+        return Result.success(ordersCache.value.orders)
     }
-    
+
     override suspend fun refreshOrders() {
-        if (networkConnectivityChecker.isConnected()) {
-            try {
-                // First page, page size 10, no status/date filtering
-                val response = ordersApi.getOrders(
-                    limit = 10,
-                    page = 1,
-                    status = null,
-                    startDate = null,
-                    endDate = null
-                )
-                
-                val ordersDto = response.data?.orders
-                if (response.status == 200 && ordersDto != null) {
-                    // Convert DTOs to entities
-                    val orders = ordersDto.map { OrderMapper.toEntity(it) }
-                    val orderItems = mutableListOf<OrderItemEntity>()
-                    val orderAddons = mutableListOf<OrderAddonEntity>()
-                    
-                    // Process items and addons
-                    ordersDto.forEach { orderDto ->
-                        orderDto.items?.forEach { itemDto ->
-                            orderItems.add(OrderMapper.toEntity(itemDto, orderDto.id))
-                            itemDto.addons?.forEach { addonDto ->
-                                orderAddons.add(OrderMapper.toEntity(addonDto, itemDto.id))
-                            }
-                        }
-                    }
-                    
-                    // Save to database (clear old data)
-                    orderDao.deleteAllOrders()
-                    orderItemDao.deleteAllOrderItems()
-                    orderAddonDao.deleteAllOrderAddons()
-                    
-                    orderDao.insertOrders(orders)
-                    orderItemDao.insertOrderItems(orderItems)
-                    orderAddonDao.insertOrderAddons(orderAddons)
-                }
-            } catch (e: Exception) {
-                // Silently fail - local database will be used
+        if (!networkConnectivityChecker.isConnected()) return
+        try {
+            val response = ordersApi.getOrders(
+                limit = 10,
+                page = 1,
+                status = null,
+                startDate = null,
+                endDate = null
+            )
+            val ordersDto = response.data?.orders
+            if (response.status == 200 && ordersDto != null) {
+                val (orders, itemsMap) = buildFromPaginatedDtos(ordersDto)
+                ordersCache.value = CachedOrders(orders, itemsMap)
             }
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "refreshOrders: ${e.message}", e)
         }
     }
-    
+
     override suspend fun loadMoreOrders(page: Int, pageSize: Int): Boolean {
         if (!networkConnectivityChecker.isConnected()) {
             return false
         }
-        
         return try {
             val response = ordersApi.getOrders(
                 limit = pageSize,
@@ -89,28 +72,15 @@ class OrderRepositoryImpl @Inject constructor(
                 startDate = null,
                 endDate = null
             )
-            
             val ordersDto = response.data?.orders
             if (response.status == 200 && ordersDto != null && ordersDto.isNotEmpty()) {
-                val orders = ordersDto.map { OrderMapper.toEntity(it) }
-                val orderItems = mutableListOf<OrderItemEntity>()
-                val orderAddons = mutableListOf<OrderAddonEntity>()
-                
-                ordersDto.forEach { orderDto ->
-                    orderDto.items?.forEach { itemDto ->
-                        orderItems.add(OrderMapper.toEntity(itemDto, orderDto.id))
-                        itemDto.addons?.forEach { addonDto ->
-                            orderAddons.add(OrderMapper.toEntity(addonDto, itemDto.id))
-                        }
-                    }
+                val (newOrders, newItems) = buildFromPaginatedDtos(ordersDto)
+                ordersCache.update { prev ->
+                    val existingIds = prev.orders.map { it.id }.toSet()
+                    val mergedOrders = prev.orders + newOrders.filter { it.id !in existingIds }
+                    val mergedItems = prev.itemsByOrderId + newItems
+                    CachedOrders(mergedOrders, mergedItems)
                 }
-                
-                // Append to database (no delete)
-                orderDao.insertOrders(orders)
-                orderItemDao.insertOrderItems(orderItems)
-                orderAddonDao.insertOrderAddons(orderAddons)
-                
-                // Determine if there's more data
                 val pagination = response.data?.pagination
                 when {
                     pagination != null -> pagination.hasNext
@@ -120,137 +90,103 @@ class OrderRepositoryImpl @Inject constructor(
                 false
             }
         } catch (e: Exception) {
+            Log.e("OrderRepository", "loadMoreOrders: ${e.message}", e)
             false
         }
     }
-    
+
     override suspend fun refreshOrdersList() {
-        if (networkConnectivityChecker.isConnected()) {
-            try {
-                Log.d("OrderRepository", "📤 Getting orders from API (list)")
-                val response = ordersApi.getOrdersList()
-                
-                val ordersList = response.data
-                if (response.status == 200 && ordersList != null) {
-                    Log.d("OrderRepository", "✅ Get orders list success: ${ordersList.size} items")
-                    
-                    // Convert DTOs to entities (filter out nulls)
-                    val orders = ordersList.mapNotNull { OrderMapper.toEntity(it) }
-                    val orderItems = mutableListOf<OrderItemEntity>()
-                    val orderAddons = mutableListOf<OrderAddonEntity>()
-                    
-                    // Process items and addons
-                    ordersList.forEach { orderListData ->
-                        orderListData.items?.forEach { itemDto ->
-                            val orderItem = OrderMapper.toEntity(itemDto, orderListData.id ?: "")
-                            if (orderItem != null) {
-                                orderItems.add(orderItem)
-                                itemDto.addons?.forEach { addonDto ->
-                                    val addon = OrderMapper.toEntity(addonDto, itemDto.id ?: "")
-                                    if (addon != null) {
-                                        orderAddons.add(addon)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Save to database
-                    orderDao.deleteAllOrders()
-                    orderItemDao.deleteAllOrderItems()
-                    orderAddonDao.deleteAllOrderAddons()
-                    
-                    orderDao.insertOrders(orders)
-                    orderItemDao.insertOrderItems(orderItems)
-                    orderAddonDao.insertOrderAddons(orderAddons)
-                } else {
-                    Log.e("OrderRepository", "❌ Get orders list error: status=${response.status}, message=${response.message}")
+        if (!networkConnectivityChecker.isConnected()) return
+        try {
+            Log.d("OrderRepository", "Getting orders from API (list)")
+            val response = ordersApi.getOrdersList()
+            val ordersList = response.data
+            if (response.status == 200 && ordersList != null) {
+                Log.d("OrderRepository", "Get orders list success: ${ordersList.size} items")
+                val orders = ordersList.mapNotNull { OrderMapper.toEntity(it) }
+                val itemsMap = mutableMapOf<String, List<OrderItemEntity>>()
+                ordersList.forEach { orderListData ->
+                    val oid = orderListData.id ?: return@forEach
+                    val items = orderListData.items
+                        ?.mapNotNull { OrderMapper.toEntity(it, oid) }
+                        ?: emptyList()
+                    itemsMap[oid] = items
                 }
-            } catch (e: Exception) {
-                Log.e("OrderRepository", "❌ Get orders list error: ${e.message}", e)
-                // Silently fail - local database will be used
+                ordersCache.value = CachedOrders(orders, itemsMap)
+            } else {
+                Log.e(
+                    "OrderRepository",
+                    "Get orders list error: status=${response.status}, message=${response.message}"
+                )
             }
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "Get orders list error: ${e.message}", e)
         }
     }
-    
-    override suspend fun getTodaySales(): Double {
-        return orderDao.getTodaySales() ?: 0.0
-    }
-    
-    override suspend fun getTodayOrderCount(): Int {
-        return orderDao.getTodayOrderCount()
-    }
-    
-    override suspend fun getTodayCancelledOrderCount(): Int {
-        return orderDao.getTodayCancelledOrderCount()
-    }
-    
-    override suspend fun getTodayCostOfExpenses(): Double {
-        return orderItemDao.getTodayCostOfExpenses() ?: 0.0
-    }
-    
+
+    /** Kept for interface compatibility; no local order store. Use API-backed home/analytics if needed. */
+    override suspend fun getTodaySales(): Double = 0.0
+
+    override suspend fun getTodayOrderCount(): Int = 0
+
+    override suspend fun getTodayCancelledOrderCount(): Int = 0
+
+    override suspend fun getTodayCostOfExpenses(): Double = 0.0
+
     override suspend fun getOrderById(orderId: String): OrderEntity? {
-        return orderDao.getOrderById(orderId)
-    }
-    
-    override suspend fun getOrderItems(orderId: String): List<OrderItemEntity> {
-        return orderItemDao.getOrderItemsSync(orderId)
+        return ordersCache.value.orders.find { it.id == orderId }
     }
 
-    override suspend fun getTodayTopProduct(): Triple<String, Int, Double>? {
-        val row = orderItemDao.getTodayTopProduct() ?: return null
-        return Triple(row.productName, row.totalQuantity.toInt(), row.totalAmount)
+    override suspend fun getOrderItems(orderId: String): List<OrderItemEntity> {
+        return ordersCache.value.itemsByOrderId[orderId].orEmpty()
     }
-    
+
+    override suspend fun getTodayTopProduct(): Triple<String, Int, Double>? = null
+
     override suspend fun updateOrderStatus(orderId: String, status: Int): Result<OrderEntity> {
         return try {
-            val existingOrder = orderDao.getOrderById(orderId)
-            if (existingOrder == null) {
-                return Result.failure(Exception("ไม่พบออเดอร์"))
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
             }
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val response = ordersApi.updateOrderStatus(orderId, UpdateOrderStatusRequestDto(status))
-                    
-                    if (response.status == 200 && response.data != null) {
-                        // API success - update local database
-                        val updatedOrder = existingOrder.copy(
-                            statusRaw = status,
-                            updatedAt = java.util.Date(),
-                            isSynced = true
-                        )
-                        orderDao.insertOrder(updatedOrder)
-                        Result.success(updatedOrder)
-                    } else {
-                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะออเดอร์"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: Exception) {
-                    // Network error - update locally and mark as not synced
-                    val updatedOrder = existingOrder.copy(
-                        statusRaw = status,
-                        updatedAt = java.util.Date(),
-                        isSynced = false
+            val existing = ordersCache.value.orders.find { it.id == orderId }
+                ?: return Result.failure(Exception("ไม่พบออเดอร์"))
+            val response = ordersApi.updateOrderStatus(orderId, UpdateOrderStatusRequestDto(status))
+            if (response.status == 200 && response.data != null) {
+                val updated = OrderMapper.toEntity(response.data)
+                ordersCache.update { prev ->
+                    CachedOrders(
+                        orders = prev.orders.map { if (it.id == orderId) updated else it },
+                        itemsByOrderId = prev.itemsByOrderId
                     )
-                    orderDao.insertOrder(updatedOrder)
-                    Result.success(updatedOrder)
                 }
+                Result.success(updated)
+            } else if (response.status == 200) {
+                val patched = existing.copy(statusRaw = status, updatedAt = Date())
+                ordersCache.update { prev ->
+                    CachedOrders(
+                        orders = prev.orders.map { if (it.id == orderId) patched else it },
+                        itemsByOrderId = prev.itemsByOrderId
+                    )
+                }
+                Result.success(patched)
             } else {
-                // No network - update locally and mark as not synced
-                val updatedOrder = existingOrder.copy(
-                    statusRaw = status,
-                    updatedAt = java.util.Date(),
-                    isSynced = false
-                )
-                orderDao.insertOrder(updatedOrder)
-                Result.success(updatedOrder)
+                val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                    ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะออเดอร์"
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะออเดอร์"))
         }
     }
-}
 
+    private fun buildFromPaginatedDtos(
+        ordersDto: List<OrderDto>
+    ): Pair<List<OrderEntity>, Map<String, List<OrderItemEntity>>> {
+        val orders = ordersDto.map { OrderMapper.toEntity(it) }
+        val itemsMap = ordersDto.associate { orderDto ->
+            val items = orderDto.items?.map { OrderMapper.toEntity(it, orderDto.id) }.orEmpty()
+            orderDto.id to items
+        }
+        return orders to itemsMap
+    }
+}
