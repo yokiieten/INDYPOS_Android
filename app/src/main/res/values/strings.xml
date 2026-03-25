@@ -790,6 +790,8 @@
     <string name="addon_management_delete_warning">การดำเนินการนี้ไม่สามารถยกเลิกได้</string>
     <string name="addon_management_select_items">เลือก %1$d รายการ</string>
     <string name="addon_management_error_loading">เกิดข้อผิดพลาดในการโหลดข้อมูล</string>
+    <string name="addon_management_no_internet">จัดการ Addon ต้องใช้อินเทอร์เน็ต</string>
+    <string name="addon_management_sync_refresh_success">ดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์แล้ว</string>
     <string name="addon_management_error_updating_status">เกิดข้อผิดพลาดในการอัปเดตสถานะ</string>
     <string name="addon_management_error_deleting">เกิดข้อผิดพลาดในการลบ Addon</string>
     <string name="addon_management_error_not_found">ไม่พบแอดออน</string>

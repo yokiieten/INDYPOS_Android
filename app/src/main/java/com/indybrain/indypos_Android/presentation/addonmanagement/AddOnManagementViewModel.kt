@@ -7,13 +7,12 @@ import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
-import com.indybrain.indypos_Android.data.local.entity.AddonEntity
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
+import com.indybrain.indypos_Android.domain.repository.AddonSyncStatistics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,11 +56,15 @@ class AddOnManagementViewModel @Inject constructor(
     }
     
     /**
-     * Load addons - uses paginated API when online, Room when offline
+     * Load addons from paginated API (requires network).
      * @param clearError if true, clears errorMessage when starting (default).
      * @param page page to load (1 = first page, resets list)
      */
-    private fun loadAddons(clearError: Boolean = true, page: Int = 1) {
+    private fun loadAddons(
+        clearError: Boolean = true,
+        page: Int = 1,
+        onFirstPageSuccess: (() -> Unit)? = null
+    ) {
         viewModelScope.launch {
             val isFirstPage = page == 1
             _uiState.update { 
@@ -99,6 +102,9 @@ class AddOnManagementViewModel @Inject constructor(
                             isLoadingMore = false
                         )
                     }
+                    if (isFirstPage) {
+                        onFirstPageSuccess?.invoke()
+                    }
                 }.onFailure { error ->
                     _uiState.update { current ->
                         current.copy(
@@ -110,38 +116,15 @@ class AddOnManagementViewModel @Inject constructor(
                     }
                 }
             } else {
-                loadAddonsFromRoomAndUpdateState()
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        isLoadingMore = false,
+                        errorMessage = getLocalizedString(R.string.addon_management_no_internet),
+                        isDeleteError = false
+                    )
+                }
             }
-        }
-    }
-    
-    /**
-     * Load addons from Room - used when offline
-     */
-    private suspend fun loadAddonsFromRoomAndUpdateState() {
-        val addons = addonRepository.getAllAddonsForManagementFlow().first()
-        val query = searchQueryFlow.value
-        val filtered = addons.filter { addon ->
-            query.isBlank() || addon.name.contains(query, ignoreCase = true)
-        }
-        val sorted = filtered.sortedWith(
-            compareBy<AddonEntity> { if (it.isSynced) 1 else 0 }.thenBy { it.name }
-        )
-        _uiState.update { current ->
-            val pendingDeleteIds = current.pendingDeleteAddonIds
-            val visibleAll = addons.filter { !pendingDeleteIds.contains(it.id) }
-            val visibleFiltered = sorted.filter { !pendingDeleteIds.contains(it.id) }
-            current.copy(
-                addons = visibleAll,
-                filteredAddons = visibleFiltered,
-                searchQuery = query,
-                currentPage = 1,
-                totalPages = 1,
-                totalCount = visibleFiltered.size,
-                hasNextPage = false,
-                isLoading = false,
-                isLoadingMore = false
-            )
         }
     }
     
@@ -393,12 +376,20 @@ class AddOnManagementViewModel @Inject constructor(
     }
     
     /**
-     * Get sync statistics
+     * Sync dialog stats — management is API-only; show empty pending counts.
      */
     fun loadSyncStatistics() {
         viewModelScope.launch {
-            val stats = addonRepository.getSyncStatistics()
-            _uiState.update { it.copy(syncStatistics = stats) }
+            _uiState.update {
+                it.copy(
+                    syncStatistics = AddonSyncStatistics(
+                        total = 0,
+                        synced = 0,
+                        unsynced = 0,
+                        deleted = 0
+                    )
+                )
+            }
         }
     }
     
@@ -414,33 +405,19 @@ class AddOnManagementViewModel @Inject constructor(
     }
     
     /**
-     * Sync addons to server
+     * Refresh list from server (sync dialog — no Room pending sync).
      */
     fun syncAddons() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, syncSuccessMessage = null) }
-            
-            val result = addonRepository.syncPendingAddons()
-            
-            result.onSuccess {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        syncSuccessMessage = "Sync ตัวเลือกเพิ่มเติมสำเร็จ"
-                    )
-                }
-                // Refresh addons after sync
-                loadAddons(page = 1)
-            }.onFailure { error ->
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = error.message ?: getLocalizedString(R.string.addon_management_error_syncing),
-                        isDeleteError = false
-                    )
+        _uiState.update { it.copy(syncSuccessMessage = null) }
+        loadAddons(
+            clearError = true,
+            page = 1,
+            onFirstPageSuccess = {
+                _uiState.update {
+                    it.copy(syncSuccessMessage = getLocalizedString(R.string.addon_management_sync_refresh_success))
                 }
             }
-        }
+        )
     }
     
     /**

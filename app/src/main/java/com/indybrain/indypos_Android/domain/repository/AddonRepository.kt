@@ -31,6 +31,11 @@ interface AddonRepository {
      * Get addon by ID
      */
     suspend fun getAddonById(id: String): AddonEntity?
+
+    /**
+     * Load single addon from API (`GET .../addons` + find by id). No Room.
+     */
+    suspend fun getAddonFromApi(id: String): Result<AddonEntity>
     
     /**
      * Create a new addon
@@ -44,7 +49,13 @@ interface AddonRepository {
      * If network is available and addon is synced, calls API and updates Room
      * If network is not available or addon is not synced, updates Room only (for sync later)
      */
-    suspend fun updateAddon(addonId: String, name: String, price: Double): Result<AddonEntity>
+    suspend fun updateAddon(
+        addonId: String,
+        name: String,
+        price: Double,
+        sortOrder: Int? = null,
+        isActive: Boolean? = null
+    ): Result<AddonEntity>
     
     /**
      * Get deleted addons (soft deleted)

@@ -27,7 +27,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import java.util.UUID
 import javax.inject.Inject
 
 class AddonRepositoryImpl @Inject constructor(
@@ -92,6 +91,33 @@ class AddonRepositoryImpl @Inject constructor(
     override suspend fun getAddonById(id: String): com.indybrain.indypos_Android.data.local.entity.AddonEntity? {
         return addonDao.getAddonById(id)
     }
+
+    override suspend fun getAddonFromApi(id: String): Result<com.indybrain.indypos_Android.data.local.entity.AddonEntity> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.addon_management_no_internet)))
+        }
+        return fetchAddonDtoById(id).map { ProductMapper.toEntity(it) }
+    }
+
+    private suspend fun fetchAddonDtoById(addonId: String): Result<AddonDto> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.addon_management_no_internet)))
+        }
+        return try {
+            val response = productsApi.getAddons()
+            if (response.status != 200) {
+                return Result.failure(Exception(response.message ?: "Failed to fetch addons"))
+            }
+            val dto = response.data?.find { it.id == addonId }
+                ?: return Result.failure(Exception(context.getString(R.string.addon_management_error_not_found)))
+            Result.success(dto)
+        } catch (e: HttpException) {
+            val errorBody = e.response()?.errorBody()
+            Result.failure(Exception(parseApiErrorResponse(errorBody, e.code())))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการโหลด Addon"))
+        }
+    }
     
     override suspend fun getAddonsPaginated(
         page: Int,
@@ -109,8 +135,6 @@ class AddonRepositoryImpl @Inject constructor(
                 return Result.failure(Exception(response.message ?: "ไม่พบข้อมูล"))
             }
             val addons = (data.addons ?: emptyList()).map { ProductMapper.toEntity(it) }
-            // Upsert addons to Room so AddEditAddonScreen can load by id
-            addons.forEach { addonDao.insert(it) }
             val pagination = data.pagination
             val result = AddonsPaginatedResult(
                 addons = addons,
@@ -131,189 +155,105 @@ class AddonRepositoryImpl @Inject constructor(
     }
     
     override suspend fun createAddon(name: String, price: Double): Result<com.indybrain.indypos_Android.data.local.entity.AddonEntity> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.addon_management_no_internet)))
+        }
         return try {
-            val addonEntity: com.indybrain.indypos_Android.data.local.entity.AddonEntity
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val request = CreateAddonRequestDto(
-                        name = name.trim(),
-                        price = price,
-                        sortOrder = 1,
-                        isActive = true
-                    )
-                    
-                    val response = productsApi.createAddon(request)
-                    
-                    // Check if response indicates success (200 or 201) and has data
-                    // Also check if message contains success keywords even if status is not 200/201
-                    val isSuccessStatus = response.status == 200 || response.status == 201
-                    val hasSuccessMessage = response.message?.contains("success", ignoreCase = true) == true
-                        || response.message?.contains("created", ignoreCase = true) == true
-                    
-                    if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
-                        // API success - convert to entity and save to Room
-                        addonEntity = ProductMapper.toEntity(response.data)
-                        addonDao.insert(addonEntity)
-                        Result.success(addonEntity)
-                    } else {
-                        // API returned error status
-                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                            ?: response.error?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    // Handle HTTP errors
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> {
-                            // Bad Request - parse error message
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        401 -> {
-                            // Unauthorized - parse specific error
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> {
-                            // Forbidden - Free plan limit exceeded or Access denied
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        409 -> {
-                            // Conflict - Duplicate addon name
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        500 -> {
-                            // Internal Server Error
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        else -> {
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                    }
-                    Result.failure(Exception(errorMessage))
-                }
-            } else {
-                // No network - create in Room only (for sync later)
-                val now = Date()
-                val localId = UUID.randomUUID().toString()
-                addonEntity = com.indybrain.indypos_Android.data.local.entity.AddonEntity(
-                    id = localId,
+            try {
+                val request = CreateAddonRequestDto(
                     name = name.trim(),
                     price = price,
-                    isActive = true,
-                    isDeletedLocally = false,
-                    isFromServer = false,
-                    isSynced = false,
-                    createdAt = now,
-                    updatedAt = now,
-                    sortOrder = 1
+                    sortOrder = 1,
+                    isActive = true
                 )
-                addonDao.insert(addonEntity)
-                Result.success(addonEntity)
+                val response = productsApi.createAddon(request)
+                val isSuccessStatus = response.status == 200 || response.status == 201
+                val hasSuccessMessage = response.message?.contains("success", ignoreCase = true) == true
+                    || response.message?.contains("created", ignoreCase = true) == true
+                if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
+                    Result.success(ProductMapper.toEntity(response.data!!))
+                } else {
+                    val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                        ?: response.error?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
+                    Result.failure(Exception(errorMessage))
+                }
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = when (e.code()) {
+                    400 -> parseApiErrorResponse(errorBody, e.code())
+                    401 -> {
+                        val parsed = parseApiErrorResponse(errorBody, e.code())
+                        if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                            "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        } else {
+                            parsed
+                        }
+                    }
+                    403 -> parseApiErrorResponse(errorBody, e.code())
+                    409 -> parseApiErrorResponse(errorBody, e.code())
+                    500 -> parseApiErrorResponse(errorBody, e.code())
+                    else -> parseApiErrorResponse(errorBody, e.code())
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการสร้าง Addon"))
         }
     }
     
-    override suspend fun updateAddon(addonId: String, name: String, price: Double): Result<com.indybrain.indypos_Android.data.local.entity.AddonEntity> {
+    override suspend fun updateAddon(
+        addonId: String,
+        name: String,
+        price: Double,
+        sortOrder: Int?,
+        isActive: Boolean?
+    ): Result<com.indybrain.indypos_Android.data.local.entity.AddonEntity> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.addon_management_no_internet)))
+        }
         return try {
-            val existing = addonDao.getAddonById(addonId)
-                ?: return Result.failure(Exception("ไม่พบ Addon ที่ต้องการแก้ไข"))
-            
-            val addonEntity: com.indybrain.indypos_Android.data.local.entity.AddonEntity
-            
-            // Check if should update via API or locally only
-            val shouldUpdateViaAPI = networkConnectivityChecker.isConnected() && 
-                                    existing.isSynced && 
-                                    existing.isFromServer
-            
-            if (shouldUpdateViaAPI) {
-                // Has network and addon is synced - call API first
-                try {
-                    val request = UpdateAddonRequestDto(
-                        name = name.trim(),
-                        price = price,
-                        sortOrder = existing.sortOrder ?: 1,
-                        isActive = existing.isActive
-                    )
-                    
-                    val response = productsApi.updateAddon(addonId, request)
-                    
-                    // Check if response indicates success (200 or 201) and has data
-                    // Also check if message contains success keywords even if status is not 200/201
-                    val isSuccessStatus = response.status == 200 || response.status == 201
-                    val hasSuccessMessage = response.message?.contains("success", ignoreCase = true) == true
-                        || response.message?.contains("updated", ignoreCase = true) == true
-                    
-                    if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
-                        // API success - convert to entity and save to Room
-                        addonEntity = ProductMapper.toEntity(response.data)
-                        addonDao.insert(addonEntity)
-                        Result.success(addonEntity)
-                    } else {
-                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                            ?: response.error?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการแก้ไข Addon"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    // Handle HTTP errors
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> {
-                            // Bad Request - parse error message
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        401 -> {
-                            // Unauthorized - parse specific error
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> {
-                            // Forbidden - Access denied
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        404 -> {
-                            // Not Found - Addon not found
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        409 -> {
-                            // Conflict - Duplicate addon name
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        500 -> {
-                            // Internal Server Error
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        else -> {
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                    }
-                    Result.failure(Exception(errorMessage))
-                }
-            } else {
-                // No network or not synced - update in Room only (for sync later)
-                val now = Date()
-                addonEntity = existing.copy(
+            val hasFullPayload = sortOrder != null && isActive != null
+            val existingDto = if (hasFullPayload) null
+                else fetchAddonDtoById(addonId).getOrElse { return Result.failure(it) }
+            try {
+                val request = UpdateAddonRequestDto(
                     name = name.trim(),
                     price = price,
-                    updatedAt = now,
-                    isSynced = false
+                    sortOrder = sortOrder ?: existingDto?.sortOrder ?: 1,
+                    isActive = isActive ?: existingDto?.isActive ?: true
                 )
-                addonDao.insert(addonEntity)
-                Result.success(addonEntity)
+                val response = productsApi.updateAddon(addonId, request)
+                val isSuccessStatus = response.status == 200 || response.status == 201
+                val hasSuccessMessage = response.message?.contains("success", ignoreCase = true) == true
+                    || response.message?.contains("updated", ignoreCase = true) == true
+                if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
+                    Result.success(ProductMapper.toEntity(response.data!!))
+                } else {
+                    val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                        ?: response.error?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการแก้ไข Addon"
+                    Result.failure(Exception(errorMessage))
+                }
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = when (e.code()) {
+                    400 -> parseApiErrorResponse(errorBody, e.code())
+                    401 -> {
+                        val parsed = parseApiErrorResponse(errorBody, e.code())
+                        if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                            "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        } else {
+                            parsed
+                        }
+                    }
+                    403 -> parseApiErrorResponse(errorBody, e.code())
+                    404 -> parseApiErrorResponse(errorBody, e.code())
+                    409 -> parseApiErrorResponse(errorBody, e.code())
+                    500 -> parseApiErrorResponse(errorBody, e.code())
+                    else -> parseApiErrorResponse(errorBody, e.code())
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการแก้ไข Addon"))
@@ -364,58 +304,38 @@ class AddonRepositoryImpl @Inject constructor(
     }
     
     override suspend fun toggleAddonStatus(addonId: String, newStatus: Boolean): Result<com.indybrain.indypos_Android.data.local.entity.AddonEntity> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.addon_management_no_internet)))
+        }
         return try {
-            val existing = addonDao.getAddonById(addonId)
-                ?: return Result.failure(Exception("ไม่พบ Addon ที่ต้องการ"))
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val request = ToggleAddonStatusRequestDto(status = newStatus)
-                    val response = productsApi.toggleAddonStatus(addonId, request)
-                    
-                    if (response.status == 200 && response.data != null) {
-                        // API success - convert to entity and save to Room
-                        val addonEntity = ProductMapper.toEntity(response.data)
-                        addonDao.insert(addonEntity)
-                        Result.success(addonEntity)
-                    } else {
-                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    // Handle HTTP errors
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> parseApiErrorResponse(errorBody, e.code())
-                        401 -> {
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> parseApiErrorResponse(errorBody, e.code())
-                        404 -> parseApiErrorResponse(errorBody, e.code())
-                        500 -> parseApiErrorResponse(errorBody, e.code())
-                        else -> parseApiErrorResponse(errorBody, e.code())
-                    }
+            try {
+                val request = ToggleAddonStatusRequestDto(status = newStatus)
+                val response = productsApi.toggleAddonStatus(addonId, request)
+                if (response.status == 200 && response.data != null) {
+                    Result.success(ProductMapper.toEntity(response.data))
+                } else {
+                    val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ"
                     Result.failure(Exception(errorMessage))
                 }
-            } else {
-                // No network - update in Room only (for sync later)
-                val updatedAt = Date()
-                addonDao.updateAddonStatus(addonId, newStatus, updatedAt)
-                
-                // Return updated entity
-                val updatedEntity = existing.copy(
-                    isActive = newStatus,
-                    updatedAt = updatedAt,
-                    isSynced = false
-                )
-                Result.success(updatedEntity)
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = when (e.code()) {
+                    400 -> parseApiErrorResponse(errorBody, e.code())
+                    401 -> {
+                        val parsed = parseApiErrorResponse(errorBody, e.code())
+                        if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                            "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        } else {
+                            parsed
+                        }
+                    }
+                    403 -> parseApiErrorResponse(errorBody, e.code())
+                    404 -> parseApiErrorResponse(errorBody, e.code())
+                    500 -> parseApiErrorResponse(errorBody, e.code())
+                    else -> parseApiErrorResponse(errorBody, e.code())
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ"))
@@ -423,34 +343,24 @@ class AddonRepositoryImpl @Inject constructor(
     }
     
     override suspend fun deleteAddon(addonId: String): Result<Unit> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.addon_management_no_internet)))
+        }
         return try {
-            val existing = addonDao.getAddonById(addonId)
-                ?: return Result.failure(Exception("ไม่พบ Addon ที่ต้องการลบ"))
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val response = productsApi.deleteAddon(addonId)
-                    
-                    if (response.status == 200) {
-                        // API success - ลบความสัมพันธ์ (junction, cart, order) ก่อน แล้วค่อยลบ addon
-                        permanentlyDeleteAddon(addonId)
-                        Result.success(Unit)
-                    } else {
-                        val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการลบ"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = parseAddonDeleteApiError(errorBody, e.code())
+            try {
+                val response = productsApi.deleteAddon(addonId)
+                if (response.status == 200) {
+                    permanentlyDeleteAddon(addonId)
+                    Result.success(Unit)
+                } else {
+                    val errorMessage = response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการลบ"
                     Result.failure(Exception(errorMessage))
                 }
-            } else {
-                // No network - soft delete in Room only (for sync later)
-                val updatedAt = Date()
-                addonDao.softDeleteAddon(addonId, updatedAt)
-                Result.success(Unit)
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = parseAddonDeleteApiError(errorBody, e.code())
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบ"))
@@ -494,9 +404,7 @@ class AddonRepositoryImpl @Inject constructor(
                     Result.failure(Exception(errorMessage))
                 }
             } else {
-                val updatedAt = Date()
-                addonIds.forEach { addonDao.softDeleteAddon(it, updatedAt) }
-                Result.success(DeleteAddonsResult(deletedCount = addonIds.size))
+                Result.failure(Exception(context.getString(R.string.addon_management_no_internet)))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: getLocalizedString("api_error_delete_addon_generic", "ไม่สามารถลบแอดออนได้ กรุณาลองใหม่อีกครั้ง")))

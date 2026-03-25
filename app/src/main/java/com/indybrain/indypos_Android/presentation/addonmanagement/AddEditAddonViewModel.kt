@@ -46,19 +46,32 @@ class AddEditAddonViewModel @Inject constructor(
     fun loadAddon(addonId: String) {
         this.addonId = addonId
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val addon = addonRepository.getAddonById(addonId)
-            // Format price for display when loading
-            val formattedPrice = addon?.price?.let { 
-                formatPriceForDisplay(it.toString()) 
-            } ?: "0"
-            _uiState.update { 
-                it.copy(
-                    addonName = addon?.name ?: "",
-                    addonPrice = formattedPrice,
-                    isLoading = false
-                )
-            }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            addonRepository.getAddonFromApi(addonId).fold(
+                onSuccess = { addon ->
+                    val formattedPrice = formatPriceForDisplay(addon.price.toString())
+                    _uiState.update {
+                        it.copy(
+                            addonName = addon.name,
+                            addonPrice = formattedPrice,
+                            editSortOrder = addon.sortOrder ?: 1,
+                            editIsActive = addon.isActive,
+                            isLoading = false
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            addonName = "",
+                            addonPrice = "0",
+                            errorMessage = e.message
+                                ?: getLocalizedString(R.string.addon_management_error_loading)
+                        )
+                    }
+                }
+            )
         }
     }
     
@@ -220,21 +233,24 @@ class AddEditAddonViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             
             val result = addonId?.let { id ->
-                // Update existing addon
-                addonRepository.updateAddon(id, name, price)
+                addonRepository.updateAddon(
+                    addonId = id,
+                    name = name,
+                    price = price,
+                    sortOrder = _uiState.value.editSortOrder,
+                    isActive = _uiState.value.editIsActive
+                )
             } ?: run {
                 // Create new addon
                 addonRepository.createAddon(name, price)
             }
             
-            result.onSuccess { addonEntity ->
-                // Check if addon was created/updated offline (not synced)
-                val isOffline = !addonEntity.isSynced || !addonEntity.isFromServer
-                _uiState.update { 
+            result.onSuccess { _ ->
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         isSuccess = true,
-                        isOfflineSuccess = isOffline
+                        isOfflineSuccess = false
                     )
                 }
                 // Don't call onSuccess() here - let the dialog handle navigation

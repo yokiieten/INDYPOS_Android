@@ -9,6 +9,8 @@ data class AddEditAddonUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val isSuccess: Boolean = false,
-    val isOfflineSuccess: Boolean = false // Track if success was offline
+    val isOfflineSuccess: Boolean = false,
+    val editSortOrder: Int = 1,
+    val editIsActive: Boolean = true
 )
 

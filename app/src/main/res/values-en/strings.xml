@@ -778,6 +778,8 @@
     <string name="addon_management_delete_warning">This action cannot be undone</string>
     <string name="addon_management_select_items">Select %1$d items</string>
     <string name="addon_management_error_loading">An error occurred while loading data</string>
+    <string name="addon_management_no_internet">Managing add-ons requires an internet connection</string>
+    <string name="addon_management_sync_refresh_success">Loaded the latest data from the server</string>
     <string name="addon_management_error_updating_status">An error occurred while updating status</string>
     <string name="addon_management_error_deleting">An error occurred while deleting addon</string>
     <string name="addon_management_error_not_found">Addon not found</string>
