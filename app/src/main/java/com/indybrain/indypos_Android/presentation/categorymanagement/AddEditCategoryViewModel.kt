@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Date
 import javax.inject.Inject
 
 /**
@@ -45,14 +44,26 @@ class AddEditCategoryViewModel @Inject constructor(
     fun loadCategory(categoryId: String) {
         this.categoryId = categoryId
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val category = productRepository.getCategoryById(categoryId)
-            _uiState.update { 
-                it.copy(
-                    categoryName = category?.name ?: "",
-                    isLoading = false
-                )
-            }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            productRepository.getCategoryByIdFromApi(categoryId)
+                .onSuccess { category ->
+                    _uiState.update {
+                        it.copy(
+                            categoryName = category.name,
+                            isLoading = false
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            categoryName = "",
+                            isLoading = false,
+                            errorMessage = e.message
+                                ?: getLocalizedString(R.string.category_form_validation_edit_failed)
+                        )
+                    }
+                }
         }
     }
     
@@ -106,29 +117,38 @@ class AddEditCategoryViewModel @Inject constructor(
             }
             
             val result = categoryId?.let { id ->
-                // Update existing category - use updateCategory which handles API call and Room save
-                val existingCategory = productRepository.getCategoryById(id)
-                if (existingCategory == null) {
-                    _uiState.update { 
+                val existingResult = productRepository.getCategoryByIdFromApi(id)
+                val existing = existingResult.getOrNull()
+                if (existing == null) {
+                    _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = getLocalizedString(R.string.category_form_validation_edit_failed)
+                            errorMessage = existingResult.exceptionOrNull()?.message
+                                ?: getLocalizedString(R.string.category_form_validation_edit_failed)
                         )
                     }
                     return@launch
                 }
-                
                 productRepository.updateCategory(
                     categoryId = id,
                     name = name,
-                    sortOrder = existingCategory.sortOrder ?: 0, // Handle nullable sortOrder
-                    isActive = existingCategory.isActive
+                    sortOrder = existing.sortOrder ?: 0,
+                    isActive = existing.isActive
                 ).map { Unit }
             } ?: run {
-                // Add new category - use createCategory which handles API call and Room save
-                val maxSortOrder = productRepository.getAllCategories()
-                    .mapNotNull { it.sortOrder } // Filter out null values
-                    .maxOrNull() ?: 0
+                val listResult = productRepository.getAllCategoriesFromApi()
+                val list = listResult.getOrNull()
+                if (list == null) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = listResult.exceptionOrNull()?.message
+                                ?: getLocalizedString(R.string.category_management_error_loading)
+                        )
+                    }
+                    return@launch
+                }
+                val maxSortOrder = list.mapNotNull { it.sortOrder }.maxOrNull() ?: 0
                 productRepository.createCategory(
                     name = name,
                     sortOrder = maxSortOrder + 1,

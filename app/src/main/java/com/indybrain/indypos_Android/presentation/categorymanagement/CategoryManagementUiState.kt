@@ -16,26 +16,10 @@ data class CategoryManagementUiState(
     val errorMessage: String? = null,
     val toggleSuccessMessage: String? = null,
     val deleteSuccessMessage: String? = null,
-    val syncSuccessMessage: String? = null,
     val isEditMode: Boolean = false,
     val selectedCategoryIds: Set<String> = emptySet(),
-    val syncStatistics: CategorySyncStatistics? = null,
     // IDs ที่กำลังอยู่ระหว่างการลบแบบหลายรายการ เพื่อไม่ให้ UI แสดงไล่ลบทีละอัน
     val pendingDeleteCategoryIds: Set<String> = emptySet()
 )
-
-/**
- * Sync statistics for categories
- */
-data class CategorySyncStatistics(
-    val total: Int,
-    val synced: Int,
-    val unsynced: Int,
-    val deleted: Int
-)
-
-
-
-
 
 

@@ -71,7 +71,6 @@ class AddEditProductViewModel @Inject constructor(
                 productRepository.fetchAndSyncCategories()
                 addonGroupRepository.fetchAndSyncAddonGroups()
             }
-            // Flow in loadCategories() and loadAddonGroups() will auto-emit when Room is updated
         }
     }
     
@@ -81,14 +80,15 @@ class AddEditProductViewModel @Inject constructor(
     private fun loadCategories() {
         viewModelScope.launch {
             try {
-                productRepository.getAllCategoriesFlow().collect { categories ->
-                    if (categories != null) {
+                if (networkConnectivityChecker.isConnected()) {
+                    productRepository.getAllCategoriesFromApi().onSuccess { categories ->
                         _categories.value = categories.sortedBy { it.sortOrder ?: 0 }
                     }
+                } else {
+                    _categories.value = productRepository.getAllCategories()
+                        .sortedBy { it.sortOrder ?: 0 }
                 }
             } catch (e: Exception) {
-                // Handle error silently or log it
-                // Categories will remain empty if there's an error
             }
         }
     }
@@ -557,9 +557,15 @@ class AddEditProductViewModel @Inject constructor(
                 ) 
             }
             
-            val maxSortOrder = productRepository.getAllCategories()
-                .mapNotNull { it.sortOrder }
-                .maxOrNull() ?: 0
+            val maxSortOrder = if (networkConnectivityChecker.isConnected()) {
+                productRepository.getAllCategoriesFromApi().getOrNull()
+                    ?.mapNotNull { it.sortOrder }
+                    ?.maxOrNull() ?: 0
+            } else {
+                productRepository.getAllCategories()
+                    .mapNotNull { it.sortOrder }
+                    .maxOrNull() ?: 0
+            }
             
             val result = productRepository.createCategory(
                 name = categoryName,

@@ -158,11 +158,20 @@ class ProductManagementViewModel @Inject constructor(
     }
     
     /**
-     * Observe categories from Room database
+     * Load category filter list from API when online; falls back to Room cache when offline.
      */
     private fun observeCategories() {
         viewModelScope.launch {
-            productRepository.getAllCategoriesFlow().collect { categories ->
+            if (networkConnectivityChecker.isConnected()) {
+                productRepository.getAllCategoriesFromApi().onSuccess { categories ->
+                    _uiState.update { current ->
+                        current.copy(
+                            categories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
+                        )
+                    }
+                }
+            } else {
+                val categories = productRepository.getAllCategories()
                 _uiState.update { current ->
                     current.copy(
                         categories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }

@@ -25,6 +25,7 @@ import com.indybrain.indypos_Android.domain.repository.ProductDetailData
 import com.indybrain.indypos_Android.domain.repository.ProductListData
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.repository.ProductSyncStatistics
+import com.indybrain.indypos_Android.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -451,6 +452,43 @@ class ProductRepositoryImpl @Inject constructor(
         return categoryDao.getCategoryById(id)
     }
     
+    private suspend fun fetchCategoriesListFromApi(): Result<List<CategoryEntity>> {
+        return try {
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+            }
+            val response = productsApi.getCategories()
+            if (response.status != 200) {
+                return Result.failure(Exception(response.message ?: "Failed to fetch categories"))
+            }
+            val list = (response.data ?: emptyList()).map { ProductMapper.toEntity(it) }
+            Result.success(list)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการดึงข้อมูลหมวดหมู่"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
+    }
+    
+    override suspend fun getAllCategoriesFromApi(): Result<List<CategoryEntity>> {
+        return fetchCategoriesListFromApi()
+    }
+    
+    override suspend fun getCategoryByIdFromApi(id: String): Result<CategoryEntity> {
+        return fetchCategoriesListFromApi().fold(
+            onSuccess = { list ->
+                list.find { it.id == id }?.let { Result.success(it) }
+                    ?: Result.failure(Exception(context.getString(R.string.category_form_validation_edit_failed)))
+            },
+            onFailure = { Result.failure(it) }
+        )
+    }
+    
     override suspend fun addCategory(category: CategoryEntity): Result<Unit> {
         return try {
             categoryDao.insert(category)
@@ -478,88 +516,51 @@ class ProductRepositoryImpl @Inject constructor(
         sortOrder: Int,
         isActive: Boolean
     ): Result<CategoryEntity> {
-        val userId = getCurrentUserId() ?: return Result.failure(
+        getCurrentUserId() ?: return Result.failure(
             Exception("ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่")
         )
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+        }
         
         return try {
-            val categoryEntity: CategoryEntity
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val request = CreateCategoryRequestDto(
-                        name = name,
-                        sortOrder = sortOrder,
-                        isActive = isActive
-                    )
-                    
-                    val response = productsApi.createCategory(request)
-                    
-                    if (response.status == 201 && response.data != null) {
-                        // API success (201 Created) - convert to entity and save to Room
-                        categoryEntity = ProductMapper.toEntity(response.data)
-                        categoryDao.insert(categoryEntity)
-                        Result.success(categoryEntity)
-                    } else {
-                        // API returned error status
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการสร้างหมวดหมู่"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    // Handle HTTP errors
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> {
-                            // Bad Request - parse error message
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        401 -> {
-                            // Unauthorized - parse specific error
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> {
-                            // Forbidden - Free plan limit exceeded
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        409 -> {
-                            // Conflict - Duplicate category name
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        500 -> {
-                            // Internal Server Error
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        else -> {
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                    }
-                    Result.failure(Exception(errorMessage))
-                }
-            } else {
-                // No network - save to Room only (for sync later)
-                categoryEntity = CategoryEntity(
-                    id = UUID.randomUUID().toString(),
+            try {
+                val request = CreateCategoryRequestDto(
                     name = name,
                     sortOrder = sortOrder,
-                    isActive = isActive,
-                    userId = userId,
-                    productCount = 0,
-                    createdAt = Date(),
-                    updatedAt = Date(),
-                    isDeletedLocally = false,
-                    isFromServer = false,
-                    isSynced = false
+                    isActive = isActive
                 )
-                categoryDao.insert(categoryEntity)
-                Result.success(categoryEntity)
+                
+                val response = productsApi.createCategory(request)
+                
+                if (response.status == 201 && response.data != null) {
+                    val categoryEntity = ProductMapper.toEntity(response.data)
+                    categoryDao.insert(categoryEntity)
+                    Result.success(categoryEntity)
+                } else {
+                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                        ?: response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการสร้างหมวดหมู่"
+                    Result.failure(Exception(errorMessage))
+                }
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = when (e.code()) {
+                    400 -> parseApiErrorResponse(errorBody, e.code())
+                    401 -> {
+                        val parsed = parseApiErrorResponse(errorBody, e.code())
+                        if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                            "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        } else {
+                            parsed
+                        }
+                    }
+                    403 -> parseApiErrorResponse(errorBody, e.code())
+                    409 -> parseApiErrorResponse(errorBody, e.code())
+                    500 -> parseApiErrorResponse(errorBody, e.code())
+                    else -> parseApiErrorResponse(errorBody, e.code())
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการสร้างหมวดหมู่"))
@@ -572,94 +573,55 @@ class ProductRepositoryImpl @Inject constructor(
         sortOrder: Int,
         isActive: Boolean
     ): Result<CategoryEntity> {
-        val userId = getCurrentUserId() ?: return Result.failure(
+        getCurrentUserId() ?: return Result.failure(
             Exception("ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่")
         )
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+        }
         
         return try {
-            val categoryEntity: CategoryEntity
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val request = UpdateCategoryRequestDto(
-                        name = name,
-                        sortOrder = sortOrder,
-                        isActive = isActive,
-                        id = categoryId,
-                        description = "",
-                        imageUrl = ""
-                    )
-                    
-                    val response = productsApi.updateCategory(categoryId, request)
-                    
-                    if (response.status == 200 && response.data != null) {
-                        // API success (200 OK) - convert to entity and save to Room
-                        categoryEntity = ProductMapper.toEntity(response.data)
-                        categoryDao.insert(categoryEntity)
-                        Result.success(categoryEntity)
-                    } else {
-                        // API returned error status
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    // Handle HTTP errors
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> {
-                            // Bad Request
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        401 -> {
-                            // Unauthorized
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> {
-                            // Forbidden - Category ownership mismatch
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        404 -> {
-                            // Not Found - Category not found
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        409 -> {
-                            // Conflict - Duplicate category name
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        500 -> {
-                            // Internal Server Error
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                        else -> {
-                            parseApiErrorResponse(errorBody, e.code())
-                        }
-                    }
-                    Result.failure(Exception(errorMessage))
-                }
-            } else {
-                // No network - update in Room only (for sync later)
-                val existingCategory = categoryDao.getCategoryById(categoryId)
-                if (existingCategory == null) {
-                    return Result.failure(Exception("ไม่พบหมวดหมู่ที่ต้องการแก้ไข"))
-                }
-                
-                categoryEntity = existingCategory.copy(
+            try {
+                val request = UpdateCategoryRequestDto(
                     name = name,
                     sortOrder = sortOrder,
                     isActive = isActive,
-                    updatedAt = Date(),
-                    isSynced = false
+                    id = categoryId,
+                    description = "",
+                    imageUrl = ""
                 )
-                categoryDao.insert(categoryEntity)
-                Result.success(categoryEntity)
+                
+                val response = productsApi.updateCategory(categoryId, request)
+                
+                if (response.status == 200 && response.data != null) {
+                    val categoryEntity = ProductMapper.toEntity(response.data)
+                    categoryDao.insert(categoryEntity)
+                    Result.success(categoryEntity)
+                } else {
+                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                        ?: response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่"
+                    Result.failure(Exception(errorMessage))
+                }
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = when (e.code()) {
+                    400 -> parseApiErrorResponse(errorBody, e.code())
+                    401 -> {
+                        val parsed = parseApiErrorResponse(errorBody, e.code())
+                        if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                            "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        } else {
+                            parsed
+                        }
+                    }
+                    403 -> parseApiErrorResponse(errorBody, e.code())
+                    404 -> parseApiErrorResponse(errorBody, e.code())
+                    409 -> parseApiErrorResponse(errorBody, e.code())
+                    500 -> parseApiErrorResponse(errorBody, e.code())
+                    else -> parseApiErrorResponse(errorBody, e.code())
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่"))
@@ -670,61 +632,42 @@ class ProductRepositoryImpl @Inject constructor(
         categoryId: String,
         newStatus: Boolean
     ): Result<CategoryEntity> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+        }
         return try {
-            val categoryEntity: CategoryEntity
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val request = ToggleCategoryStatusRequestDto(status = newStatus)
-                    val response = productsApi.toggleCategoryStatus(categoryId, request)
-                    
-                    if (response.status == 200 && response.data != null) {
-                        // API success (200 OK) - convert to entity and save to Room
-                        categoryEntity = ProductMapper.toEntity(response.data)
-                        categoryDao.insert(categoryEntity)
-                        Result.success(categoryEntity)
-                    } else {
-                        // API returned error status
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะหมวดหมู่"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    // Handle HTTP errors
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> parseApiErrorResponse(errorBody, e.code())
-                        401 -> {
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> parseApiErrorResponse(errorBody, e.code())
-                        404 -> parseApiErrorResponse(errorBody, e.code())
-                        500 -> parseApiErrorResponse(errorBody, e.code())
-                        else -> parseApiErrorResponse(errorBody, e.code())
-                    }
+            try {
+                val request = ToggleCategoryStatusRequestDto(status = newStatus)
+                val response = productsApi.toggleCategoryStatus(categoryId, request)
+                
+                if (response.status == 200 && response.data != null) {
+                    val categoryEntity = ProductMapper.toEntity(response.data)
+                    categoryDao.insert(categoryEntity)
+                    Result.success(categoryEntity)
+                } else {
+                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                        ?: response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะหมวดหมู่"
                     Result.failure(Exception(errorMessage))
                 }
-            } else {
-                // No network - update in Room only (for sync later)
-                val existingCategory = categoryDao.getCategoryById(categoryId)
-                if (existingCategory == null) {
-                    return Result.failure(Exception("ไม่พบหมวดหมู่ที่ต้องการอัปเดต"))
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = when (e.code()) {
+                    400 -> parseApiErrorResponse(errorBody, e.code())
+                    401 -> {
+                        val parsed = parseApiErrorResponse(errorBody, e.code())
+                        if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                            "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        } else {
+                            parsed
+                        }
+                    }
+                    403 -> parseApiErrorResponse(errorBody, e.code())
+                    404 -> parseApiErrorResponse(errorBody, e.code())
+                    500 -> parseApiErrorResponse(errorBody, e.code())
+                    else -> parseApiErrorResponse(errorBody, e.code())
                 }
-                
-                categoryEntity = existingCategory.copy(
-                    isActive = newStatus,
-                    updatedAt = Date(),
-                    isSynced = false
-                )
-                categoryDao.insert(categoryEntity)
-                Result.success(categoryEntity)
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะหมวดหมู่"))
@@ -732,52 +675,40 @@ class ProductRepositoryImpl @Inject constructor(
     }
     
     override suspend fun deleteCategory(categoryId: String): Result<Unit> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+        }
         return try {
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val response = productsApi.deleteCategory(categoryId)
-                    
-                    if (response.status == 200) {
-                        // API success (200 OK) - delete from Room
-                        categoryDao.deleteCategoryById(categoryId)
-                        Result.success(Unit)
-                    } else {
-                        // API returned error status
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    // Handle HTTP errors
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> parseApiErrorResponse(errorBody, e.code())
-                        401 -> {
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else {
-                                parsed
-                            }
-                        }
-                        403 -> parseApiErrorResponse(errorBody, e.code())
-                        404 -> parseApiErrorResponse(errorBody, e.code())
-                        500 -> parseApiErrorResponse(errorBody, e.code())
-                        else -> parseApiErrorResponse(errorBody, e.code())
-                    }
+            try {
+                val response = productsApi.deleteCategory(categoryId)
+                
+                if (response.status == 200) {
+                    categoryDao.deleteCategoryById(categoryId)
+                    Result.success(Unit)
+                } else {
+                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                        ?: response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
                     Result.failure(Exception(errorMessage))
                 }
-            } else {
-                // No network - mark as deleted locally (for sync later)
-                val existingCategory = categoryDao.getCategoryById(categoryId)
-                if (existingCategory == null) {
-                    return Result.failure(Exception("ไม่พบหมวดหมู่ที่ต้องการลบ"))
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = when (e.code()) {
+                    400 -> parseApiErrorResponse(errorBody, e.code())
+                    401 -> {
+                        val parsed = parseApiErrorResponse(errorBody, e.code())
+                        if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                            "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        } else {
+                            parsed
+                        }
+                    }
+                    403 -> parseApiErrorResponse(errorBody, e.code())
+                    404 -> parseApiErrorResponse(errorBody, e.code())
+                    500 -> parseApiErrorResponse(errorBody, e.code())
+                    else -> parseApiErrorResponse(errorBody, e.code())
                 }
-                
-                categoryDao.markAsDeletedLocally(categoryId)
-                Result.success(Unit)
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"))
@@ -790,60 +721,51 @@ class ProductRepositoryImpl @Inject constructor(
                 return Result.failure(Exception("กรุณาเลือกหมวดหมู่ที่ต้องการลบ"))
             }
             
-            if (networkConnectivityChecker.isConnected()) {
-                try {
-                    val request = DeleteCategoriesRequestDto(categoryIds = categoryIds)
-                    val response = productsApi.deleteMultipleCategories(request)
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+            }
+            try {
+                val request = DeleteCategoriesRequestDto(categoryIds = categoryIds)
+                val response = productsApi.deleteMultipleCategories(request)
+                
+                if (response.status == 200) {
+                    val deletedIds = response.deletedIds.orEmpty()
+                    val totalDeleted = response.data?.totalDeleted ?: response.count
+                    val totalFailed = response.data?.totalFailed ?: response.failedDeletions.orEmpty().size
+                    val errors = response.errors.orEmpty()
                     
-                    if (response.status == 200) {
-                        val deletedIds = response.deletedIds.orEmpty()
-                        val totalDeleted = response.data?.totalDeleted ?: response.count
-                        val totalFailed = response.data?.totalFailed ?: response.failedDeletions.orEmpty().size
-                        val errors = response.errors.orEmpty()
-                        
-                        deletedIds.forEach { id ->
-                            categoryDao.deleteCategoryById(id)
-                        }
-                        
-                        Result.success(
-                            DeleteCategoriesResult(
-                                deletedCount = totalDeleted,
-                                failedCount = totalFailed,
-                                errors = errors
-                            )
+                    deletedIds.forEach { id ->
+                        categoryDao.deleteCategoryById(id)
+                    }
+                    
+                    Result.success(
+                        DeleteCategoriesResult(
+                            deletedCount = totalDeleted,
+                            failedCount = totalFailed,
+                            errors = errors
                         )
-                    } else {
-                        val errorMessage = response.message.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = when (e.code()) {
-                        400 -> parseApiErrorResponse(errorBody, e.code())
-                        401 -> {
-                            val parsed = parseApiErrorResponse(errorBody, e.code())
-                            if (parsed.contains("Unauthorized", ignoreCase = true)) {
-                                "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                            } else parsed
-                        }
-                        403 -> parseApiErrorResponse(errorBody, e.code())
-                        404 -> parseApiErrorResponse(errorBody, e.code())
-                        500 -> parseApiErrorResponse(errorBody, e.code())
-                        else -> parseApiErrorResponse(errorBody, e.code())
-                    }
+                    )
+                } else {
+                    val errorMessage = response.message.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"
                     Result.failure(Exception(errorMessage))
                 }
-            } else {
-                var deletedCount = 0
-                categoryIds.forEach { id ->
-                    val existing = categoryDao.getCategoryById(id)
-                    if (existing != null) {
-                        categoryDao.markAsDeletedLocally(id)
-                        deletedCount++
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = when (e.code()) {
+                    400 -> parseApiErrorResponse(errorBody, e.code())
+                    401 -> {
+                        val parsed = parseApiErrorResponse(errorBody, e.code())
+                        if (parsed.contains("Unauthorized", ignoreCase = true)) {
+                            "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                        } else parsed
                     }
+                    403 -> parseApiErrorResponse(errorBody, e.code())
+                    404 -> parseApiErrorResponse(errorBody, e.code())
+                    500 -> parseApiErrorResponse(errorBody, e.code())
+                    else -> parseApiErrorResponse(errorBody, e.code())
                 }
-                Result.success(DeleteCategoriesResult(deletedCount = deletedCount))
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบหมวดหมู่"))
@@ -1869,81 +1791,10 @@ class ProductRepositoryImpl @Inject constructor(
     }
     
     /**
-     * Sync categories to server
+     * Pull categories from API into Room (replaces legacy POST /categories/sync push of local drafts).
      */
     override suspend fun syncCategories(): Result<Unit> {
-        return try {
-            if (!networkConnectivityChecker.isConnected()) {
-                return Result.success(Unit) // No network, skip sync
-            }
-            
-            // Get all unsynced categories
-            val unsynced = categoryDao.getUnsyncedCategories()
-            val deleted = categoryDao.getDeletedCategories()
-            
-            if (unsynced.isEmpty() && deleted.isEmpty()) {
-                return Result.success(Unit) // Nothing to sync
-            }
-            
-            // Date formatter for ISO string
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }
-            
-            // Convert to sync items
-            val syncItems = (unsynced + deleted).map { entity ->
-                SyncCategoryItemDto(
-                    id = entity.id,
-                    name = entity.name,
-                    isActive = entity.isActive,
-                    isSynced = entity.isSynced,
-                    isDeletedLocally = entity.isDeletedLocally,
-                    createdAt = dateFormat.format(entity.createdAt),
-                    updatedAt = dateFormat.format(entity.updatedAt)
-                )
-            }
-            
-            val request = SyncCategoriesRequestDto(categories = syncItems)
-            val response = productsApi.syncCategories(request)
-            
-            // Process sync results
-            response.data?.forEach { result ->
-                when {
-                    result.shouldDelete -> {
-                        // Delete locally
-                        categoryDao.deleteCategoryById(result.id)
-                    }
-                    result.serverData != null -> {
-                        // Update with server data
-                        val serverEntity = ProductMapper.toEntity(result.serverData)
-                        categoryDao.insert(serverEntity)
-                    }
-                    result.status.lowercase() == "success" -> {
-                        // Mark as synced
-                        categoryDao.markAsSynced(result.id)
-                    }
-                }
-            }
-            
-            Result.success(Unit)
-        } catch (e: HttpException) {
-            val errorMessage = when (e.code()) {
-                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                403 -> {
-                    val errorBody = e.response()?.errorBody()?.string()
-                    if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
-                        "คุณใช้หมวดหมู่ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
-                    } else {
-                        e.message() ?: "เกิดข้อผิดพลาดในการ sync"
-                    }
-                }
-                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                else -> e.message() ?: "เกิดข้อผิดพลาดในการ sync"
-            }
-            Result.failure(Exception(errorMessage))
-        } catch (e: Exception) {
-            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
-        }
+        return fetchAndSyncCategories()
     }
     
     /**

@@ -68,6 +68,16 @@ interface ProductRepository {
     suspend fun getCategoryById(id: String): CategoryEntity?
     
     /**
+     * Load all categories from API (requires network). Updates local Room cache elsewhere via [fetchAndSyncCategories] if needed.
+     */
+    suspend fun getAllCategoriesFromApi(): Result<List<CategoryEntity>>
+    
+    /**
+     * Load one category from API by id (requires network; uses categories list endpoint).
+     */
+    suspend fun getCategoryByIdFromApi(id: String): Result<CategoryEntity>
+    
+    /**
      * Add a new category to local database
      */
     suspend fun addCategory(category: CategoryEntity): Result<Unit>
@@ -83,9 +93,7 @@ interface ProductRepository {
     suspend fun getCurrentUserId(): Int?
     
     /**
-     * Create a new category
-     * If network is available, calls API and saves to Room
-     * If network is not available, saves to Room only (for sync later)
+     * Create a new category via API (requires network). Persists response to Room for offline product flows.
      */
     suspend fun createCategory(
         name: String,
@@ -94,9 +102,7 @@ interface ProductRepository {
     ): Result<CategoryEntity>
     
     /**
-     * Update an existing category
-     * If network is available, calls API and saves to Room
-     * If network is not available, saves to Room only (for sync later)
+     * Update an existing category via API (requires network). Persists response to Room for offline product flows.
      */
     suspend fun updateCategory(
         categoryId: String,
@@ -106,9 +112,7 @@ interface ProductRepository {
     ): Result<CategoryEntity>
     
     /**
-     * Toggle category status (activate/deactivate)
-     * If network is available, calls API and saves to Room
-     * If network is not available, updates in Room only (for sync later)
+     * Toggle category status via API (requires network). Persists response to Room for offline product flows.
      */
     suspend fun toggleCategoryStatus(
         categoryId: String,
@@ -116,9 +120,7 @@ interface ProductRepository {
     ): Result<CategoryEntity>
     
     /**
-     * Delete a category
-     * If network is available, calls API and deletes from Room
-     * If network is not available, marks as deleted locally (isDeletedLocally = true)
+     * Delete a category via API (requires network). Removes from Room on success.
      */
     suspend fun deleteCategory(categoryId: String): Result<Unit>
     
@@ -258,8 +260,8 @@ interface ProductRepository {
     suspend fun getSyncStatistics(): ProductSyncStatistics
     
     /**
-     * Sync categories to server
-     * Syncs unsynced and deleted categories from local database to server
+     * Reconcile local category cache with server (pull from API into Room).
+     * Replaces legacy push-sync of unsynced rows; [SequentialSyncUseCase] step 1 still calls this.
      */
     suspend fun syncCategories(): Result<Unit>
     

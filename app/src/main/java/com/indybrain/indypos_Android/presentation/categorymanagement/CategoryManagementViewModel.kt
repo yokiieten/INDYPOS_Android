@@ -7,7 +7,6 @@ import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
-import com.indybrain.indypos_Android.domain.repository.CategoriesPaginatedResult
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -48,13 +47,8 @@ class CategoryManagementViewModel @Inject constructor(
     
     private var searchJob: Job? = null
     
-    init {
-        // Load categories will be called from screen's ON_RESUME lifecycle
-        // When online: uses paginated API. When offline: uses Room.
-    }
-    
     /**
-     * Load categories - when online uses paginated API, when offline loads from Room
+     * Load categories from paginated API only (requires network).
      * @param clearError if true, clears errorMessage when starting (default). Set false when refreshing after delete fail to preserve error popup.
      */
     private fun loadCategories(clearError: Boolean = true) {
@@ -68,53 +62,51 @@ class CategoryManagementViewModel @Inject constructor(
                     )
                 }
                 
+                if (!networkConnectivityChecker.isConnected()) {
+                    _uiState.update { current ->
+                        current.copy(
+                            isLoading = false,
+                            isLoadingMore = false,
+                            categories = emptyList(),
+                            filteredCategories = null,
+                            hasNextPage = false,
+                            currentPage = 1,
+                            errorMessage = if (clearError) {
+                                getLocalizedString(R.string.logout_no_internet_title)
+                            } else {
+                                current.errorMessage
+                            }
+                        )
+                    }
+                    return@launch
+                }
+                
                 val searchQuery = _uiState.value.searchQuery
                 
-                if (networkConnectivityChecker.isConnected()) {
-                    // Online - use paginated API
-                    val result = productRepository.getCategoriesPaginated(
-                        page = 1,
-                        limit = 20,
-                        search = searchQuery.takeIf { it.isNotBlank() }
-                    )
-                    result.onSuccess { paginatedResult ->
-                        _uiState.update { current ->
-                            val pendingDeleteIds = current.pendingDeleteCategoryIds
-                            val visibleCategories = paginatedResult.categories
-                                .filterNot { pendingDeleteIds.contains(it.id) }
-                            current.copy(
-                                categories = visibleCategories,
-                                filteredCategories = null, // API already filters by search
-                                isLoading = false,
-                                currentPage = paginatedResult.currentPage,
-                                hasNextPage = paginatedResult.hasNext,
-                                isLoadingMore = false
-                            )
-                        }
-                    }.onFailure { error ->
-                        _uiState.update { current ->
-                            current.copy(
-                                isLoading = false,
-                                errorMessage = error.message ?: context.getString(R.string.category_management_error_loading)
-                            )
-                        }
-                    }
-                } else {
-                    // Offline - load from Room
-                    val categories = productRepository.getAllCategories()
-                        .sortedBy { it.createdAt }
+                val result = productRepository.getCategoriesPaginated(
+                    page = 1,
+                    limit = 20,
+                    search = searchQuery.takeIf { it.isNotBlank() }
+                )
+                result.onSuccess { paginatedResult ->
                     _uiState.update { current ->
                         val pendingDeleteIds = current.pendingDeleteCategoryIds
-                        val visibleCategories = categories.filterNot { pendingDeleteIds.contains(it.id) }
-                        val filtered = if (searchQuery.isNotBlank()) {
-                            visibleCategories.filter { it.name.contains(searchQuery, ignoreCase = true) }
-                        } else null
+                        val visibleCategories = paginatedResult.categories
+                            .filterNot { pendingDeleteIds.contains(it.id) }
                         current.copy(
                             categories = visibleCategories,
-                            filteredCategories = filtered,
+                            filteredCategories = null,
                             isLoading = false,
-                            hasNextPage = false,
-                            currentPage = 1
+                            currentPage = paginatedResult.currentPage,
+                            hasNextPage = paginatedResult.hasNext,
+                            isLoadingMore = false
+                        )
+                    }
+                }.onFailure { error ->
+                    _uiState.update { current ->
+                        current.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: context.getString(R.string.category_management_error_loading)
                         )
                     }
                 }
@@ -190,7 +182,7 @@ class CategoryManagementViewModel @Inject constructor(
     }
     
     /**
-     * Search categories - debounced, when online reloads from API with search param, when offline filters client-side.
+     * Search categories — debounced reload from API with search param.
      */
     fun searchCategories(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
@@ -198,17 +190,13 @@ class CategoryManagementViewModel @Inject constructor(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             delay(300) // Debounce
-            val currentQuery = _uiState.value.searchQuery
-            if (networkConnectivityChecker.isConnected()) {
-                loadCategories(clearError = true)
-            } else {
-                _uiState.update { current ->
-                    val categories = current.categories ?: emptyList()
-                    val filteredCategories = if (currentQuery.isBlank()) null
-                    else categories.filter { it.name.contains(currentQuery, ignoreCase = true) }
-                    current.copy(filteredCategories = filteredCategories)
+            if (!networkConnectivityChecker.isConnected()) {
+                _uiState.update {
+                    it.copy(errorMessage = getLocalizedString(R.string.logout_no_internet_title))
                 }
+                return@launch
             }
+            loadCategories(clearError = true)
         }
     }
     
@@ -274,9 +262,8 @@ class CategoryManagementViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             
-            // Get category name before deleting
-            val category = productRepository.getCategoryById(categoryId)
-            val categoryName = category?.name ?: context.getString(R.string.category_management_default_name)
+            val categoryName = productRepository.getCategoryByIdFromApi(categoryId).getOrNull()?.name
+                ?: getLocalizedString(R.string.category_management_default_name)
             
             val result = productRepository.deleteCategory(categoryId)
             
@@ -442,70 +429,10 @@ class CategoryManagementViewModel @Inject constructor(
     }
     
     /**
-     * Sync categories to server
-     */
-    fun syncCategories() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            val result = productRepository.syncCategories()
-            
-            result.onSuccess {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        syncSuccessMessage = context.getString(R.string.category_management_sync_success)
-                    )
-                }
-                // Refresh categories after sync
-                loadCategories()
-            }.onFailure { error ->
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = error.message ?: context.getString(R.string.category_management_error_syncing)
-                    )
-                }
-            }
-        }
-    }
-    
-    /**
-     * Dismiss sync success message
-     */
-    fun dismissSyncSuccess() {
-        _uiState.update { it.copy(syncSuccessMessage = null) }
-    }
-    
-    /**
      * Clear error message
      */
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
-    }
-    
-    /**
-     * Load sync statistics
-     */
-    fun loadSyncStatistics() {
-        viewModelScope.launch {
-            val categories = productRepository.getAllCategories()
-            val total = categories.size
-            val synced = categories.count { it.isSynced }
-            val unsynced = categories.count { !it.isSynced }
-            val deleted = categories.count { it.isDeletedLocally }
-            
-            _uiState.update { 
-                it.copy(
-                    syncStatistics = CategorySyncStatistics(
-                        total = total,
-                        synced = synced,
-                        unsynced = unsynced,
-                        deleted = deleted
-                    )
-                )
-            }
-        }
     }
 }
 

@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -92,14 +91,6 @@ fun CategoryManagementScreen(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var categoryToDelete by remember { mutableStateOf<com.indybrain.indypos_Android.data.local.entity.CategoryEntity?>(null) }
     var showMultipleDeleteConfirmation by remember { mutableStateOf(false) }
-    var showSyncDialog by remember { mutableStateOf(false) }
-    
-    // Load sync statistics when dialog opens
-    LaunchedEffect(showSyncDialog) {
-        if (showSyncDialog) {
-            viewModel.loadSyncStatistics()
-        }
-    }
     
     // Pull to refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
@@ -124,12 +115,8 @@ fun CategoryManagementScreen(
         }
     }
     
-    // Calculate categories to show - add null safety
-    val categoriesToShow = if (uiState.searchQuery.isNotBlank()) {
-        uiState.filteredCategories ?: emptyList()
-    } else {
-        uiState.categories ?: emptyList()
-    }
+    // Offline: filteredCategories is set client-side. Online: API applies search; use categories.
+    val categoriesToShow = uiState.filteredCategories ?: (uiState.categories ?: emptyList())
     
     // Show loading only for initial load when data hasn't been loaded yet (categories is null)
     // Avoid showing full-screen loading during actions like delete to prevent flicker
@@ -472,28 +459,6 @@ fun CategoryManagementScreen(
             )
         }
         
-        // Sync Status Dialog
-        if (showSyncDialog) {
-            CategorySyncStatusDialog(
-                statistics = uiState.syncStatistics,
-                onDismiss = { showSyncDialog = false },
-                onSyncNow = {
-                    viewModel.syncCategories()
-                    showSyncDialog = false
-                }
-            )
-        }
-        
-        // Sync Success Dialog
-        uiState.syncSuccessMessage?.let { message ->
-            SyncSuccessDialog(
-                message = message,
-                onDismiss = {
-                    viewModel.dismissSyncSuccess()
-                }
-            )
-        }
-        
         // Error Dialog - Show API errors as popup
         uiState.errorMessage?.let { error ->
             AlertDialog(
@@ -533,149 +498,6 @@ fun CategoryManagementScreen(
             )
         }
     }
-}
-
-/**
- * Category Sync Status Dialog
- */
-@Composable
-private fun CategorySyncStatusDialog(
-    statistics: CategorySyncStatistics?,
-    onDismiss: () -> Unit,
-    onSyncNow: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(id = R.string.category_management_sync_status_title),
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Large
-                ),
-                color = PrimaryText
-            )
-        },
-        text = {
-            Column {
-                if (statistics != null) {
-                    Text(
-                        text = stringResource(id = R.string.category_management_sync_total, statistics.total),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = SecondaryText
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(id = R.string.category_management_sync_synced, statistics.synced),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = SecondaryText
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(id = R.string.category_management_sync_pending, statistics.unsynced),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = SecondaryText
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(id = R.string.category_management_sync_deleted, statistics.deleted),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = SecondaryText
-                    )
-                } else {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = PrimaryButton
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            if (statistics != null && statistics.unsynced > 0) {
-                TextButton(onClick = onSyncNow) {
-                    Text(
-                        text = stringResource(id = R.string.category_management_sync_now),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Medium,
-                            size = FontSize.Medium
-                        ),
-                        color = PrimaryButton
-                    )
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = stringResource(id = R.string.dialog_button_ok),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Medium,
-                        size = FontSize.Medium
-                    ),
-                    color = SecondaryText
-                )
-            }
-        }
-    )
-}
-
-/**
- * Sync Success Dialog
- */
-@Composable
-private fun SyncSuccessDialog(
-    message: String,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = { /* Prevent dismissing by clicking outside */ },
-        title = {
-            Text(
-                text = stringResource(id = R.string.success_title),
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Large
-                ),
-                color = PrimaryText
-            )
-        },
-        text = {
-            Text(
-                text = message,
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Regular,
-                    size = FontSize.Medium
-                ),
-                color = SecondaryText
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onDismiss
-            ) {
-                Text(
-                    text = stringResource(id = R.string.dialog_button_ok),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Medium,
-                        size = FontSize.Medium
-                    ),
-                    color = PrimaryButton
-                )
-            }
-        }
-    )
 }
 
 /**
