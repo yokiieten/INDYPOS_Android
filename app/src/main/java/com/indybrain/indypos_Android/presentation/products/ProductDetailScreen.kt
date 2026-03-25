@@ -114,9 +114,9 @@ fun ProductDetailScreen(
         }
     }
     
-    // Clear error when addon is selected
-    LaunchedEffect(uiState.selectedAddons) {
-        if (uiState.errorMessage != null) {
+    // Clear error when addon is selected (only while product is loaded — not load/network errors)
+    LaunchedEffect(uiState.selectedAddons, uiState.product) {
+        if (uiState.product != null && uiState.errorMessage != null) {
             viewModel.clearErrorMessage()
         }
     }
@@ -184,7 +184,8 @@ fun ProductDetailScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "ไม่พบสินค้า",
+                        text = uiState.errorMessage?.takeIf { it.isNotBlank() }
+                            ?: stringResource(id = R.string.barcode_scanner_product_not_found_title),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium

@@ -1,21 +1,14 @@
 package com.indybrain.indypos_Android.presentation.products
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
-import com.indybrain.indypos_Android.data.local.dao.AddonDao
-import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
-import com.indybrain.indypos_Android.data.local.dao.ProductDao
-import com.indybrain.indypos_Android.data.local.dao.ProductAddonGroupJunctionDao
-import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
-import com.indybrain.indypos_Android.data.local.entity.AddonEntity
-import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
-import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
-import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,23 +17,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private data class ProductDetailLoadResult(
-    val product: ProductEntity,
-    val addonGroups: List<AddonGroupEntity>,
-    val addonsByGroup: Map<String, List<AddonEntity>>,
-    val category: CategoryEntity?
-)
-
 @HiltViewModel
 class ProductDetailViewModel @Inject constructor(
-    private val productDao: ProductDao,
-    private val addonGroupDao: AddonGroupDao,
-    private val addonDao: AddonDao,
-    private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
-    private val addonGroupAddonJunctionDao: AddonGroupAddonJunctionDao,
     private val cartRepository: CartRepository,
     private val productRepository: ProductRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ProductDetailUiState())
@@ -48,36 +29,42 @@ class ProductDetailViewModel @Inject constructor(
     
     fun loadProduct(productId: String, cartItemId: String? = null) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
             try {
-                // Try API first when online
-                val apiResult = if (networkConnectivityChecker.isConnected()) {
-                    productRepository.getProductDetailFromApi(productId)
-                } else {
-                    Result.failure(Exception("No network"))
-                }
-                
-                val loadResult = when {
-                    apiResult.isSuccess -> {
-                        val data = apiResult.getOrNull()!!
-                        ProductDetailLoadResult(data.product, data.addonGroups, data.addonsByGroup, data.category)
-                    }
-                    else -> {
-                        // Fallback to local
-                        val local = loadProductFromLocal(productId) ?: run {
-                            _uiState.update { it.copy(isLoading = false, product = null) }
-                            return@launch
+                val apiResult = productRepository.getProductDetailFromApi(productId)
+                if (apiResult.isFailure) {
+                    val err = apiResult.exceptionOrNull()
+                    val raw = err?.message?.takeIf { it.isNotBlank() }.orEmpty()
+                    val message =
+                        if (raw.contains("No network connection", ignoreCase = true)) {
+                            context.getString(R.string.logout_no_internet_title)
+                        } else {
+                            raw.takeIf { it.isNotBlank() } ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
                         }
-                        val cat = productRepository.getCategoryById(local.first.categoryId ?: "")
-                        ProductDetailLoadResult(local.first, local.second, local.third, cat)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            product = null,
+                            category = null,
+                            addonGroups = emptyList(),
+                            addonsByGroup = emptyMap(),
+                            selectedAddons = emptyMap(),
+                            quantity = 1,
+                            specialRequest = "",
+                            editingCartItemId = null,
+                            errorMessage = message
+                        )
                     }
+                    return@launch
                 }
-                val product = loadResult.product
-                val addonGroups = loadResult.addonGroups
-                val addonsByGroup = loadResult.addonsByGroup
-                val category = loadResult.category
-                
+
+                val data = apiResult.getOrNull()!!
+                val product = data.product
+                val addonGroups = data.addonGroups
+                val addonsByGroup = data.addonsByGroup
+                val category = data.category
+
                 // Check if product is already in cart and load existing data
                 val existingCartItems = cartRepository.getCartItemsByProduct(productId).first()
                 val isExplicitNew = cartItemId == "new"
@@ -130,48 +117,30 @@ class ProductDetailViewModel @Inject constructor(
                         selectedAddons = existingSelectedAddons,
                         quantity = existingQuantity,
                         specialRequest = existingSpecialRequest,
-                        editingCartItemId = if (!isExplicitNew && existingCartItem != null) existingCartItem.id else null
+                        editingCartItemId = if (!isExplicitNew && existingCartItem != null) existingCartItem.id else null,
+                        errorMessage = null
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        product = null,
+                        category = null,
+                        addonGroups = emptyList(),
+                        addonsByGroup = emptyMap(),
+                        selectedAddons = emptyMap(),
+                        quantity = 1,
+                        specialRequest = "",
+                        editingCartItemId = null,
+                        errorMessage = e.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                    )
+                }
             }
         }
     }
 
-    /**
-     * Load product from local database (fallback when offline or API fails)
-     */
-    private suspend fun loadProductFromLocal(productId: String): Triple<com.indybrain.indypos_Android.data.local.entity.ProductEntity, List<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity>, Map<String, List<com.indybrain.indypos_Android.data.local.entity.AddonEntity>>>? {
-        val product = productDao.getAllActiveProducts().find { it.id == productId }
-            ?: return null
-
-        val addonGroups = if (product.hasAdditionalOptions == true) {
-            val addonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(productId)
-            if (addonGroupIds.isNotEmpty()) {
-                addonGroupIds.mapNotNull { addonGroupDao.getAddonGroupById(it) }
-                    .filter { it.isActive && !it.isDeletedLocally }
-            } else {
-                emptyList()
-            }
-        } else {
-            emptyList()
-        }
-
-        val addonsByGroup = addonGroups.associate { group ->
-            val addonIds = addonGroupAddonJunctionDao.getAddonIdsByAddonGroupIdSync(group.id)
-            val addons = if (addonIds.isNotEmpty()) {
-                addonIds.mapNotNull { addonDao.getAddonById(it) }
-                    .filter { it.isActive && !it.isDeletedLocally }
-            } else {
-                emptyList()
-            }
-            group.id to addons
-        }
-
-        return Triple(product, addonGroups, addonsByGroup)
-    }
-    
     fun toggleAddon(addonGroupId: String, addonId: String) {
         _uiState.update { currentState ->
             val addonGroup = currentState.addonGroups.find { it.id == addonGroupId }
