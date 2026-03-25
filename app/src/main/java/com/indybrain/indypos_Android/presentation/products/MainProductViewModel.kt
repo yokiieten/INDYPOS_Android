@@ -2,7 +2,6 @@ package com.indybrain.indypos_Android.presentation.products
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.repository.CartRepository
@@ -21,7 +20,6 @@ import javax.inject.Inject
 @HiltViewModel
 class MainProductViewModel @Inject constructor(
     private val productRepository: ProductRepository,
-    private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val cartRepository: CartRepository
 ) : ViewModel() {
     
@@ -42,70 +40,38 @@ class MainProductViewModel @Inject constructor(
 
     /**
      * Load products when screen opens (called from onResume).
-     * When online: fetches from Main Product List API (products/list).
-     * When offline: loads from local DB.
+     * Fetches from Main Product List API only ([ProductRepository.getProductListFromApi]); no Room cache for listing.
      */
     fun loadProducts() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            if (networkConnectivityChecker.isConnected()) {
-                productRepository.getProductListFromApi().onSuccess { data ->
-                    val sortedCategories = data.categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
-                    val firstCategoryId = sortedCategories.firstOrNull()?.id
-                    _uiState.update { current ->
-                        current.copy(
-                            categories = sortedCategories,
-                            allProducts = data.products,
-                            products = data.products,
-                            focusedCategoryId = current.focusedCategoryId ?: firstCategoryId,
-                            selectedCategoryId = current.selectedCategoryId ?: firstCategoryId,
-                            isLoading = false
-                        )
-                    }
-                }.onFailure {
-                    reloadProductsFromLocalDb()
-                    _uiState.update { current ->
-                        current.copy(
-                            isLoading = false,
-                            errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูล"
-                        )
-                    }
+            productRepository.getProductListFromApi().onSuccess { data ->
+                val sortedCategories = data.categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
+                val firstCategoryId = sortedCategories.firstOrNull()?.id
+                _uiState.update { current ->
+                    current.copy(
+                        categories = sortedCategories,
+                        allProducts = data.products,
+                        products = data.products,
+                        focusedCategoryId = current.focusedCategoryId ?: firstCategoryId,
+                        selectedCategoryId = current.selectedCategoryId ?: firstCategoryId,
+                        isLoading = false,
+                        errorMessage = null
+                    )
                 }
-            } else {
-                reloadProductsFromLocalDb()
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        errorMessage = error.message?.takeIf { it.isNotBlank() }
+                            ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                    )
+                }
             }
         }
     }
-    
-    /**
-     * Reload products and categories from local DB only (no API).
-     * Used when offline, when API fails, or when returning to screen (onResume).
-     */
-    fun reloadProductsFromLocalDb() {
-        viewModelScope.launch {
-            val categories = productRepository.getAllActiveCategories().first()
-            val sortedCategories = categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
-            val firstCategoryId = sortedCategories.firstOrNull()?.id
 
-            val products = productRepository.getAllActiveProducts().first()
-            val productsWithCategory = products.filter {
-                it.categoryId != null && it.categoryId.isNotBlank()
-            }
-
-            _uiState.update { current ->
-                current.copy(
-                    categories = sortedCategories,
-                    allProducts = productsWithCategory,
-                    products = productsWithCategory,
-                    focusedCategoryId = current.focusedCategoryId ?: firstCategoryId,
-                    selectedCategoryId = current.selectedCategoryId ?: firstCategoryId,
-                    isLoading = false
-                )
-            }
-        }
-    }
-    
     /**
      * Select a category filter
      */
@@ -127,21 +93,21 @@ class MainProductViewModel @Inject constructor(
     }
     
     /**
-     * Find product by barcode (productCode or skuCode)
+     * Find product by barcode (productCode or skuCode) in the current API-loaded list only.
      */
-    suspend fun findProductByCode(code: String): ProductEntity? {
-        // 1) Find active product by code
-        val product = productRepository.getProductByCode(code) ?: return null
+    fun findProductByCode(code: String): ProductEntity? {
+        val normalized = code.trim()
+        if (normalized.isEmpty()) return null
 
-        // 2) Product must have a category
+        val product = _uiState.value.allProducts.firstOrNull { p ->
+            p.productCode?.equals(normalized, ignoreCase = true) == true ||
+                p.skuCode?.equals(normalized, ignoreCase = true) == true
+        } ?: return null
+
         val categoryId = product.categoryId?.takeIf { it.isNotBlank() } ?: return null
-
-        // 3) Category must still be active (and not deleted locally)
-        val category = productRepository.getCategoryById(categoryId)
+        val category = _uiState.value.categories.find { it.id == categoryId }
         val isCategoryActive = category?.let { it.isActive && !it.isDeletedLocally } ?: false
 
-        // If category is not active, treat as "product not found" for scanning/search,
-        // to match iOS behaviour and the SearchProductViewModel filters.
         return if (isCategoryActive) product else null
     }
     

@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.domain.model.User
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.HomeRepository
-import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,13 +12,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import android.net.Uri
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val orderRepository: OrderRepository,
     private val homeRepository: HomeRepository
 ) : ViewModel() {
     
@@ -28,19 +25,16 @@ class HomeViewModel @Inject constructor(
     
     init {
         observeUser()
-        observeOrders()
     }
     
     /**
-     * Refresh data when screen appears (like viewWillAppear in iOS)
-     * Tries Today's Sales API only. Falls back to local calculation if API fails or no network.
-     * Orders list is not synced here; OrderScreen handles its own refresh.
+     * Refresh data when screen appears (like viewWillAppear in iOS).
+     * Loads today's sales summary from API only.
      */
     fun refreshData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            // Try Today's Sales API first
             homeRepository.getTodaySales().onSuccess { apiResult ->
                 val statistics = HomeStatistics(
                     todaysSales = apiResult.todaysSales,
@@ -50,18 +44,15 @@ class HomeViewModel @Inject constructor(
                     topProductAmount = apiResult.topProductAmount
                 )
                 _uiState.update { current ->
-                    current.copy(statistics = statistics, isLoading = false)
+                    current.copy(statistics = statistics, isLoading = false, errorMessage = null)
                 }
-            }.onFailure {
-                // Fallback to local calculation
-                orderRepository.getOrdersSync().onSuccess { orders ->
-                    val topProduct = orderRepository.getTodayTopProduct()
-                    val statistics = buildStatistics(orders, topProduct)
-                    _uiState.update { current ->
-                        current.copy(statistics = statistics, isLoading = false)
-                    }
-                }.onFailure {
-                    _uiState.update { it.copy(isLoading = false) }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        statistics = HomeStatistics(),
+                        isLoading = false,
+                        errorMessage = error.message
+                    )
                 }
             }
         }
@@ -82,66 +73,6 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
-    }
-    
-    private fun observeOrders() {
-        // Observe orders from local database
-        viewModelScope.launch {
-            orderRepository.getOrders().collect { result ->
-                result.onSuccess { orders ->
-                    val topProduct = orderRepository.getTodayTopProduct()
-                    val statistics = buildStatistics(orders, topProduct)
-                    _uiState.update { current ->
-                        current.copy(
-                            statistics = statistics,
-                            isLoading = false
-                        )
-                    }
-                }.onFailure { error ->
-                    _uiState.update { current ->
-                        current.copy(
-                            errorMessage = error.message,
-                            isLoading = false
-                        )
-                    }
-                }
-            }
-        }
-    }
-    
-    private fun buildStatistics(
-        orders: List<com.indybrain.indypos_Android.data.local.entity.OrderEntity>,
-        todayTopProduct: Triple<String, Int, Double>?
-    ): HomeStatistics {
-        val calendar = Calendar.getInstance()
-        val today = calendar.get(Calendar.DAY_OF_YEAR)
-        val year = calendar.get(Calendar.YEAR)
-        
-        // Filter today's orders (exclude cancelled orders - statusRaw == 5)
-        val todayOrders = orders.filter { order ->
-            val orderCalendar = Calendar.getInstance().apply {
-                time = order.orderDate
-            }
-            orderCalendar.get(Calendar.DAY_OF_YEAR) == today &&
-            orderCalendar.get(Calendar.YEAR) == year &&
-            order.statusRaw != 5 // Exclude cancelled orders
-        }
-        
-        val todaysSales = todayOrders.sumOf { it.total }
-        val ordersToday = todayOrders.size
-        
-        val (topProductName, topProductQuantity, topProductAmount) = when {
-            todayTopProduct != null -> Triple(todayTopProduct.first, todayTopProduct.second, todayTopProduct.third)
-            else -> Triple("", 0, 0.0)
-        }
-        
-        return HomeStatistics(
-            todaysSales = todaysSales,
-            ordersToday = ordersToday,
-            topProductName = topProductName,
-            topProductQuantity = topProductQuantity,
-            topProductAmount = topProductAmount
-        )
     }
     
     fun showImagePicker() {
