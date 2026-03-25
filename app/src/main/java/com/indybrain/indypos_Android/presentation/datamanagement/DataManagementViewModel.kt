@@ -5,20 +5,12 @@ import com.indybrain.indypos_Android.BuildConfig
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
-import com.indybrain.indypos_Android.data.local.dao.AddonDao
-import com.indybrain.indypos_Android.data.local.dao.AddonGroupDao
-import com.indybrain.indypos_Android.data.local.dao.CategoryDao
 import com.indybrain.indypos_Android.data.export.ExportDataType
 import com.indybrain.indypos_Android.data.export.ExportFormat
 import com.indybrain.indypos_Android.data.export.ExportService
-import com.indybrain.indypos_Android.data.local.dao.OrderDao
-import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
-import com.indybrain.indypos_Android.domain.repository.AddonRepository
-import com.indybrain.indypos_Android.domain.repository.ProductRepository
-import com.indybrain.indypos_Android.domain.repository.OrderRepository
-import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
-import com.indybrain.indypos_Android.data.local.dao.ProductDao
+import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.api.ProductsApi
+import com.indybrain.indypos_Android.data.remote.dto.*
 import com.indybrain.indypos_Android.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import android.content.Context
@@ -35,19 +27,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DataManagementViewModel @Inject constructor(
-    private val productDao: ProductDao,
-    private val productRepository: ProductRepository,
-    private val addonGroupRepository: AddonGroupRepository,
-    private val addonRepository: AddonRepository,
-    private val categoryDao: CategoryDao,
-    private val addonDao: AddonDao,
-    private val addonGroupDao: AddonGroupDao,
-    private val orderDao: OrderDao,
-    private val orderItemDao: OrderItemDao,
     private val productsApi: ProductsApi,
+    private val ordersApi: OrdersApi,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val exportService: ExportService,
-    private val orderRepository: OrderRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
     
@@ -58,69 +41,37 @@ class DataManagementViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
-            // Check network availability
-            if (networkConnectivityChecker.isConnected()) {
-                if (BuildConfig.DEBUG) Log.d("DataManagement", "Network available, fetching statistics from API...")
-
-                try {
-                    val response = productsApi.getStatistics()
-                    
-                    if (response.status == 200 && response.data != null) {
-                        val data = response.data!!
-                        
-                        // Show API values as-is
-                        _uiState.update { current ->
-                            current.copy(
-                                isLoading = false,
-                                productCount = data.productCount ?: 0,
-                                categoryCount = data.categoryCount ?: 0,
-                                addonCount = data.addonCount ?: 0,
-                                addonGroupCount = data.addonGroupCount ?: 0,
-                                orderCount = data.orderCount ?: 0
-                            )
-                        }
-                    } else {
-                        val apiError = response.error?.takeIf { it.isNotBlank() } ?: response.message
-                        _uiState.update { it.copy(errorMessage = apiError.ifBlank { null }) }
-                        refreshDataStatsOffline()
-                    }
-                } catch (e: Exception) {
-                    if (BuildConfig.DEBUG) Log.e("DataManagement", "Statistics API failed: ${e.message}")
-                    _uiState.update { it.copy(errorMessage = e.message) }
-                    refreshDataStatsOffline()
+            if (!networkConnectivityChecker.isConnected()) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = context.getString(R.string.logout_no_internet_title)
+                    )
                 }
-            } else {
-                _uiState.update { it.copy(errorMessage = context.getString(R.string.logout_no_internet_title)) }
-                refreshDataStatsOffline()
+                return@launch
             }
-        }
-    }
-    
-    private suspend fun refreshDataStatsOffline() {
-        try {
-            // Get all local counts (original logic for offline mode)
-            val productCount = productDao.getTotalProductCount()
-            val categoryCount = categoryDao.getAllCategories().size
-            val addonCount = addonDao.getAllAddons().size
-            val addonGroupCount = addonGroupDao.getAllAddonGroups().size
-            val orderCount = orderDao.getOrderCount()
-            
-            _uiState.update { current ->
-                current.copy(
-                    isLoading = false,
-                    productCount = productCount,
-                    categoryCount = categoryCount,
-                    addonCount = addonCount,
-                    addonGroupCount = addonGroupCount,
-                    orderCount = orderCount
-                )
-            }
-        } catch (e: Exception) {
-            _uiState.update { current ->
-                current.copy(
-                    isLoading = false,
-                    errorMessage = e.message
-                )
+
+            try {
+                val response = productsApi.getStatistics()
+                if (response.status == 200 && response.data != null) {
+                    val data = response.data!!
+                    _uiState.update { current ->
+                        current.copy(
+                            isLoading = false,
+                            productCount = data.productCount ?: 0,
+                            categoryCount = data.categoryCount ?: 0,
+                            addonCount = data.addonCount ?: 0,
+                            addonGroupCount = data.addonGroupCount ?: 0,
+                            orderCount = data.orderCount ?: 0
+                        )
+                    }
+                } else {
+                    val apiError = response.error?.takeIf { it.isNotBlank() } ?: response.message
+                    _uiState.update { it.copy(isLoading = false, errorMessage = apiError.ifBlank { null }) }
+                }
+            } catch (e: Exception) {
+                if (BuildConfig.DEBUG) Log.e("DataManagement", "Statistics API failed: ${e.message}")
+                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
             }
         }
     }
@@ -129,57 +80,59 @@ class DataManagementViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isExporting = true, exportError = null, exportSuccess = false) }
             cleanupOldExportFiles()
+
+            if (!networkConnectivityChecker.isConnected()) {
+                _uiState.update {
+                    it.copy(
+                        isExporting = false,
+                        exportError = context.getString(R.string.logout_no_internet_title)
+                    )
+                }
+                return@launch
+            }
+
             try {
-                // Sync from API before export when online (ensures local DB has data)
-                if (networkConnectivityChecker.isConnected()) {
-                    when (dataType) {
-                        ExportDataType.PRODUCTS -> {
-                            productRepository.fetchAndSaveProducts()
-                        }
-                        ExportDataType.CATEGORIES -> {
-                            productRepository.fetchAndSyncCategories()
-                        }
-                        ExportDataType.ADDON_GROUPS -> {
-                            addonGroupRepository.fetchAndSyncAddonGroups()
-                        }
-                        ExportDataType.ADDONS -> {
-                            addonRepository.fetchAndSyncAddons()
-                        }
-                        ExportDataType.ORDERS,
-                        ExportDataType.SALES_REPORT -> {
-                            // Ensure local orders in Room are up-to-date before exporting
-                            orderRepository.refreshOrdersList()
-                        }
-                        else -> Unit
+                val files: List<File> = when (dataType) {
+                    ExportDataType.PRODUCTS -> {
+                        val products = fetchAllProducts()
+                        val categories = fetchAllCategories()
+                        val addonGroups = fetchAllAddonGroups()
+                        listOfNotNull(exportService.exportProducts(products, categories, addonGroups, format))
+                    }
+                    ExportDataType.CATEGORIES -> {
+                        val categories = fetchAllCategories()
+                        listOfNotNull(exportService.exportCategories(categories, format))
+                    }
+                    ExportDataType.ADDON_GROUPS -> {
+                        val addonGroups = fetchAllAddonGroups()
+                        listOfNotNull(exportService.exportAddonGroups(addonGroups, format))
+                    }
+                    ExportDataType.ADDONS -> {
+                        val addons = fetchAllAddons()
+                        listOfNotNull(exportService.exportAddons(addons, format))
+                    }
+                    ExportDataType.ORDERS -> {
+                        val orders = fetchAllOrders()
+                        listOfNotNull(exportService.exportOrders(orders, format))
+                    }
+                    ExportDataType.SALES_REPORT -> {
+                        val orders = fetchAllOrders()
+                        exportService.exportSalesReport(orders, format) ?: emptyList()
+                    }
+                    ExportDataType.STOCK_REPORT -> {
+                        val products = fetchAllProducts()
+                        val categories = fetchAllCategories()
+                        exportService.exportStockReport(products, categories, format) ?: emptyList()
                     }
                 }
-                
-                val result = exportService.exportDataByType(dataType, format)
-                
-                result.fold(
-                    onSuccess = { files ->
-                        val uris = files.mapNotNull { file ->
-                            getUriForFile(file)
-                        }
-                        _uiState.update { 
-                            it.copy(
-                                isExporting = false,
-                                exportSuccess = true,
-                                exportedFiles = uris
-                            )
-                        }
-                    },
-                    onFailure = { error ->
-                        _uiState.update { 
-                            it.copy(
-                                isExporting = false,
-                                exportError = error.message ?: context.getString(R.string.data_export_error_failed)
-                            )
-                        }
-                    }
-                )
+
+                val uris = files.mapNotNull { getUriForFile(it) }
+                _uiState.update {
+                    it.copy(isExporting = false, exportSuccess = true, exportedFiles = uris)
+                }
             } catch (e: Exception) {
-                _uiState.update { 
+                if (BuildConfig.DEBUG) Log.e("DataManagement", "Export failed: ${e.message}", e)
+                _uiState.update {
                     it.copy(
                         isExporting = false,
                         exportError = e.message ?: context.getString(R.string.data_export_error_failed)
@@ -188,15 +141,60 @@ class DataManagementViewModel @Inject constructor(
             }
         }
     }
-    
-    fun clearExportState() {
-        _uiState.update { 
-            it.copy(
-                exportSuccess = false,
-                exportError = null,
-                exportedFiles = null
-            )
+
+    // ──────────────────────── API fetchers ────────────────────────
+
+    private suspend fun fetchAllProducts(): List<ProductDto> {
+        val response = productsApi.getMyProductsAll()
+        if (response.status != 200 || response.data == null) {
+            throw RuntimeException(response.error?.takeIf { it.isNotBlank() } ?: "Failed to fetch products")
         }
+        return response.data!!
+    }
+
+    private suspend fun fetchAllCategories(): List<CategoryDto> {
+        val response = productsApi.getCategories()
+        if (response.status != 200 || response.data == null) {
+            throw RuntimeException(response.error?.takeIf { it.isNotBlank() } ?: "Failed to fetch categories")
+        }
+        return response.data!!
+    }
+
+    private suspend fun fetchAllAddonGroups(): List<AddonGroupDto> {
+        val response = productsApi.getAddonGroups()
+        if (response.status != 200 || response.data == null) {
+            throw RuntimeException(response.error?.takeIf { it.isNotBlank() } ?: "Failed to fetch addon groups")
+        }
+        return response.data!!
+    }
+
+    private suspend fun fetchAllAddons(): List<AddonDto> {
+        val response = productsApi.getAddons()
+        if (response.status != 200 || response.data == null) {
+            throw RuntimeException(response.error?.takeIf { it.isNotBlank() } ?: "Failed to fetch addons")
+        }
+        return response.data!!
+    }
+
+    private suspend fun fetchAllOrders(): List<OrderDto> {
+        val allOrders = mutableListOf<OrderDto>()
+        var page = 1
+        val pageSize = 100
+        while (true) {
+            val response = ordersApi.getOrders(limit = pageSize, page = page)
+            val pageData = response.data ?: break
+            val orders = pageData.orders ?: break
+            allOrders.addAll(orders)
+            if (pageData.pagination?.hasNext != true) break
+            page++
+        }
+        return allOrders
+    }
+
+    // ──────────────────────── Utility ────────────────────────
+
+    fun clearExportState() {
+        _uiState.update { it.copy(exportSuccess = false, exportError = null, exportedFiles = null) }
     }
 
     fun clearStatsError() {
@@ -205,14 +203,8 @@ class DataManagementViewModel @Inject constructor(
     
     private fun getUriForFile(file: File): Uri? {
         return try {
-            FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
-        } catch (e: Exception) {
-            null
-        }
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        } catch (e: Exception) { null }
     }
 
     private fun cleanupOldExportFiles() {
@@ -221,9 +213,7 @@ class DataManagementViewModel @Inject constructor(
             val exportPrefixes = listOf("INDYPOS_", "data_type_", "Sales_Report_")
             context.cacheDir.listFiles()
                 ?.filter { file ->
-                    file.isFile &&
-                    file.extension in exportExtensions &&
-                    exportPrefixes.any { file.name.startsWith(it) }
+                    file.isFile && file.extension in exportExtensions && exportPrefixes.any { file.name.startsWith(it) }
                 }
                 ?.forEach { it.delete() }
         } catch (e: Exception) {
@@ -231,4 +221,3 @@ class DataManagementViewModel @Inject constructor(
         }
     }
 }
-
