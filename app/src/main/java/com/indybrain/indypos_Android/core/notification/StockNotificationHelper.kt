@@ -50,8 +50,9 @@ class StockNotificationHelper @Inject constructor(
     
     /**
      * ตรวจสอบสินค้าใกล้หมดและแสดง notification
-     * @param products รายการสินค้าทั้งหมด
-     * @param orderedItems Map ของ productId -> quantity ที่เพิ่งสั่งไป (optional)
+     * @param products รายการสินค้า (หรือย่อยเฉพาะที่เกี่ยวข้อง)
+     * @param orderedItems Map ของ productId -> จำนวนที่เพิ่งสั่ง — ใช้หักจาก [ProductEntity.stockQuantity] เมื่อสต็อกในรายการยังเป็นค่าก่อนสั่ง (เช่น จาก Room)
+     *  ถ้า [products] มาจาก API หลังสั่งซื้อแล้วและสต็อกเป็นค่าหลังตัดบนเซิร์ฟเวอร์แล้ว ให้ส่ง `emptyMap()` เพื่อไม่หักซ้ำ
      */
     fun checkAndNotifyLowStock(
         products: List<ProductEntity>,

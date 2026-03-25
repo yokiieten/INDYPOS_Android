@@ -4,30 +4,22 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
-import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
-import com.indybrain.indypos_Android.data.local.dao.OrderDao
-import com.indybrain.indypos_Android.data.local.dao.OrderItemDao
-import com.indybrain.indypos_Android.data.local.dao.ProductDao
+import com.indybrain.indypos_Android.core.notification.StockNotificationHelper
 import com.indybrain.indypos_Android.core.printer.PrinterService
-import com.indybrain.indypos_Android.data.local.dao.ReceiptSettingsDao
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
-import com.indybrain.indypos_Android.data.local.entity.OrderAddonEntity
-import com.indybrain.indypos_Android.data.local.entity.OrderEntity
-import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.dto.CreateOrderRequestDto
-import com.indybrain.indypos_Android.domain.model.OrderStatus
 import com.indybrain.indypos_Android.domain.model.PaymentType as DomainPaymentType
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
+import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.repository.ReceiptSettingsRepository
 import com.indybrain.indypos_Android.domain.usecase.GetGroupedCartItemsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -35,29 +27,23 @@ import retrofit2.HttpException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 import javax.inject.Inject
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.indybrain.indypos_Android.R
 import okhttp3.ResponseBody
-import com.indybrain.indypos_Android.core.notification.StockNotificationHelper
 
 @HiltViewModel
 class OrderProductViewModel @Inject constructor(
     private val cartRepository: CartRepository,
     private val ordersApi: OrdersApi,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
-    private val productDao: ProductDao,
-    private val orderDao: OrderDao,
-    private val orderItemDao: OrderItemDao,
-    private val orderAddonDao: OrderAddonDao,
-    private val receiptSettingsDao: ReceiptSettingsDao,
+    private val productRepository: ProductRepository,
+    private val stockNotificationHelper: StockNotificationHelper,
     private val receiptSettingsRepository: ReceiptSettingsRepository,
     private val printerService: PrinterService,
     private val authRepository: AuthRepository,
     private val getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase,
-    private val stockNotificationHelper: StockNotificationHelper,
     @ApplicationContext private val context: Context,
     private val gson: Gson
 ) : ViewModel() {
@@ -195,8 +181,7 @@ class OrderProductViewModel @Inject constructor(
                 
                 val subtotal = calculateSubtotal()
                 val discount = currentState.discountAmount
-                val total = calculateTotal()
-                
+
                 val discountPercentage = if (subtotal > 0.000001) {
                     (discount / subtotal) * 100.0
                 } else {
@@ -222,133 +207,82 @@ class OrderProductViewModel @Inject constructor(
                     items = items
                 )
                 
-                // Check network connectivity
                 if (!networkConnectivityChecker.isConnected()) {
-                    // Offline: Save locally only
-                    val orderNumber = saveOrderToRoom(
-                        cartItems = cartItems,
-                        subtotal = subtotal,
-                        discount = discount,
-                        total = total,
-                        paymentTypeCode = paymentTypeCode
-                    )
-                    
-                    if (orderNumber != null) {
-                        // Check receipt settings and print if enabled
-                        handlePrintingAndCashDrawer(orderNumber, subtotal, discount, paymentTypeCode)
-                        
-                        cartRepository.clearCart()
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false,
-                                discountAmount = 0.0,
-                                discountType = null,
-                                discountValue = 0.0
-                            ) 
-                        }
-                        onSuccess(orderNumber)
-                    } else {
-                        _uiState.update { it.copy(isLoading = false) }
-                        onError("ไม่สามารถบันทึกออเดอร์ได้")
-                    }
-                } else {
-                    // Online: Try API first
-                    try {
-                        val response = ordersApi.createOrder(request)
-                        
-                        if (response.status == 403) {
-                            val errorCode = response.error?.lowercase()
-                            if (errorCode == "free_plan_limit_exceeded") {
-                                _uiState.update { it.copy(isLoading = false) }
-                                onError("ถึงขีดจำกัดของแผนฟรี กรุณาติดต่อเรา")
-                                return@launch
-                            }
-                        }
-                        
-                        if (response.status >= 400) {
-                            val errorMessage = response.error ?: response.message ?: "เกิดข้อผิดพลาด"
-                            val lowercasedError = errorMessage.lowercase()
-                            
-                            val displayMessage = when {
-                                lowercasedError.contains("insufficient stock") || 
-                                lowercasedError.contains("at least one item is required") -> {
-                                    context.getString(R.string.product_detail_insufficient_stock)
-                                }
-                                else -> errorMessage
-                            }
-                            
-                            // API error: Don't save to Room, just show error
+                    _uiState.update { it.copy(isLoading = false) }
+                    onError(context.getString(R.string.logout_no_internet_title))
+                    return@launch
+                }
+
+                try {
+                    val response = ordersApi.createOrder(request)
+
+                    if (response.status == 403) {
+                        val errorCode = response.error?.lowercase()
+                        if (errorCode == "free_plan_limit_exceeded") {
                             _uiState.update { it.copy(isLoading = false) }
-                            onError(displayMessage)
+                            onError("ถึงขีดจำกัดของแผนฟรี กรุณาติดต่อเรา")
                             return@launch
                         }
-                        
-                        // API Success: Save locally with API response data
-                        val orderNumber = if (response.data != null) {
-                            saveOrderToRoom(
-                                cartItems = cartItems,
-                                subtotal = subtotal,
-                                discount = discount,
-                                total = total,
-                                paymentTypeCode = paymentTypeCode,
-                                serverOrderNumber = response.data.orderNumber,
-                                serverOrderId = response.data.id
-                            )
-                        } else {
-                            saveOrderToRoom(
-                                cartItems = cartItems,
-                                subtotal = subtotal,
-                                discount = discount,
-                                total = total,
-                                paymentTypeCode = paymentTypeCode
-                            )
-                        }
-                        
-                        if (orderNumber != null) {
-                            // Check receipt settings and print if enabled
-                            handlePrintingAndCashDrawer(orderNumber, subtotal, discount, paymentTypeCode)
-                            
-                            // Check for low stock products and show notification (after order is placed)
-                            // ส่ง cartItems ที่เพิ่งสั่งไปเพื่อคำนวณ stock ที่เหลือ
-                            checkLowStockProducts(cartItems)
-                            
-                            cartRepository.clearCart()
-                            _uiState.update { 
-                                it.copy(
-                                    isLoading = false,
-                                    discountAmount = 0.0,
-                                    discountType = null,
-                                    discountValue = 0.0
-                                ) 
-                            }
-                            onSuccess(orderNumber)
-                        } else {
-                            _uiState.update { it.copy(isLoading = false) }
-                            onError("ไม่สามารถบันทึกออเดอร์ได้")
-                        }
-                        
-                    } catch (e: HttpException) {
-                        // API error: Don't save to Room, show error
-                        _uiState.update { it.copy(isLoading = false) }
-                        
-                        // Check error message for insufficient stock
-                        val errorMessage = parseErrorFromHttpException(e)
+                    }
+
+                    if (response.status >= 400) {
+                        val errorMessage = response.error ?: response.message ?: "เกิดข้อผิดพลาด"
                         val lowercasedError = errorMessage.lowercase()
-                        
+
                         val displayMessage = when {
-                            lowercasedError.contains("insufficient stock") || 
-                            lowercasedError.contains("at least one item is required") -> {
+                            lowercasedError.contains("insufficient stock") ||
+                                lowercasedError.contains("at least one item is required") -> {
                                 context.getString(R.string.product_detail_insufficient_stock)
                             }
-                            else -> "เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message()}"
+                            else -> errorMessage
                         }
-                        
-                        onError(displayMessage)
-                    } catch (e: Exception) {
-                        // Network error: Don't save to Room, show error
+
                         _uiState.update { it.copy(isLoading = false) }
-                        onError("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}")
+                        onError(displayMessage)
+                        return@launch
                     }
+
+                    val orderNumber =
+                        response.data?.orderNumber?.takeIf { it.isNotBlank() }
+                            ?: generateOrderNumber()
+
+                    handlePrintingAndCashDrawer(
+                        orderNumber,
+                        subtotal,
+                        discount,
+                        paymentTypeCode
+                    )
+
+                    checkLowStockUsingFreshApiStock(cartItems)
+
+                    cartRepository.clearCart()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            discountAmount = 0.0,
+                            discountType = null,
+                            discountValue = 0.0
+                        )
+                    }
+                    onSuccess(orderNumber)
+                } catch (e: HttpException) {
+                    _uiState.update { it.copy(isLoading = false) }
+
+                    val errorMessage = parseErrorFromHttpException(e)
+                    val lowercasedError = errorMessage.lowercase()
+
+                    val displayMessage = when {
+                        lowercasedError.contains("insufficient stock") ||
+                            lowercasedError.contains("at least one item is required") -> {
+                            context.getString(R.string.product_detail_insufficient_stock)
+                        }
+                        else -> "เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message()}"
+                    }
+
+                    onError(displayMessage)
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    onError("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}")
                 }
                 
             } catch (e: Exception) {
@@ -358,127 +292,11 @@ class OrderProductViewModel @Inject constructor(
         }
     }
     
-    private suspend fun saveOrderToRoom(
-        cartItems: List<CartItemEntity>,
-        subtotal: Double,
-        discount: Double,
-        total: Double,
-        paymentTypeCode: Int,
-        serverOrderNumber: String? = null,
-        serverOrderId: String? = null
-    ): String? {
-        return try {
-            val now = Date()
-            val orderId = serverOrderId ?: UUID.randomUUID().toString()
-            val orderNumber = serverOrderNumber ?: generateOrderNumber()
-            
-            // Create order entity
-            val orderEntity = OrderEntity(
-                id = orderId,
-                orderNumber = orderNumber,
-                orderDate = now,
-                subtotal = subtotal,
-                discount = discount,
-                total = total,
-                paymentTypeRaw = paymentTypeCode,
-                statusRaw = OrderStatus.CONFIRMED.code,
-                isDeletedLocally = false,
-                isFromServer = serverOrderId != null,
-                isSynced = serverOrderId != null,
-                updatedAt = now,
-                discountAmount = discount,
-                discountPercentage = if (subtotal > 0.000001) (discount / subtotal) * 100.0 else 0.0,
-                createdAt = now
-            )
-            
-            // Save order
-            orderDao.insertOrder(orderEntity)
-            
-            // Create order items and addons
-            val orderItems = mutableListOf<OrderItemEntity>()
-            val orderAddons = mutableListOf<OrderAddonEntity>()
-            
-            cartItems.forEach { cartItem ->
-                val addons = _cartAddonsMap.value[cartItem.id] ?: emptyList()
-                val product = if (cartItem.productId != null) {
-                    productDao.getProductById(cartItem.productId)
-                } else {
-                    null
-                }
-                
-                val itemTotalPrice = (cartItem.unitPrice ?: 0.0) * cartItem.quantity +
-                    addons.sumOf { it.addonPrice } * cartItem.quantity
-                
-                // Convert addons to JSON using snake_case keys to match OrderAddonDto @SerializedName
-                val addonsJson = if (addons.isNotEmpty()) {
-                    Gson().toJson(addons.map {
-                        mapOf(
-                            "addon_id" to it.addonId,
-                            "addon_name" to it.addonName,
-                            "addon_price" to it.addonPrice,
-                            "quantity" to 1
-                        )
-                    })
-                } else {
-                    null
-                }
-                
-                val orderItemId = UUID.randomUUID().toString()
-                val orderItem = OrderItemEntity(
-                    id = orderItemId,
-                    orderId = orderId,
-                    productName = cartItem.productName ?: "",
-                    productPrice = cartItem.unitPrice ?: 0.0,
-                    productUnitPrice = cartItem.unitPrice ?: 0.0,
-                    quantity = cartItem.quantity,
-                    totalPrice = itemTotalPrice,
-                    addons = addonsJson,
-                    specialRequest = cartItem.specialRequest,
-                    productId = cartItem.productId,
-                    unitCost = product?.costPrice ?: 0.0,
-                    createdAt = now
-                )
-                orderItems.add(orderItem)
-                
-                // Create order addons
-                addons.forEach { addon ->
-                    orderAddons.add(
-                        OrderAddonEntity(
-                            orderItemId = orderItemId,
-                            addonId = addon.addonId,
-                            addonName = addon.addonName,
-                            addonPrice = addon.addonPrice,
-                            quantity = 1
-                        )
-                    )
-                }
-            }
-            
-            // Save order items and addons
-            if (orderItems.isNotEmpty()) {
-                orderItemDao.insertOrderItems(orderItems)
-            }
-            if (orderAddons.isNotEmpty()) {
-                orderAddonDao.insertOrderAddons(orderAddons)
-            }
-            
-            orderNumber
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-    
-    private suspend fun buildOrderItems(cartItems: List<CartItemEntity>): List<CreateOrderRequestDto.OrderItemDto> {
+    private fun buildOrderItems(cartItems: List<CartItemEntity>): List<CreateOrderRequestDto.OrderItemDto> {
         return cartItems.map { cartItem ->
             val addons = _cartAddonsMap.value[cartItem.id] ?: emptyList()
-            
-            // Get product cost price
-            val unitCost = if (cartItem.productId != null) {
-                productDao.getProductById(cartItem.productId)?.costPrice ?: 0.0
-            } else {
-                0.0
-            }
+
+            val unitCost = 0.0
             
             // Group addons by addon group
             val addonGroupsMap = addons.groupBy { it.addonGroupId }
@@ -506,6 +324,26 @@ class OrderProductViewModel @Inject constructor(
         }
     }
     
+    /**
+     * ดึงรายการสินค้าล่าสุดจาก API หลังสร้างออเดอร์สำเร็จ แล้วเช็ค low stock
+     * (ค่า stock จาก API เป็นยอดหลังตัดแล้ว — ใช้ [StockNotificationHelper.checkAndNotifyLowStock] กับ orderedItems ว่าง
+     * เพื่อไม่หักจำนวนที่สั่งซ้ำ)
+     */
+    private fun checkLowStockUsingFreshApiStock(cartItems: List<CartItemEntity>) {
+        viewModelScope.launch {
+            try {
+                val orderedIds = cartItems.mapNotNull { it.productId }.toSet()
+                if (orderedIds.isEmpty()) return@launch
+                productRepository.getProductListFromApi().onSuccess { data ->
+                    val updated = data.products.filter { it.id in orderedIds }
+                    stockNotificationHelper.checkAndNotifyLowStock(updated, emptyMap())
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     private suspend fun handlePrintingAndCashDrawer(
         orderNumber: String?,
         subtotal: Double,
@@ -554,30 +392,7 @@ class OrderProductViewModel @Inject constructor(
             // Don't fail the order if printing fails
         }
     }
-    
-    /**
-     * ตรวจสอบสินค้าใกล้หมดและแสดง notification
-     * @param orderedCartItems รายการสินค้าที่เพิ่งสั่งไป
-     */
-    private fun checkLowStockProducts(orderedCartItems: List<CartItemEntity>) {
-        viewModelScope.launch {
-            try {
-                val products = productDao.getAllActiveProducts()
-                
-                // สร้าง Map ของ productId -> quantity ที่สั่งไป (กรอง productId ที่เป็น null)
-                val orderedItemsMap = orderedCartItems
-                    .filter { it.productId != null }
-                    .groupBy { it.productId!! }
-                    .mapValues { (_, items) -> items.sumOf { it.quantity } }
-                
-                stockNotificationHelper.checkAndNotifyLowStock(products, orderedItemsMap)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // Don't fail the order if notification check fails
-            }
-        }
-    }
-    
+
     /**
      * Parse error message from HttpException
      */
