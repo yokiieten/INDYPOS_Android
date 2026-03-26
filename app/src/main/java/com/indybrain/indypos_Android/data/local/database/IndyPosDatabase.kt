@@ -23,13 +23,10 @@ import com.indybrain.indypos_Android.data.local.entity.*
         // Cart entities
         CartItemEntity::class,
         CartAddonEntity::class,
-        SelectedAddonEntity::class,
         // Junction tables for Many-to-Many relationships
         ProductAddonGroupJunctionEntity::class,
         AddonGroupAddonJunctionEntity::class,
-        SelectedAddonJunctionEntity::class,
-        // Store and Settings entities
-        StoreEntity::class,
+        // Settings entities
         ReceiptSettingsEntity::class
     ],
     version = 1, // Reset to version 1 for fresh start (not in production yet)
@@ -49,13 +46,10 @@ abstract class IndyPosDatabase : RoomDatabase() {
     abstract fun addonDao(): AddonDao
     // Cart DAOs
     abstract fun cartDao(): CartDao
-    abstract fun selectedAddonDao(): SelectedAddonDao
     // Junction table DAOs
     abstract fun productAddonGroupJunctionDao(): ProductAddonGroupJunctionDao
     abstract fun addonGroupAddonJunctionDao(): AddonGroupAddonJunctionDao
-    abstract fun selectedAddonJunctionDao(): SelectedAddonJunctionDao
-    // Store and Settings DAOs
-    abstract fun storeDao(): StoreDao
+    // Settings DAOs
     abstract fun receiptSettingsDao(): ReceiptSettingsDao
     
     /**
@@ -67,8 +61,6 @@ abstract class IndyPosDatabase : RoomDatabase() {
         // Clear Cart data
         cartDao().deleteAllCartItems()
         cartDao().deleteAllCartAddons()
-        selectedAddonDao().deleteAll()
-        selectedAddonJunctionDao().deleteAll()
         
         // Clear Order data
         orderAddonDao().deleteAllOrderAddons()
@@ -85,8 +77,7 @@ abstract class IndyPosDatabase : RoomDatabase() {
         addonDao().deleteAll()
         addonGroupDao().deleteAll()
         
-        // Clear Store and Settings data
-        storeDao().deleteAll()
+        // Clear Settings data
         receiptSettingsDao().deleteAll()
     }
 }
