@@ -189,14 +189,14 @@ class AddEditProductViewModel @Inject constructor(
      * Update product name
      */
     fun updateProductName(name: String) {
-        _uiState.update { it.copy(productName = name, errorMessage = null) }
+        _uiState.update { it.copy(productName = name) }
     }
     
     /**
      * Update product code
      */
     fun updateProductCode(code: String) {
-        _uiState.update { it.copy(productCode = code, errorMessage = null) }
+        _uiState.update { it.copy(productCode = code) }
     }
     
     /**
@@ -273,7 +273,7 @@ class AddEditProductViewModel @Inject constructor(
      */
     fun updateSellingPrice(price: String) {
         val filtered = filterPriceInput(price)
-        _uiState.update { it.copy(sellingPrice = filtered, errorMessage = null) }
+        _uiState.update { it.copy(sellingPrice = filtered) }
     }
     
     /**
@@ -288,7 +288,7 @@ class AddEditProductViewModel @Inject constructor(
         val rounded = formatPriceOnUnfocus(currentPrice)
         // Then apply display formatting (hide .00 if applicable)
         val displayFormatted = formatPriceForDisplay(rounded)
-        _uiState.update { it.copy(sellingPrice = displayFormatted, errorMessage = null) }
+        _uiState.update { it.copy(sellingPrice = displayFormatted) }
     }
     
     /**
@@ -296,7 +296,7 @@ class AddEditProductViewModel @Inject constructor(
      */
     fun updateCostPrice(price: String) {
         val filtered = filterPriceInput(price)
-        _uiState.update { it.copy(costPrice = filtered, errorMessage = null) }
+        _uiState.update { it.copy(costPrice = filtered) }
     }
     
     /**
@@ -311,49 +311,49 @@ class AddEditProductViewModel @Inject constructor(
         val rounded = formatPriceOnUnfocus(currentPrice)
         // Then apply display formatting (hide .00 if applicable)
         val displayFormatted = formatPriceForDisplay(rounded)
-        _uiState.update { it.copy(costPrice = displayFormatted, errorMessage = null) }
+        _uiState.update { it.copy(costPrice = displayFormatted) }
     }
     
     /**
      * Update unit
      */
     fun updateUnit(unit: String) {
-        _uiState.update { it.copy(unit = unit, errorMessage = null) }
+        _uiState.update { it.copy(unit = unit) }
     }
     
     /**
      * Update category
      */
     fun updateCategory(categoryId: String?) {
-        _uiState.update { it.copy(categoryId = categoryId, errorMessage = null) }
+        _uiState.update { it.copy(categoryId = categoryId) }
     }
     
     /**
      * Update SKU enabled
      */
     fun updateSkuEnabled(enabled: Boolean) {
-        _uiState.update { it.copy(isSkuEnabled = enabled, errorMessage = null) }
+        _uiState.update { it.copy(isSkuEnabled = enabled) }
     }
     
     /**
      * Update SKU code
      */
     fun updateSkuCode(code: String) {
-        _uiState.update { it.copy(skuCode = code, errorMessage = null) }
+        _uiState.update { it.copy(skuCode = code) }
     }
     
     /**
      * Update stock enabled
      */
     fun updateStockEnabled(enabled: Boolean) {
-        _uiState.update { it.copy(isStockEnabled = enabled, errorMessage = null) }
+        _uiState.update { it.copy(isStockEnabled = enabled) }
     }
     
     /**
      * Update stock quantity
      */
     fun updateStockQuantity(quantity: String) {
-        _uiState.update { it.copy(stockQuantity = quantity, errorMessage = null) }
+        _uiState.update { it.copy(stockQuantity = quantity) }
     }
     
     /**
@@ -363,7 +363,6 @@ class AddEditProductViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 hasAdditionalOptions = enabled, 
-                errorMessage = null,
                 // Clear selected addon groups if disabled
                 addonGroupIds = if (!enabled) emptyList() else it.addonGroupIds
             ) 
@@ -380,7 +379,7 @@ class AddEditProductViewModel @Inject constructor(
         } else {
             currentIds + addonGroupId
         }
-        _uiState.update { it.copy(addonGroupIds = newIds, errorMessage = null) }
+        _uiState.update { it.copy(addonGroupIds = newIds) }
     }
     
     /**
@@ -392,7 +391,6 @@ class AddEditProductViewModel @Inject constructor(
                 imageUrl = imageUrl,
                 selectedColorHex = null,
                 isImageSelected = true,
-                errorMessage = null,
                 showNoInternetDialog = false
             ) 
         }
@@ -407,7 +405,6 @@ class AddEditProductViewModel @Inject constructor(
                 selectedColorHex = colorHex,
                 imageUrl = null,
                 isImageSelected = false,
-                errorMessage = null,
                 showNoInternetDialog = false
             ) 
         }
@@ -448,7 +445,7 @@ class AddEditProductViewModel @Inject constructor(
      * Update addon group IDs
      */
     fun updateAddonGroupIds(ids: List<String>) {
-        _uiState.update { it.copy(addonGroupIds = ids, errorMessage = null) }
+        _uiState.update { it.copy(addonGroupIds = ids) }
     }
     
     /**

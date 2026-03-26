@@ -1054,19 +1054,73 @@ class ProductRepositoryImpl @Inject constructor(
             getDefaultErrorMessage(statusCode)
         }
     }
+
+    /**
+     * Map API error fields from response body (status/error/message) to localized UI text.
+     * This is used when API returns HTTP 200 but business status is non-success (e.g. 409 in body).
+     */
+    private fun mapApiErrorFromResponseFields(
+        statusCode: Int,
+        error: String?,
+        message: String?
+    ): String {
+        val errorText = error?.lowercase() ?: ""
+        val messageText = message?.lowercase() ?: ""
+        val combined = "$errorText $messageText"
+
+        fun getLocalizedString(resourceName: String, fallback: String): String {
+            val resourceId = context.resources.getIdentifier(
+                resourceName,
+                "string",
+                context.packageName
+            )
+            return if (resourceId != 0) {
+                val localeCode = languageLocalDataSource.getLanguageLocale()
+                val localizedContext = LocaleHelper.setLocale(context, localeCode)
+                localizedContext.getString(resourceId)
+            } else {
+                fallback
+            }
+        }
+
+        return when {
+            combined.contains("duplicate sku") || combined.contains("duplicate sku code") ->
+                getLocalizedString("product_error_duplicate_sku", "รหัส SKU นี้มีอยู่แล้ว")
+
+            combined.contains("duplicate product name") || combined.contains("duplicate name") ->
+                getLocalizedString("product_error_duplicate_name", "ชื่อนี้มีอยู่แล้ว")
+
+            combined.contains("duplicate product code") || combined.contains("duplicate code") ->
+                getLocalizedString("product_error_duplicate_code", "รหัสสินค้านี้มีอยู่แล้ว")
+
+            combined.contains("duplicate category name") ->
+                getLocalizedString("category_error_duplicate_name", "ชื่อหมวดหมู่นี้มีอยู่แล้ว")
+
+            else -> {
+                val raw = error?.takeIf { it.isNotBlank() } ?: message?.takeIf { it.isNotBlank() }
+                raw ?: getDefaultErrorMessage(statusCode)
+            }
+        }
+    }
     
     /**
      * Get default error message for status code
      */
     private fun getDefaultErrorMessage(statusCode: Int): String {
+        // IMPORTANT:
+        // This fallback is used when we can't parse/recognize the error payload.
+        // Previously it was hardcoded Thai, so it could show wrong language when user selects English.
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+
         return when (statusCode) {
-            400 -> "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
-            401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-            403 -> "คุณไม่มีสิทธิ์แก้ไขหมวดหมู่นี้"
-            404 -> "ไม่พบหมวดหมู่ที่ต้องการแก้ไข"
-            409 -> "ชื่อหมวดหมู่นี้มีอยู่แล้ว"
-            500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-            else -> "เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่"
+            400 -> localizedContext.getString(R.string.api_error_delete_category_bad_request)
+            401 -> localizedContext.getString(R.string.api_error_unauthorized)
+            403 -> localizedContext.getString(R.string.api_error_delete_category_forbidden)
+            404 -> localizedContext.getString(R.string.api_error_delete_category_not_found)
+            409 -> localizedContext.getString(R.string.category_error_duplicate_name)
+            500 -> localizedContext.getString(R.string.api_error_delete_category_server_error)
+            else -> localizedContext.getString(R.string.api_error_delete_category_generic)
         }
     }
     
@@ -1513,9 +1567,11 @@ class ProductRepositoryImpl @Inject constructor(
                     val productDto = response.data.product
                     Result.success(ProductMapper.toEntity(productDto))
                 } else {
-                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                        ?: response.message?.takeIf { it.isNotBlank() }
-                        ?: "เกิดข้อผิดพลาดในการสร้างสินค้า"
+                    val errorMessage = mapApiErrorFromResponseFields(
+                        statusCode = response.status,
+                        error = response.error,
+                        message = response.message
+                    )
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: HttpException) {
@@ -1597,9 +1653,11 @@ class ProductRepositoryImpl @Inject constructor(
                 val productDto = response.data.product
                 Result.success(ProductMapper.toEntity(productDto))
             } else {
-                val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                    ?: response.message?.takeIf { it.isNotBlank() }
-                    ?: "เกิดข้อผิดพลาดในการอัปเดตสินค้า"
+                val errorMessage = mapApiErrorFromResponseFields(
+                    statusCode = response.status,
+                    error = response.error,
+                    message = response.message
+                )
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: HttpException) {
