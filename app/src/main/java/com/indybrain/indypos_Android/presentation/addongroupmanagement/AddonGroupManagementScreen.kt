@@ -424,6 +424,7 @@ fun AddonGroupManagementScreen(
                 message = message,
                 onOkClick = {
                     viewModel.dismissToggleSuccess()
+                    viewModel.refreshAddonGroups()
                 }
             )
         }

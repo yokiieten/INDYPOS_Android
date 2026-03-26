@@ -507,6 +507,7 @@ fun ProductManagementScreen(
                 message = message,
                 onDismiss = {
                     viewModel.clearToggleSuccessMessage()
+                    viewModel.refreshProducts()
                 }
             )
         }

@@ -454,6 +454,7 @@ fun AddOnManagementScreen(
                 message = message,
                 onDismiss = {
                     viewModel.clearToggleSuccessMessage()
+                    viewModel.refreshAddons()
                 }
             )
         }
