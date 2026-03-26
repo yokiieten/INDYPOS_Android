@@ -45,6 +45,10 @@ class CurlLoggingInterceptor(
     private fun appendBody(body: RequestBody?, builder: StringBuilder) {
         if (body == null) return
 
+        body.contentType()?.let { contentType ->
+            builder.append(" -H 'Content-Type: $contentType'")
+        }
+
         val buffer = Buffer()
         body.writeTo(buffer)
 
