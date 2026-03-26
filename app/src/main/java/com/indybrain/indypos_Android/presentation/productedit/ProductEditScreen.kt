@@ -58,6 +58,7 @@ import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
+import com.indybrain.indypos_Android.core.ui.isLandscape
 import java.text.DecimalFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -157,10 +158,16 @@ fun ProductEditScreen(
                 }
             }
     ) {
+        val isLandscapeMode = isLandscape()
+        
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .then(
+                    if (isLandscapeMode) Modifier.fillMaxHeight(0.85f)
+                    else Modifier
+                )
                 .navigationBarsPadding()
                 .clickable(
                     onClick = {},
@@ -170,10 +177,16 @@ fun ProductEditScreen(
             color = Color.White,
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = if (isLandscapeMode) Modifier.fillMaxSize()
+                else Modifier.fillMaxWidth()
+            ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .then(
+                            if (isLandscapeMode) Modifier.fillMaxSize()
+                            else Modifier.fillMaxWidth()
+                        )
                         .padding(horizontal = 16.dp, vertical = 20.dp)
                 ) {
                     // Product title with delete all button
@@ -231,7 +244,10 @@ fun ProductEditScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(200.dp),
+                                .then(
+                                    if (isLandscapeMode) Modifier.weight(1f)
+                                    else Modifier.height(200.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -248,7 +264,10 @@ fun ProductEditScreen(
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = 400.dp),
+                                .then(
+                                    if (isLandscapeMode) Modifier.weight(1f)
+                                    else Modifier.heightIn(max = 400.dp)
+                                ),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             items(uiState.groupedItems) { groupedItem ->
@@ -276,7 +295,7 @@ fun ProductEditScreen(
                         }
                     }
                     
-                    // Action buttons
+                    // Action buttons (always visible at bottom)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
