@@ -176,7 +176,7 @@
     <!-- Graph Screen -->
     <string name="graph_title">กราฟ</string>
     <string name="graph_select_period">เลือกช่วงเวลา</string>
-    <string name="graph_summary_title">สรุป</string>
+    <string name="graph_summary_title">แดชบอร์ด</string>
     <string name="graph_today_sales">ยอดขายวันนี้</string>
     <string name="graph_week_sales">ยอดขายสัปดาห์นี้</string>
     <string name="graph_month_sales">ยอดขายเดือนนี้</string>
