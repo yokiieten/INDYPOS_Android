@@ -171,7 +171,10 @@ class AddEditAddonViewModel @Inject constructor(
         val rounded = formatPriceOnUnfocus(currentPrice)
         // Then apply display formatting (hide .00 if applicable)
         val displayFormatted = formatPriceForDisplay(rounded)
-        _uiState.update { it.copy(addonPrice = displayFormatted, errorMessage = null) }
+        // Important: do not clear errorMessage here.
+        // This function can run automatically on focus changes (e.g., dialog appears),
+        // which would otherwise hide API error dialogs before the user can see them.
+        _uiState.update { it.copy(addonPrice = displayFormatted) }
     }
     
     /**
