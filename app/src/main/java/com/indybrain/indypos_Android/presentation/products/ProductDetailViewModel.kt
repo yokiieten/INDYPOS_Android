@@ -107,14 +107,15 @@ class ProductDetailViewModel @Inject constructor(
                     emptyMap()
                 }
                 
+                val hasAddons = product.hasAdditionalOptions == true
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         product = product,
                         category = category,
-                        addonGroups = addonGroups,
-                        addonsByGroup = addonsByGroup,
-                        selectedAddons = existingSelectedAddons,
+                        addonGroups = if (hasAddons) addonGroups else emptyList(),
+                        addonsByGroup = if (hasAddons) addonsByGroup else emptyMap(),
+                        selectedAddons = if (hasAddons) existingSelectedAddons else emptyMap(),
                         quantity = existingQuantity,
                         specialRequest = existingSpecialRequest,
                         editingCartItemId = if (!isExplicitNew && existingCartItem != null) existingCartItem.id else null,
@@ -352,8 +353,7 @@ class ProductDetailViewModel @Inject constructor(
      */
     private fun validateRequiredAddonGroups(): String? {
         val currentState = _uiState.value
-        // Only check groups that are marked as required
-        // Groups without isRequired can be skipped and won't block adding to cart
+        if (currentState.product?.hasAdditionalOptions != true) return null
         val requiredGroups = currentState.addonGroups.filter { it.isRequired }
         
         // Check if any required group has no selected addons

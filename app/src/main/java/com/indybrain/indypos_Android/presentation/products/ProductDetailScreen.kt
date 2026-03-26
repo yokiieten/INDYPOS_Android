@@ -377,11 +377,15 @@ private fun ProductDetailContent(
         }
     } ?: Color(0xFFE0E0E0)
     
+    val hasAddons = product.hasAdditionalOptions == true
+    
     // Calculate total price
     val basePrice = product.price
-    val addonPrice = selectedAddons.values.flatten().sumOf { addonId ->
-        addonsByGroup.values.flatten().find { it.id == addonId }?.price ?: 0.0
-    }
+    val addonPrice = if (hasAddons) {
+        selectedAddons.values.flatten().sumOf { addonId ->
+            addonsByGroup.values.flatten().find { it.id == addonId }?.price ?: 0.0
+        }
+    } else 0.0
     val totalPrice = (basePrice + addonPrice) * quantity
     
     Box(modifier = modifier.fillMaxSize()) {
@@ -458,8 +462,8 @@ private fun ProductDetailContent(
             )
         }
         
-        // Addon Groups
-        if (addonGroups.isNotEmpty()) {
+        // Addon Groups (only show when hasAdditionalOptions is true)
+        if (hasAddons && addonGroups.isNotEmpty()) {
             addonGroups.forEach { addonGroup ->
                 val addons = addonsByGroup[addonGroup.id] ?: emptyList()
                 if (addons.isNotEmpty()) {
