@@ -51,6 +51,31 @@ class AddonGroupRepositoryImpl @Inject constructor(
             fallback
         }
     }
+
+    /**
+     * Map API error fields returned in the response body (e.g. status=409) into localized UI messages.
+     * Retrofit may not throw HttpException in these cases, so we can't rely on parseApiErrorResponse(errorBody, code).
+     */
+    private fun mapApiErrorFromResponseFields(
+        statusCode: Int,
+        error: String?,
+        message: String?
+    ): String {
+        val errorText = error?.lowercase() ?: ""
+        val messageText = message?.lowercase() ?: ""
+        val combinedErrorText = "$errorText $messageText"
+
+        return when {
+            combinedErrorText.contains("duplicate addon group name") ||
+                (combinedErrorText.contains("duplicate name") && combinedErrorText.contains("addon")) ->
+                getLocalizedString(
+                    "addon_group_form_error_duplicate_name",
+                    "This addon group name already exists"
+                )
+
+            else -> getDefaultErrorMessage(statusCode)
+        }
+    }
     
     override fun getAllAddonGroupsFlow(): Flow<List<com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity>> {
         return addonGroupDao.getAllAddonGroupsForManagementFlow()
@@ -213,9 +238,11 @@ class AddonGroupRepositoryImpl @Inject constructor(
                 if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
                     Result.success(ProductMapper.toEntity(response.data!!))
                 } else {
-                    val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                        ?: response.error?.takeIf { it.isNotBlank() }
-                        ?: "เกิดข้อผิดพลาดในการสร้างกลุ่ม Addon"
+                    val errorMessage = mapApiErrorFromResponseFields(
+                        statusCode = response.status,
+                        error = response.error,
+                        message = response.message
+                    )
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: HttpException) {
@@ -333,9 +360,11 @@ class AddonGroupRepositoryImpl @Inject constructor(
                 if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
                     Result.success(ProductMapper.toEntity(response.data!!))
                 } else {
-                    val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                        ?: response.error?.takeIf { it.isNotBlank() }
-                        ?: "เกิดข้อผิดพลาดในการแก้ไขกลุ่ม Addon"
+                    val errorMessage = mapApiErrorFromResponseFields(
+                        statusCode = response.status,
+                        error = response.error,
+                        message = response.message
+                    )
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: HttpException) {
@@ -378,8 +407,11 @@ class AddonGroupRepositoryImpl @Inject constructor(
                 if (response.status == 200 && response.data != null) {
                     Result.success(ProductMapper.toEntity(response.data))
                 } else {
-                    val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                        ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะกลุ่ม Addon"
+                    val errorMessage = mapApiErrorFromResponseFields(
+                        statusCode = response.status,
+                        error = response.error,
+                        message = response.message
+                    )
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: HttpException) {
@@ -686,12 +718,18 @@ class AddonGroupRepositoryImpl @Inject constructor(
                         when {
                             combinedErrorText.contains("duplicate addon group name") || 
                             combinedErrorText.contains("duplicate name") -> {
-                                "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว"
+                                getLocalizedString(
+                                    "addon_group_form_error_duplicate_name",
+                                    "This addon group name already exists"
+                                )
                             }
                             errorKey != null && messageKey != null -> "$errorKey ($messageKey)"
                             errorKey != null -> errorKey
                             messageKey != null -> messageKey
-                            else -> "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว"
+                            else -> getLocalizedString(
+                                "addon_group_form_error_duplicate_name",
+                                "This addon group name already exists"
+                            )
                         }
                     }
                     500 -> {
@@ -713,7 +751,10 @@ class AddonGroupRepositoryImpl @Inject constructor(
                 
                 when {
                     statusCode == 409 && errorLower.contains("duplicate addon group name") -> {
-                        "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว"
+                        getLocalizedString(
+                            "addon_group_form_error_duplicate_name",
+                            "This addon group name already exists"
+                        )
                     }
                     statusCode == 403 && errorLower.contains("free_plan_limit_exceeded") -> {
                         "คุณใช้กลุ่มตัวเลือกเพิ่มเติมครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
@@ -738,7 +779,10 @@ class AddonGroupRepositoryImpl @Inject constructor(
             401 -> getLocalizedString("api_error_delete_addon_group_generic", "ไม่สามารถลบกลุ่มแอดออนได้ กรุณาลองใหม่อีกครั้ง")
             403 -> getLocalizedString("api_error_delete_addon_group_access_denied", "ไม่มีสิทธิ์เข้าถึง กลุ่มแอดออนนี้ไม่ใช่ของคุณ")
             404 -> getLocalizedString("api_error_delete_addon_group_not_found", "ไม่พบกลุ่มแอดออน")
-            409 -> "ชื่อกลุ่ม Addon นี้มีอยู่แล้ว"
+            409 -> getLocalizedString(
+                "addon_group_form_error_duplicate_name",
+                "This addon group name already exists"
+            )
             500 -> getLocalizedString("api_error_delete_addon_group_server_error", "เกิดข้อผิดพลาดของเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง")
             else -> getLocalizedString("api_error_delete_addon_group_generic", "ไม่สามารถลบกลุ่มแอดออนได้ กรุณาลองใหม่อีกครั้ง")
         }

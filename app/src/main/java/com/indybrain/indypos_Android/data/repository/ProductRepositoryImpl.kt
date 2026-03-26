@@ -559,9 +559,11 @@ class ProductRepositoryImpl @Inject constructor(
                     categoryDao.insert(categoryEntity)
                     Result.success(categoryEntity)
                 } else {
-                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                        ?: response.message?.takeIf { it.isNotBlank() }
-                        ?: "เกิดข้อผิดพลาดในการสร้างหมวดหมู่"
+                    val errorMessage = mapApiErrorFromResponseFields(
+                        statusCode = response.status,
+                        error = response.error,
+                        message = response.message
+                    )
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: HttpException) {
@@ -619,9 +621,11 @@ class ProductRepositoryImpl @Inject constructor(
                     categoryDao.insert(categoryEntity)
                     Result.success(categoryEntity)
                 } else {
-                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                        ?: response.message?.takeIf { it.isNotBlank() }
-                        ?: "เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่"
+                    val errorMessage = mapApiErrorFromResponseFields(
+                        statusCode = response.status,
+                        error = response.error,
+                        message = response.message
+                    )
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: HttpException) {
@@ -1097,8 +1101,8 @@ class ProductRepositoryImpl @Inject constructor(
                 getLocalizedString("category_error_duplicate_name", "ชื่อหมวดหมู่นี้มีอยู่แล้ว")
 
             else -> {
-                val raw = error?.takeIf { it.isNotBlank() } ?: message?.takeIf { it.isNotBlank() }
-                raw ?: getDefaultErrorMessage(statusCode)
+                // Do not return raw server messages here; they may not match the user's selected locale.
+                getDefaultErrorMessage(statusCode)
             }
         }
     }
@@ -1107,20 +1111,44 @@ class ProductRepositoryImpl @Inject constructor(
      * Get default error message for status code
      */
     private fun getDefaultErrorMessage(statusCode: Int): String {
-        // IMPORTANT:
-        // This fallback is used when we can't parse/recognize the error payload.
-        // Previously it was hardcoded Thai, so it could show wrong language when user selects English.
+        // Generic fallback for unrecognized errors.
+        // Important: don't hardcode Thai or category-delete specific messages here,
+        // because the same mapper is also used by product/category/addon flows.
         val localeCode = languageLocalDataSource.getLanguageLocale()
-        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        val isEnglish = localeCode == 1033
 
         return when (statusCode) {
-            400 -> localizedContext.getString(R.string.api_error_delete_category_bad_request)
-            401 -> localizedContext.getString(R.string.api_error_unauthorized)
-            403 -> localizedContext.getString(R.string.api_error_delete_category_forbidden)
-            404 -> localizedContext.getString(R.string.api_error_delete_category_not_found)
-            409 -> localizedContext.getString(R.string.category_error_duplicate_name)
-            500 -> localizedContext.getString(R.string.api_error_delete_category_server_error)
-            else -> localizedContext.getString(R.string.api_error_delete_category_generic)
+            400 -> if (isEnglish) {
+                "Invalid request. Please check your input."
+            } else {
+                "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
+            }
+            401 -> LocaleHelper.setLocale(context, localeCode).getString(R.string.api_error_unauthorized)
+            403 -> if (isEnglish) {
+                "Forbidden. You do not have permission."
+            } else {
+                "คุณไม่มีสิทธิ์เข้าถึงข้อมูลนี้"
+            }
+            404 -> if (isEnglish) {
+                "Not found."
+            } else {
+                "ไม่พบข้อมูลที่ต้องการ"
+            }
+            409 -> if (isEnglish) {
+                "Conflict. Duplicate data exists."
+            } else {
+                "ข้อมูลซ้ำกัน กรุณาตรวจสอบอีกครั้ง"
+            }
+            500 -> if (isEnglish) {
+                "Server error. Please try again later."
+            } else {
+                "เกิดข้อผิดพลาดของเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง"
+            }
+            else -> if (isEnglish) {
+                "Request failed. Please try again."
+            } else {
+                "เกิดข้อผิดพลาดในการดำเนินการ"
+            }
         }
     }
     

@@ -54,6 +54,31 @@ class AddonRepositoryImpl @Inject constructor(
             fallback
         }
     }
+
+    /**
+     * Map API error fields returned in the response body (e.g. status=409) into localized UI messages.
+     * Retrofit may not throw HttpException in these cases, so we can't rely on parseApiErrorResponse(errorBody, code).
+     */
+    private fun mapApiErrorFromResponseFields(
+        statusCode: Int,
+        error: String?,
+        message: String?
+    ): String {
+        val errorText = error?.lowercase() ?: ""
+        val messageText = message?.lowercase() ?: ""
+        val combinedErrorText = "$errorText $messageText"
+
+        return when {
+            combinedErrorText.contains("duplicate addon name") ||
+                (combinedErrorText.contains("duplicate name") && combinedErrorText.contains("addon")) ->
+                getLocalizedString(
+                    "addon_form_error_duplicate_name",
+                    "This addon name already exists"
+                )
+
+            else -> getDefaultErrorMessage(statusCode)
+        }
+    }
     
     private val dateFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
@@ -171,9 +196,11 @@ class AddonRepositoryImpl @Inject constructor(
                 if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
                     Result.success(ProductMapper.toEntity(response.data!!))
                 } else {
-                    val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                        ?: response.error?.takeIf { it.isNotBlank() }
-                        ?: "เกิดข้อผิดพลาดในการสร้าง Addon"
+                    val errorMessage = mapApiErrorFromResponseFields(
+                        statusCode = response.status,
+                        error = response.error,
+                        message = response.message
+                    )
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: HttpException) {
@@ -228,9 +255,11 @@ class AddonRepositoryImpl @Inject constructor(
                 if ((isSuccessStatus && response.data != null) || (hasSuccessMessage && response.data != null)) {
                     Result.success(ProductMapper.toEntity(response.data!!))
                 } else {
-                    val errorMessage = response.message?.takeIf { it.isNotBlank() }
-                        ?: response.error?.takeIf { it.isNotBlank() }
-                        ?: "เกิดข้อผิดพลาดในการแก้ไข Addon"
+                    val errorMessage = mapApiErrorFromResponseFields(
+                        statusCode = response.status,
+                        error = response.error,
+                        message = response.message
+                    )
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: HttpException) {
@@ -641,12 +670,18 @@ class AddonRepositoryImpl @Inject constructor(
                         when {
                             combinedErrorText.contains("duplicate addon name") || 
                             combinedErrorText.contains("duplicate name") -> {
-                                "ชื่อ Addon นี้มีอยู่แล้ว"
+                                getLocalizedString(
+                                    "addon_form_error_duplicate_name",
+                                    "This addon name already exists"
+                                )
                             }
                             errorKey != null && messageKey != null -> "$errorKey ($messageKey)"
                             errorKey != null -> errorKey
                             messageKey != null -> messageKey
-                            else -> "ชื่อ Addon นี้มีอยู่แล้ว"
+                            else -> getLocalizedString(
+                                "addon_form_error_duplicate_name",
+                                "This addon name already exists"
+                            )
                         }
                     }
                     500 -> {
@@ -668,7 +703,10 @@ class AddonRepositoryImpl @Inject constructor(
                 
                 when {
                     statusCode == 409 && errorLower.contains("duplicate addon name") -> {
-                        "ชื่อ Addon นี้มีอยู่แล้ว"
+                        getLocalizedString(
+                            "addon_form_error_duplicate_name",
+                            "This addon name already exists"
+                        )
                     }
                     statusCode == 403 && errorLower.contains("free_plan_limit_exceeded") -> {
                         "คุณใช้ Addon ครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
@@ -687,14 +725,43 @@ class AddonRepositoryImpl @Inject constructor(
      * Get default error message for status code
      */
     private fun getDefaultErrorMessage(statusCode: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val isEnglish = localeCode == 1033
+
         return when (statusCode) {
-            400 -> "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
-            401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-            403 -> "คุณไม่มีสิทธิ์เข้าถึง Addon นี้"
-            404 -> "ไม่พบ Addon ที่ต้องการ"
-            409 -> "ชื่อ Addon นี้มีอยู่แล้ว"
-            500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-            else -> "เกิดข้อผิดพลาดในการสร้าง Addon"
+            400 -> if (isEnglish) {
+                "Invalid request. Please check your input."
+            } else {
+                "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
+            }
+            401 -> {
+                // Use localized resource if available
+                getLocalizedString("api_error_unauthorized", "Session expired. Please login again")
+            }
+            403 -> if (isEnglish) {
+                "Forbidden. You do not have permission."
+            } else {
+                "คุณไม่มีสิทธิ์เข้าถึง Addon นี้"
+            }
+            404 -> if (isEnglish) {
+                "Not found."
+            } else {
+                "ไม่พบ Addon ที่ต้องการ"
+            }
+            409 -> getLocalizedString(
+                "addon_form_error_duplicate_name",
+                "This addon name already exists"
+            )
+            500 -> if (isEnglish) {
+                "Server error. Please try again later."
+            } else {
+                "Server error - กรุณาลองใหม่อีกครั้ง"
+            }
+            else -> if (isEnglish) {
+                "Request failed. Please try again."
+            } else {
+                "เกิดข้อผิดพลาดในการสร้าง Addon"
+            }
         }
     }
 }
