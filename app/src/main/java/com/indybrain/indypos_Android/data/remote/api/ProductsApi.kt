@@ -191,6 +191,13 @@ interface ProductsApi {
     suspend fun getAddons(): ApiResponseDto<List<AddonDto>>
 
     /**
+     * Get addon detail by ID
+     * GET /api/v1/protected/indypos/addons/{addonId}
+     */
+    @GET("protected/indypos/addons/{addonId}")
+    suspend fun getAddonDetail(@Path("addonId") addonId: String): ApiResponseDto<AddonDto>
+
+    /**
      * Get addons paginated for AddOn Management
      * GET /api/v1/protected/indypos/addons/paginated
      */

@@ -102,11 +102,11 @@ class AddonRepositoryImpl @Inject constructor(
             return Result.failure(Exception(context.getString(R.string.addon_management_no_internet)))
         }
         return try {
-            val response = productsApi.getAddons()
+            val response = productsApi.getAddonDetail(addonId)
             if (response.status != 200) {
-                return Result.failure(Exception(response.message ?: "Failed to fetch addons"))
+                return Result.failure(Exception(response.message ?: "Failed to fetch addon detail"))
             }
-            val dto = response.data?.find { it.id == addonId }
+            val dto = response.data
                 ?: return Result.failure(Exception(context.getString(R.string.addon_management_error_not_found)))
             Result.success(dto)
         } catch (e: HttpException) {
