@@ -1557,60 +1557,55 @@ class ProductRepositoryImpl @Inject constructor(
         isSkuEnabled: Boolean?,
         isStockEnabled: Boolean?,
         hasAdditionalOptions: Boolean?,
-        addonGroupIds: List<String>?
+        addonGroupIds: List<String>?,
+        description: String?,
+        popularityRank: Int?,
+        minStockQuantity: Int?,
+        selectedUnit: String?,
+        isActive: Boolean?
     ): Result<ProductEntity> {
         return try {
             if (!networkConnectivityChecker.isConnected()) {
                 return Result.failure(Exception(context.getString(R.string.product_management_no_internet)))
             }
-            val detailResult = getProductDetailFromApi(productId)
-            val existingProduct = detailResult.getOrNull()?.product
-                ?: return Result.failure(
-                    Exception(
-                        detailResult.exceptionOrNull()?.message
-                            ?: context.getString(R.string.product_form_error_load_not_found)
-                    )
-                )
 
-            try {
-                val request = UpdateProductRequestDto(
-                    name = name,
-                    description = existingProduct.description,
-                    price = price,
-                    costPrice = costPrice,
-                    imageUrl = imageUrl,
-                    categoryId = categoryId,
-                    popularityRank = existingProduct.popularityRank,
-                    productCode = productCode,
-                    unit = unit,
-                    skuCode = skuCode,
-                    stockQuantity = stockQuantity,
-                    minStockQuantity = existingProduct.minStockQuantity,
-                    selectedUnit = existingProduct.selectedUnit,
-                    selectedColorHex = selectedColorHex,
-                    isSkuEnabled = isSkuEnabled,
-                    isStockEnabled = isStockEnabled,
-                    hasAdditionalOptions = hasAdditionalOptions,
-                    isActive = existingProduct.isActive,
-                    addonGroupIds = addonGroupIds
-                )
+            val request = UpdateProductRequestDto(
+                name = name,
+                description = description,
+                price = price,
+                costPrice = costPrice,
+                imageUrl = imageUrl,
+                categoryId = categoryId,
+                popularityRank = popularityRank,
+                productCode = productCode,
+                unit = unit,
+                skuCode = skuCode,
+                stockQuantity = stockQuantity,
+                minStockQuantity = minStockQuantity,
+                selectedUnit = selectedUnit,
+                selectedColorHex = selectedColorHex,
+                isSkuEnabled = isSkuEnabled,
+                isStockEnabled = isStockEnabled,
+                hasAdditionalOptions = hasAdditionalOptions,
+                isActive = isActive,
+                addonGroupIds = addonGroupIds
+            )
 
-                val response = productsApi.updateProduct(productId, request)
+            val response = productsApi.updateProduct(productId, request)
 
-                if (response.status == 200 && response.data != null) {
-                    val productDto = response.data.product
-                    Result.success(ProductMapper.toEntity(productDto))
-                } else {
-                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                        ?: response.message?.takeIf { it.isNotBlank() }
-                        ?: "เกิดข้อผิดพลาดในการอัปเดตสินค้า"
-                    Result.failure(Exception(errorMessage))
-                }
-            } catch (e: HttpException) {
-                val errorBody = e.response()?.errorBody()
-                val errorMessage = parseApiErrorResponse(errorBody, e.code())
+            if (response.status == 200 && response.data != null) {
+                val productDto = response.data.product
+                Result.success(ProductMapper.toEntity(productDto))
+            } else {
+                val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                    ?: response.message?.takeIf { it.isNotBlank() }
+                    ?: "เกิดข้อผิดพลาดในการอัปเดตสินค้า"
                 Result.failure(Exception(errorMessage))
             }
+        } catch (e: HttpException) {
+            val errorBody = e.response()?.errorBody()
+            val errorMessage = parseApiErrorResponse(errorBody, e.code())
+            Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสินค้า"))
         }

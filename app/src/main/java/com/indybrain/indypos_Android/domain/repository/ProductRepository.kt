@@ -251,7 +251,12 @@ interface ProductRepository {
         isSkuEnabled: Boolean? = null,
         isStockEnabled: Boolean? = null,
         hasAdditionalOptions: Boolean? = null,
-        addonGroupIds: List<String>? = null
+        addonGroupIds: List<String>? = null,
+        description: String? = null,
+        popularityRank: Int? = null,
+        minStockQuantity: Int? = null,
+        selectedUnit: String? = null,
+        isActive: Boolean? = null
     ): Result<ProductEntity>
     
     /**

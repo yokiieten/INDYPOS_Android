@@ -946,7 +946,12 @@ class AddEditProductViewModel @Inject constructor(
                     isSkuEnabled = state.isSkuEnabled,
                     isStockEnabled = state.isStockEnabled,
                     hasAdditionalOptions = state.hasAdditionalOptions,
-                    addonGroupIds = addonGroupIds
+                    addonGroupIds = addonGroupIds,
+                    description = loadedProduct?.description,
+                    popularityRank = loadedProduct?.popularityRank,
+                    minStockQuantity = loadedProduct?.minStockQuantity,
+                    selectedUnit = if (state.isImageSelected) SELECTED_UNIT_IMAGE else SELECTED_UNIT_COLOR,
+                    isActive = loadedProduct?.isActive
                 )
                 
                 result.onSuccess { updated ->
