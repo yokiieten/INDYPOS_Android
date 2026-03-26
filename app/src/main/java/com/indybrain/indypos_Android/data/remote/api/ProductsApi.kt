@@ -26,6 +26,13 @@ interface ProductsApi {
     suspend fun getCategories(): ApiResponseDto<List<CategoryDto>>
     
     /**
+     * Get category detail by ID
+     * GET /api/v1/protected/indypos/categories/{categoryId}
+     */
+    @GET("protected/indypos/categories/{categoryId}")
+    suspend fun getCategoryDetail(@Path("categoryId") categoryId: String): ApiResponseDto<CategoryDto>
+
+    /**
      * Get categories paginated endpoint
      * GET /api/v1/protected/indypos/categories/paginated
      */

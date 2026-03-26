@@ -479,13 +479,35 @@ class ProductRepositoryImpl @Inject constructor(
     }
     
     override suspend fun getCategoryByIdFromApi(id: String): Result<CategoryEntity> {
-        return fetchCategoriesListFromApi().fold(
-            onSuccess = { list ->
-                list.find { it.id == id }?.let { Result.success(it) }
-                    ?: Result.failure(Exception(context.getString(R.string.category_form_validation_edit_failed)))
-            },
-            onFailure = { Result.failure(it) }
-        )
+        return try {
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+            }
+            val response = productsApi.getCategoryDetail(id)
+            if (response.status == 200 && response.data != null) {
+                val categoryEntity = ProductMapper.toEntity(response.data)
+                categoryDao.insert(categoryEntity)
+                Result.success(categoryEntity)
+            } else {
+                Result.failure(
+                    Exception(
+                        response.message?.takeIf { it.isNotBlank() }
+                            ?: context.getString(R.string.category_form_validation_edit_failed)
+                    )
+                )
+            }
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                403 -> "Access denied to this category"
+                404 -> context.getString(R.string.category_form_validation_edit_failed)
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการดึงข้อมูลหมวดหมู่"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
     }
     
     override suspend fun addCategory(category: CategoryEntity): Result<Unit> {

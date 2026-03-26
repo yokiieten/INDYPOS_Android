@@ -7,7 +7,9 @@ data class AddEditCategoryUiState(
     val categoryName: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val isSuccess: Boolean = false
+    val isSuccess: Boolean = false,
+    val loadedSortOrder: Int = 0,
+    val loadedIsActive: Boolean = true
 )
 
 

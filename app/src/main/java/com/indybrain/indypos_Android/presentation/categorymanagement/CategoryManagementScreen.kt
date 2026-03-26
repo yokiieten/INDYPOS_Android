@@ -413,6 +413,7 @@ fun CategoryManagementScreen(
                 message = message,
                 onOkClick = {
                     viewModel.dismissToggleSuccess()
+                    viewModel.refreshCategories()
                 }
             )
         }

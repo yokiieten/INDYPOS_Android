@@ -50,6 +50,8 @@ class AddEditCategoryViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             categoryName = category.name,
+                            loadedSortOrder = category.sortOrder ?: 0,
+                            loadedIsActive = category.isActive,
                             isLoading = false
                         )
                     }
@@ -116,42 +118,18 @@ class AddEditCategoryViewModel @Inject constructor(
                 return@launch
             }
             
+            val currentState = _uiState.value
             val result = categoryId?.let { id ->
-                val existingResult = productRepository.getCategoryByIdFromApi(id)
-                val existing = existingResult.getOrNull()
-                if (existing == null) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = existingResult.exceptionOrNull()?.message
-                                ?: getLocalizedString(R.string.category_form_validation_edit_failed)
-                        )
-                    }
-                    return@launch
-                }
                 productRepository.updateCategory(
                     categoryId = id,
                     name = name,
-                    sortOrder = existing.sortOrder ?: 0,
-                    isActive = existing.isActive
+                    sortOrder = currentState.loadedSortOrder,
+                    isActive = currentState.loadedIsActive
                 ).map { Unit }
             } ?: run {
-                val listResult = productRepository.getAllCategoriesFromApi()
-                val list = listResult.getOrNull()
-                if (list == null) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = listResult.exceptionOrNull()?.message
-                                ?: getLocalizedString(R.string.category_management_error_loading)
-                        )
-                    }
-                    return@launch
-                }
-                val maxSortOrder = list.mapNotNull { it.sortOrder }.maxOrNull() ?: 0
                 productRepository.createCategory(
                     name = name,
-                    sortOrder = maxSortOrder + 1,
+                    sortOrder = 0,
                     isActive = true
                 ).map { Unit }
             }
