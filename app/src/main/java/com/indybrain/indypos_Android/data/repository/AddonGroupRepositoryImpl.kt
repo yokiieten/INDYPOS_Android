@@ -150,18 +150,21 @@ class AddonGroupRepositoryImpl @Inject constructor(
             return Result.failure(Exception(context.getString(R.string.addon_group_management_no_internet)))
         }
         return try {
-            val response = productsApi.getAddonGroups()
+            val response = productsApi.getAddonGroupDetail(id)
             if (response.status != 200) {
-                return Result.failure(Exception(response.message ?: "Failed to fetch addon groups"))
+                return Result.failure(Exception(response.message ?: "Failed to fetch addon group detail"))
             }
-            val dto = response.data?.find { it.id == id }
+            val dto = response.data
                 ?: return Result.failure(Exception(context.getString(R.string.addon_group_form_error_not_found)))
             Result.success(addonGroupDtoToWithAddons(dto))
         } catch (e: HttpException) {
+            val errorBody = e.response()?.errorBody()
             val errorMessage = when (e.code()) {
                 401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                403 -> parseApiErrorResponse(errorBody, e.code())
+                404 -> context.getString(R.string.addon_group_form_error_not_found)
                 500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                else -> e.message ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+                else -> parseApiErrorResponse(errorBody, e.code())
             }
             Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
@@ -244,11 +247,11 @@ class AddonGroupRepositoryImpl @Inject constructor(
             return Result.failure(Exception(context.getString(R.string.addon_group_management_no_internet)))
         }
         return try {
-            val response = productsApi.getAddonGroups()
+            val response = productsApi.getAddonGroupDetail(addonGroupId)
             if (response.status != 200) {
-                return Result.failure(Exception(response.message ?: "Failed to fetch addon groups"))
+                return Result.failure(Exception(response.message ?: "Failed to fetch addon group detail"))
             }
-            val dto = response.data?.find { it.id == addonGroupId }
+            val dto = response.data
                 ?: return Result.failure(Exception(context.getString(R.string.addon_group_form_error_not_found)))
             Result.success(dto)
         } catch (e: HttpException) {

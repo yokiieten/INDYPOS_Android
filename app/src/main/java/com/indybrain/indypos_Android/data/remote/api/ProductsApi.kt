@@ -128,6 +128,13 @@ interface ProductsApi {
     suspend fun getAddonGroups(): ApiResponseDto<List<AddonGroupDto>>
 
     /**
+     * Get addon group detail by ID (single addon group with active addons)
+     * GET /api/v1/protected/indypos/addon-groups/{addonGroupId}
+     */
+    @GET("protected/indypos/addon-groups/{addonGroupId}")
+    suspend fun getAddonGroupDetail(@Path("addonGroupId") addonGroupId: String): ApiResponseDto<AddonGroupDto>
+
+    /**
      * Get addon groups paginated for Addon Group Management
      * GET /api/v1/protected/indypos/addon-groups/paginated
      */
