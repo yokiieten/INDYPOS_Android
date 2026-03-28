@@ -321,7 +321,7 @@ class PrinterService @Inject constructor(
             val discountPriceStr = if (discount > 0) "-${formatCurrencyWithoutSymbol(discount)}" else formatCurrencyWithoutSymbol(0.0)
             tailStrips += textToBitmapLabelPrice("ส่วนลด:", discountPriceStr)
 
-            val totalLabel = if (paymentType == PaymentType.CASH) "ยอดรวมทั้งหมด:" else "รวม:"
+            val totalLabel = "ยอดรวมทั้งหมด:"
             tailStrips += textToBitmapLabelPrice(totalLabel, formatCurrencyWithoutSymbol(total), isBold = true)
 
             if (paymentType == PaymentType.CASH) {
