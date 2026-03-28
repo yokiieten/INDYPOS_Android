@@ -260,12 +260,12 @@ class PrinterService @Inject constructor(
 
                 val label = "${cartItem.quantity} x $itemName"
                 val priceStr = formatCurrencyWithoutSymbol(itemPrice)
-                val itemLines = formatItemLinesWithWrap(label = label, price = priceStr)
+                val itemLines = formatItemLinesWithWrap(label = label, price = priceStr, isBold = true)
                 itemLines.forEach { (lineLabel, linePrice) ->
                     val lineBitmap = if (linePrice != null) {
-                        textToBitmapLabelPrice(lineLabel, linePrice)
+                        textToBitmapLabelPrice(lineLabel, linePrice, isBold = true)
                     } else {
-                        textToBitmap(lineLabel, ALIGNMENT_LEFT)
+                        textToBitmap(lineLabel, ALIGNMENT_LEFT, isBold = true)
                     }
                     addStripOrFlush(itemAcc, itemAccHeight, lineBitmap)
                 }
@@ -576,8 +576,8 @@ class PrinterService @Inject constructor(
      * Format item with long name - บรรทัดแรกมีราคาชิดขวาคู่กับต้นชื่อ; บรรทัดต่อใช้ความกว้างเต็ม
      * ใช้ pixel-based measurement จริง (ไทย/อังกฤษกว้างไม่เท่ากัน)
      */
-    private fun formatItemLinesWithWrap(label: String, price: String): List<Pair<String, String?>> {
-        val paint = createReceiptPaint(textSize = 30f)
+    private fun formatItemLinesWithWrap(label: String, price: String, isBold: Boolean = false): List<Pair<String, String?>> {
+        val paint = createReceiptPaint(textSize = 30f, isBold = isBold)
         val priceWidth = paint.measureText(price)
         val firstLineLabelMax = RECEIPT_BITMAP_WIDTH - priceWidth
         if (paint.measureText(label) <= firstLineLabelMax) {
@@ -595,7 +595,12 @@ class PrinterService @Inject constructor(
             }
             if (fitLength <= 0) fitLength = 1
             val chunk = text.take(fitLength)
-            val breakAt = listOf(chunk.lastIndexOf(' '), chunk.lastIndexOf(',')).filter { it > 0 }.maxOrNull() ?: (fitLength - 1)
+            // Skip "N x " quantity prefix as a break candidate so we never leave "2 x" alone on a line.
+            // Fall back to character-boundary break (fitLength) when no valid break found after the prefix.
+            val prefixEnd = Regex("^\\d+ x ").find(text)?.range?.last?.plus(1) ?: 0
+            val breakAt = listOf(chunk.lastIndexOf(' '), chunk.lastIndexOf(','))
+                .filter { it >= prefixEnd && it > 0 }
+                .maxOrNull() ?: (fitLength - 1)
             val splitPoint = (breakAt + 1).coerceAtLeast(1)
             val part = text.take(splitPoint).trimEnd()
             val rest = text.drop(splitPoint).trimStart()
