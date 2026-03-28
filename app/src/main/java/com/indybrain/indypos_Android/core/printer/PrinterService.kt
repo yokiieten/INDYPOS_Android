@@ -695,15 +695,12 @@ class PrinterService @Inject constructor(
             }
         }
         
-        // Format amount: Fix for PromptPay QR Code amount display issue
-        // Problem: When using satang (24300), scanning app shows as 24300 baht instead of 243 baht
-        // Root cause: The scanning app doesn't divide by 100 to convert satang to baht
-        // 
-        // Solution: Use amount in baht as integer (rounded to nearest integer)
-        // This matches what the scanning app expects and displays
-        // Example: 243.00 baht -> "243", 243.50 baht -> "244" (rounded), 243.25 baht -> "243" (rounded)
-        val amountRounded = java.math.BigDecimal(amount).setScale(0, java.math.RoundingMode.HALF_UP).toLong()
-        val amountString = amountRounded.toString()
+        // Format amount as exact decimal value per EMV QR standard (tag 54 supports decimals)
+        // e.g. 6635.50 -> "6635.5", 6635.25 -> "6635.25", 6636.00 -> "6636"
+        val amountString = java.math.BigDecimal(amount)
+            .setScale(2, java.math.RoundingMode.HALF_UP)
+            .stripTrailingZeros()
+            .toPlainString()
         
         // Build EMV QR Code payload
         val payload = buildString {
