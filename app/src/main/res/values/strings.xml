@@ -905,6 +905,7 @@
     <string name="settings_tin_placeholder">กรอกเลขประจำตัวผู้เสียภาษี 13 หลัก</string>
     <string name="settings_tin_invalid">รูปแบบเลขประจำตัวผู้เสียภาษีไม่ถูกต้อง (ต้องมี 13 หลัก)</string>
     <string name="settings_tin_required">กรุณากรอกเลขประจำตัวผู้เสียภาษีเมื่อเปิดใช้งาน</string>
+    <string name="settings_tin_error_must_be_13_digits">เลขประจำตัวผู้เสียภาษีอากรต้องมี 13 หลัก</string>
     <string name="settings_custom_printing_services">บริการพิมพ์แบบกำหนดเอง</string>
     <string name="settings_generate_qr_code_description">สร้าง QR Code PromptPay สำหรับการรับชำระเงิน</string>
     <string name="settings_select_shop_logo">เลือกโลโก้ร้าน</string>

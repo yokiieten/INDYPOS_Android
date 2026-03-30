@@ -1,12 +1,17 @@
 package com.indybrain.indypos_Android.presentation.settings.receipt
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.domain.model.PromptPayType
 import com.indybrain.indypos_Android.domain.repository.ReceiptSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,8 +23,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ReceiptSettingsViewModel @Inject constructor(
-    private val receiptSettingsRepository: ReceiptSettingsRepository
+    private val receiptSettingsRepository: ReceiptSettingsRepository,
+    @ApplicationContext private val context: Context,
+    private val languageLocalDataSource: LanguageLocalDataSource
 ) : ViewModel() {
+
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
     
     private val _uiState = MutableStateFlow(ReceiptSettingsUiState())
     val uiState: StateFlow<ReceiptSettingsUiState> = _uiState.asStateFlow()
@@ -33,6 +46,9 @@ class ReceiptSettingsViewModel @Inject constructor(
     
     // Flag to prevent Flow from overriding data after save
     private var isSavingInProgress = false
+    
+    /** Last loaded/saved settings values — not the live UI mirror; avoids hasChanges flipping false when IME re-sends the same text. */
+    private var persistedSettings = PersistedReceiptSettings()
     
     init {
         initializeSettings()
@@ -75,8 +91,9 @@ class ReceiptSettingsViewModel @Inject constructor(
                             shopLogoBitmap = shopLogoBitmap,
                             promptPayType = PromptPayType.fromString(settings.promptPayType),
                             promptPayIdentifier = settings.promptPayIdentifier ?: "",
-                            tinNumber = settings.tinNumber ?: ""
+                            tinNumber = sanitizeTinInput(settings.tinNumber ?: "")
                         )
+                        persistedSettings = PersistedReceiptSettings.from(tempState)
                         
                         // Reset pending logo operations
                         pendingShopLogoUri = null
@@ -132,8 +149,9 @@ class ReceiptSettingsViewModel @Inject constructor(
     fun updateTaxIdentificationNumber(enabled: Boolean) {
         tempState = tempState.copy(taxIdentificationNumber = enabled)
         if (!enabled) {
-            // Clear validation error when disabled
             tempState = tempState.copy(tinNumberError = null)
+        } else {
+            validateTIN()
         }
         checkForChanges()
     }
@@ -167,7 +185,7 @@ class ReceiptSettingsViewModel @Inject constructor(
     
     fun updateTINNumber(tinNumber: String) {
         tempState = tempState.copy(
-            tinNumber = tinNumber,
+            tinNumber = sanitizeTinInput(tinNumber),
             tinNumberError = null
         )
         validateTIN()
@@ -244,18 +262,17 @@ class ReceiptSettingsViewModel @Inject constructor(
             return
         }
         
-        val tinNumber = tempState.tinNumber.trim()
-        if (tinNumber.isEmpty()) {
+        val tin = tempState.tinNumber
+        if (tin.isEmpty()) {
             tempState = tempState.copy(
-                tinNumberError = "กรุณากรอกเลขประจำตัวผู้เสียภาษีอากร"
+                tinNumberError = getLocalizedString(R.string.settings_tin_required)
             )
             return
         }
         
-        val cleanTIN = tinNumber.replace(Regex("[^0-9]"), "")
-        if (cleanTIN.length != 13) {
+        if (tin.length != 13) {
             tempState = tempState.copy(
-                tinNumberError = "เลขประจำตัวผู้เสียภาษีอากรต้องมี 13 หลัก"
+                tinNumberError = getLocalizedString(R.string.settings_tin_error_must_be_13_digits)
             )
         } else {
             tempState = tempState.copy(tinNumberError = null)
@@ -263,19 +280,7 @@ class ReceiptSettingsViewModel @Inject constructor(
     }
     
     private fun checkForChanges() {
-        val current = _uiState.value
-        val hasChanges = 
-            tempState.printShopLogo != current.printShopLogo ||
-            tempState.printAfterFinish != current.printAfterFinish ||
-            tempState.showQRCode != current.showQRCode ||
-            tempState.openCashDrawer != current.openCashDrawer ||
-            tempState.taxIdentificationNumber != current.taxIdentificationNumber ||
-            tempState.paperSize != current.paperSize ||
-            tempState.footer != current.footer ||
-            tempState.promptPayType != current.promptPayType ||
-            tempState.promptPayIdentifier != current.promptPayIdentifier ||
-            tempState.tinNumber != current.tinNumber ||
-            tempState.shopLogoBitmap != current.shopLogoBitmap
+        val hasChanges = hasDraftChangesComparedToPersisted()
         
         _uiState.update { 
             it.copy(
@@ -297,8 +302,31 @@ class ReceiptSettingsViewModel @Inject constructor(
         }
     }
     
+    private fun hasDraftChangesComparedToPersisted(): Boolean {
+        if (pendingShopLogoUri != null || removeShopLogo) return true
+        val p = persistedSettings
+        val t = tempState
+        return t.printShopLogo != p.printShopLogo ||
+            t.printAfterFinish != p.printAfterFinish ||
+            t.showQRCode != p.showQRCode ||
+            t.openCashDrawer != p.openCashDrawer ||
+            t.taxIdentificationNumber != p.taxIdentificationNumber ||
+            t.paperSize != p.paperSize ||
+            t.footer != p.footer ||
+            t.promptPayType != p.promptPayType ||
+            t.promptPayIdentifier != p.promptPayIdentifier ||
+            t.tinNumber != p.tinNumber ||
+            t.shopLogoBitmap !== p.shopLogoBitmap
+    }
+    
     fun saveSettings() {
         if (!isValidForSaving()) {
+            _uiState.update {
+                it.copy(
+                    errorMessage = validationBlockReason()
+                        ?: "กรุณาแก้ข้อมูลให้ครบถ้วนก่อนบันทึก"
+                )
+            }
             return
         }
         
@@ -344,7 +372,7 @@ class ReceiptSettingsViewModel @Inject constructor(
                             shopLogoBitmap = shopLogoBitmap,
                             promptPayType = PromptPayType.fromString(settings.promptPayType),
                             promptPayIdentifier = settings.promptPayIdentifier ?: "",
-                            tinNumber = settings.tinNumber ?: "",
+                            tinNumber = sanitizeTinInput(settings.tinNumber ?: ""),
                             hasChanges = false
                         )
                     }
@@ -361,8 +389,9 @@ class ReceiptSettingsViewModel @Inject constructor(
                         shopLogoBitmap = shopLogoBitmap,
                         promptPayType = PromptPayType.fromString(settings.promptPayType),
                         promptPayIdentifier = settings.promptPayIdentifier ?: "",
-                        tinNumber = settings.tinNumber ?: ""
+                        tinNumber = sanitizeTinInput(settings.tinNumber ?: "")
                     )
+                    persistedSettings = PersistedReceiptSettings.from(tempState)
                     
                     // Clear pending logo operations after successful save
                     pendingShopLogoUri = null
@@ -402,7 +431,7 @@ class ReceiptSettingsViewModel @Inject constructor(
         
         // Validate TIN if enabled
         if (tempState.taxIdentificationNumber) {
-            if (tempState.tinNumberError != null || tempState.tinNumber.trim().isEmpty()) {
+            if (tempState.tinNumberError != null || tempState.tinNumber.length != 13) {
                 return false
             }
         }
@@ -439,8 +468,9 @@ class ReceiptSettingsViewModel @Inject constructor(
                     shopLogoBitmap = shopLogoBitmap,
                     promptPayType = PromptPayType.fromString(settings.promptPayType),
                     promptPayIdentifier = settings.promptPayIdentifier ?: "",
-                    tinNumber = settings.tinNumber ?: ""
+                    tinNumber = sanitizeTinInput(settings.tinNumber ?: "")
                 )
+                persistedSettings = PersistedReceiptSettings.from(tempState)
                 
                 // Reset pending logo operations
                 pendingShopLogoUri = null
@@ -464,6 +494,64 @@ class ReceiptSettingsViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * First validation message that blocks save (for user feedback).
+     */
+    private fun validationBlockReason(): String? {
+        if (tempState.showQRCode) {
+            val err = tempState.promptPayIdentifierError
+            if (err != null) return err
+            if (tempState.promptPayIdentifier.trim().isEmpty()) {
+                return "กรุณากรอกข้อมูล PromptPay"
+            }
+        }
+        if (tempState.taxIdentificationNumber) {
+            tempState.tinNumberError?.let { return it }
+            if (tempState.tinNumber.isEmpty()) {
+                return getLocalizedString(R.string.settings_tin_required)
+            }
+            if (tempState.tinNumber.length != 13) {
+                return getLocalizedString(R.string.settings_tin_error_must_be_13_digits)
+            }
+        }
+        return null
+    }
+
+    private fun sanitizeTinInput(raw: String): String = raw.filter { it.isDigit() }.take(13)
+}
+
+/**
+ * Values last matched to DB / disk; excludes transient UI-only fields.
+ */
+private data class PersistedReceiptSettings(
+    val printShopLogo: Boolean = false,
+    val printAfterFinish: Boolean = false,
+    val showQRCode: Boolean = false,
+    val openCashDrawer: Boolean = false,
+    val taxIdentificationNumber: Boolean = false,
+    val paperSize: String = "58",
+    val footer: String = "",
+    val promptPayType: PromptPayType = PromptPayType.PHONE_NUMBER,
+    val promptPayIdentifier: String = "",
+    val tinNumber: String = "",
+    val shopLogoBitmap: Bitmap? = null
+) {
+    companion object {
+        fun from(state: ReceiptSettingsUiState) = PersistedReceiptSettings(
+            printShopLogo = state.printShopLogo,
+            printAfterFinish = state.printAfterFinish,
+            showQRCode = state.showQRCode,
+            openCashDrawer = state.openCashDrawer,
+            taxIdentificationNumber = state.taxIdentificationNumber,
+            paperSize = state.paperSize,
+            footer = state.footer,
+            promptPayType = state.promptPayType,
+            promptPayIdentifier = state.promptPayIdentifier,
+            tinNumber = state.tinNumber,
+            shopLogoBitmap = state.shopLogoBitmap
+        )
     }
 }
 

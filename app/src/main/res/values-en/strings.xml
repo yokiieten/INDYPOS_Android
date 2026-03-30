@@ -873,6 +873,7 @@
     <string name="settings_tin_placeholder">Enter 13-digit TIN</string>
     <string name="settings_tin_invalid">Invalid TIN format (must be 13 digits)</string>
     <string name="settings_tin_required">Please enter TIN when enabled</string>
+    <string name="settings_tin_error_must_be_13_digits">Tax identification number must be exactly 13 digits</string>
     <string name="settings_custom_printing_services">Custom printing services</string>
     <string name="settings_generate_qr_code_description">Generate PromptPay QR Code for payment</string>
     <string name="settings_select_shop_logo">Select Shop Logo</string>
