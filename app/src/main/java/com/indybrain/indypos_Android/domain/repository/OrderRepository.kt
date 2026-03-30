@@ -2,22 +2,29 @@ package com.indybrain.indypos_Android.domain.repository
 
 import com.indybrain.indypos_Android.data.local.entity.OrderEntity
 import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
+import com.indybrain.indypos_Android.domain.model.OrderListPageInfo
+import com.indybrain.indypos_Android.domain.model.OrderListQuery
 import kotlinx.coroutines.flow.Flow
 
 interface OrderRepository {
     fun getOrders(): Flow<Result<List<OrderEntity>>>
     /** One-shot get of all orders (e.g. after refresh to avoid race with order items). */
     suspend fun getOrdersSync(): Result<List<OrderEntity>>
-    suspend fun refreshOrders()
-    
+
     /**
-     * Load additional orders using the paginated endpoint.
-     *
-     * @param page The page index to load (1-based).
-     * @param pageSize Number of orders per page.
-     * @return true if there are more pages to load, false otherwise.
+     * Replace in-memory list with page 1 for the given query (order history screen).
      */
-    suspend fun loadMoreOrders(page: Int, pageSize: Int = 10): Boolean
+    suspend fun refreshOrders(query: OrderListQuery): Result<OrderListPageInfo>
+
+    /**
+     * Append next page for the same tab/sort/dates as [query] (page field must be next page index).
+     */
+    suspend fun loadMoreOrders(query: OrderListQuery): Result<OrderListPageInfo>
+
+    /**
+     * GET `/orders/{orderId}` and merge into cache for detail screen.
+     */
+    suspend fun fetchOrderDetail(orderId: String): Result<Unit>
     
     /**
      * Refresh orders using the new list endpoint (non-paginated)

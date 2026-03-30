@@ -100,11 +100,12 @@ object OrderMapper {
     }
     
     fun toEntity(dto: OrderAddonDto, orderItemId: String): OrderAddonEntity {
+        val unit = dto.unitPrice ?: dto.addonPrice ?: 0.0
         return OrderAddonEntity(
-            orderItemId = orderItemId,
+            orderItemId = dto.orderItemId ?: orderItemId,
             addonId = dto.addonId,
             addonName = dto.addonName,
-            addonPrice = dto.addonPrice,
+            addonPrice = unit,
             quantity = dto.quantity
         )
     }

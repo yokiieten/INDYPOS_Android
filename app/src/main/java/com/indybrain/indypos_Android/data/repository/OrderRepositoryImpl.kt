@@ -8,13 +8,18 @@ import com.indybrain.indypos_Android.data.mapper.OrderMapper
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.api.UpdateOrderStatusRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.OrderDto
+import com.indybrain.indypos_Android.domain.model.OrderListPageInfo
+import com.indybrain.indypos_Android.domain.model.OrderListQuery
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import retrofit2.HttpException
 import java.util.Date
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 private data class CachedOrders(
     val orders: List<OrderEntity> = emptyList(),
@@ -31,6 +36,7 @@ class OrderRepositoryImpl @Inject constructor(
 ) : OrderRepository {
 
     private val ordersCache = MutableStateFlow(CachedOrders())
+    private val listRequestGeneration = AtomicInteger(0)
 
     override fun getOrders(): Flow<Result<List<OrderEntity>>> {
         return ordersCache.map { Result.success(it.orders) }
@@ -40,58 +46,152 @@ class OrderRepositoryImpl @Inject constructor(
         return Result.success(ordersCache.value.orders)
     }
 
-    override suspend fun refreshOrders() {
-        if (!networkConnectivityChecker.isConnected()) return
-        try {
+    override suspend fun refreshOrders(query: OrderListQuery): Result<OrderListPageInfo> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
+        }
+        val myGen = listRequestGeneration.incrementAndGet()
+        return try {
+            val limit = query.limit.coerceIn(1, 100)
             val response = ordersApi.getOrders(
-                limit = 10,
-                page = 1,
-                status = null,
-                startDate = null,
-                endDate = null
+                tab = query.tab,
+                sortBy = query.sortBy,
+                page = query.page,
+                limit = limit,
+                startDate = query.startDate,
+                endDate = query.endDate
             )
-            val ordersDto = response.data?.orders
-            if (response.status == 200 && ordersDto != null) {
-                val (orders, itemsMap) = buildFromPaginatedDtos(ordersDto)
-                ordersCache.value = CachedOrders(orders, itemsMap)
+            if (myGen != listRequestGeneration.get()) {
+                return Result.failure(CancellationException())
             }
+            if (response.status != 200) {
+                val msg = response.error?.takeIf { it.isNotBlank() }
+                    ?: response.message?.takeIf { it.isNotBlank() }
+                    ?: "เกิดข้อผิดพลาดในการโหลดออเดอร์"
+                return Result.failure(Exception(msg))
+            }
+            val ordersDto = response.data?.orders ?: emptyList()
+            val (orders, itemsMap) = buildFromPaginatedDtos(ordersDto)
+            ordersCache.value = CachedOrders(orders, itemsMap)
+            val p = response.data?.pagination
+            val hasNext = p?.hasNext ?: (ordersDto.size >= limit)
+            val currentPage = p?.currentPage ?: query.page
+            Result.success(OrderListPageInfo(hasNext = hasNext, currentPage = currentPage))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HttpException) {
+            val msg = parseHttpErrorMessage(e)
+            Log.e("OrderRepository", "refreshOrders: ${e.code()} $msg", e)
+            Result.failure(Exception(msg ?: e.message() ?: "เกิดข้อผิดพลาด"))
         } catch (e: Exception) {
             Log.e("OrderRepository", "refreshOrders: ${e.message}", e)
+            Result.failure(e)
         }
     }
 
-    override suspend fun loadMoreOrders(page: Int, pageSize: Int): Boolean {
+    override suspend fun loadMoreOrders(query: OrderListQuery): Result<OrderListPageInfo> {
         if (!networkConnectivityChecker.isConnected()) {
-            return false
+            return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
         }
+        val myGen = listRequestGeneration.get()
         return try {
+            val limit = query.limit.coerceIn(1, 100)
             val response = ordersApi.getOrders(
-                limit = pageSize,
-                page = page,
-                status = null,
-                startDate = null,
-                endDate = null
+                tab = query.tab,
+                sortBy = query.sortBy,
+                page = query.page,
+                limit = limit,
+                startDate = query.startDate,
+                endDate = query.endDate
             )
-            val ordersDto = response.data?.orders
-            if (response.status == 200 && ordersDto != null && ordersDto.isNotEmpty()) {
-                val (newOrders, newItems) = buildFromPaginatedDtos(ordersDto)
-                ordersCache.update { prev ->
-                    val existingIds = prev.orders.map { it.id }.toSet()
-                    val mergedOrders = prev.orders + newOrders.filter { it.id !in existingIds }
-                    val mergedItems = prev.itemsByOrderId + newItems
-                    CachedOrders(mergedOrders, mergedItems)
-                }
-                val pagination = response.data?.pagination
-                when {
-                    pagination != null -> pagination.hasNext
-                    else -> ordersDto.size >= pageSize
-                }
-            } else {
-                false
+            if (myGen != listRequestGeneration.get()) {
+                return Result.failure(CancellationException())
             }
+            if (response.status != 200) {
+                val msg = response.error?.takeIf { it.isNotBlank() }
+                    ?: response.message?.takeIf { it.isNotBlank() }
+                    ?: "เกิดข้อผิดพลาดในการโหลดออเดอร์"
+                return Result.failure(Exception(msg))
+            }
+            val ordersDto = response.data?.orders ?: emptyList()
+            val p = response.data?.pagination
+            if (ordersDto.isEmpty()) {
+                return Result.success(
+                    OrderListPageInfo(
+                        hasNext = p?.hasNext ?: false,
+                        currentPage = p?.currentPage ?: query.page
+                    )
+                )
+            }
+            val (newOrders, newItems) = buildFromPaginatedDtos(ordersDto)
+            ordersCache.update { prev ->
+                val existingIds = prev.orders.map { it.id }.toSet()
+                val mergedOrders = prev.orders + newOrders.filter { it.id !in existingIds }
+                val mergedItems = prev.itemsByOrderId + newItems
+                CachedOrders(mergedOrders, mergedItems)
+            }
+            val hasNext = p?.hasNext ?: (ordersDto.size >= limit)
+            Result.success(
+                OrderListPageInfo(
+                    hasNext = hasNext,
+                    currentPage = p?.currentPage ?: query.page
+                )
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HttpException) {
+            val msg = parseHttpErrorMessage(e)
+            Log.e("OrderRepository", "loadMoreOrders: ${e.code()} $msg", e)
+            Result.failure(Exception(msg ?: e.message() ?: "เกิดข้อผิดพลาด"))
         } catch (e: Exception) {
             Log.e("OrderRepository", "loadMoreOrders: ${e.message}", e)
-            false
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun fetchOrderDetail(orderId: String): Result<Unit> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
+        }
+        return try {
+            val response = ordersApi.getOrderById(orderId)
+            if (response.status == 200 && response.data != null) {
+                val dto = response.data
+                val order = OrderMapper.toEntity(dto)
+                val items = dto.items?.map { OrderMapper.toEntity(it, dto.id) }.orEmpty()
+                ordersCache.update { prev ->
+                    val withoutOrder = prev.orders.filter { it.id != orderId }
+                    val itemsMap = prev.itemsByOrderId + (orderId to items)
+                    CachedOrders(withoutOrder + order, itemsMap)
+                }
+                Result.success(Unit)
+            } else {
+                val msg = response.error?.takeIf { it.isNotBlank() }
+                    ?: response.message?.takeIf { it.isNotBlank() }
+                    ?: when (response.status) {
+                        404 -> "ไม่พบออเดอร์"
+                        else -> "เกิดข้อผิดพลาดในการโหลดออเดอร์"
+                    }
+                Result.failure(Exception(msg))
+            }
+        } catch (e: HttpException) {
+            val msg = parseHttpErrorMessage(e)
+            Log.e("OrderRepository", "fetchOrderDetail: ${e.code()} $msg", e)
+            Result.failure(Exception(msg ?: e.message()))
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "fetchOrderDetail: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    private fun parseHttpErrorMessage(e: HttpException): String? {
+        return try {
+            val body = e.response()?.errorBody()?.string() ?: return null
+            val obj = com.google.gson.JsonParser.parseString(body).asJsonObject
+            obj.get("error")?.asString?.takeIf { it.isNotBlank() }
+                ?: obj.get("message")?.asString?.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
         }
     }
 

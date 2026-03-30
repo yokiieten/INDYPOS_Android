@@ -3,6 +3,7 @@ package com.indybrain.indypos_Android.presentation.order
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.indybrain.indypos_Android.domain.model.Order
+import com.indybrain.indypos_Android.domain.model.OrderListQuery
 import com.indybrain.indypos_Android.domain.model.OrderStatus
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,298 +12,252 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 @HiltViewModel
 class OrderViewModel @Inject constructor(
     private val orderRepository: OrderRepository
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(OrderUiState())
     val uiState: StateFlow<OrderUiState> = _uiState.asStateFlow()
-    
+
     init {
         observeOrders()
         refreshOrders()
     }
-    
+
     /**
-     * Observe all orders from repository and keep an in-memory list.
-     * Filtering / sorting is done in-memory based on [OrderUiState.filterOption] and [OrderUiState.sortOption].
+     * In-memory list from repository matches the current tab query (server-filtered).
      */
     private fun observeOrders() {
         viewModelScope.launch {
-            try {
-                orderRepository.getOrders().collect { result ->
-                    result.onSuccess { entities ->
-                        if (entities != null) {
-                            val orders = entities.mapNotNull { entity ->
-                                try {
-                                    val status = OrderStatus.fromCode(entity.statusRaw) // Changed from orderStatus to statusRaw
-                                    Order(
-                                        id = entity.id,
-                                        orderId = entity.orderNumber ?: "",
-                                        createdAt = entity.createdAt ?: entity.orderDate ?: Date(), // Use createdAt if available, fallback to orderDate
-                                        cancelledAt = if (status == OrderStatus.CANCELLED) entity.updatedAt else null, // Use updatedAt for cancelled orders
-                                        status = status,
-                                        totalAmount = entity.total ?: 0.0
-                                    )
-                                } catch (e: Exception) {
-                                    null // Skip invalid entities
-                                }
-                            }
-                            
-                            _uiState.update { current ->
-                                val (completed, cancelled) = filterAndSortOrders(
-                                    orders = orders,
-                                    filter = current.filterOption,
-                                    sort = current.sortOption,
-                                    customStartMillis = current.customStartDateMillis,
-                                    customEndMillis = current.customEndDateMillis
-                                )
-                                current.copy(
-                                    isLoading = false,
-                                    allOrders = orders,
-                                    completedOrders = completed,
-                                    cancelledOrders = cancelled
-                                )
-                            }
-                        } else {
-                            _uiState.update { current ->
-                                current.copy(
-                                    isLoading = false,
-                                    allOrders = emptyList(),
-                                    completedOrders = emptyList(),
-                                    cancelledOrders = emptyList()
-                                )
-                            }
+            orderRepository.getOrders().collect { result ->
+                result.onSuccess { entities ->
+                    val orders = entities.mapNotNull { entity ->
+                        try {
+                            val status = OrderStatus.fromCode(entity.statusRaw)
+                            Order(
+                                id = entity.id,
+                                orderId = entity.orderNumber ?: "",
+                                createdAt = entity.createdAt ?: entity.orderDate ?: Date(),
+                                cancelledAt = if (status == OrderStatus.CANCELLED) entity.updatedAt else null,
+                                status = status,
+                                totalAmount = entity.total ?: 0.0
+                            )
+                        } catch (_: Exception) {
+                            null
                         }
-                    }.onFailure { error ->
-                        _uiState.update { current ->
-                            current.copy(
+                    }
+                    _uiState.update { current ->
+                        when (current.selectedTab) {
+                            OrderTab.COMPLETED -> current.copy(completedOrders = orders)
+                            OrderTab.CANCELLED -> current.copy(cancelledOrders = orders)
+                        }
+                    }
+                }.onFailure { error ->
+                    _uiState.update { current ->
+                        current.copy(
+                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun selectTab(tab: OrderTab) {
+        val previous = _uiState.value.selectedTab
+        if (previous == tab) return
+        _uiState.update { it.copy(selectedTab = tab) }
+        refreshOrders()
+    }
+
+    fun selectFilter(filter: OrderFilter) {
+        _uiState.update { it.copy(filterOption = filter) }
+        refreshOrders()
+    }
+
+    fun selectSort(sort: OrderSort) {
+        _uiState.update { it.copy(sortOption = sort) }
+        refreshOrders()
+    }
+
+    fun refreshOrders() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isLoadingMore = false,
+                    currentPage = 1,
+                    hasMore = true,
+                    errorMessage = null
+                )
+            }
+            val query = buildQuery(page = 1)
+            orderRepository.refreshOrders(query).fold(
+                onSuccess = { info ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            currentPage = info.currentPage,
+                            hasMore = info.hasNext
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    if (e is CancellationException) {
+                        _uiState.update { it.copy(isLoading = false) }
+                    } else {
+                        _uiState.update {
+                            it.copy(
                                 isLoading = false,
-                                errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                                errorMessage = e.message ?: "เกิดข้อผิดพลาดในการรีเฟรช"
                             )
                         }
                     }
                 }
-            } catch (e: Exception) {
-                _uiState.update { current ->
-                    current.copy(
-                        isLoading = false,
-                        errorMessage = "เกิดข้อผิดพลาด: ${e.message ?: "ไม่ทราบสาเหตุ"}"
-                    )
-                }
-            }
-        }
-    }
-    
-    fun selectTab(tab: OrderTab) {
-        _uiState.update { it.copy(selectedTab = tab) }
-    }
-    
-    fun selectFilter(filter: OrderFilter) {
-        _uiState.update { current ->
-            val (completed, cancelled) = filterAndSortOrders(
-                orders = current.allOrders,
-                filter = filter,
-                sort = current.sortOption,
-                customStartMillis = current.customStartDateMillis,
-                customEndMillis = current.customEndDateMillis
             )
-            current.copy(
-                filterOption = filter,
-                completedOrders = completed,
-                cancelledOrders = cancelled
-            )
-        }
-    }
-    
-    fun selectSort(sort: OrderSort) {
-        _uiState.update { current ->
-            val (completed, cancelled) = filterAndSortOrders(
-                orders = current.allOrders,
-                filter = current.filterOption,
-                sort = sort,
-                customStartMillis = current.customStartDateMillis,
-                customEndMillis = current.customEndDateMillis
-            )
-            current.copy(
-                sortOption = sort,
-                completedOrders = completed,
-                cancelledOrders = cancelled
-            )
-        }
-    }
-    
-    fun refreshOrders() {
-        viewModelScope.launch {
-            try {
-                _uiState.update {
-                    it.copy(
-                        isLoading = true,
-                        isLoadingMore = false,
-                        currentPage = 1,
-                        hasMore = true,
-                        errorMessage = null
-                    )
-                }
-                orderRepository.refreshOrders()
-                _uiState.update {
-                    it.copy(isLoading = false)
-                }
-            } catch (e: Exception) {
-                _uiState.update { current ->
-                    current.copy(
-                        isLoading = false,
-                        errorMessage = "เกิดข้อผิดพลาดในการรีเฟรช: ${e.message ?: "ไม่ทราบสาเหตุ"}"
-                    )
-                }
-            }
         }
     }
 
     fun loadMore() {
         val state = _uiState.value
-        if (state.isLoadingMore || !state.hasMore) {
-            return
-        }
+        if (state.isLoadingMore || !state.hasMore || state.isLoading) return
 
         viewModelScope.launch {
             try {
                 val nextPage = state.currentPage + 1
                 _uiState.update { it.copy(isLoadingMore = true) }
-                val hasMore = orderRepository.loadMoreOrders(page = nextPage, pageSize = 10)
+                val query = buildQuery(page = nextPage)
+                orderRepository.loadMoreOrders(query).fold(
+                    onSuccess = { info ->
+                        _uiState.update {
+                            it.copy(
+                                isLoadingMore = false,
+                                currentPage = info.currentPage,
+                                hasMore = info.hasNext
+                            )
+                        }
+                    },
+                    onFailure = { e ->
+                        if (e is CancellationException) {
+                            _uiState.update { it.copy(isLoadingMore = false) }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isLoadingMore = false,
+                                    errorMessage = e.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลเพิ่ม"
+                                )
+                            }
+                        }
+                    }
+                )
+            } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoadingMore = false,
-                        currentPage = if (hasMore) nextPage else nextPage,
-                        hasMore = hasMore
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update { current ->
-                    current.copy(
-                        isLoadingMore = false,
-                        errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูลเพิ่ม: ${e.message ?: "ไม่ทราบสาเหตุ"}"
+                        errorMessage = e.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูลเพิ่ม"
                     )
                 }
             }
         }
     }
 
-    /**
-     * ตั้งค่าช่วงวันที่แบบกำหนดเอง (ใช้กับ filter SELECT_DATE)
-     */
     fun setCustomRange(startMillis: Long, endMillis: Long) {
         val normalizedStart = minOf(startMillis, endMillis)
         val normalizedEnd = maxOf(startMillis, endMillis)
-
-        _uiState.update { current ->
-            val (completed, cancelled) = filterAndSortOrders(
-                orders = current.allOrders,
-                filter = OrderFilter.SELECT_DATE,
-                sort = current.sortOption,
-                customStartMillis = normalizedStart,
-                customEndMillis = normalizedEnd
-            )
-            current.copy(
+        _uiState.update {
+            it.copy(
                 filterOption = OrderFilter.SELECT_DATE,
                 customStartDateMillis = normalizedStart,
-                customEndDateMillis = normalizedEnd,
-                completedOrders = completed,
-                cancelledOrders = cancelled
+                customEndDateMillis = normalizedEnd
             )
         }
+        refreshOrders()
     }
 
-    /**
-     * Apply date filter + sorting on the given order list.
-     * Date ranges are calculated in Asia/Bangkok timezone to match UI expectations.
-     */
-    private fun filterAndSortOrders(
-        orders: List<Order>,
+    private fun buildQuery(page: Int): OrderListQuery {
+        val s = _uiState.value
+        val (startDate, endDate) = dateRangeStrings(
+            filter = s.filterOption,
+            customStartMillis = s.customStartDateMillis,
+            customEndMillis = s.customEndDateMillis
+        )
+        return OrderListQuery(
+            tab = when (s.selectedTab) {
+                OrderTab.COMPLETED -> "completed"
+                OrderTab.CANCELLED -> "cancelled"
+            },
+            sortBy = when (s.sortOption) {
+                OrderSort.LATEST -> "latest"
+                OrderSort.OLDEST -> "oldest"
+                OrderSort.HIGHEST_AMOUNT -> "highestAmount"
+            },
+            page = page,
+            limit = PAGE_SIZE,
+            startDate = startDate,
+            endDate = endDate
+        )
+    }
+
+    private fun dateRangeStrings(
         filter: OrderFilter,
-        sort: OrderSort,
-        customStartMillis: Long? = null,
-        customEndMillis: Long? = null
-    ): Pair<List<Order>, List<Order>> {
-        if (orders.isEmpty()) {
-            return emptyList<Order>() to emptyList()
+        customStartMillis: Long?,
+        customEndMillis: Long?
+    ): Pair<String?, String?> {
+        val tz = TimeZone.getTimeZone("Asia/Bangkok")
+        val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = tz }
+        val cal = Calendar.getInstance(tz)
+
+        fun formatDay(millis: Long): String {
+            cal.timeInMillis = millis
+            return fmt.format(cal.time)
         }
 
-        val timeZone = java.util.TimeZone.getTimeZone("Asia/Bangkok")
-        val calendar = Calendar.getInstance(timeZone)
-
-        val filtered = when (filter) {
-            OrderFilter.ALL -> orders
-
+        return when (filter) {
+            OrderFilter.ALL -> null to null
             OrderFilter.SELECT_DATE -> {
                 if (customStartMillis == null || customEndMillis == null) {
-                    orders
+                    null to null
                 } else {
-                    calendar.timeInMillis = customStartMillis
-                    setToStartOfDay(calendar)
-                    val start = calendar.timeInMillis
-
-                    calendar.timeInMillis = customEndMillis
-                    setToEndOfDay(calendar)
-                    val end = calendar.timeInMillis
-
-                    orders.filter { it.createdAt.time in start..end }
+                    val startMillis = minOf(customStartMillis, customEndMillis)
+                    val endMillis = maxOf(customStartMillis, customEndMillis)
+                    formatDay(startMillis) to formatDay(endMillis)
                 }
             }
-
             OrderFilter.TODAY -> {
-                calendar.timeInMillis = System.currentTimeMillis()
-                setToStartOfDay(calendar)
-                val start = calendar.timeInMillis
-                setToEndOfDay(calendar)
-                val end = calendar.timeInMillis
-                orders.filter { it.createdAt.time in start..end }
+                cal.timeInMillis = System.currentTimeMillis()
+                val day = formatDay(cal.timeInMillis)
+                day to day
             }
-
             OrderFilter.THIS_WEEK -> {
-                calendar.timeInMillis = System.currentTimeMillis()
-                calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek) // start of week
-                setToStartOfDay(calendar)
-                val start = calendar.timeInMillis
-
-                calendar.add(Calendar.WEEK_OF_YEAR, 1)
-                calendar.add(Calendar.MILLISECOND, -1)
-                val end = calendar.timeInMillis
-
-                orders.filter { it.createdAt.time in start..end }
+                cal.timeInMillis = System.currentTimeMillis()
+                cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
+                setToStartOfDay(cal)
+                val start = fmt.format(cal.time)
+                cal.add(Calendar.WEEK_OF_YEAR, 1)
+                cal.add(Calendar.MILLISECOND, -1)
+                val end = fmt.format(cal.time)
+                start to end
             }
-
             OrderFilter.THIS_MONTH -> {
-                calendar.timeInMillis = System.currentTimeMillis()
-                calendar.set(Calendar.DAY_OF_MONTH, 1)
-                setToStartOfDay(calendar)
-                val start = calendar.timeInMillis
-
-                calendar.add(Calendar.MONTH, 1)
-                calendar.add(Calendar.MILLISECOND, -1)
-                val end = calendar.timeInMillis
-
-                orders.filter { it.createdAt.time in start..end }
+                cal.timeInMillis = System.currentTimeMillis()
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                setToStartOfDay(cal)
+                val start = fmt.format(cal.time)
+                cal.add(Calendar.MONTH, 1)
+                cal.add(Calendar.MILLISECOND, -1)
+                val end = fmt.format(cal.time)
+                start to end
             }
         }
-
-        val sorted = when (sort) {
-            OrderSort.LATEST -> filtered.sortedByDescending { it.createdAt.time }
-            OrderSort.OLDEST -> filtered.sortedBy { it.createdAt.time }
-            OrderSort.HIGHEST_AMOUNT -> filtered.sortedByDescending { it.totalAmount }
-        }
-
-        // แท็บ "เสร็จสิ้น" แสดงทุกสถานะที่ไม่ใช่ยกเลิก
-        val completedOrders = sorted.filter { it.status != OrderStatus.CANCELLED }
-        // แท็บ "ยกเลิก" แสดงเฉพาะสถานะยกเลิก (code = 5)
-        val cancelledOrders = sorted.filter { it.status == OrderStatus.CANCELLED }
-
-        return completedOrders to cancelledOrders
     }
 
     private fun setToStartOfDay(calendar: Calendar) {
@@ -312,19 +267,7 @@ class OrderViewModel @Inject constructor(
         calendar.set(Calendar.MILLISECOND, 0)
     }
 
-    private fun setToEndOfDay(calendar: Calendar) {
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        calendar.set(Calendar.MILLISECOND, 999)
-    }
-
-    private fun createDate(year: Int, month: Int, day: Int, hour: Int, minute: Int): Date {
-        val calendar = Calendar.getInstance()
-        calendar.set(year, month - 1, day, hour, minute, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return calendar.time
+    companion object {
+        private const val PAGE_SIZE = 20
     }
 }
-

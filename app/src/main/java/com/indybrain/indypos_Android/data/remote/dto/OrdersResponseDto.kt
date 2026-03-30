@@ -4,9 +4,19 @@ import com.google.gson.annotations.SerializedName
 
 data class OrdersResponseDto(
     val status: Int,
-    val message: String,
+    val message: String?,
     val data: OrdersPageDataDto?,
-    val timestamp: String?
+    val timestamp: String?,
+    val error: String? = null
+)
+
+/** GET `/orders/{orderId}` */
+data class OrderDetailResponseDto(
+    val status: Int,
+    val message: String?,
+    val data: OrderDto?,
+    val timestamp: String? = null,
+    val error: String? = null
 )
 
 data class OrdersPageDataDto(
@@ -93,13 +103,20 @@ data class OrderItemDto(
 
 data class OrderAddonDto(
     @SerializedName("order_item_id")
-    val orderItemId: String,
+    val orderItemId: String? = null,
     @SerializedName("addon_id")
     val addonId: String,
     @SerializedName("addon_name")
     val addonName: String,
+    /** Preferred field in current API; older payloads may use [addonPrice]. */
+    @SerializedName("unit_price")
+    val unitPrice: Double? = null,
     @SerializedName("addon_price")
-    val addonPrice: Double,
-    val quantity: Int
+    val addonPrice: Double? = null,
+    val quantity: Int,
+    @SerializedName("total_price")
+    val totalPrice: Double? = null,
+    @SerializedName("created_at")
+    val createdAt: String? = null
 )
 
