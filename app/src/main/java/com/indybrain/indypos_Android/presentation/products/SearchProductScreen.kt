@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android.presentation.products
 
+import android.annotation.SuppressLint
 import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -33,6 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -43,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,7 +76,10 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 
+@SuppressLint("LocalContextConfigurationRead")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchProductScreen(
@@ -192,62 +200,111 @@ fun SearchProductScreen(
                     size = FontSize.Medium
                 )
             )
-            
-            // Products grid
-            when {
-                uiState.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = PrimaryButton)
-                    }
+
+            uiState.errorMessage?.let { msg ->
+                Text(
+                    text = msg,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = horizontalPadding, vertical = 4.dp),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Regular,
+                        size = FontSize.Small
+                    ),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            val listState = rememberLazyGridState()
+            LaunchedEffect(listState, uiState.hasNext, uiState.isLoadingMore, uiState.searchQuery) {
+                snapshotFlow {
+                    val layoutInfo = listState.layoutInfo
+                    val total = layoutInfo.totalItemsCount
+                    if (total == 0) return@snapshotFlow false
+                    val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@snapshotFlow false
+                    lastVisible >= total - 2
                 }
-                uiState.filteredProducts.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.search_no_results),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Medium
-                            ),
-                            color = SecondaryText
-                        )
+                    .distinctUntilChanged()
+                    .filter { it }
+                    .collect {
+                        val s = viewModel.uiState.value
+                        if (s.hasNext && !s.isLoadingMore) {
+                            viewModel.loadMore()
+                        }
                     }
-                }
-                else -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(gridColumns),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = horizontalPadding,
-                            end = horizontalPadding,
-                            top = 8.dp,
-                            bottom = 16.dp
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(gridSpacing),
-                        verticalArrangement = Arrangement.spacedBy(gridSpacing)
-                    ) {
-                        items(uiState.filteredProducts) { product ->
-                            val cartQuantity = cartItems
-                                .filter { it.productId == product.id }
-                                .sumOf { it.quantity }
-                            
-                            ProductCard(
-                                product = product,
-                                cartQuantity = cartQuantity,
-                                onClick = {
-                                    onProductClick(product.id, product.name, cartQuantity > 0)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                isLandscape = isLandscape
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                when {
+                    uiState.isLoading && uiState.products.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = PrimaryButton)
+                        }
+                    }
+
+                    uiState.products.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.search_no_results),
+                                style = FontUtils.mainFont(
+                                    style = AppFontStyle.Regular,
+                                    size = FontSize.Medium
+                                ),
+                                color = SecondaryText
                             )
                         }
                     }
+
+                    else -> {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(gridColumns),
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = horizontalPadding,
+                                end = horizontalPadding,
+                                top = 8.dp,
+                                bottom = 16.dp
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+                            verticalArrangement = Arrangement.spacedBy(gridSpacing)
+                        ) {
+                            items(uiState.products) { product ->
+                                val cartQuantity = cartItems
+                                    .filter { it.productId == product.id }
+                                    .sumOf { it.quantity }
+
+                                ProductCard(
+                                    product = product,
+                                    cartQuantity = cartQuantity,
+                                    onClick = {
+                                        onProductClick(product.id, product.name, cartQuantity > 0)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    isLandscape = isLandscape
+                                )
+                            }
+                        }
+                    }
                 }
+            }
+
+            if (uiState.isLoadingMore) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = PrimaryButton,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             }
         }
     }

@@ -146,6 +146,17 @@ interface ProductRepository {
         search: String? = null,
         categoryId: String? = null
     ): Result<ProductsPaginatedResult>
+
+    /**
+     * Search products via API (name, product_code, sku_code when [query] non-blank).
+     * Blank [query] requests the default ordering (e.g. recent sales / popularity) without keyword filter.
+     */
+    suspend fun searchProductsPaginated(
+        query: String,
+        categoryId: String? = null,
+        page: Int = 1,
+        limit: Int = 20
+    ): Result<ProductsPaginatedResult>
     
     /**
      * Search products by name and category

@@ -106,6 +106,19 @@ interface ProductsApi {
     ): ApiResponseDto<ProductsPaginatedDataDto>
 
     /**
+     * Search products with pagination.
+     * Omit or leave [query] null for popular / 30-day sales ordering (no keyword filter).
+     * GET /api/v1/protected/indypos/products/search
+     */
+    @GET("protected/indypos/products/search")
+    suspend fun searchProducts(
+        @Query("q") query: String? = null,
+        @Query("category_id") categoryId: String? = null,
+        @Query("limit") limit: Int = 20,
+        @Query("page") page: Int = 1
+    ): ApiResponseDto<ProductsSearchPaginatedDataDto>
+
+    /**
      * Get product list for Main Product Screen (categories + products summary)
      * GET /api/v1/protected/indypos/products/list
      */

@@ -1200,6 +1200,55 @@ class ProductRepositoryImpl @Inject constructor(
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
         }
     }
+
+    override suspend fun searchProductsPaginated(
+        query: String,
+        categoryId: String?,
+        page: Int,
+        limit: Int
+    ): Result<ProductsPaginatedResult> {
+        val qParam = query.trim().takeIf { it.isNotEmpty() }
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+        }
+        return try {
+            val response = productsApi.searchProducts(
+                query = qParam,
+                categoryId = categoryId?.takeIf { it.isNotBlank() },
+                limit = limit.coerceIn(1, 50),
+                page = page.coerceAtLeast(1)
+            )
+            if (response.status != 200) {
+                val msg = response.error?.takeIf { it.isNotBlank() }
+                    ?: response.message.takeIf { it.isNotBlank() }
+                    ?: "Failed to search products"
+                return Result.failure(Exception(msg))
+            }
+            val data = response.data
+            val productsList = data?.products ?: emptyList()
+            val pagination = data?.pagination
+            val products = productsList.map { ProductMapper.toEntity(it) }
+            Result.success(
+                ProductsPaginatedResult(
+                    products = products,
+                    currentPage = pagination?.currentPage ?: page,
+                    totalCount = pagination?.totalCount ?: products.size,
+                    totalPages = pagination?.totalPages ?: 1,
+                    hasNext = pagination?.hasNext ?: false,
+                    hasPrevious = pagination?.hasPrevious ?: false
+                )
+            )
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการค้นหา"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
+    }
     
     override fun searchProducts(query: String, categoryId: String?): Flow<List<ProductEntity>> {
         return productDao.searchProductsFlow(query, categoryId)

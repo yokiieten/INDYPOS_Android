@@ -12,6 +12,15 @@ data class ProductListResponseDto(
     val products: List<ProductListItemDto> = emptyList()
 )
 
+/**
+ * Response data for product search API
+ * GET /api/v1/protected/indypos/products/search
+ */
+data class ProductsSearchPaginatedDataDto(
+    val products: List<ProductListItemDto>? = null,
+    val pagination: ProductsPaginationDto? = null
+)
+
 data class CategoryListItemDto(
     val id: String,
     val name: String,

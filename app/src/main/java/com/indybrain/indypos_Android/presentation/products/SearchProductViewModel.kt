@@ -2,15 +2,14 @@ package com.indybrain.indypos_Android.presentation.products
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -20,85 +19,79 @@ class SearchProductViewModel @Inject constructor(
     private val productRepository: ProductRepository,
     private val cartRepository: CartRepository
 ) : ViewModel() {
-    
+
     val cartItemCount = cartRepository.getCartItemCount()
     val cartItems = cartRepository.getCartItems()
-    
+
     private val _uiState = MutableStateFlow(SearchProductUiState())
     val uiState: StateFlow<SearchProductUiState> = _uiState.asStateFlow()
-    
-    init {
-        loadProducts()
+
+    private var searchJob: Job? = null
+
+    fun updateSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query, errorMessage = null) }
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            fetchPage(query = query.trim(), page = 1, append = false)
+        }
     }
-    
-    /**
-     * Load products that are active and have active categories
-     */
-    private fun loadProducts() {
+
+    fun loadMore() {
+        val s = _uiState.value
+        if (s.isLoading || s.isLoadingMore || !s.hasNext) return
+        val q = s.searchQuery.trim()
         viewModelScope.launch {
+            fetchPage(query = q, page = s.currentPage + 1, append = true)
+        }
+    }
+
+    private suspend fun fetchPage(query: String, page: Int, append: Boolean) {
+        if (append) {
+            _uiState.update { it.copy(isLoadingMore = true, errorMessage = null) }
+        } else {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            // Get all active products and active categories
-            val productsFlow = productRepository.getAllActiveProducts()
-            val categoriesFlow = productRepository.getAllActiveCategories()
-            
-            combine(productsFlow, categoriesFlow) { products, categories ->
-                // Create a set of active category IDs for quick lookup
-                val activeCategoryIds = categories.map { it.id }.toSet()
-                
-                // Filter products that:
-                // 1. Are active (already filtered by getAllActiveProducts)
-                // 2. Have a categoryId that is not null/blank
-                // 3. The category is active
-                val validProducts = products.filter { product ->
-                    val hasCategoryId = product.categoryId != null && product.categoryId.isNotBlank()
-                    val categoryIsActive = product.categoryId?.let { activeCategoryIds.contains(it) } ?: false
-                    hasCategoryId && categoryIsActive
-                }
-                
-                validProducts
-            }.collect { validProducts ->
+        }
+        val result = productRepository.searchProductsPaginated(
+            query = query,
+            categoryId = null,
+            page = page,
+            limit = PAGE_LIMIT
+        )
+        result.fold(
+            onSuccess = { res ->
                 _uiState.update { current ->
-                    current.copy(
-                        allProducts = validProducts,
-                        filteredProducts = if (current.searchQuery.isBlank()) {
-                            validProducts
-                        } else {
-                            filterProducts(validProducts, current.searchQuery)
-                        },
-                        isLoading = false
+                    val latestQ = current.searchQuery.trim()
+                    if (latestQ != query) {
+                        current.copy(isLoading = false, isLoadingMore = false)
+                    } else {
+                        val merged = if (append) current.products + res.products else res.products
+                        current.copy(
+                            products = merged,
+                            currentPage = res.currentPage,
+                            hasNext = res.hasNext,
+                            isLoading = false,
+                            isLoadingMore = false,
+                            errorMessage = null
+                        )
+                    }
+                }
+            },
+            onFailure = { e ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isLoadingMore = false,
+                        errorMessage = e.message,
+                        products = if (append) it.products else emptyList()
                     )
                 }
             }
-        }
+        )
     }
-    
-    /**
-     * Update search query and filter products
-     */
-    fun updateSearchQuery(query: String) {
-        _uiState.update { current ->
-            val filtered = if (query.isBlank()) {
-                current.allProducts
-            } else {
-                filterProducts(current.allProducts, query)
-            }
-            current.copy(
-                searchQuery = query,
-                filteredProducts = filtered
-            )
-        }
-    }
-    
-    /**
-     * Filter products by name (case-insensitive)
-     */
-    private fun filterProducts(products: List<ProductEntity>, query: String): List<ProductEntity> {
-        val lowerQuery = query.lowercase().trim()
-        return products.filter { product ->
-            product.name.lowercase().contains(lowerQuery)
-        }
+
+    private companion object {
+        const val SEARCH_DEBOUNCE_MS = 350L
+        const val PAGE_LIMIT = 20
     }
 }
-
-
