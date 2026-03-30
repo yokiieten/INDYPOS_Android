@@ -411,13 +411,13 @@ fun AddEditProductScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickable { 
-                                viewModel.updateImageUrl(null)
+                                viewModel.selectImageMode()
                             }
                         ) {
                             RadioButton(
                                 selected = uiState.isImageSelected,
                                 onClick = { 
-                                    viewModel.updateImageUrl(null)
+                                    viewModel.selectImageMode()
                                 },
                                 colors = RadioButtonDefaults.colors(
                                     selectedColor = PrimaryButton
@@ -428,13 +428,13 @@ fun AddEditProductScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickable { 
-                                viewModel.updateSelectedColorHex(null)
+                                viewModel.selectColorMode()
                             }
                         ) {
                             RadioButton(
                                 selected = !uiState.isImageSelected,
                                 onClick = { 
-                                    viewModel.updateSelectedColorHex(null)
+                                    viewModel.selectColorMode()
                                 },
                                 colors = RadioButtonDefaults.colors(
                                     selectedColor = PrimaryButton

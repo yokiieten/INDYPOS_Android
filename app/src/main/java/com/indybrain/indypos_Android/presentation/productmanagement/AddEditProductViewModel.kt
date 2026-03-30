@@ -383,16 +383,43 @@ class AddEditProductViewModel @Inject constructor(
     }
     
     /**
-     * Update image URL (from URI string)
+     * Switch to image mode without clearing an existing image URL.
+     * (Toggling from color back to image should restore the previous picture.)
+     */
+    fun selectImageMode() {
+        _uiState.update {
+            it.copy(
+                isImageSelected = true,
+                selectedColorHex = null,
+                showNoInternetDialog = false
+            )
+        }
+    }
+
+    /**
+     * Switch to color mode. Keeps [AddEditProductUiState.imageUrl] so returning to image restores the preview.
+     */
+    fun selectColorMode() {
+        _uiState.update {
+            it.copy(
+                isImageSelected = false,
+                selectedColorHex = null,
+                showNoInternetDialog = false
+            )
+        }
+    }
+
+    /**
+     * Update image URL (from URI string or server path). Clears color when setting an image.
      */
     fun updateImageUrl(imageUrl: String?) {
-        _uiState.update { 
+        _uiState.update {
             it.copy(
                 imageUrl = imageUrl,
                 selectedColorHex = null,
                 isImageSelected = true,
                 showNoInternetDialog = false
-            ) 
+            )
         }
     }
     
@@ -403,7 +430,6 @@ class AddEditProductViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 selectedColorHex = colorHex,
-                imageUrl = null,
                 isImageSelected = false,
                 showNoInternetDialog = false
             ) 
