@@ -8,7 +8,6 @@ import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.AddonGroupAddonJunctionDao
 import com.indybrain.indypos_Android.data.local.dao.CartDao
-import com.indybrain.indypos_Android.data.local.dao.OrderAddonDao
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
 import com.indybrain.indypos_Android.data.remote.dto.AddonDto
@@ -33,7 +32,6 @@ class AddonRepositoryImpl @Inject constructor(
     private val addonDao: AddonDao,
     private val addonGroupAddonJunctionDao: AddonGroupAddonJunctionDao,
     private val cartDao: CartDao,
-    private val orderAddonDao: OrderAddonDao,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val languageLocalDataSource: LanguageLocalDataSource,
     private val gson: Gson,
@@ -442,7 +440,6 @@ class AddonRepositoryImpl @Inject constructor(
         // ลบความสัมพันธ์ทั้งหมดก่อน
         addonGroupAddonJunctionDao.deleteByAddonId(addonId)
         cartDao.deleteCartAddonsByAddonId(addonId)
-        orderAddonDao.deleteOrderAddonsByAddonId(addonId)
         // แล้วค่อยลบ addon
         addonDao.permanentlyDeleteAddon(addonId)
     }

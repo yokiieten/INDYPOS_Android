@@ -25,25 +25,10 @@ object DatabaseModule {
             IndyPosDatabase::class.java,
             "indypos_database"
         )
-//        .fallbackToDestructiveMigration() // For development - remove in production
-        .build()
+            .fallbackToDestructiveMigration()
+            .build()
     }
-    
-    @Provides
-    fun provideOrderDao(database: IndyPosDatabase): OrderDao {
-        return database.orderDao()
-    }
-    
-    @Provides
-    fun provideOrderItemDao(database: IndyPosDatabase): OrderItemDao {
-        return database.orderItemDao()
-    }
-    
-    @Provides
-    fun provideOrderAddonDao(database: IndyPosDatabase): OrderAddonDao {
-        return database.orderAddonDao()
-    }
-    
+
     @Provides
     fun provideCategoryDao(database: IndyPosDatabase): CategoryDao {
         return database.categoryDao()

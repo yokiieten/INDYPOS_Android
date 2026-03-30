@@ -27,8 +27,7 @@ private data class CachedOrders(
 )
 
 /**
- * Order list + detail lines are kept in memory from API responses only (no Room read/write for UX).
- * Room order tables may still exist for legacy/export paths elsewhere.
+ * Order list + line items are kept in memory from API only ([OrderEntity] / [OrderItemEntity] are not Room tables).
  */
 class OrderRepositoryImpl @Inject constructor(
     private val ordersApi: OrdersApi,
