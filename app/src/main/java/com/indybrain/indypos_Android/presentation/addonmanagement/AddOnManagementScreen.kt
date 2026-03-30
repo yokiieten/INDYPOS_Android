@@ -448,11 +448,11 @@ fun AddOnManagementScreen(
             )
         }
         
-        // Toggle Success Dialog
+        // Toggle status success (same pattern as category / addon group management)
         uiState.toggleSuccessMessage?.let { message ->
-            ToggleSuccessDialog(
+            ToggleStatusSuccessDialog(
                 message = message,
-                onDismiss = {
+                onOkClick = {
                     viewModel.clearToggleSuccessMessage()
                     viewModel.refreshAddons()
                 }
@@ -1086,15 +1086,15 @@ private fun SyncStatusDialog(
 }
 
 /**
- * Toggle Success Dialog
+ * Toggle status success dialog (matches category / addon group management)
  */
 @Composable
-private fun ToggleSuccessDialog(
+private fun ToggleStatusSuccessDialog(
     message: String,
-    onDismiss: () -> Unit
+    onOkClick: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { /* Prevent dismissing by tapping outside */ },
         title = {
             Text(
                 text = stringResource(id = R.string.success_title),
@@ -1112,23 +1112,21 @@ private fun ToggleSuccessDialog(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium
                 ),
-                color = PrimaryText
+                color = SecondaryText
             )
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onOkClick) {
                 Text(
                     text = stringResource(id = R.string.dialog_button_ok),
                     style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
+                        style = AppFontStyle.Medium,
                         size = FontSize.Medium
                     ),
                     color = PrimaryButton
                 )
             }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(16.dp)
+        }
     )
 }
 

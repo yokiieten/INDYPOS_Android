@@ -181,12 +181,6 @@ interface ProductRepository {
     suspend fun getProductListFromApi(categoryId: String? = null): Result<ProductListData>
 
     /**
-     * Ensure product (and its category if needed) exists in Room before adding to cart.
-     * Inserts only if not already present. Call before addToCart when product may come from API.
-     */
-    suspend fun ensureProductExists(product: ProductEntity, category: CategoryEntity? = null)
-    
-    /**
      * Get product by barcode (productCode or skuCode)
      */
     suspend fun getProductByCode(code: String): ProductEntity?

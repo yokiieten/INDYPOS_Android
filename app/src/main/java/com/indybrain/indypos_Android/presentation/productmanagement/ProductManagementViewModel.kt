@@ -266,11 +266,18 @@ class ProductManagementViewModel @Inject constructor(
             val result = productRepository.toggleProductStatus(productId, newStatus)
             
             result.onSuccess { product ->
-                val productName = product.name ?: "สินค้า"
-                val statusText = if (newStatus) "เปิดใช้งาน" else "ปิดใช้งาน"
-                val successMessage = "$productName ได้รับการ $statusText"
-                
-                _uiState.update { 
+                val productName = product.name ?: getLocalizedString(R.string.product_default_name)
+                val statusText = if (newStatus) {
+                    getLocalizedString(R.string.category_management_status_activate)
+                } else {
+                    getLocalizedString(R.string.category_management_status_deactivate)
+                }
+                val successMessage = getLocalizedString(
+                    R.string.product_management_status_update_success,
+                    productName,
+                    statusText
+                )
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = null,
@@ -278,10 +285,11 @@ class ProductManagementViewModel @Inject constructor(
                     )
                 }
             }.onFailure { error ->
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะ",
+                        errorMessage = error.message
+                            ?: getLocalizedString(R.string.product_management_error_updating_status),
                         toggleSuccessMessage = null
                     )
                 }

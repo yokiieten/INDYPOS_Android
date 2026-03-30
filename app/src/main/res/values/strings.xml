@@ -616,7 +616,8 @@
     <string name="product_management_sync_now">ซิงค์ตอนนี้</string>
     <string name="product_management_sync_success">ซิงค์สำเร็จ</string>
     <string name="product_management_sync_error">เกิดข้อผิดพลาดในการซิงค์</string>
-    <string name="product_management_toggle_success_title">สำเร็จ</string>
+    <string name="product_management_status_update_success">อัปเดตสถานะสินค้า \'%1$s\' เป็น \'%2$s\' เรียบร้อยแล้ว</string>
+    <string name="product_management_error_updating_status">เกิดข้อผิดพลาดในการอัปเดตสถานะ</string>
     <string name="product_default_name">สินค้า</string>
     <string name="product_status_active">ใช้งาน</string>
     <string name="product_status_inactive">ไม่ใช้งาน</string>
@@ -793,6 +794,7 @@
     <string name="addon_management_no_internet">จัดการ Addon ต้องใช้อินเทอร์เน็ต</string>
     <string name="addon_management_sync_refresh_success">ดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์แล้ว</string>
     <string name="addon_management_error_updating_status">เกิดข้อผิดพลาดในการอัปเดตสถานะ</string>
+    <string name="addon_management_status_update_success">อัปเดตสถานะตัวเลือกเพิ่มเติม \'%1$s\' เป็น \'%2$s\' เรียบร้อยแล้ว</string>
     <string name="addon_management_error_deleting">เกิดข้อผิดพลาดในการลบ Addon</string>
     <string name="addon_management_error_not_found">ไม่พบแอดออน</string>
     <string name="addon_management_error_syncing">เกิดข้อผิดพลาดในการ sync ตัวเลือกเพิ่มเติม</string>

@@ -378,7 +378,7 @@ class ProductDetailViewModel @Inject constructor(
             val product = currentState.product ?: return@launch
 
             // Ensure product exists in Room (for FK) when coming from API
-            productRepository.ensureProductExists(product, currentState.category)
+            cartRepository.ensureProductForCart(product, currentState.category)
             
             // Validate required addon groups
             val validationError = validateRequiredAddonGroups()

@@ -6,15 +6,11 @@ import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
-import com.indybrain.indypos_Android.data.local.dao.*
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.data.mapper.ProductMapper
 import com.indybrain.indypos_Android.data.remote.api.*
-import com.indybrain.indypos_Android.data.remote.dto.DeleteCategoriesResponseDto
-import java.text.SimpleDateFormat
 import java.util.Locale
-import java.util.TimeZone
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.CategoriesPaginatedResult
@@ -29,6 +25,7 @@ import com.indybrain.indypos_Android.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -42,12 +39,6 @@ import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
     private val productsApi: ProductsApi,
-    private val categoryDao: CategoryDao,
-    private val productDao: ProductDao,
-    private val addonGroupDao: AddonGroupDao,
-    private val addonDao: AddonDao,
-    private val productAddonGroupJunctionDao: ProductAddonGroupJunctionDao,
-    private val addonGroupAddonJunctionDao: AddonGroupAddonJunctionDao,
     private val authRepository: AuthRepository,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
     private val cartRepository: CartRepository,
@@ -58,154 +49,17 @@ class ProductRepositoryImpl @Inject constructor(
     
     override suspend fun syncAllProductData(): Result<Unit> {
         return try {
-            // Fetch categories (to get all categories, not just those in products)
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+            }
             val categoriesResponse = productsApi.getCategories()
             if (categoriesResponse.status != 200) {
                 return Result.failure(Exception(categoriesResponse.message ?: "Failed to fetch categories"))
             }
-            
-            // Handle null data as empty list (valid for users with no categories)
-            val categoriesList = categoriesResponse.data ?: emptyList()
-            
-            // Fetch products with nested category and addon groups/addons
             val productsResponse = productsApi.getMyProductsAll()
             if (productsResponse.status != 200) {
                 return Result.failure(Exception(productsResponse.message ?: "Failed to fetch products"))
             }
-            
-            // Handle null data as empty list (valid for users with no products)
-            val productsList = productsResponse.data ?: emptyList()
-            
-            // Extract categories from products (in case there are categories not in categories endpoint)
-            val categoriesFromProductsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.CategoryDto>()
-            productsList.forEach { productDto ->
-                productDto.category?.let { categoryDto ->
-                    categoriesFromProductsMap[categoryDto.id] = categoryDto
-                }
-            }
-            
-            // Merge categories: use categories from categories endpoint, but also include any from products
-            val allCategoriesMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.CategoryDto>()
-            categoriesList.forEach { categoryDto ->
-                allCategoriesMap[categoryDto.id] = categoryDto
-            }
-            categoriesFromProductsMap.forEach { (id, categoryDto) ->
-                allCategoriesMap[id] = categoryDto
-            }
-            
-            // Convert and save categories
-            val categories = allCategoriesMap.values.map { ProductMapper.toEntity(it) }
-            // Important: do NOT call deleteAll() here.
-            // Using REPLACE strategy keeps existing rows while updating data.
-            // This preserves any local changes or offline-created categories.
-            categoryDao.insertAll(categories)
-            
-            // Extract addon groups and addons from products
-            val addonGroupsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto>()
-            val addonsMap = mutableMapOf<String, Pair<com.indybrain.indypos_Android.data.remote.dto.AddonDto, String?>>()
-            
-            productsList.forEach { productDto ->
-                productDto.addonGroups?.forEach { addonGroupDto ->
-                    // Add addon group
-                    addonGroupsMap[addonGroupDto.id] = addonGroupDto
-                    
-                    // Add addons from this group
-                    addonGroupDto.addons?.forEach { addonDto ->
-                        addonsMap[addonDto.id] = Pair(addonDto, addonGroupDto.id)
-                    }
-                }
-            }
-            
-            // Convert and save products
-            val products = productsList.map { ProductMapper.toEntity(it) }
-            // Important: do NOT call deleteAll() here.
-            // Deleting all products would trigger the foreign key on cart_items
-            // (onDelete = SET_NULL) and clear productId on existing cart items,
-            // which makes quantities disappear in the product list after refresh.
-            // Using REPLACE keeps existing rows (and cart relations) while updating data.
-            productDao.insertAll(products)
-            
-            // Convert and save addon groups
-            val addonGroups = addonGroupsMap.values.map { ProductMapper.toEntity(it) }
-            // Important: do NOT call deleteAll() here.
-            // Using REPLACE strategy keeps existing rows while updating data.
-            // This preserves any local changes or offline-created addon groups.
-            addonGroupDao.insertAll(addonGroups)
-            
-            // Convert and save addons
-            val addons = addonsMap.values.map { (addonDto, groupId) ->
-                ProductMapper.toEntity(addonDto, groupId)
-            }
-            // Important: do NOT call deleteAll() here.
-            // Using REPLACE strategy keeps existing rows while updating data.
-            // This preserves any local changes or offline-created addons.
-            addonDao.insertAll(addons)
-            
-            // Delete old addon group-addon junctions for all addon groups being synced
-            // This ensures we remove junctions for addon groups that no longer have addons
-            addonGroupsMap.values.forEach { addonGroupDto ->
-                addonGroupAddonJunctionDao.deleteByAddonGroupId(addonGroupDto.id)
-            }
-            
-            // Save addon group-addon junctions
-            // Note: Use addonGroupsMap.values to avoid duplicate inserts when same addon group is used in multiple products
-            addonGroupsMap.values.forEach { addonGroupDto ->
-                addonGroupDto.addons?.forEachIndexed { addonIndex, addonDto ->
-                    addonGroupAddonJunctionDao.insert(
-                        com.indybrain.indypos_Android.data.local.entity.AddonGroupAddonJunctionEntity(
-                            addonGroupId = addonGroupDto.id,
-                            addonId = addonDto.id,
-                            sortOrder = addonIndex + 1
-                        )
-                    )
-                }
-            }
-            
-            // Delete old product-addon group junctions for all products being synced
-            // This ensures we remove junctions for products that no longer have addon groups
-            productsList.forEach { productDto ->
-                productAddonGroupJunctionDao.deleteByProductId(productDto.id)
-            }
-            
-            // Save product-addon group junctions
-            productsList.forEach { productDto ->
-                val productId = productDto.id
-                productDto.addonGroups?.forEach { addonGroupDto ->
-                    productAddonGroupJunctionDao.insert(
-                        com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
-                            productId = productId,
-                            addonGroupId = addonGroupDto.id
-                        )
-                    )
-                }
-            }
-            
-            // Remove local items that are no longer in API (e.g. deleted on another device)
-            // Order: addons -> addon groups -> products -> categories (respect potential FK/cache)
-            val apiAddonIds = addonsMap.keys.toSet()
-            val existingAddonIds = addonDao.getAllAddons().map { it.id }.toSet()
-            (existingAddonIds - apiAddonIds).forEach { id ->
-                addonGroupAddonJunctionDao.deleteByAddonId(id)
-                addonDao.permanentlyDeleteAddon(id)
-            }
-            val apiAddonGroupIds = addonGroupsMap.keys.toSet()
-            val existingAddonGroupIds = addonGroupDao.getAllAddonGroups().map { it.id }.toSet()
-            (existingAddonGroupIds - apiAddonGroupIds).forEach { id ->
-                addonGroupAddonJunctionDao.deleteByAddonGroupId(id)
-                addonGroupDao.permanentlyDeleteAddonGroup(id)
-            }
-            val apiProductIds = productsList.map { it.id }.toSet()
-            val existingProductIds = productDao.getAllProducts().mapNotNull { it.id }.toSet()
-            (existingProductIds - apiProductIds).forEach { id ->
-                productAddonGroupJunctionDao.deleteByProductId(id)
-                productDao.deleteProductById(id)
-            }
-            val apiCategoryIdsFromSync = allCategoriesMap.keys.toSet()
-            val existingCategoryIdsFromSync = categoryDao.getAllCategories().map { it.id }.toSet()
-            (existingCategoryIdsFromSync - apiCategoryIdsFromSync).forEach { id ->
-                categoryDao.deleteCategoryById(id)
-            }
-            
             Result.success(Unit)
         } catch (e: HttpException) {
             val errorMessage = when (e.code()) {
@@ -219,125 +73,24 @@ class ProductRepositoryImpl @Inject constructor(
         }
     }
     
-    override fun getAllActiveProducts(): Flow<List<com.indybrain.indypos_Android.data.local.entity.ProductEntity>> {
-        return productDao.getAllActiveProductsFlow()
+    override fun getAllActiveProducts(): Flow<List<ProductEntity>> {
+        return flowOf(emptyList())
     }
     
-    override fun getProductsByCategory(categoryId: String?): Flow<List<com.indybrain.indypos_Android.data.local.entity.ProductEntity>> {
-        return productDao.getProductsByCategoryFlow(categoryId)
+    override fun getProductsByCategory(categoryId: String?): Flow<List<ProductEntity>> {
+        return flowOf(emptyList())
     }
     
-    override fun getAllActiveCategories(): Flow<List<com.indybrain.indypos_Android.data.local.entity.CategoryEntity>> {
-        return categoryDao.getAllActiveCategoriesFlow()
+    override fun getAllActiveCategories(): Flow<List<CategoryEntity>> {
+        return flowOf(emptyList())
     }
     
     override suspend fun fetchAndSaveProducts(): Result<Unit> {
         return try {
-            // Fetch products from API (includes category and addon groups/addons)
             val productsResponse = productsApi.getMyProductsAll()
             if (productsResponse.status != 200) {
                 return Result.failure(Exception(productsResponse.message ?: "Failed to fetch products"))
             }
-            
-            // If status is 200, treat as success even if data is null or empty (new user might have no data)
-            val productsList = productsResponse.data ?: emptyList()
-            
-            // Extract categories from products and save them
-            val categoriesMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.CategoryDto>()
-            productsList.forEach { productDto ->
-                productDto.category?.let { categoryDto ->
-                    categoriesMap[categoryDto.id] = categoryDto
-                }
-            }
-            
-            // Convert and save categories
-            if (categoriesMap.isNotEmpty()) {
-                val categories = categoriesMap.values.map { ProductMapper.toEntity(it) }
-                categoryDao.insertAll(categories)
-            }
-            
-            // Extract addon groups and addons from products
-            val addonGroupsMap = mutableMapOf<String, com.indybrain.indypos_Android.data.remote.dto.AddonGroupDto>()
-            val addonsMap = mutableMapOf<String, Pair<com.indybrain.indypos_Android.data.remote.dto.AddonDto, String?>>()
-            
-            productsList.forEach { productDto ->
-                productDto.addonGroups?.forEach { addonGroupDto ->
-                    // Add addon group
-                    addonGroupsMap[addonGroupDto.id] = addonGroupDto
-                    
-                    // Add addons from this group
-                    addonGroupDto.addons?.forEach { addonDto ->
-                        addonsMap[addonDto.id] = Pair(addonDto, addonGroupDto.id)
-                    }
-                }
-            }
-            
-            // Convert and save addon groups
-            if (addonGroupsMap.isNotEmpty()) {
-                val addonGroups = addonGroupsMap.values.map { ProductMapper.toEntity(it) }
-                addonGroupDao.insertAll(addonGroups)
-            }
-            
-            // Convert and save addons
-            if (addonsMap.isNotEmpty()) {
-                val addons = addonsMap.values.map { (addonDto, groupId) ->
-                    ProductMapper.toEntity(addonDto, groupId)
-                }
-                addonDao.insertAll(addons)
-            }
-            
-            // Delete old addon group-addon junctions for all addon groups being synced
-            // This ensures we remove junctions for addon groups that no longer have addons
-            addonGroupsMap.values.forEach { addonGroupDto ->
-                addonGroupAddonJunctionDao.deleteByAddonGroupId(addonGroupDto.id)
-            }
-            
-            // Save addon group-addon junctions
-            // Note: Use addonGroupsMap.values to avoid duplicate inserts when same addon group is used in multiple products
-            if (addonGroupsMap.isNotEmpty()) {
-                addonGroupsMap.values.forEach { addonGroupDto ->
-                    addonGroupDto.addons?.forEachIndexed { addonIndex, addonDto ->
-                        addonGroupAddonJunctionDao.insert(
-                            com.indybrain.indypos_Android.data.local.entity.AddonGroupAddonJunctionEntity(
-                                addonGroupId = addonGroupDto.id,
-                                addonId = addonDto.id,
-                                sortOrder = addonIndex + 1
-                            )
-                        )
-                    }
-                }
-            }
-            
-            // Convert and save products
-            val products = productsList.map { ProductMapper.toEntity(it) }
-            // Important: do NOT call deleteAll() here.
-            // Deleting all products would trigger the foreign key on cart_items
-            // (onDelete = SET_NULL) and clear productId on existing cart items,
-            // which makes quantities disappear in the product list after refresh.
-            // Using REPLACE keeps existing rows (and cart relations) while updating data.
-            if (products.isNotEmpty()) {
-                productDao.insertAll(products)
-            }
-            
-            // Delete old product-addon group junctions for all products being synced
-            // This ensures we remove junctions for products that no longer have addon groups
-            productsList.forEach { productDto ->
-                productAddonGroupJunctionDao.deleteByProductId(productDto.id)
-            }
-            
-            // Save product-addon group junctions
-            productsList.forEach { productDto ->
-                val productId = productDto.id
-                productDto.addonGroups?.forEach { addonGroupDto ->
-                    productAddonGroupJunctionDao.insert(
-                        com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
-                            productId = productId,
-                            addonGroupId = addonGroupDto.id
-                        )
-                    )
-                }
-            }
-            
             Result.success(Unit)
         } catch (e: HttpException) {
             val errorMessage = when (e.code()) {
@@ -353,41 +106,10 @@ class ProductRepositoryImpl @Inject constructor(
     
     override suspend fun fetchAndSyncCategories(): Result<Unit> {
         return try {
-            // Fetch categories from API
             val categoriesResponse = productsApi.getCategories()
             if (categoriesResponse.status != 200) {
                 return Result.failure(Exception(categoriesResponse.message ?: "Failed to fetch categories"))
             }
-            
-            // If status is 200, treat as success even if data is null or empty (new user might have no data)
-            val categoriesList = categoriesResponse.data ?: emptyList()
-            
-            // Get existing categories from Room
-            val existingCategories = categoryDao.getAllCategories()
-            val existingCategoryIds = existingCategories.map { it.id }.toSet()
-            
-            // Convert API categories to entities
-            val apiCategories = categoriesList.map { ProductMapper.toEntity(it) }
-            
-            // Find new categories that don't exist in Room
-            val newCategories = apiCategories.filter { it.id !in existingCategoryIds }
-            
-            // Insert only new categories (existing ones are already in Room)
-            if (newCategories.isNotEmpty()) {
-                categoryDao.insertAll(newCategories)
-            }
-            
-            // Also update existing categories if they have changed (using REPLACE strategy)
-            // This ensures data stays in sync
-            if (apiCategories.isNotEmpty()) {
-                categoryDao.insertAll(apiCategories)
-            }
-            
-            // Remove local categories that are no longer in API (e.g. deleted on another device)
-            val apiCategoryIds = apiCategories.map { it.id }.toSet()
-            val idsToRemove = existingCategoryIds - apiCategoryIds
-            idsToRemove.forEach { categoryDao.deleteCategoryById(it) }
-            
             Result.success(Unit)
         } catch (e: HttpException) {
             val errorMessage = when (e.code()) {
@@ -440,15 +162,15 @@ class ProductRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getAllCategories(): List<CategoryEntity> {
-        return categoryDao.getAllCategories()
+        return emptyList()
     }
     
     override fun getAllCategoriesFlow(): Flow<List<CategoryEntity>> {
-        return categoryDao.getAllCategoriesFlow()
+        return flowOf(emptyList())
     }
     
     override suspend fun getCategoryById(id: String): CategoryEntity? {
-        return categoryDao.getCategoryById(id)
+        return null
     }
     
     private suspend fun fetchCategoriesListFromApi(): Result<List<CategoryEntity>> {
@@ -486,7 +208,6 @@ class ProductRepositoryImpl @Inject constructor(
             val response = productsApi.getCategoryDetail(id)
             if (response.status == 200 && response.data != null) {
                 val categoryEntity = ProductMapper.toEntity(response.data)
-                categoryDao.insert(categoryEntity)
                 Result.success(categoryEntity)
             } else {
                 Result.failure(
@@ -511,21 +232,11 @@ class ProductRepositoryImpl @Inject constructor(
     }
     
     override suspend fun addCategory(category: CategoryEntity): Result<Unit> {
-        return try {
-            categoryDao.insert(category)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่"))
-        }
+        return Result.failure(Exception("Local category cache is not used"))
     }
     
     override suspend fun updateCategory(category: CategoryEntity): Result<Unit> {
-        return try {
-            categoryDao.insert(category) // Using REPLACE strategy
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่"))
-        }
+        return Result.failure(Exception("Local category cache is not used"))
     }
     
     override suspend fun getCurrentUserId(): Int? {
@@ -556,7 +267,6 @@ class ProductRepositoryImpl @Inject constructor(
                 
                 if (response.status == 201 && response.data != null) {
                     val categoryEntity = ProductMapper.toEntity(response.data)
-                    categoryDao.insert(categoryEntity)
                     Result.success(categoryEntity)
                 } else {
                     val errorMessage = mapApiErrorFromResponseFields(
@@ -618,7 +328,6 @@ class ProductRepositoryImpl @Inject constructor(
                 
                 if (response.status == 200 && response.data != null) {
                     val categoryEntity = ProductMapper.toEntity(response.data)
-                    categoryDao.insert(categoryEntity)
                     Result.success(categoryEntity)
                 } else {
                     val errorMessage = mapApiErrorFromResponseFields(
@@ -667,7 +376,6 @@ class ProductRepositoryImpl @Inject constructor(
                 
                 if (response.status == 200 && response.data != null) {
                     val categoryEntity = ProductMapper.toEntity(response.data)
-                    categoryDao.insert(categoryEntity)
                     Result.success(categoryEntity)
                 } else {
                     val errorMessage = response.error?.takeIf { it.isNotBlank() }
@@ -708,7 +416,6 @@ class ProductRepositoryImpl @Inject constructor(
                 val response = productsApi.deleteCategory(categoryId)
                 
                 if (response.status == 200) {
-                    categoryDao.deleteCategoryById(categoryId)
                     Result.success(Unit)
                 } else {
                     val errorMessage = response.error?.takeIf { it.isNotBlank() }
@@ -758,10 +465,6 @@ class ProductRepositoryImpl @Inject constructor(
                     val totalDeleted = response.data?.totalDeleted ?: response.count
                     val totalFailed = response.data?.totalFailed ?: response.failedDeletions.orEmpty().size
                     val errors = response.errors.orEmpty()
-                    
-                    deletedIds.forEach { id ->
-                        categoryDao.deleteCategoryById(id)
-                    }
                     
                     Result.success(
                         DeleteCategoriesResult(
@@ -1153,7 +856,7 @@ class ProductRepositoryImpl @Inject constructor(
     }
     
     override fun getAllProductsForManagement(): Flow<List<ProductEntity>> {
-        return productDao.getAllProductsForManagementFlow()
+        return flowOf(emptyList())
     }
 
     override suspend fun getProductsPaginated(
@@ -1251,15 +954,15 @@ class ProductRepositoryImpl @Inject constructor(
     }
     
     override fun searchProducts(query: String, categoryId: String?): Flow<List<ProductEntity>> {
-        return productDao.searchProductsFlow(query, categoryId)
+        return flowOf(emptyList())
     }
     
     override suspend fun getProductById(id: String): ProductEntity? {
-        return productDao.getProductById(id)
+        return null
     }
     
     override suspend fun getProductByCode(code: String): ProductEntity? {
-        return productDao.getProductByCode(code)
+        return null
     }
 
     override suspend fun getProductDetailFromApi(productId: String): Result<ProductDetailData> {
@@ -1337,54 +1040,26 @@ class ProductRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun ensureProductExists(product: ProductEntity, category: CategoryEntity?) {
-        if (product.categoryId != null && category != null && categoryDao.getCategoryById(category.id) == null) {
-            categoryDao.insert(category)
-        }
-        if (productDao.getProductById(product.id) == null) {
-            productDao.insertAll(listOf(product))
-        }
-    }
-    
     override suspend fun deleteProduct(productId: String): Result<Unit> {
         return try {
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val response = productsApi.deleteProduct(productId)
-                    
-                    if (response.status == 200) {
-                        // API success - clear cart items first (FK NO_ACTION จะ error ถ้ามี cart อ้างอิง)
-                        cartRepository.clearCartItemsByProduct(productId)
-                        productDao.deleteProductById(productId)
-                        Result.success(Unit)
-                    } else {
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการลบสินค้า"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+            }
+            try {
+                val response = productsApi.deleteProduct(productId)
+                if (response.status == 200) {
+                    cartRepository.clearCartItemsByProduct(productId)
+                    Result.success(Unit)
+                } else {
+                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                        ?: response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการลบสินค้า"
                     Result.failure(Exception(errorMessage))
                 }
-            } else {
-                // No network - mark as deleted locally and unsynced
-                val product = productDao.getProductById(productId)
-                if (product == null) {
-                    return Result.failure(Exception("ไม่พบสินค้าที่ต้องการลบ"))
-                }
-                
-                if (!product.isSynced && !product.isFromServer) {
-                    // Not synced and not from server - clear cart first then permanently delete
-                    cartRepository.clearCartItemsByProduct(productId)
-                    productDao.deleteProductById(productId)
-                } else {
-                    // Mark as deleted locally and unsynced for sync later
-                    productDao.markAsDeletedLocallyAndUnsynced(productId)
-                }
-                Result.success(Unit)
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบสินค้า"))
@@ -1396,59 +1071,34 @@ class ProductRepositoryImpl @Inject constructor(
             if (productIds.isEmpty()) {
                 return Result.failure(Exception("กรุณาเลือกสินค้าที่ต้องการลบ"))
             }
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val request = DeleteProductsRequestDto(productIds = productIds)
-                    val response = productsApi.deleteMultipleProducts(request)
-                    
-                    if (response.status == 200) {
-                        // API returns 200 for both full and partial success
-                        // Use deleted_ids from response - only delete what server actually deleted
-                        val deletedIds = response.deletedIds.orEmpty()
-                        val totalDeleted = response.data?.totalDeleted ?: response.count
-                        val totalFailed = response.data?.totalFailed ?: response.failedDeletions.orEmpty().size
-                        val errors = response.errors.orEmpty()
-                        
-                        deletedIds.forEach { productId ->
-                            cartRepository.clearCartItemsByProduct(productId)
-                            productDao.deleteProductById(productId)
-                        }
-                        
-                        Result.success(
-                            DeleteProductsResult(
-                                deletedCount = totalDeleted,
-                                failedCount = totalFailed,
-                                errors = errors
-                            )
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+            }
+            try {
+                val request = DeleteProductsRequestDto(productIds = productIds)
+                val response = productsApi.deleteMultipleProducts(request)
+                if (response.status == 200) {
+                    val deletedIds = response.deletedIds.orEmpty()
+                    val totalDeleted = response.data?.totalDeleted ?: response.count
+                    val totalFailed = response.data?.totalFailed ?: response.failedDeletions.orEmpty().size
+                    val errors = response.errors.orEmpty()
+                    deletedIds.forEach { id -> cartRepository.clearCartItemsByProduct(id) }
+                    Result.success(
+                        DeleteProductsResult(
+                            deletedCount = totalDeleted,
+                            failedCount = totalFailed,
+                            errors = errors
                         )
-                    } else {
-                        val errorMessage = response.message.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการลบสินค้า"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                    )
+                } else {
+                    val errorMessage = response.message.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการลบสินค้า"
                     Result.failure(Exception(errorMessage))
                 }
-            } else {
-                // No network - mark as deleted locally and unsynced
-                var deletedCount = 0
-                productIds.forEach { productId ->
-                    val product = productDao.getProductById(productId)
-                    if (product != null) {
-                        if (!product.isSynced && !product.isFromServer) {
-                            cartRepository.clearCartItemsByProduct(productId)
-                            productDao.deleteProductById(productId)
-                        } else {
-                            productDao.markAsDeletedLocallyAndUnsynced(productId)
-                        }
-                        deletedCount++
-                    }
-                }
-                Result.success(DeleteProductsResult(deletedCount = deletedCount))
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการลบสินค้า"))
@@ -1457,56 +1107,30 @@ class ProductRepositoryImpl @Inject constructor(
     
     override suspend fun toggleProductStatus(productId: String, newStatus: Boolean): Result<ProductEntity> {
         return try {
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val response = productsApi.toggleProductStatus(
-                        productId,
-                        ToggleProductStatusRequestDto(newStatus)
-                    )
-                    
-                    if (response.status == 200 && response.data != null) {
-                        // API success - convert to entity and save to Room
-                        val productEntity = ProductMapper.toEntity(response.data)
-                        productDao.insertAll(listOf(productEntity))
-                        
-                        // If deactivated, clear cart items for this product
-                        if (!newStatus) {
-                            cartRepository.clearCartItemsByProduct(productId)
-                        }
-                        
-                        Result.success(productEntity)
-                    } else {
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะสินค้า"
-                        Result.failure(Exception(errorMessage))
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+            }
+            try {
+                val response = productsApi.toggleProductStatus(
+                    productId,
+                    ToggleProductStatusRequestDto(newStatus)
+                )
+                if (response.status == 200 && response.data != null) {
+                    val productEntity = ProductMapper.toEntity(response.data)
+                    if (!newStatus) {
+                        cartRepository.clearCartItemsByProduct(productId)
                     }
-                } catch (e: HttpException) {
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                    Result.success(productEntity)
+                } else {
+                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                        ?: response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะสินค้า"
                     Result.failure(Exception(errorMessage))
                 }
-            } else {
-                // No network - update in Room only (for sync later)
-                val existingProduct = productDao.getProductById(productId)
-                if (existingProduct == null) {
-                    return Result.failure(Exception("ไม่พบสินค้าที่ต้องการอัปเดต"))
-                }
-                
-                val updatedProduct = existingProduct.copy(
-                    isActive = newStatus,
-                    isSynced = false,
-                    updatedAt = Date()
-                )
-                productDao.insertAll(listOf(updatedProduct))
-                
-                // If deactivated, clear cart items for this product
-                if (!newStatus) {
-                    cartRepository.clearCartItemsByProduct(productId)
-                }
-                
-                Result.success(updatedProduct)
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสถานะสินค้า"))
@@ -1747,68 +1371,47 @@ class ProductRepositoryImpl @Inject constructor(
     }
     
     override suspend fun getSyncStatistics(): ProductSyncStatistics {
-        val totalProducts = productDao.getTotalProductCount()
-        val syncedCount = productDao.getSyncedProductCount()
-        val pendingSyncCount = productDao.getPendingSyncProductCount()
-        val deletedCount = productDao.getDeletedProductCount()
         return ProductSyncStatistics(
-            totalProducts = totalProducts,
-            syncedCount = syncedCount,
-            pendingSyncCount = pendingSyncCount,
-            deletedCount = deletedCount
+            totalProducts = 0,
+            syncedCount = 0,
+            pendingSyncCount = 0,
+            deletedCount = 0
         )
     }
     
     override suspend fun updateProductStock(productId: String, delta: Int): Result<ProductEntity> {
         return try {
-            val existingProduct = productDao.getProductById(productId)
-            if (existingProduct == null) {
-                return Result.failure(Exception("ไม่พบสินค้าที่ต้องการอัปเดต"))
+            if (!networkConnectivityChecker.isConnected()) {
+                return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
             }
-            
+            val detail = getProductDetailFromApi(productId).getOrNull()
+                ?: return Result.failure(Exception("ไม่พบสินค้าที่ต้องการอัปเดต"))
+            val existingProduct = detail.product
             val oldQuantity = existingProduct.stockQuantity ?: 0
             val newQuantity = oldQuantity + delta
-            
-            if (networkConnectivityChecker.isConnected()) {
-                // Has network - call API first
-                try {
-                    val response = productsApi.updateProductStock(
-                        productId,
-                        UpdateProductStockRequestDto(delta)
-                    )
-                    
-                    if (response.status == 200) {
-                        // API success - update in Room
-                        // Even if data is null, status 200 means success
-                        val updatedProduct = existingProduct.copy(
+            try {
+                val response = productsApi.updateProductStock(
+                    productId,
+                    UpdateProductStockRequestDto(delta)
+                )
+                if (response.status == 200) {
+                    Result.success(
+                        existingProduct.copy(
                             stockQuantity = newQuantity,
                             isSynced = true,
                             updatedAt = Date()
                         )
-                        productDao.insertAll(listOf(updatedProduct))
-                        
-                        Result.success(updatedProduct)
-                    } else {
-                        val errorMessage = response.error?.takeIf { it.isNotBlank() }
-                            ?: response.message?.takeIf { it.isNotBlank() }
-                            ?: "เกิดข้อผิดพลาดในการอัปเดตสต็อก"
-                        Result.failure(Exception(errorMessage))
-                    }
-                } catch (e: HttpException) {
-                    val errorBody = e.response()?.errorBody()
-                    val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                    )
+                } else {
+                    val errorMessage = response.error?.takeIf { it.isNotBlank() }
+                        ?: response.message?.takeIf { it.isNotBlank() }
+                        ?: "เกิดข้อผิดพลาดในการอัปเดตสต็อก"
                     Result.failure(Exception(errorMessage))
                 }
-            } else {
-                // No network - update in Room only (for sync later)
-                val updatedProduct = existingProduct.copy(
-                    stockQuantity = newQuantity,
-                    isSynced = false,
-                    updatedAt = Date()
-                )
-                productDao.insertAll(listOf(updatedProduct))
-                
-                Result.success(updatedProduct)
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()
+                val errorMessage = parseApiErrorResponse(errorBody, e.code())
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการอัปเดตสต็อก"))
@@ -1819,150 +1422,15 @@ class ProductRepositoryImpl @Inject constructor(
         cartRepository.clearCartItemsByProduct(productId)
     }
     
-    /**
-     * Pull categories from API into Room (replaces legacy POST /categories/sync push of local drafts).
-     */
     override suspend fun syncCategories(): Result<Unit> {
         return fetchAndSyncCategories()
     }
     
-    /**
-     * Sync products to server
-     */
     override suspend fun syncProducts(): Result<Unit> {
-        return try {
-            if (!networkConnectivityChecker.isConnected()) {
-                return Result.success(Unit) // No network, skip sync
-            }
-            
-            // Get all unsynced products
-            val unsynced = productDao.getUnsyncedProducts()
-            val deleted = productDao.getDeletedProducts()
-            
-            if (unsynced.isEmpty() && deleted.isEmpty()) {
-                return Result.success(Unit) // Nothing to sync
-            }
-            
-            // Date formatter for ISO string
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }
-            
-            // Convert to sync items
-            val syncItems = (unsynced + deleted).mapNotNull { entity ->
-                val addonGroupIds = productAddonGroupJunctionDao.getAddonGroupIdsByProductIdSync(entity.id)
-                
-                SyncProductItemDto(
-                    id = entity.id,
-                    name = entity.name ?: "",
-                    description = entity.description ?: "",
-                    price = entity.price,
-                    costPrice = entity.costPrice ?: 0.0,
-                    imageUrl = entity.imageUrl ?: "",
-                    categoryId = entity.categoryId ?: "",
-                    popularityRank = entity.popularityRank ?: 0,
-                    productCode = entity.productCode ?: "",
-                    unit = entity.unit ?: "",
-                    skuCode = entity.skuCode ?: "",
-                    stockQuantity = entity.stockQuantity ?: 0,
-                    minStockQuantity = entity.minStockQuantity ?: 0,
-                    selectedUnit = entity.selectedUnit ?: "",
-                    selectedColorHex = entity.selectedColorHex ?: "",
-                    isSkuEnabled = entity.isSkuEnabled ?: false,
-                    isStockEnabled = entity.isStockEnabled ?: false,
-                    hasAdditionalOptions = entity.hasAdditionalOptions ?: false,
-                    isActive = entity.isActive,
-                    isSynced = entity.isSynced,
-                    isDeletedLocally = entity.isDeletedLocally,
-                    createdAt = dateFormat.format(entity.createdAt),
-                    updatedAt = dateFormat.format(entity.updatedAt),
-                    addonGroupIds = addonGroupIds
-                )
-            }
-            
-            val request = SyncProductsRequestDto(products = syncItems)
-            val response = productsApi.syncProducts(request)
-            
-            // Process sync results
-            response.data?.forEach { result ->
-                when {
-                    result.shouldDelete -> {
-                        // Delete locally
-                        result.id?.let { id ->
-                            productDao.permanentlyDelete(id)
-                        }
-                    }
-                    result.serverData != null -> {
-                        // Update with server data
-                        result.id?.let { id ->
-                            val serverEntity = ProductMapper.toEntity(result.serverData)
-                            productDao.insertAll(listOf(serverEntity))
-                            
-                            // Delete old addon group relationships before inserting new ones
-                            // This ensures we remove old junctions that are no longer in server data
-                            productAddonGroupJunctionDao.deleteByProductId(id)
-                            
-                            // Update addon group relationships
-                            result.serverData.addonGroups?.forEach { addonGroupDto ->
-                                productAddonGroupJunctionDao.insert(
-                                    com.indybrain.indypos_Android.data.local.entity.ProductAddonGroupJunctionEntity(
-                                        productId = id,
-                                        addonGroupId = addonGroupDto.id
-                                    )
-                                )
-                            }
-                        }
-                    }
-                    result.status.lowercase() == "success" -> {
-                        // Mark as synced
-                        result.id?.let { id ->
-                            productDao.markAsSynced(id)
-                        }
-                    }
-                }
-            }
-            
-            Result.success(Unit)
-        } catch (e: HttpException) {
-            val errorMessage = when (e.code()) {
-                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
-                403 -> {
-                    val errorBody = e.response()?.errorBody()?.string()
-                    if (errorBody?.contains("free_plan_limit_exceeded", ignoreCase = true) == true) {
-                        "คุณใช้สินค้าครบจำนวนที่กำหนดแล้ว กรุณาอัปเกรดแผน"
-                    } else {
-                        e.message() ?: "เกิดข้อผิดพลาดในการ sync"
-                    }
-                }
-                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
-                else -> e.message() ?: "เกิดข้อผิดพลาดในการ sync"
-            }
-            Result.failure(Exception(errorMessage))
-        } catch (e: Exception) {
-            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดในการ sync"))
-        }
+        return Result.success(Unit)
     }
     
-    /**
-     * Clear all products, categories, addon groups, addons and their junctions from Room database
-     * This is used before fetching fresh data from API
-     * Note: This will trigger foreign key constraints on cart_items (productId will be set to NULL)
-     * Cart items should be restored after fetching new products
-     */
     override suspend fun clearAllProductsAndCategories() {
-        // Delete junctions first (to avoid foreign key constraint issues)
-        productAddonGroupJunctionDao.deleteAll()
-        addonGroupAddonJunctionDao.deleteAll()
-        
-        // Delete products (this will set productId to NULL in cart_items due to foreign key)
-        productDao.deleteAll()
-        
-        // Delete categories
-        categoryDao.deleteAll()
-        
-        // Delete addon groups and addons
-        addonGroupDao.deleteAll()
-        addonDao.deleteAll()
     }
 }
 

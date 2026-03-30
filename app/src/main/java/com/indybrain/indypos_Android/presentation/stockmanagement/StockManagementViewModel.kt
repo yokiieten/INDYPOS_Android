@@ -35,58 +35,61 @@ class StockManagementViewModel @Inject constructor(
     val uiState: StateFlow<StockManagementUiState> = _uiState.asStateFlow()
     
     init {
-        observeProducts()
         loadProducts()
     }
     
     /**
-     * Observe products with stock enabled from Room database
-     */
-    private fun observeProducts() {
-        viewModelScope.launch {
-            productRepository.getAllProductsForManagement().collect { allProducts ->
-                // Filter products with stock enabled
-                val stockEnabledProducts = allProducts.filter { it.isStockEnabled == true }
-                
-                // Sort: unsynced first, then by name
-                val sortedProducts = stockEnabledProducts.sortedWith(
-                    compareBy<ProductEntity> { if (it.isSynced == true) 1 else 0 }
-                        .thenBy { it.name }
-                )
-                
-                _uiState.update { current ->
-                    current.copy(
-                        products = sortedProducts,
-                        isLoading = false
-                    )
-                }
-            }
-        }
-    }
-    
-    /**
-     * Load products - sync from API first if network available
+     * Load stock products from API (paginated until exhausted). Offline shows no-internet dialog state via [loadProducts].
      */
     fun loadProducts() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            // Check internet connectivity
-            if (networkConnectivityChecker.isConnected()) {
-                // Has internet - sync from API first
-                val result = productRepository.syncAllProductData()
-                result.onFailure { error ->
+            if (!networkConnectivityChecker.isConnected()) {
+                _uiState.update {
+                    it.copy(isLoading = false, showNoInternetDialog = true)
+                }
+                return@launch
+            }
+            productRepository.syncAllProductData().onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                    )
+                }
+                return@launch
+            }
+            val accumulated = mutableListOf<ProductEntity>()
+            var page = 1
+            val pageSize = 100
+            while (true) {
+                val result = productRepository.getProductsPaginated(
+                    page = page,
+                    limit = pageSize,
+                    search = null,
+                    categoryId = null
+                )
+                val data = result.getOrElse { err ->
                     _uiState.update { current ->
                         current.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                            errorMessage = err.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
                         )
                     }
+                    return@launch
                 }
-                // On success, data will be updated via observeProducts() Flow
-            } else {
-                // No internet - data will be loaded from Room via Flow
-                // isLoading will be set to false by observeProducts() when data arrives
+                accumulated.addAll(data.products)
+                if (!data.hasNext) break
+                page++
+            }
+            val stockEnabledProducts = accumulated
+                .filter { it.isStockEnabled == true }
+                .sortedBy { it.name }
+            _uiState.update { current ->
+                current.copy(
+                    products = stockEnabledProducts,
+                    isLoading = false
+                )
             }
         }
     }

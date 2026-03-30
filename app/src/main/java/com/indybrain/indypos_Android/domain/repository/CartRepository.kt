@@ -2,6 +2,8 @@ package com.indybrain.indypos_Android.domain.repository
 
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
+import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
+import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.model.CartItem
 import kotlinx.coroutines.flow.Flow
 
@@ -30,6 +32,12 @@ interface CartRepository {
     suspend fun clearCart()
     suspend fun restoreProductIdsForCartItems(products: List<com.indybrain.indypos_Android.data.local.entity.ProductEntity>)
     suspend fun clearCartItemsByProduct(productId: String)
+
+    /**
+     * Ensures [ProductEntity] and optional [CategoryEntity] rows exist in Room so [CartItemEntity]
+     * foreign keys succeed when adding from API-loaded product lists.
+     */
+    suspend fun ensureProductForCart(product: ProductEntity, category: CategoryEntity? = null)
     
     // Product Edit Screen methods
     fun getCartItemsByProduct(productId: String): Flow<List<CartItem>>

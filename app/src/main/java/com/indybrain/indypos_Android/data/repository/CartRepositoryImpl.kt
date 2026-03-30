@@ -2,9 +2,12 @@ package com.indybrain.indypos_Android.data.repository
 
 import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.CartDao
+import com.indybrain.indypos_Android.data.local.dao.CategoryDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
+import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
+import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.data.mapper.CartItemMapper
 import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.repository.CartRepository
@@ -18,6 +21,7 @@ import javax.inject.Inject
 class CartRepositoryImpl @Inject constructor(
     private val cartDao: CartDao,
     private val productDao: ProductDao,
+    private val categoryDao: CategoryDao,
     private val addonDao: AddonDao,
     private val mapper: CartItemMapper
 ) : CartRepository {
@@ -106,6 +110,15 @@ class CartRepositoryImpl @Inject constructor(
         }
     }
     
+    override suspend fun ensureProductForCart(product: ProductEntity, category: CategoryEntity?) {
+        if (product.categoryId != null && category != null && categoryDao.getCategoryById(category.id) == null) {
+            categoryDao.insert(category)
+        }
+        if (productDao.getProductById(product.id) == null) {
+            productDao.insertAll(listOf(product))
+        }
+    }
+
     override suspend fun clearCartItemsByProduct(productId: String) {
         cartDao.deleteCartItemsByProductId(productId)
     }

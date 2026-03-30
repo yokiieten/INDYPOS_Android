@@ -606,7 +606,8 @@
     <string name="product_management_sync_now">Sync Now</string>
     <string name="product_management_sync_success">Sync successful</string>
     <string name="product_management_sync_error">Failed to sync</string>
-    <string name="product_management_toggle_success_title">Success</string>
+    <string name="product_management_status_update_success">Product \'%1$s\' status updated to \'%2$s\' successfully</string>
+    <string name="product_management_error_updating_status">Failed to update status</string>
     <string name="product_default_name">Product</string>
     <string name="product_status_active">Active</string>
     <string name="product_status_inactive">Inactive</string>
@@ -781,6 +782,7 @@
     <string name="addon_management_no_internet">Managing add-ons requires an internet connection</string>
     <string name="addon_management_sync_refresh_success">Loaded the latest data from the server</string>
     <string name="addon_management_error_updating_status">An error occurred while updating status</string>
+    <string name="addon_management_status_update_success">Add-on \'%1$s\' status updated to \'%2$s\' successfully</string>
     <string name="addon_management_error_deleting">An error occurred while deleting addon</string>
     <string name="addon_management_error_not_found">Addon not found</string>
     <string name="addon_management_error_syncing">An error occurred while syncing addons</string>

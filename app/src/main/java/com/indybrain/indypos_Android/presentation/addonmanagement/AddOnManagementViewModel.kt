@@ -232,10 +232,17 @@ class AddOnManagementViewModel @Inject constructor(
             
             result.onSuccess { addon ->
                 val addonName = addon.name
-                val statusText = if (newStatus) "เปิดใช้งาน" else "ปิดใช้งาน"
-                val successMessage = "$addonName ได้รับการ $statusText"
-                
-                _uiState.update { 
+                val statusText = if (newStatus) {
+                    getLocalizedString(R.string.category_management_status_activate)
+                } else {
+                    getLocalizedString(R.string.category_management_status_deactivate)
+                }
+                val successMessage = getLocalizedString(
+                    R.string.addon_management_status_update_success,
+                    addonName,
+                    statusText
+                )
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = null,

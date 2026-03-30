@@ -118,7 +118,7 @@ class MainProductViewModel @Inject constructor(
         viewModelScope.launch {
             // Ensure product exists in Room (for FK) when coming from API list
             val category = _uiState.value.categories.find { it.id == product.categoryId }
-            productRepository.ensureProductExists(product, category)
+            cartRepository.ensureProductForCart(product, category)
 
             // Check stock if stock management is enabled
             if (product.isStockEnabled == true && product.stockQuantity != null) {
@@ -184,7 +184,7 @@ class MainProductViewModel @Inject constructor(
         viewModelScope.launch {
             // Ensure product exists in Room (for FK) when coming from API list
             val category = _uiState.value.categories.find { it.id == product.categoryId }
-            productRepository.ensureProductExists(product, category)
+            cartRepository.ensureProductForCart(product, category)
 
             // Reset timer
             showQuantityAdjuster(product.id)
