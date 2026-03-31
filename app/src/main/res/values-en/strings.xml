@@ -226,7 +226,6 @@
     <string name="graph_custom_range_done">Done</string>
     <string name="graph_custom_range_start_date">Start Date:</string>
     <string name="graph_custom_range_end_date">End Date:</string>
-    <string name="graph_custom_range_warning">Note: Selecting a period longer than 1 year may cause the app to load slowly</string>
     <string name="graph_date_buddhist_era">BE</string>
     <string name="graph_error_loading">Error loading graph data</string>
     

@@ -208,28 +208,26 @@ fun OrderScreen(
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val context = LocalContext.current
 
-        // Initialize default dates (current month) when sheet opens and dates are null
+        // Default: วันนี้ (เริ่มต้น 00:00 — สิ้นสุด 23:59:59) เมื่อเปิด sheet ครั้งแรกและยังไม่มีค่า
         LaunchedEffect(showCustomRangeSheet) {
             if (customStartDateMillis == null || customEndDateMillis == null) {
-                val startCalendar = Calendar.getInstance().apply {
-                    set(Calendar.DAY_OF_MONTH, 1)
+                val todayStart = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 0)
                     set(Calendar.MINUTE, 0)
                     set(Calendar.SECOND, 0)
                     set(Calendar.MILLISECOND, 0)
                 }
-                val endCalendar = Calendar.getInstance().apply {
-                    set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+                val todayEnd = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 23)
                     set(Calendar.MINUTE, 59)
                     set(Calendar.SECOND, 59)
                     set(Calendar.MILLISECOND, 999)
                 }
                 if (customStartDateMillis == null) {
-                    customStartDateMillis = startCalendar.timeInMillis
+                    customStartDateMillis = todayStart.timeInMillis
                 }
                 if (customEndDateMillis == null) {
-                    customEndDateMillis = endCalendar.timeInMillis
+                    customEndDateMillis = todayEnd.timeInMillis
                 }
             }
         }
@@ -316,17 +314,7 @@ fun OrderScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = stringResource(id = R.string.graph_custom_range_warning),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Medium,
-                        size = FontSize.Small
-                    ),
-                    color = Color(0xFFFF9500),
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp)

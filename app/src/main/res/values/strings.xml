@@ -232,7 +232,6 @@
     <string name="graph_custom_range_done">เสร็จสิ้น</string>
     <string name="graph_custom_range_start_date">วันที่เริ่มต้น:</string>
     <string name="graph_custom_range_end_date">วันที่สิ้นสุด:</string>
-    <string name="graph_custom_range_warning">หมายเหตุ: การเลือกช่วงเวลาเกิน 1 ปี อาจทำให้แอปโหลดช้า</string>
     <string name="graph_date_buddhist_era">พ.ศ.</string>
     <string name="graph_error_loading">เกิดข้อผิดพลาดในการโหลดข้อมูลกราฟ</string>
     
