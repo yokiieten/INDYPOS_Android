@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Print
 import androidx.compose.material.icons.outlined.Warning
@@ -291,6 +292,10 @@ enum class SettingsItem(
     ContactUs(
         icon = Icons.Outlined.ContactSupport,
         labelRes = R.string.settings_contact_us
+    ),
+    Backoffice(
+        icon = Icons.Outlined.OpenInNew,
+        labelRes = R.string.settings_backoffice
     ),
     Logout(
         icon = Icons.Outlined.Logout,

@@ -293,6 +293,7 @@
     <string name="settings_receipt">Receipt Settings</string>
     <string name="settings_manage_data">Data Management</string>
     <string name="settings_contact_us">Contact Us</string>
+    <string name="settings_backoffice">Backoffice</string>
     <string name="settings_logout">Logout</string>
     
     <!-- Contact Us Screen -->

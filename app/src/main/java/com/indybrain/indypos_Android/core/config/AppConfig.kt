@@ -26,6 +26,18 @@ object AppConfig {
         get() = BuildConfig.ENVIRONMENT_NAME
     
     /**
+     * Backoffice web origin only (no path); `/login` is appended in code.
+     */
+    val backofficeBaseUrl: String
+        get() = BuildConfig.BACKOFFICE_BASE_URL
+    
+    /**
+     * Full URL to Backoffice login (base from flavor + `/login`).
+     */
+    val backofficeLoginUrl: String
+        get() = "${backofficeBaseUrl.trimEnd('/')}/login"
+    
+    /**
      * Builds a complete image URL from a relative image path
      * 
      * @param imagePath The relative image path (e.g., "/api/v1/files/product-images/image.jpg" or "image.jpg")
