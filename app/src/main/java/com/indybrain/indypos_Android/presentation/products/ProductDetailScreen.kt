@@ -639,7 +639,7 @@ private fun AddonGroupSection(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        // Header
+        // Header: title + max-selection subtitle; required chip on the right (original position)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -647,20 +647,39 @@ private fun AddonGroupSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = addonGroup.name,
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Medium
-                ),
-                color = PrimaryText
-            )
-            
+            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                Text(
+                    text = addonGroup.name,
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Medium
+                    ),
+                    color = PrimaryText
+                )
+                val maxSelection = addonGroup.maxSelection
+                if (maxSelection != null && maxSelection > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (maxSelection == 1) {
+                            stringResource(id = R.string.product_detail_addon_select_one)
+                        } else {
+                            stringResource(
+                                id = R.string.product_detail_addon_select_up_to,
+                                maxSelection
+                            )
+                        },
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = SecondaryText
+                    )
+                }
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Required badge (only show when required)
                 if (addonGroup.isRequired) {
                     val requiredLabel = stringResource(id = R.string.addon_group_required)
                     Surface(
@@ -678,29 +697,6 @@ private fun AddonGroupSection(
                         )
                     }
                 }
-
-                // Max selection indicator (hide when maxSelection is 0)
-                val maxSelection = addonGroup.maxSelection
-                if (maxSelection != null && maxSelection > 0) {
-                    Surface(
-                        color = Color(0xFFE3F2FD),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = stringResource(
-                                id = R.string.product_max_selection,
-                                maxSelection
-                            ),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = PrimaryButton,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-                
                 Icon(
                     imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "ย่อ" else "ขยาย",

@@ -372,11 +372,7 @@ private fun AddonGroupSectionMobile(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                 Text(
                     text = addonGroup.name,
                     style = FontUtils.mainFont(
@@ -385,8 +381,30 @@ private fun AddonGroupSectionMobile(
                     ),
                     color = PrimaryText
                 )
-                
-                // Required badge (only show when required)
+                val maxSelection = addonGroup.maxSelection
+                if (maxSelection != null && maxSelection > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (maxSelection == 1) {
+                            stringResource(id = R.string.product_detail_addon_select_one)
+                        } else {
+                            stringResource(
+                                id = R.string.product_detail_addon_select_up_to,
+                                maxSelection
+                            )
+                        },
+                        style = FontUtils.mainFont(
+                            style = AppFontStyle.Regular,
+                            size = FontSize.Small
+                        ),
+                        color = SecondaryText
+                    )
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 if (addonGroup.isRequired) {
                     val requiredLabel = stringResource(id = R.string.addon_group_required)
                     Surface(
@@ -404,36 +422,13 @@ private fun AddonGroupSectionMobile(
                         )
                     }
                 }
-
-                // แสดงข้อความจำนวนเลือกได้สูงสุด โดยใช้ string resource ตาม locale
-                val maxSelection = addonGroup.maxSelection
-                if (maxSelection != null && maxSelection > 0) {
-                    Surface(
-                        color = Color(0xFFE3F2FD),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = stringResource(
-                                id = R.string.product_max_selection,
-                                maxSelection
-                            ),
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Regular,
-                                size = FontSize.Small
-                            ),
-                            color = PrimaryButton,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "ย่อ" else "ขยาย",
+                    tint = PrimaryText,
+                    modifier = Modifier.size(18.dp)
+                )
             }
-            
-            Icon(
-                imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (isExpanded) "ย่อ" else "ขยาย",
-                tint = PrimaryText,
-                modifier = Modifier.size(18.dp)
-            )
         }
         
         // Addon Items - Compact

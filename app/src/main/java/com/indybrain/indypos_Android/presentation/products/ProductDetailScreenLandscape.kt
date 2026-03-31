@@ -380,7 +380,7 @@ private fun AddonGroupSectionLandscape(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                 Text(
                     text = addonGroup.name,
                     style = FontUtils.mainFont(
@@ -389,53 +389,55 @@ private fun AddonGroupSectionLandscape(
                     ),
                     color = PrimaryText
                 )
-                
-                // Required + Max selection info (only show required text when required)
                 val maxSelection = addonGroup.maxSelection
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                val infoText = if (addonGroup.isRequired) {
-                    val requiredText = stringResource(id = R.string.addon_group_required)
-                    if (maxSelection != null && maxSelection > 0) {
-                        val selectionText = stringResource(
-                            id = R.string.product_max_selection,
-                            maxSelection
-                        )
-                        "$requiredText \u2022 $selectionText"
-                    } else {
-                        requiredText
-                    }
-                } else {
-                    // Only show max selection if not required
-                    if (maxSelection != null && maxSelection > 0) {
-                        stringResource(
-                            id = R.string.product_max_selection,
-                            maxSelection
-                        )
-                    } else {
-                        null
-                    }
-                }
-
-                if (infoText != null) {
+                if (maxSelection != null && maxSelection > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = infoText,
+                        text = if (maxSelection == 1) {
+                            stringResource(id = R.string.product_detail_addon_select_one)
+                        } else {
+                            stringResource(
+                                id = R.string.product_detail_addon_select_up_to,
+                                maxSelection
+                            )
+                        },
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
                         ),
-                        color = PrimaryButton
+                        color = SecondaryText
                     )
                 }
             }
-            
-            Icon(
-                imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (isExpanded) "ย่อ" else "ขยาย",
-                tint = PrimaryText,
-                modifier = Modifier.size(20.dp)
-            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (addonGroup.isRequired) {
+                    val requiredLabel = stringResource(id = R.string.addon_group_required)
+                    Surface(
+                        color = Color(0xFFE3F2FD),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = requiredLabel,
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Regular,
+                                size = FontSize.Small
+                            ),
+                            color = PrimaryButton,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "ย่อ" else "ขยาย",
+                    tint = PrimaryText,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
         
         // Addon Items
