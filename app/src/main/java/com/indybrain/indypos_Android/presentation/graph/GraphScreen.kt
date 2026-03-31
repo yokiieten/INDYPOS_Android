@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +46,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,16 +62,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.AsyncImage
@@ -88,12 +94,16 @@ import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
+import com.indybrain.indypos_Android.ui.theme.SecondaryButton
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import android.app.DatePickerDialog
+import android.graphics.Typeface
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.content.res.ResourcesCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -660,10 +670,10 @@ private fun ChartCard(
             Text(
                 text = stringResource(id = R.string.graph_total_sales),
                 style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Medium
+                    style = AppFontStyle.Medium,
+                    size = FontSize.Small
                 ),
-                color = PrimaryText
+                color = SecondaryText
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -682,21 +692,81 @@ private fun ChartCard(
             if (chartData.isNotEmpty()) {
                 val scrollState = rememberScrollState()
                 val configuration = LocalConfiguration.current
+                val density = LocalDensity.current
+                val context = LocalContext.current
                 val screenWidth = configuration.screenWidthDp.dp
-                val contentWidth = maxOf(40.dp * 24, screenWidth)
-                
-                Box(
+                val totalContentWidth = maxOf(40.dp * 24, screenWidth)
+                val chartSidePadding = 40.dp
+                val yLabelEndGap = 8.dp
+                val maxValue = chartData.maxOf { it.value }
+                val minValue = chartData.minOf { it.value }
+                val axisTypeface = ResourcesCompat.getFont(
+                    context,
+                    AppFontStyle.Regular.fontResource
+                ) ?: Typeface.DEFAULT
+                val maxYLabelWidthPx = remember(maxValue, minValue, axisTypeface, density.fontScale) {
+                    with(density) {
+                        measureMaxYAxisLabelWidthPx(
+                            maxValue,
+                            minValue,
+                            ChartGridLines,
+                            FontSize.Smaller.value.toPx(),
+                            axisTypeface
+                        )
+                    }
+                }
+                val leftPadPx = remember(maxYLabelWidthPx, density.fontScale) {
+                    with(density) {
+                        maxOf(chartSidePadding.toPx(), maxYLabelWidthPx + yLabelEndGap.toPx())
+                    }
+                }
+                val leftAxisWidthDp = with(density) { leftPadPx.toDp() }
+                val minPointSpan =
+                    40.dp * (chartData.size - 1).coerceAtLeast(1) + ChartPlotLeadingInset + 40.dp
+
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
-                        .horizontalScroll(scrollState)
                 ) {
-                    LineChart(
-                        data = chartData,
-                        modifier = Modifier
-                            .height(200.dp)
-                            .width(contentWidth)
-                    )
+                    val rowInnerWidth = maxWidth
+                    val basePlot = totalContentWidth - leftAxisWidthDp
+                    val fillViewportPlot = (rowInnerWidth - leftAxisWidthDp).coerceAtLeast(1.dp)
+                    val plotWidth = maxOf(
+                        basePlot,
+                        minPointSpan,
+                        fillViewportPlot
+                    ).coerceAtLeast(48.dp)
+
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            LineChartYAxisColumn(
+                                maxValue = maxValue,
+                                minValue = minValue,
+                                axisTypeface = axisTypeface,
+                                modifier = Modifier
+                                    .width(leftAxisWidthDp)
+                                    .fillMaxHeight()
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f, fill = true)
+                                    .fillMaxHeight()
+                                    .horizontalScroll(scrollState)
+                            ) {
+                                LineChart(
+                                    data = chartData,
+                                    showYAxisLabels = false,
+                                    modifier = Modifier
+                                        .height(200.dp)
+                                        .width(plotWidth)
+                                )
+                            }
+                        }
+                    }
                 }
             } else {
                 Box(
@@ -761,14 +831,80 @@ private fun buildSmoothAreaPath(points: List<Offset>, baselineY: Float): Path = 
     close()
 }
 
+private const val ChartGridLines = 5
+
+/** Left inset for the scrollable plot so spline + markers are not clipped at the canvas edge. */
+private val ChartPlotLeadingInset = 24.dp
+
+/** Widest Y-axis tick label (e.g. "12.2M") so we can reserve enough left gutter. */
+private fun measureMaxYAxisLabelWidthPx(
+    maxValue: Double,
+    minValue: Double,
+    gridLines: Int,
+    textSizePx: Float,
+    typeface: Typeface?
+): Float {
+    val valueRange = (maxValue - minValue).coerceAtLeast(1.0)
+    val paint = android.graphics.Paint().apply {
+        textSize = textSizePx
+        this.typeface = typeface
+        isAntiAlias = true
+    }
+    var maxW = 0f
+    for (i in 0..gridLines) {
+        val value = maxValue - (valueRange / gridLines) * i
+        maxW = maxOf(maxW, paint.measureText(formatYAxisValue(value)))
+    }
+    return maxW
+}
+
+/** Fixed column: Y-axis ticks stay visible while the plot scrolls horizontally. */
+@Composable
+private fun LineChartYAxisColumn(
+    maxValue: Double,
+    minValue: Double,
+    axisTypeface: Typeface,
+    modifier: Modifier = Modifier
+) {
+    val axisLabelColor = SecondaryText
+    val padding = 40.dp
+    val yLabelEndGap = 8.dp
+    val valueRange = (maxValue - minValue).coerceAtLeast(1.0)
+    Canvas(modifier = modifier) {
+        val axisLabelTextPx = FontSize.Smaller.value.toPx()
+        val topPadPx = padding.toPx()
+        val chartHeight = size.height - topPadPx * 2
+        val startY = topPadPx
+        val gridLines = ChartGridLines
+        val yLabelGapPx = yLabelEndGap.toPx()
+        for (i in 0..gridLines) {
+            val value = maxValue - (valueRange / gridLines) * i
+            val y = startY + (chartHeight / gridLines) * i
+            val label = formatYAxisValue(value)
+            drawContext.canvas.nativeCanvas.apply {
+                val paint = android.graphics.Paint().apply {
+                    color = axisLabelColor.toArgb()
+                    textSize = axisLabelTextPx
+                    textAlign = android.graphics.Paint.Align.RIGHT
+                    typeface = axisTypeface
+                    isAntiAlias = true
+                }
+                drawText(label, size.width - yLabelGapPx, y + 4.dp.toPx(), paint)
+            }
+        }
+    }
+}
+
 @Composable
 private fun LineChart(
     data: List<ChartDataPoint>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showYAxisLabels: Boolean = true
 ) {
     if (data.isEmpty()) return
     
     val context = LocalContext.current
+    val density = LocalDensity.current
     val currencySymbol = stringResource(id = R.string.graph_currency_symbol)
     
     val maxValue = data.maxOfOrNull { it.value } ?: 1.0
@@ -776,27 +912,44 @@ private fun LineChart(
     val valueRange = (maxValue - minValue).coerceAtLeast(1.0)
     
     val padding = 40.dp
+    val yLabelEndGap = 8.dp
+    // Theme: AppColors — line/fill from PrimaryButton; axis from SecondaryText; grid from SecondaryButton
     val chartColor = PrimaryButton
-    val gridColor = Color(0xFFD8DEE6)
-    val areaGradientTop = chartColor.copy(alpha = 0.22f)
-    val areaGradientBottom = chartColor.copy(alpha = 0.04f)
+    val axisLabelColor = SecondaryText
+    val gridColor = SecondaryButton.copy(alpha = 0.72f)
+    val areaGradientTop = PrimaryButton.copy(alpha = 0.26f)
+    val areaGradientBottom = Color.Transparent
     val dashIntervals = floatArrayOf(6f, 8f)
+    val axisTypeface = ResourcesCompat.getFont(context, AppFontStyle.Regular.fontResource) ?: Typeface.DEFAULT
+    
+    val maxYLabelWidthPx = remember(maxValue, minValue, axisTypeface, density.fontScale, showYAxisLabels) {
+        if (!showYAxisLabels) 0f
+        else with(density) {
+            val textPx = FontSize.Smaller.value.toPx()
+            measureMaxYAxisLabelWidthPx(maxValue, minValue, ChartGridLines, textPx, axisTypeface)
+        }
+    }
+    val leftPadPx = remember(maxYLabelWidthPx, density.fontScale, showYAxisLabels) {
+        if (!showYAxisLabels) with(density) { ChartPlotLeadingInset.toPx() }
+        else with(density) { maxOf(padding.toPx(), maxYLabelWidthPx + yLabelEndGap.toPx()) }
+    }
+    val rightPadPx = remember(density.fontScale) { with(density) { padding.toPx() } }
+    val topPadPx = remember(density.fontScale) { with(density) { padding.toPx() } }
     
     var selectedIndex by remember { mutableStateOf<Int?>(null) }
     
     Canvas(
         modifier = modifier
-            .pointerInput(data) {
+            .pointerInput(data, maxValue, minValue, valueRange, leftPadPx, rightPadPx, topPadPx, showYAxisLabels) {
                 if (data.isEmpty()) return@pointerInput
                 detectTapGestures { tapOffset ->
                     // คำนวณจุดในกราฟเพื่อหา point ที่ใกล้กับตำแหน่งที่แตะที่สุด
                     val width = size.width
                     val height = size.height
-                    val paddingPx = padding.toPx()
-                    val chartWidth = width - paddingPx * 2
-                    val chartHeight = height - paddingPx * 2
-                    val startX = paddingPx
-                    val startY = paddingPx
+                    val chartWidth = width - leftPadPx - rightPadPx
+                    val chartHeight = height - topPadPx - topPadPx
+                    val startX = leftPadPx
+                    val startY = topPadPx
                     val endY = startY + chartHeight
                     
                     val points = data.mapIndexed { index, point ->
@@ -815,18 +968,20 @@ private fun LineChart(
                     selectedIndex = nearestIndex
                 }
             }
+            .graphicsLayer { clip = false }
     ) {
+        val axisLabelTextPx = FontSize.Smaller.value.toPx()
         val width = size.width
         val height = size.height
-        val chartWidth = width - padding.toPx() * 2
-        val chartHeight = height - padding.toPx() * 2
-        val startX = padding.toPx()
-        val startY = padding.toPx()
+        val chartWidth = width - leftPadPx - rightPadPx
+        val chartHeight = height - topPadPx - topPadPx
+        val startX = leftPadPx
+        val startY = topPadPx
         val endX = startX + chartWidth
         val endY = startY + chartHeight
         
         // Draw horizontal grid (dotted)
-        val gridLines = 5
+        val gridLines = ChartGridLines
         val gridStroke = 1.dp.toPx()
         val gridPathEffect = PathEffect.dashPathEffect(dashIntervals, 0f)
         for (i in 0..gridLines) {
@@ -840,18 +995,22 @@ private fun LineChart(
             )
         }
         
-        // Draw Y-axis labels
-        for (i in 0..gridLines) {
-            val value = maxValue - (valueRange / gridLines) * i
-            val y = startY + (chartHeight / gridLines) * i
-            val label = formatYAxisValue(value)
-            drawContext.canvas.nativeCanvas.apply {
-                val paint = android.graphics.Paint().apply {
-                    color = android.graphics.Color.parseColor("#999999")
-                    textSize = 10.dp.toPx()
-                    textAlign = android.graphics.Paint.Align.RIGHT
+        if (showYAxisLabels) {
+            val yLabelGapPx = yLabelEndGap.toPx()
+            for (i in 0..gridLines) {
+                val value = maxValue - (valueRange / gridLines) * i
+                val y = startY + (chartHeight / gridLines) * i
+                val label = formatYAxisValue(value)
+                drawContext.canvas.nativeCanvas.apply {
+                    val paint = android.graphics.Paint().apply {
+                        color = axisLabelColor.toArgb()
+                        textSize = axisLabelTextPx
+                        textAlign = android.graphics.Paint.Align.RIGHT
+                        typeface = axisTypeface
+                        isAntiAlias = true
+                    }
+                    drawText(label, startX - yLabelGapPx, y + 4.dp.toPx(), paint)
                 }
-                drawText(label, startX - 8.dp.toPx(), y + 4.dp.toPx(), paint)
             }
         }
         
@@ -918,22 +1077,32 @@ private fun LineChart(
                 drawContext.canvas.nativeCanvas.apply {
                     val textPaint = android.graphics.Paint().apply {
                         color = android.graphics.Color.WHITE
-                        textSize = 12.dp.toPx()
+                        textSize = FontSize.Small.value.toPx()
+                        typeface = axisTypeface
                         isAntiAlias = true
                     }
                     val bgPaint = android.graphics.Paint().apply {
-                        color = android.graphics.Color.BLACK
+                        color = PrimaryText.copy(alpha = 0.92f).toArgb()
                         isAntiAlias = true
                     }
                     
                     val textWidth = textPaint.measureText(label)
                     val textHeight = textPaint.fontMetrics.run { bottom - top }
                     val paddingPx = 8.dp.toPx()
+                    val gapFromPoint = 12.dp.toPx()
+                    val bubbleW = textWidth + paddingPx * 2
+                    val bubbleH = textHeight + paddingPx * 2
                     
-                    val rectLeft = point.x - textWidth / 2f - paddingPx
-                    val rectTop = point.y - 32.dp.toPx() - textHeight - paddingPx * 2
-                    val rectRight = rectLeft + textWidth + paddingPx * 2
-                    val rectBottom = rectTop + textHeight + paddingPx * 2
+                    var rectLeft = (point.x - bubbleW / 2f).coerceIn(0f, size.width - bubbleW)
+                    // Above the point; may use negative Y — layer uses clip = false so it is not cut off
+                    var rectTop = point.y - gapFromPoint - bubbleH
+                    var rectBottom = rectTop + bubbleH
+                    val canvasBottom = size.height.toFloat()
+                    if (rectBottom > canvasBottom - 2f) {
+                        rectTop = canvasBottom - 2f - bubbleH
+                        rectBottom = rectTop + bubbleH
+                    }
+                    val rectRight = rectLeft + bubbleW
                     
                     val rect = android.graphics.RectF(
                         rectLeft,
@@ -958,9 +1127,11 @@ private fun LineChart(
             val x = startX + (chartWidth / (data.size - 1).coerceAtLeast(1)) * index
             drawContext.canvas.nativeCanvas.apply {
                 val paint = android.graphics.Paint().apply {
-                    color = android.graphics.Color.parseColor("#999999")
-                    textSize = 10.dp.toPx()
+                    color = axisLabelColor.toArgb()
+                    textSize = axisLabelTextPx
                     textAlign = android.graphics.Paint.Align.CENTER
+                    typeface = axisTypeface
+                    isAntiAlias = true
                 }
                 drawText(point.time, x, endY + 20.dp.toPx(), paint)
             }
