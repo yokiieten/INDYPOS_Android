@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.core.ui.FontSize
@@ -251,8 +252,9 @@ fun RegisterScreen(
                 onCheckedChange = { viewModel.handleIntent(RegisterIntent.UpdateTermsAccepted(it)) },
                 linkText = stringResource(R.string.register_terms_link_text),
                 onLinkClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sites.google.com/view/indypos-termsofuse"))
-                    context.startActivity(intent)
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(AppConfig.backofficeTermsUrl))
+                    )
                 },
                 enabled = !uiState.isLoading
             )
@@ -263,8 +265,9 @@ fun RegisterScreen(
                 onCheckedChange = { viewModel.handleIntent(RegisterIntent.UpdatePrivacyAccepted(it)) },
                 linkText = stringResource(R.string.register_privacy_link_text),
                 onLinkClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sites.google.com/view/indypos-privacy"))
-                    context.startActivity(intent)
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(AppConfig.backofficePrivacyUrl))
+                    )
                 },
                 enabled = !uiState.isLoading
             )

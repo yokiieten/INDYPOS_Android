@@ -38,6 +38,18 @@ object AppConfig {
         get() = "${backofficeBaseUrl.trimEnd('/')}/login"
     
     /**
+     * Terms of use page on Backoffice (base from flavor + `/terms`).
+     */
+    val backofficeTermsUrl: String
+        get() = "${backofficeBaseUrl.trimEnd('/')}/terms"
+    
+    /**
+     * Privacy policy page on Backoffice (base from flavor + `/privacy`).
+     */
+    val backofficePrivacyUrl: String
+        get() = "${backofficeBaseUrl.trimEnd('/')}/privacy"
+    
+    /**
      * Builds a complete image URL from a relative image path
      * 
      * @param imagePath The relative image path (e.g., "/api/v1/files/product-images/image.jpg" or "image.jpg")

@@ -23,7 +23,7 @@ android {
         applicationId = "com.indybrain.indypos_Android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 36
+        versionCode = 44
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -98,6 +98,7 @@ android {
             
             buildConfigField("String", "BASE_API_URL", "\"https://dev.indy-pos.com/api/v1/\"")
             buildConfigField("String", "BASE_IMAGE_URL", "\"https://dev.indy-pos.com\"")
+            buildConfigField("String", "BACKOFFICE_BASE_URL", "\"https://dev.backoffice.indy-pos.com\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"Development\"")
             buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "true")
         }
@@ -109,6 +110,7 @@ android {
             
             buildConfigField("String", "BASE_API_URL", "\"https://stg.indy-pos.com/api/v1/\"")
             buildConfigField("String", "BASE_IMAGE_URL", "\"https://stg.indy-pos.com\"")
+            buildConfigField("String", "BACKOFFICE_BASE_URL", "\"https://stg.backoffice.indy-pos.com\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"Staging\"")
             buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "true")
         }
@@ -119,6 +121,7 @@ android {
             
             buildConfigField("String", "BASE_API_URL", "\"https://indy-pos.com/api/v1/\"")
             buildConfigField("String", "BASE_IMAGE_URL", "\"https://indy-pos.com\"")
+            buildConfigField("String", "BACKOFFICE_BASE_URL", "\"https://backoffice.indy-pos.com\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"Production\"")
             buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "false")
         }
