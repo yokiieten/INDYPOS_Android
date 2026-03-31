@@ -193,8 +193,8 @@
     <string name="graph_orders_period_all">ออเดอร์ตามช่วงเวลาทั้งหมด</string>
     <string name="graph_orders_success">ออเดอร์สำเร็จ</string>
     <string name="graph_cancelled_orders">ออเดอร์ยกเลิก</string>
-    <string name="graph_chart_title">กราฟ</string>
-    <string name="graph_total_sales">ผลรวมการขาย</string>
+    <string name="graph_chart_title">วิเคราะห์</string>
+    <string name="graph_total_sales">สรุปยอดขาย</string>
     <string name="graph_revenue_comparison_title">ยอดแต่ละช่องทาง</string>
     <string name="graph_transfer_payment">เงินโอน</string>
     <string name="graph_cash_payment">เงินสด</string>

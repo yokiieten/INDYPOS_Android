@@ -143,7 +143,7 @@
     <string name="home_best_seller_title">Best Seller</string>
     <string name="home_best_seller_empty">No product recommendations yet</string>
     <string name="home_shortcuts_title">Shortcuts</string>
-    <string name="home_currency_suffix">THB</string>
+    <string name="home_currency_suffix">Baht</string>
     <string name="home_baht_currency">Baht</string>
     <string name="home_no_sales_yet">No sales yet</string>
     <string name="home_create_order">Start Order</string>
@@ -187,8 +187,8 @@
     <string name="graph_orders_period_all">All Orders in Period</string>
     <string name="graph_orders_success">Successful Orders</string>
     <string name="graph_cancelled_orders">Cancelled Orders</string>
-    <string name="graph_chart_title">Graph</string>
-    <string name="graph_total_sales">Total Sales</string>
+    <string name="graph_chart_title">Analytics</string>
+    <string name="graph_total_sales">Sales Summary</string>
     <string name="graph_revenue_comparison_title">Revenue by Payment Method</string>
     <string name="graph_transfer_payment">Transfer</string>
     <string name="graph_cash_payment">Cash</string>
