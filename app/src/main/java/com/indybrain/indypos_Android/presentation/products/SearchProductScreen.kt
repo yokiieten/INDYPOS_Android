@@ -201,20 +201,6 @@ fun SearchProductScreen(
                 )
             )
 
-            uiState.errorMessage?.let { msg ->
-                Text(
-                    text = msg,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = horizontalPadding, vertical = 4.dp),
-                    style = FontUtils.mainFont(
-                        style = AppFontStyle.Regular,
-                        size = FontSize.Small
-                    ),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-
             val listState = rememberLazyGridState()
             LaunchedEffect(listState, uiState.hasNext, uiState.isLoadingMore, uiState.searchQuery) {
                 snapshotFlow {
