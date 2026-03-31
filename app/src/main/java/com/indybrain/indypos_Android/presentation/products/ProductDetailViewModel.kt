@@ -164,8 +164,8 @@ class ProductDetailViewModel @Inject constructor(
                 currentSelected - addonId
             } else {
                 // Select
-                if (addonGroup.isSingleSelection) {
-                    // Single selection - replace current selection
+                if (addonGroup.isSingleSelection || maxSelection == 1) {
+                    // Single choice: replace selection (max 1 or explicit single-select)
                     setOf(addonId)
                 } else if (maxSelection != null && currentSelected.size >= maxSelection) {
                     // Max selection reached - don't add

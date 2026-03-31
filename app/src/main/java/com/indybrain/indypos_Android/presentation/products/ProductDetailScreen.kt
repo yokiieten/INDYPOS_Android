@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.graphicsLayer
@@ -37,6 +38,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -471,6 +474,7 @@ private fun ProductDetailContent(
                         addonGroup = addonGroup,
                         addons = addons,
                         selectedAddonIds = selectedAddons[addonGroup.id] ?: emptySet(),
+                        useRadioButtons = addonGroup.maxSelection == 1,
                         onAddonToggle = { addonId ->
                             onAddonToggle(addonGroup.id, addonId)
                         }
@@ -625,6 +629,7 @@ private fun AddonGroupSection(
     addonGroup: AddonGroupEntity,
     addons: List<AddonEntity>,
     selectedAddonIds: Set<String>,
+    useRadioButtons: Boolean,
     onAddonToggle: (String) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(true) }
@@ -708,13 +713,19 @@ private fun AddonGroupSection(
         // Addon Items
         if (isExpanded) {
             Spacer(modifier = Modifier.height(12.dp))
-            
-            addons.forEach { addon ->
-                AddonItem(
-                    addon = addon,
-                    isSelected = selectedAddonIds.contains(addon.id),
-                    onToggle = { onAddonToggle(addon.id) }
-                )
+
+            val itemsModifier = Modifier
+                .fillMaxWidth()
+                .then(if (useRadioButtons) Modifier.selectableGroup() else Modifier)
+            Column(modifier = itemsModifier) {
+                addons.forEach { addon ->
+                    AddonItem(
+                        addon = addon,
+                        isSelected = selectedAddonIds.contains(addon.id),
+                        useRadioButton = useRadioButtons,
+                        onToggle = { onAddonToggle(addon.id) }
+                    )
+                }
             }
         }
     }
@@ -724,6 +735,7 @@ private fun AddonGroupSection(
 private fun AddonItem(
     addon: AddonEntity,
     isSelected: Boolean,
+    useRadioButton: Boolean,
     onToggle: () -> Unit
 ) {
     Row(
@@ -738,14 +750,25 @@ private fun AddonItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = { onToggle() },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = PrimaryButton,
-                    uncheckedColor = SecondaryText
+            if (useRadioButton) {
+                RadioButton(
+                    selected = isSelected,
+                    onClick = onToggle,
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = PrimaryButton,
+                        unselectedColor = SecondaryText
+                    )
                 )
-            )
+            } else {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onToggle() },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = PrimaryButton,
+                        uncheckedColor = SecondaryText
+                    )
+                )
+            }
             
             Text(
                 text = addon.name,
