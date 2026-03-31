@@ -110,12 +110,7 @@ class MainActivity : ComponentActivity() {
     private var splashScreen: androidx.core.splashscreen.SplashScreen? = null
     
     override fun attachBaseContext(newBase: Context) {
-        val localeCode = try {
-            val prefs = newBase.getSharedPreferences("indypos_prefs", Context.MODE_PRIVATE)
-            prefs.getInt("key_language_locale", 1054)
-        } catch (e: Exception) {
-            1054
-        }
+        val localeCode = LanguageLocalDataSource.readSavedLocaleCode(newBase)
         val context = LocaleHelper.setLocale(newBase, localeCode)
         super.attachBaseContext(context)
     }

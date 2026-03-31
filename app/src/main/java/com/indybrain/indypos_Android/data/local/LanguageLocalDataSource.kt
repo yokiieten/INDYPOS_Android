@@ -1,14 +1,15 @@
 package com.indybrain.indypos_Android.data.local
 
+import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Local data source for language/locale preference (SharedPreferences)
- * Locale codes:
- * - 1033 = English
- * - 1054 = Thai
+ * Local data source for language/locale preference (encrypted SharedPreferences from DI).
+ * Locale codes: 1033 = English, 1054 = Thai.
  */
 @Singleton
 class LanguageLocalDataSource @Inject constructor(
@@ -17,6 +18,30 @@ class LanguageLocalDataSource @Inject constructor(
     companion object {
         private const val KEY_LANGUAGE_LOCALE = "key_language_locale"
         private const val DEFAULT_LOCALE = 1054 // Thai as default
+        /** Must stay in sync with RepositoryModule encrypted prefs file name. */
+        private const val SECURE_PREFS_NAME = "indypos_secure_prefs"
+
+        /**
+         * Read saved locale before DI / [attachBaseContext] — uses the same store as [LanguageLocalDataSource].
+         */
+        fun readSavedLocaleCode(context: Context): Int {
+            return try {
+                val app = context.applicationContext
+                val masterKey = MasterKey.Builder(app)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                val prefs = EncryptedSharedPreferences.create(
+                    app,
+                    SECURE_PREFS_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+                prefs.getInt(KEY_LANGUAGE_LOCALE, DEFAULT_LOCALE)
+            } catch (_: Exception) {
+                DEFAULT_LOCALE
+            }
+        }
     }
     
     /**
