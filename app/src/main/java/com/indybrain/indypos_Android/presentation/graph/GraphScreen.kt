@@ -77,6 +77,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -1462,9 +1463,11 @@ private fun ProductStatItem(
                 text = product.name,
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Medium,
-                    size = FontSize.Medium
+                    size = FontSize.Small
                 ),
                 color = PrimaryText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
             Column(
@@ -1746,19 +1749,21 @@ private fun BestSellerItem(
             Text(
                 text = seller.productName,
                 style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Medium
+                    style = AppFontStyle.Medium,
+                    size = FontSize.Small
                 ),
-                color = PrimaryText
+                color = PrimaryText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             
             Text(
                 text = "${formatCurrency(seller.totalSales)} ${stringResource(id = R.string.graph_currency_baht)}",
                 style = FontUtils.mainFont(
-                    style = AppFontStyle.Medium,
-                    size = FontSize.Small
+                    style = AppFontStyle.Bold,
+                    size = FontSize.Medium
                 ),
                 color = GreenComplete
             )
