@@ -58,6 +58,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
@@ -716,6 +719,48 @@ private fun ChartCard(
     }
 }
 
+/** Catmull-Rom style smooth curve through [points] (converted to cubic Bézier segments). */
+private fun appendSmoothCurve(path: Path, points: List<Offset>) {
+    if (points.size < 2) return
+    for (i in 0 until points.size - 1) {
+        val p0 = if (i == 0) points[0] else points[i - 1]
+        val p1 = points[i]
+        val p2 = points[i + 1]
+        val p3 = if (i + 2 < points.size) points[i + 2] else points[i + 1]
+        val cp1x = p1.x + (p2.x - p0.x) / 6f
+        val cp1y = p1.y + (p2.y - p0.y) / 6f
+        val cp2x = p2.x - (p3.x - p1.x) / 6f
+        val cp2y = p2.y - (p3.y - p1.y) / 6f
+        path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+    }
+}
+
+private fun buildSmoothLinePath(points: List<Offset>): Path = Path().apply {
+    if (points.isEmpty()) return@apply
+    if (points.size == 1) {
+        moveTo(points[0].x, points[0].y)
+        return@apply
+    }
+    moveTo(points[0].x, points[0].y)
+    appendSmoothCurve(this, points)
+}
+
+private fun buildSmoothAreaPath(points: List<Offset>, baselineY: Float): Path = Path().apply {
+    if (points.isEmpty()) return@apply
+    if (points.size == 1) {
+        moveTo(points[0].x, baselineY)
+        lineTo(points[0].x, points[0].y)
+        lineTo(points[0].x, baselineY)
+        close()
+        return@apply
+    }
+    moveTo(points[0].x, baselineY)
+    lineTo(points[0].x, points[0].y)
+    appendSmoothCurve(this, points)
+    lineTo(points.last().x, baselineY)
+    close()
+}
+
 @Composable
 private fun LineChart(
     data: List<ChartDataPoint>,
@@ -732,7 +777,10 @@ private fun LineChart(
     
     val padding = 40.dp
     val chartColor = PrimaryButton
-    val gridColor = Color(0xFFE5E5E5)
+    val gridColor = Color(0xFFD8DEE6)
+    val areaGradientTop = chartColor.copy(alpha = 0.22f)
+    val areaGradientBottom = chartColor.copy(alpha = 0.04f)
+    val dashIntervals = floatArrayOf(6f, 8f)
     
     var selectedIndex by remember { mutableStateOf<Int?>(null) }
     
@@ -777,15 +825,18 @@ private fun LineChart(
         val endX = startX + chartWidth
         val endY = startY + chartHeight
         
-        // Draw grid lines
+        // Draw horizontal grid (dotted)
         val gridLines = 5
+        val gridStroke = 1.dp.toPx()
+        val gridPathEffect = PathEffect.dashPathEffect(dashIntervals, 0f)
         for (i in 0..gridLines) {
             val y = startY + (chartHeight / gridLines) * i
             drawLine(
                 color = gridColor,
                 start = Offset(startX, y),
                 end = Offset(endX, y),
-                strokeWidth = 1.dp.toPx()
+                strokeWidth = gridStroke,
+                pathEffect = gridPathEffect
             )
         }
         
@@ -812,56 +863,47 @@ private fun LineChart(
             Offset(x, y)
         }
         
-        // Draw area under line
-        if (points.size > 1) {
-            val areaPath = Path().apply {
-                moveTo(points[0].x, endY)
-                points.forEach { point ->
-                    lineTo(point.x, point.y)
-                }
-                lineTo(points.last().x, endY)
-                close()
-            }
-            
+        // Draw area under smooth curve
+        if (points.isNotEmpty()) {
+            val areaPath = buildSmoothAreaPath(points, endY)
+            val topY = (points.minOfOrNull { it.y } ?: endY).coerceAtMost(endY)
             drawPath(
                 path = areaPath,
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF5EA6ED).copy(alpha = 0.3f),
-                        Color(0xFF5EA6ED).copy(alpha = 0.1f)
-                    ),
-                    startY = endY,
-                    endY = points.minOfOrNull { it.y } ?: endY
+                    colors = listOf(areaGradientTop, areaGradientBottom),
+                    startY = topY,
+                    endY = endY
                 )
             )
         }
         
-        // Draw line
+        // Draw smooth line
         if (points.size > 1) {
-            for (i in 0 until points.size - 1) {
-                drawLine(
-                    color = chartColor,
-                    start = points[i],
-                    end = points[i + 1],
-                    strokeWidth = 3.dp.toPx()
+            val linePath = buildSmoothLinePath(points)
+            drawPath(
+                path = linePath,
+                color = chartColor,
+                style = Stroke(
+                    width = 4.dp.toPx(),
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round
                 )
-            }
+            )
         }
         
-        // Draw points
+        // Markers: white ring + blue fill (matches “dot with thin white border”)
         points.forEachIndexed { index, point ->
             val isSelected = selectedIndex == index
-            val radiusOuter = if (isSelected) 8.dp.toPx() else 6.dp.toPx()
-            val radiusInner = if (isSelected) 4.dp.toPx() else 3.dp.toPx()
-            
+            val radiusCore = if (isSelected) 5.5.dp.toPx() else 4.dp.toPx()
+            val border = 1.75.dp.toPx()
             drawCircle(
-                color = chartColor,
-                radius = radiusOuter,
+                color = Color.White,
+                radius = radiusCore + border,
                 center = point
             )
             drawCircle(
-                color = Color.White,
-                radius = radiusInner,
+                color = chartColor,
+                radius = radiusCore,
                 center = point
             )
         }
@@ -931,14 +973,14 @@ private fun formatCurrency(value: Double): String {
     return formatter.format(value)
 }
 
-/** Compact labels for the sales chart Y-axis (e.g. 56.7k, 1.2M). */
+/** Compact labels for the sales chart Y-axis (e.g. 56.7K, 1.2M). */
 private fun formatYAxisValue(value: Double): String {
     val axisFormat = DecimalFormat("#0.0")
     return when {
         value >= 1_000_000 ->
             axisFormat.format(value / 1_000_000) + "M"
         value >= 1000 ->
-            axisFormat.format(value / 1000) + "k"
+            axisFormat.format(value / 1000) + "K"
         kotlin.math.abs(value) < 1e-6 -> "0"
         else -> formatCurrency(value)
     }
