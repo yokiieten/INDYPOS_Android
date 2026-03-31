@@ -793,11 +793,7 @@ private fun LineChart(
         for (i in 0..gridLines) {
             val value = maxValue - (valueRange / gridLines) * i
             val y = startY + (chartHeight / gridLines) * i
-            val label = if (value >= 1000) {
-                "${(value / 1000).toInt()}k"
-            } else {
-                formatCurrency(value)
-            }
+            val label = formatYAxisValue(value)
             drawContext.canvas.nativeCanvas.apply {
                 val paint = android.graphics.Paint().apply {
                     color = android.graphics.Color.parseColor("#999999")
@@ -933,6 +929,19 @@ private fun LineChart(
 private fun formatCurrency(value: Double): String {
     val formatter = DecimalFormat("#,##0.00")
     return formatter.format(value)
+}
+
+/** Compact labels for the sales chart Y-axis (e.g. 56.7k, 1.2M). */
+private fun formatYAxisValue(value: Double): String {
+    val axisFormat = DecimalFormat("#0.0")
+    return when {
+        value >= 1_000_000 ->
+            axisFormat.format(value / 1_000_000) + "M"
+        value >= 1000 ->
+            axisFormat.format(value / 1000) + "k"
+        kotlin.math.abs(value) < 1e-6 -> "0"
+        else -> formatCurrency(value)
+    }
 }
 
 @Composable
