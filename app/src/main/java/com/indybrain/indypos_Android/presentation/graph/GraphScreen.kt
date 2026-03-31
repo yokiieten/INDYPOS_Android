@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
@@ -105,7 +107,7 @@ import android.graphics.Typeface
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.res.ResourcesCompat
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun GraphScreen(
     viewModel: GraphViewModel = hiltViewModel(),
@@ -113,7 +115,6 @@ fun GraphScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val scrollState = rememberScrollState()
     var showCustomRangeSheet by rememberSaveable { mutableStateOf(false) }
     var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -123,41 +124,45 @@ fun GraphScreen(
         viewModel.refreshCurrentPeriod()
     }
     
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(contentPadding)
-            .verticalScroll(scrollState)
-            .padding(horizontal = 20.dp, vertical = 24.dp)
+            .padding(contentPadding),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp)
     ) {
-            // Date selector
-            TimePeriodSelector(
-                selectedPeriod = uiState.selectedPeriod,
-                customRangeLabel = if (
-                    uiState.selectedPeriod == TimePeriod.Custom &&
-                    uiState.customStartDateMillis != null &&
-                    uiState.customEndDateMillis != null
-                ) {
-                    formatCustomRange(
-                        startMillis = uiState.customStartDateMillis,
-                        endMillis = uiState.customEndDateMillis
-                    )
-                } else null,
-                onPeriodSelected = { period ->
-                    if (period == TimePeriod.Custom) {
-                        // preload current range from uiState หากมี
-                        customStartDateMillis = uiState.customStartDateMillis
-                        customEndDateMillis = uiState.customEndDateMillis
-                        showCustomRangeSheet = true
-                    } else {
-                        viewModel.selectPeriod(period)
+        stickyHeader {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BaseBackground)
+            ) {
+                TimePeriodSelector(
+                    selectedPeriod = uiState.selectedPeriod,
+                    customRangeLabel = if (
+                        uiState.selectedPeriod == TimePeriod.Custom &&
+                        uiState.customStartDateMillis != null &&
+                        uiState.customEndDateMillis != null
+                    ) {
+                        formatCustomRange(
+                            startMillis = uiState.customStartDateMillis,
+                            endMillis = uiState.customEndDateMillis
+                        )
+                    } else null,
+                    onPeriodSelected = { period ->
+                        if (period == TimePeriod.Custom) {
+                            customStartDateMillis = uiState.customStartDateMillis
+                            customEndDateMillis = uiState.customEndDateMillis
+                            showCustomRangeSheet = true
+                        } else {
+                            viewModel.selectPeriod(period)
+                        }
                     }
-                }
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Summary section
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+
+        item {
             Text(
                 text = stringResource(id = R.string.graph_summary_title),
                 style = FontUtils.mainFont(
@@ -167,15 +172,14 @@ fun GraphScreen(
                 color = PrimaryText,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
-            
             SummaryCardsSection(
                 summary = uiState.summary,
                 selectedPeriod = uiState.selectedPeriod
             )
-            
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Graph section
+        }
+
+        item {
             Text(
                 text = stringResource(id = R.string.graph_chart_title),
                 style = FontUtils.mainFont(
@@ -185,33 +189,33 @@ fun GraphScreen(
                 color = PrimaryText,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
-            
             ChartCard(
                 totalSales = uiState.summary.totalSales,
                 chartData = uiState.chartData
             )
-            
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Revenue Comparison section
+        }
+
+        item {
             RevenueComparisonCard(
                 revenueComparison = uiState.revenueComparison
             )
-            
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Product Stats section
+        }
+
+        item {
             ProductStatsCard(
                 productStats = uiState.productStats,
                 totalProductSalesInPeriod = uiState.totalProductSalesInPeriod
             )
-            
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Best Seller section
+        }
+
+        item {
             BestSellerCard(
                 bestSellers = uiState.bestSellers
             )
+        }
     }
     
     if (showCustomRangeSheet) {
@@ -414,17 +418,19 @@ private fun TimePeriodSelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
     
-    Box {
+    Box(modifier = Modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier
-                .clickable { expanded = true }
-                .width(120.dp),
-            shape = RoundedCornerShape(20.dp),
-            color = Color(0xFFE8F4FD)
+                .align(Alignment.CenterStart)
+                .wrapContentWidth()
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(28.dp),
+            color = PrimaryButton,
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp
         ) {
             Row(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -438,12 +444,12 @@ private fun TimePeriodSelector(
                         style = AppFontStyle.Medium,
                         size = FontSize.Small
                     ),
-                    color = PrimaryText
+                    color = Color.White
                 )
                 Icon(
                     imageVector = Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = PrimaryText,
+                    tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
             }
