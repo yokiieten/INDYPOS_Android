@@ -552,18 +552,22 @@ private fun OrderItemCard(item: OrderItemEntity) {
                         color = SecondaryText
                     )
                     
-                    // Addons
-                    val addonsText = formatAddons(item.addons)
-                    if (addonsText.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = addonsText,
-                            style = FontUtils.mainFont(
-                                style = AppFontStyle.Medium,
-                                size = FontSize.Small
-                            ),
-                            color = SecondaryText
-                        )
+                    // Addons — bullet + ชื่อ + xจำนวน ต่อบรรทัด
+                    val addonLines = buildAddonDisplayLines(item.addons)
+                    if (addonLines.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            addonLines.forEach { line ->
+                                Text(
+                                    text = line,
+                                    style = FontUtils.mainFont(
+                                        style = AppFontStyle.Regular,
+                                        size = FontSize.Small
+                                    ),
+                                    color = PrimaryText
+                                )
+                            }
+                        }
                     }
                     
                     // Special Request
@@ -740,29 +744,24 @@ private fun getPaymentTypeText(paymentType: PaymentType): String {
     }
 }
 
-private fun formatAddons(addonsJson: String?): String {
-    if (addonsJson.isNullOrEmpty()) return ""
-    
+/**
+ * แปลง JSON รายการ addon เป็นบรรทัดแสดงผล: "• ชื่อ xจำนวน" (รวมชื่อซ้ำเป็นจำนวนรวม)
+ */
+private fun buildAddonDisplayLines(addonsJson: String?): List<String> {
+    if (addonsJson.isNullOrBlank()) return emptyList()
     return try {
         val gson = Gson()
         val listType = object : TypeToken<List<OrderAddonDto>>() {}.type
-        val addons: List<OrderAddonDto> = gson.fromJson(addonsJson, listType)
-        
-        if (addons.isEmpty()) return ""
-        
-        // Group by addon name and sum quantities (filter out entries with null name from stale cache)
-        val grouped = addons.filter { !it.addonName.isNullOrEmpty() }
-            .groupBy { it.addonName }
-            .mapValues { (_, list) -> list.sumOf { it.quantity } }
-
-        if (grouped.isEmpty()) return ""
-
-        grouped.map { (name, quantity) ->
-            if (quantity > 1) "$name x$quantity" else name ?: ""
-        }.joinToString(", ")
-    } catch (e: Exception) {
-        // If parsing fails, try to return as-is (might be formatted string)
-        addonsJson
+        val addons: List<OrderAddonDto>? = gson.fromJson(addonsJson, listType)
+        if (addons.isNullOrEmpty()) return emptyList()
+        val grouped = addons
+            .filter { !it.addonName.isNullOrBlank() }
+            .groupBy { it.addonName.trim() }
+            .mapValues { (_, list) -> list.sumOf { a -> a.quantity } }
+        if (grouped.isEmpty()) return emptyList()
+        grouped.map { (name, quantity) -> "• $name x$quantity" }
+    } catch (_: Exception) {
+        listOf(addonsJson.trim())
     }
 }
 
