@@ -49,6 +49,7 @@ class MainProductViewModel @Inject constructor(
             productRepository.getProductListFromApi().onSuccess { data ->
                 val sortedCategories = data.categories.sortedBy { it.sortOrder ?: Int.MAX_VALUE }
                 val firstCategoryId = sortedCategories.firstOrNull()?.id
+                cartRepository.syncCartRelatedCatalogFromPosList(sortedCategories, data.products)
                 _uiState.update { current ->
                     current.copy(
                         categories = sortedCategories,

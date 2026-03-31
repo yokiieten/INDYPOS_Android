@@ -52,5 +52,14 @@ interface CartRepository {
     ): Result<Unit>
     suspend fun deleteCartItems(cartItemIds: List<String>): Result<Unit>
     suspend fun checkStockAvailability(productId: String, quantity: Int): Boolean
+
+    /**
+     * After the POS main list API returns, upsert categories/products that appear in the cart into Room
+     * and refresh denormalized cart row fields so the cart panel, badges, and receipt data match edits.
+     */
+    suspend fun syncCartRelatedCatalogFromPosList(
+        categories: List<CategoryEntity>,
+        products: List<ProductEntity>
+    )
 }
 

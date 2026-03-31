@@ -257,5 +257,46 @@ class CartRepositoryImpl @Inject constructor(
         val availableStock = product.stockQuantity ?: return true // If no stock limit set, allow
         return quantity <= availableStock
     }
+
+    override suspend fun syncCartRelatedCatalogFromPosList(
+        categories: List<CategoryEntity>,
+        products: List<ProductEntity>
+    ) {
+        val cartProductIds = cartDao.getAllCartItemsSync()
+            .mapNotNull { it.productId }
+            .toSet()
+        if (cartProductIds.isEmpty()) return
+
+        val productsToUpsert = products.filter { it.id in cartProductIds }
+        if (productsToUpsert.isEmpty()) {
+            refreshCartItemSnapshotsFromRoom()
+            return
+        }
+
+        val categoryIdsNeeded = productsToUpsert.mapNotNull { it.categoryId }.toSet()
+        val categoriesToUpsert = categories.filter { it.id in categoryIdsNeeded }
+        if (categoriesToUpsert.isNotEmpty()) {
+            categoryDao.insertAll(categoriesToUpsert)
+        }
+        productDao.insertAll(productsToUpsert)
+
+        refreshCartItemSnapshotsFromRoom()
+    }
+
+    private suspend fun refreshCartItemSnapshotsFromRoom() {
+        for (item in cartDao.getAllCartItemsSync()) {
+            val productId = item.productId ?: continue
+            val product = productDao.getProductById(productId) ?: continue
+            val addonsTotal = cartDao.getCartAddonsByItemId(item.id).sumOf { it.addonPrice }
+            val unitPrice = product.price + addonsTotal
+            cartDao.updateCartItemProductSnapshot(
+                id = item.id,
+                productName = product.name,
+                productImageUrl = product.imageUrl,
+                productColorHex = product.selectedColorHex,
+                unitPrice = unitPrice
+            )
+        }
+    }
 }
 

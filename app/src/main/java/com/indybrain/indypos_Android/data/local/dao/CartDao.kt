@@ -113,6 +113,25 @@ interface CartDao {
         specialRequest: String?,
         unitPrice: Double
     )
+
+    /** Keeps denormalized cart fields in sync with catalog (receipt printing, Flow refresh). */
+    @Query(
+        """
+        UPDATE cart_items 
+        SET productName = :productName,
+            productImageUrl = :productImageUrl,
+            productColorHex = :productColorHex,
+            unitPrice = :unitPrice
+        WHERE id = :id
+        """
+    )
+    suspend fun updateCartItemProductSnapshot(
+        id: String,
+        productName: String?,
+        productImageUrl: String?,
+        productColorHex: String?,
+        unitPrice: Double
+    )
     
     @Query("DELETE FROM cart_addons WHERE addonId = :addonId")
     suspend fun deleteCartAddonsByAddonId(addonId: String)
