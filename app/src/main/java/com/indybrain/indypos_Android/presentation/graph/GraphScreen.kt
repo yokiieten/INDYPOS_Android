@@ -223,26 +223,20 @@ fun GraphScreen(
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val context = LocalContext.current
         
-        // Default: วันนี้ เมื่อเปิด sheet ครั้งแรกและยังไม่มีค่า
+        // Default: start/end เป็นวันเดียวกัน (ต้นวันปัจจุบัน) เมื่อยังไม่มีค่า
         LaunchedEffect(showCustomRangeSheet) {
             if (customStartDateMillis == null || customEndDateMillis == null) {
-                val todayStart = Calendar.getInstance().apply {
+                val todayMillis = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 0)
                     set(Calendar.MINUTE, 0)
                     set(Calendar.SECOND, 0)
                     set(Calendar.MILLISECOND, 0)
-                }
-                val todayEnd = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY, 23)
-                    set(Calendar.MINUTE, 59)
-                    set(Calendar.SECOND, 59)
-                    set(Calendar.MILLISECOND, 999)
-                }
+                }.timeInMillis
                 if (customStartDateMillis == null) {
-                    customStartDateMillis = todayStart.timeInMillis
+                    customStartDateMillis = todayMillis
                 }
                 if (customEndDateMillis == null) {
-                    customEndDateMillis = todayEnd.timeInMillis
+                    customEndDateMillis = todayMillis
                 }
             }
         }
