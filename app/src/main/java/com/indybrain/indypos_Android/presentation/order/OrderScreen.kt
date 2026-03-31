@@ -477,11 +477,12 @@ private fun OrderFilterButton(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
+                .wrapContentWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { expanded = true },
             color = Color(0xFFE3F2FD),
@@ -489,9 +490,9 @@ private fun OrderFilterButton(
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .wrapContentWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
