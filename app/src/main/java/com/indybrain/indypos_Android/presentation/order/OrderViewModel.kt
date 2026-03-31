@@ -30,7 +30,6 @@ class OrderViewModel @Inject constructor(
 
     init {
         observeOrders()
-        refreshOrders()
     }
 
     /**

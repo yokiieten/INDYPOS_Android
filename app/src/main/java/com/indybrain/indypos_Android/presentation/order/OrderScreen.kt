@@ -98,7 +98,12 @@ fun OrderScreen(
     var showCustomRangeSheet by rememberSaveable { mutableStateOf(false) }
     var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
-    
+
+    // ทุกครั้งที่เข้าหน้ารายการออเดอร์ (compose ใหม่) ให้ดึง API ล่าสุด — ViewModel อาจยังอยู่จากแท็บก่อนหน้า
+    LaunchedEffect(Unit) {
+        viewModel.refreshOrders()
+    }
+
     // Sync pager state with selected tab
     LaunchedEffect(uiState.selectedTab) {
         val page = when (uiState.selectedTab) {
