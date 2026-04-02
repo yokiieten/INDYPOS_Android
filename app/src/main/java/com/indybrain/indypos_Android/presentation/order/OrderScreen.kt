@@ -93,7 +93,13 @@ fun OrderScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    val pagerState = rememberPagerState(
+        initialPage = when (uiState.selectedTab) {
+            OrderTab.COMPLETED -> 0
+            OrderTab.CANCELLED -> 1
+        },
+        pageCount = { 2 }
+    )
     val coroutineScope = rememberCoroutineScope()
     var showCustomRangeSheet by rememberSaveable { mutableStateOf(false) }
     var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
