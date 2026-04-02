@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sync
@@ -64,6 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.ui.components.ManagementListEmptyState
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -267,26 +269,43 @@ fun AddOnManagementScreen(
                             }
                         }
                         addonsToShow.isEmpty() -> {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(min = 600.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = stringResource(id = R.string.addon_management_empty),
-                                            style = FontUtils.mainFont(
-                                                style = AppFontStyle.Regular,
-                                                size = FontSize.Medium
-                                            ),
-                                            color = SecondaryText
-                                        )
+                            if (uiState.isLoading && uiState.addons != null) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = PrimaryButton)
+                                }
+                            } else {
+                                val isSearch =
+                                    !uiState.isSelectionMode && uiState.searchQuery.trim()
+                                        .isNotEmpty()
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(min = 480.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (isSearch) {
+                                                ManagementListEmptyState(
+                                                    icon = Icons.Filled.Search,
+                                                    title = stringResource(id = R.string.addon_no_results),
+                                                    message = stringResource(id = R.string.empty_list_search_hint)
+                                                )
+                                            } else {
+                                                ManagementListEmptyState(
+                                                    icon = Icons.Filled.AddCircle,
+                                                    title = stringResource(id = R.string.addon_management_empty_title),
+                                                    message = stringResource(id = R.string.addon_management_empty_message)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

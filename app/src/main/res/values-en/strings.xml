@@ -430,6 +430,10 @@
     <string name="order_product_clear_all">Clear All</string>
     <string name="order_product_clear_all_confirm">Remove all items from your cart?</string>
     <string name="order_product_checkout">Checkout</string>
+
+    <!-- Search Product Screen -->
+    <string name="search_no_results">No results found</string>
+    <string name="empty_list_search_hint">Try adjusting your search.</string>
     
     <!-- Barcode Scanner Screen -->
     <string name="barcode_scanner_title">Barcode Scanner</string>
@@ -467,6 +471,9 @@
     <string name="category_management_add_category">Add Category</string>
     <string name="category_management_items">%1$d items</string>
     <string name="category_management_empty">No categories</string>
+    <string name="category_no_results">No categories found</string>
+    <string name="category_management_empty_title">No categories yet</string>
+    <string name="category_management_empty_message">Tap the button below to add your first category.</string>
     <string name="category_management_loading">Loading...</string>
     <string name="category_management_action_title">Category Actions</string>
     <string name="category_management_action_subtitle">What would you like to do?</string>
@@ -579,6 +586,10 @@
     <string name="product_management_all_categories">All Categories</string>
     <string name="product_management_add_product">Add New Product</string>
     <string name="product_management_empty">No products</string>
+    <string name="product_management_empty_title">No products yet</string>
+    <string name="product_management_empty_message">Tap the button below to add your first product.</string>
+    <string name="product_management_empty_category_title">No products in this category</string>
+    <string name="product_management_empty_category_message">Try another category or add a product to this one.</string>
     <string name="product_management_loading">Loading...</string>
     <string name="product_management_no_internet">Product management needs an internet connection to load products and categories</string>
     <string name="product_management_load_error">Failed to load data</string>
@@ -688,6 +699,9 @@
     <string name="addon_group_management_cancel">Cancel</string>
     <string name="addon_group_management_search_placeholder">Search addon groups</string>
     <string name="addon_group_management_empty">No addon groups</string>
+    <string name="addon_group_no_results">No add-on groups found</string>
+    <string name="addon_group_management_empty_title">No add-on groups yet</string>
+    <string name="addon_group_management_empty_message">Tap the button below to create your first group.</string>
     <string name="addon_group_management_add">Add Addon Group</string>
     <string name="addon_group_management_sync_status_title">Sync Status</string>
     <string name="addon_group_management_sync_total">Total: %1$d</string>
@@ -767,6 +781,9 @@
     <string name="addon_management_select_title">Select Addon</string>
     <string name="addon_management_search_placeholder">Search addons</string>
     <string name="addon_management_empty">No addons</string>
+    <string name="addon_no_results">No add-ons found</string>
+    <string name="addon_management_empty_title">No add-ons yet</string>
+    <string name="addon_management_empty_message">Tap the button below to add your first add-on.</string>
     <string name="addon_management_add">Add Addon</string>
     <string name="addon_management_sync_status_title">Sync Status</string>
     <string name="addon_management_sync_total">Total: %1$d</string>

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,8 +27,10 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -82,6 +83,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.ui.components.ManagementListEmptyState
 import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
@@ -316,26 +318,53 @@ fun ProductManagementScreen(
                             }
                         }
                         productsToShow.isEmpty() -> {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(min = 600.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = stringResource(id = R.string.product_management_empty),
-                                            style = FontUtils.mainFont(
-                                                style = AppFontStyle.Regular,
-                                                size = FontSize.Medium
-                                            ),
-                                            color = SecondaryText
-                                        )
+                            if (uiState.isLoading && uiState.products != null) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = PrimaryButton)
+                                }
+                            } else {
+                                val searchTrimmed =
+                                    if (uiState.isSelectionMode) "" else uiState.searchQuery.trim()
+                                val hasSearch = searchTrimmed.isNotEmpty()
+                                val hasCategoryFilter = uiState.selectedCategoryId != null
+                                val (emptyIcon, titleRes, msgRes) = when {
+                                    hasSearch -> Triple(
+                                        Icons.Filled.Search,
+                                        R.string.search_no_results,
+                                        R.string.empty_list_search_hint
+                                    )
+                                    hasCategoryFilter -> Triple(
+                                        Icons.Filled.Layers,
+                                        R.string.product_management_empty_category_title,
+                                        R.string.product_management_empty_category_message
+                                    )
+                                    else -> Triple(
+                                        Icons.Outlined.Inventory2,
+                                        R.string.product_management_empty_title,
+                                        R.string.product_management_empty_message
+                                    )
+                                }
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(min = 480.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            ManagementListEmptyState(
+                                                icon = emptyIcon,
+                                                title = stringResource(id = titleRes),
+                                                message = stringResource(id = msgRes)
+                                            )
+                                        }
                                     }
                                 }
                             }

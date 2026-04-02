@@ -441,7 +441,8 @@
     <!-- Search Product Screen -->
     <string name="search_title">ค้นหาสินค้า</string>
     <string name="search_placeholder">ค้นหาสินค้า…</string>
-    <string name="search_no_results">ไม่พบผลลัพธ์</string>
+    <string name="search_no_results">ไม่พบผลการค้นหา</string>
+    <string name="empty_list_search_hint">ลองเปลี่ยนคำค้นหา</string>
     
     <!-- Barcode Scanner Screen -->
     <string name="barcode_scanner_title">สแกนบาร์โค้ด</string>
@@ -478,6 +479,9 @@
     <string name="category_management_add_category">เพิ่มหมวดหมู่</string>
     <string name="category_management_items">%1$d รายการ</string>
     <string name="category_management_empty">ไม่มีหมวดหมู่</string>
+    <string name="category_no_results">ไม่พบหมวดหมู่</string>
+    <string name="category_management_empty_title">ยังไม่มีหมวดหมู่</string>
+    <string name="category_management_empty_message">แตะปุ่มด้านล่างเพื่อเพิ่มหมวดหมู่แรก</string>
     <string name="category_management_loading">กำลังโหลด...</string>
     <string name="category_management_action_title">การดำเนินการหมวดหมู่</string>
     <string name="category_management_action_subtitle">คุณต้องการทำอะไร?</string>
@@ -591,6 +595,10 @@
     <string name="product_no_category_title">ไม่มีหมวดหมู่</string>
     <string name="product_management_add_product">เพิ่มสินค้าใหม่</string>
     <string name="product_management_empty">ไม่มีสินค้า</string>
+    <string name="product_management_empty_title">ยังไม่มีสินค้า</string>
+    <string name="product_management_empty_message">แตะปุ่มด้านล่างเพื่อเพิ่มสินค้าแรก</string>
+    <string name="product_management_empty_category_title">ไม่มีสินค้าในหมวดหมู่นี้</string>
+    <string name="product_management_empty_category_message">ลองเลือกหมวดอื่น หรือเพิ่มสินค้าในหมวดนี้</string>
     <string name="product_management_loading">กำลังโหลด...</string>
     <string name="product_management_no_internet">จัดการสินค้าต้องเชื่อมต่ออินเทอร์เน็ตเพื่อโหลดรายการและหมวดหมู่</string>
     <string name="product_management_load_error">เกิดข้อผิดพลาดในการโหลดข้อมูล</string>
@@ -700,6 +708,9 @@
     <string name="addon_group_management_cancel">ยกเลิก</string>
     <string name="addon_group_management_search_placeholder">ค้นหากลุ่มแอดออน</string>
     <string name="addon_group_management_empty">ไม่มีกลุ่ม Addon</string>
+    <string name="addon_group_no_results">ไม่พบกลุ่มแอดออน</string>
+    <string name="addon_group_management_empty_title">ยังไม่มีกลุ่มแอดออน</string>
+    <string name="addon_group_management_empty_message">แตะปุ่มด้านล่างเพื่อสร้างกลุ่มแรก</string>
     <string name="addon_group_management_add">เพิ่มกลุ่ม Addon</string>
     <string name="addon_group_management_sync_status_title">สถานะการ Sync</string>
     <string name="addon_group_management_sync_total">ทั้งหมด: %1$d</string>
@@ -779,6 +790,9 @@
     <string name="addon_management_select_title">เลือก Addon</string>
     <string name="addon_management_search_placeholder">ค้นหา Addon</string>
     <string name="addon_management_empty">ไม่มี Addon</string>
+    <string name="addon_no_results">ไม่พบแอดออน</string>
+    <string name="addon_management_empty_title">ยังไม่มีแอดออน</string>
+    <string name="addon_management_empty_message">แตะปุ่มด้านล่างเพื่อเพิ่มแอดออนแรก</string>
     <string name="addon_management_add">เพิ่มแอดออน</string>
     <string name="addon_management_sync_status_title">สถานะการ Sync</string>
     <string name="addon_management_sync_total">ทั้งหมด: %1$d</string>

@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,6 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.ui.components.ManagementListEmptyState
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -245,26 +247,43 @@ fun CategoryManagementScreen(
                             }
                         }
                         categoriesToShow.isEmpty() -> {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(min = 600.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = stringResource(id = R.string.category_management_empty),
-                                            style = FontUtils.mainFont(
-                                                style = AppFontStyle.Regular,
-                                                size = FontSize.Medium
-                                            ),
-                                            color = SecondaryText
-                                        )
+                            if (uiState.isLoading && uiState.categories != null) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = PrimaryButton)
+                                }
+                            } else {
+                                val queryTrimmed =
+                                    if (uiState.isEditMode) "" else uiState.searchQuery.trim()
+                                val isSearch = queryTrimmed.isNotEmpty()
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(min = 480.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (isSearch) {
+                                                ManagementListEmptyState(
+                                                    icon = Icons.Filled.Search,
+                                                    title = stringResource(id = R.string.category_no_results),
+                                                    message = stringResource(id = R.string.empty_list_search_hint)
+                                                )
+                                            } else {
+                                                ManagementListEmptyState(
+                                                    icon = Icons.Filled.Folder,
+                                                    title = stringResource(id = R.string.category_management_empty_title),
+                                                    message = stringResource(id = R.string.category_management_empty_message)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
