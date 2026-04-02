@@ -298,7 +298,7 @@
     <string name="settings_receipt">ตั้งค่าใบเสร็จ</string>
     <string name="settings_manage_data">จัดการข้อมูล</string>
     <string name="settings_contact_us">ติดต่อเรา</string>
-    <string name="settings_backoffice">Backoffice</string>
+    <string name="settings_backoffice">Back office</string>
     <string name="settings_logout">ออกจากระบบ</string>
     
     <!-- Contact Us Screen -->
