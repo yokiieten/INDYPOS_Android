@@ -11,6 +11,8 @@ import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.data.mapper.CartItemMapper
 import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.repository.CartRepository
+import com.indybrain.indypos_Android.domain.repository.ProductRepository
+import dagger.Lazy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -23,7 +25,8 @@ class CartRepositoryImpl @Inject constructor(
     private val productDao: ProductDao,
     private val categoryDao: CategoryDao,
     private val addonDao: AddonDao,
-    private val mapper: CartItemMapper
+    private val mapper: CartItemMapper,
+    private val productRepository: Lazy<ProductRepository>
 ) : CartRepository {
     
     override fun getCartItems(): Flow<List<CartItemEntity>> {
@@ -262,26 +265,73 @@ class CartRepositoryImpl @Inject constructor(
         categories: List<CategoryEntity>,
         products: List<ProductEntity>
     ) {
-        val cartProductIds = cartDao.getAllCartItemsSync()
-            .mapNotNull { it.productId }
-            .toSet()
+        val cartItems = cartDao.getAllCartItemsSync()
+        val cartProductIds = cartItems.mapNotNull { it.productId }.toSet()
         if (cartProductIds.isEmpty()) return
 
         val productsToUpsert = products.filter { it.id in cartProductIds }
-        if (productsToUpsert.isEmpty()) {
-            refreshCartItemSnapshotsFromRoom()
-            return
+        if (productsToUpsert.isNotEmpty()) {
+            val categoryIdsNeeded = productsToUpsert.mapNotNull { it.categoryId }.toSet()
+            val categoriesToUpsert = categories.filter { it.id in categoryIdsNeeded }
+            if (categoriesToUpsert.isNotEmpty()) {
+                categoryDao.insertAll(categoriesToUpsert)
+            }
+            productDao.insertAll(productsToUpsert)
         }
 
-        val categoryIdsNeeded = productsToUpsert.mapNotNull { it.categoryId }.toSet()
-        val categoriesToUpsert = categories.filter { it.id in categoryIdsNeeded }
-        if (categoriesToUpsert.isNotEmpty()) {
-            categoryDao.insertAll(categoriesToUpsert)
-        }
-        productDao.insertAll(productsToUpsert)
-
+        syncCartAddonsFromProductDetailApi(cartItems)
         refreshCartItemSnapshotsFromRoom()
     }
+
+    /**
+     * For each product that has cart lines with options, GET product detail and align [cart_addons] with server.
+     * Addon IDs no longer active on the server are left unchanged on the line.
+     */
+    private suspend fun syncCartAddonsFromProductDetailApi(cartItems: List<CartItemEntity>) {
+        val productIdsWithAddons = cartItems.mapNotNull { item ->
+            val pid = item.productId ?: return@mapNotNull null
+            if (cartDao.getCartAddonsByItemId(item.id).isEmpty()) null else pid
+        }.toSet()
+        if (productIdsWithAddons.isEmpty()) return
+
+        val repo = productRepository.get()
+        for (productId in productIdsWithAddons) {
+            val data = repo.getProductDetailFromApi(productId).getOrNull() ?: continue
+
+            val addonById = mutableMapOf<String, AddonCatalogInfo>()
+            for (group in data.addonGroups) {
+                val addons = data.addonsByGroup[group.id] ?: emptyList()
+                for (addon in addons) {
+                    addonById[addon.id] = AddonCatalogInfo(
+                        name = addon.name,
+                        price = addon.price,
+                        groupId = group.id,
+                        groupName = group.name
+                    )
+                }
+            }
+
+            for (item in cartItems.filter { it.productId == productId }) {
+                for (cartAddon in cartDao.getCartAddonsByItemId(item.id)) {
+                    val info = addonById[cartAddon.addonId] ?: continue
+                    cartDao.updateCartAddonSnapshot(
+                        rowId = cartAddon.id,
+                        addonName = info.name,
+                        addonPrice = info.price,
+                        addonGroupId = info.groupId,
+                        addonGroupName = info.groupName
+                    )
+                }
+            }
+        }
+    }
+
+    private data class AddonCatalogInfo(
+        val name: String,
+        val price: Double,
+        val groupId: String,
+        val groupName: String
+    )
 
     private suspend fun refreshCartItemSnapshotsFromRoom() {
         for (item in cartDao.getAllCartItemsSync()) {

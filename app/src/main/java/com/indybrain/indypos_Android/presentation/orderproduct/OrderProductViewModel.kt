@@ -56,6 +56,22 @@ class OrderProductViewModel @Inject constructor(
     init {
         observeCartItems()
     }
+
+    /**
+     * Same as Main Product flow: GET product list then [CartRepository.syncCartRelatedCatalogFromPosList]
+     * (upsert catalog for cart lines, refresh addons from detail API when needed, refresh line snapshots).
+     */
+    fun syncCartCatalogFromPosList() {
+        viewModelScope.launch {
+            productRepository.getProductListFromApi()
+                .onSuccess { data ->
+                    cartRepository.syncCartRelatedCatalogFromPosList(
+                        data.categories,
+                        data.products
+                    )
+                }
+        }
+    }
     
     private fun observeCartItems() {
         viewModelScope.launch {

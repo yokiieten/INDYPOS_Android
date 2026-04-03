@@ -135,5 +135,23 @@ interface CartDao {
     
     @Query("DELETE FROM cart_addons WHERE addonId = :addonId")
     suspend fun deleteCartAddonsByAddonId(addonId: String)
+
+    @Query(
+        """
+        UPDATE cart_addons 
+        SET addonName = :addonName,
+            addonPrice = :addonPrice,
+            addonGroupId = :addonGroupId,
+            addonGroupName = :addonGroupName
+        WHERE id = :rowId
+        """
+    )
+    suspend fun updateCartAddonSnapshot(
+        rowId: Long,
+        addonName: String,
+        addonPrice: Double,
+        addonGroupId: String,
+        addonGroupName: String
+    )
 }
 
