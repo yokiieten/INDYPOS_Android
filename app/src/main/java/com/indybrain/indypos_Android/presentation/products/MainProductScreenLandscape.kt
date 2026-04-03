@@ -133,12 +133,12 @@ fun MainProductScreenLandscape(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle(initialValue = emptyList())
     
-    // Reload products when returning to this screen (onResume) — product list from API only.
+    // Same as MainProductScreen (portrait): ON_RESUME reload, with one-shot skip after ProductEdit/ProductDetail pop.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadProducts()
+                viewModel.loadProductsOnResumeIfNeeded()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

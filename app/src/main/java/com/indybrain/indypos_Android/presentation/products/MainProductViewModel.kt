@@ -33,6 +33,25 @@ class MainProductViewModel @Inject constructor(
     
     private var hideAdjusterJob: Job? = null
 
+    /**
+     * When opening overlays that only edit the cart (e.g. ProductEdit), the Activity still fires
+     * [Lifecycle.Event.ON_RESUME] for MainProduct after pop — skip one API reload so the list stays stable.
+     */
+    private var skipNextResumeProductsReload: Boolean = false
+
+    fun skipLoadProductsOnNextResume() {
+        skipNextResumeProductsReload = true
+    }
+
+    /** Called from MainProduct ON_RESUME; respects [skipLoadProductsOnNextResume]. */
+    fun loadProductsOnResumeIfNeeded() {
+        if (skipNextResumeProductsReload) {
+            skipNextResumeProductsReload = false
+            return
+        }
+        loadProducts()
+    }
+
     init {
         // Set loading state immediately to show skeleton
         _uiState.update { it.copy(isLoading = true) }

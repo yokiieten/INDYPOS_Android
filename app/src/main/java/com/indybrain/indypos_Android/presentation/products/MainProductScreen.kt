@@ -172,7 +172,7 @@ fun MainProductScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadProducts()
+                viewModel.loadProductsOnResumeIfNeeded()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

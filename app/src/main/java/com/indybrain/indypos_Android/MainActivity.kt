@@ -507,8 +507,13 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         
-                        composable(NavRoutes.MainProduct.route) {
+                        composable(NavRoutes.MainProduct.route) { mainProductBackStackEntry ->
+                            val mainProductViewModel =
+                                androidx.hilt.navigation.compose.hiltViewModel<com.indybrain.indypos_Android.presentation.products.MainProductViewModel>(
+                                    mainProductBackStackEntry
+                                )
                             MainProductScreen(
+                                viewModel = mainProductViewModel,
                                 onBackClick = {
                                     // วิธีที่ 2: กดกลับจาก MainProduct ให้กลับไป Home เสมอ
                                     navController.popBackStack(
@@ -521,9 +526,11 @@ class MainActivity : ComponentActivity() {
                                     scannedBarcode = null
                                     if (isInCart) {
                                         // Navigate to ProductEditScreen if product is in cart
+                                        mainProductViewModel.skipLoadProductsOnNextResume()
                                         navController.navigate(NavRoutes.productEdit(productId, productName))
                                     } else {
                                         // Navigate to ProductDetailScreen if product is not in cart
+                                        mainProductViewModel.skipLoadProductsOnNextResume()
                                         navController.navigate(NavRoutes.productDetail(productId)) {
                                             // Ensure we can navigate back to MainProduct
                                             launchSingleTop = true
@@ -533,6 +540,7 @@ class MainActivity : ComponentActivity() {
                                 onProductClickFromScan = { productId, productName ->
                                     // Always navigate to ProductDetailScreen when scanned (even if in cart)
                                     scannedBarcode = null
+                                    mainProductViewModel.skipLoadProductsOnNextResume()
                                     navController.navigate(NavRoutes.productDetail(productId)) {
                                         // Ensure we can navigate back to MainProduct
                                         launchSingleTop = true
