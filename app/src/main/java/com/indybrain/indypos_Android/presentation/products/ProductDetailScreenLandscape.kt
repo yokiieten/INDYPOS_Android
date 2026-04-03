@@ -393,14 +393,10 @@ private fun AddonGroupSectionLandscape(
                 if (maxSelection != null && maxSelection > 0) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (maxSelection == 1) {
-                            stringResource(id = R.string.product_detail_addon_select_one)
-                        } else {
-                            stringResource(
-                                id = R.string.product_detail_addon_select_up_to,
-                                maxSelection
-                            )
-                        },
+                        text = stringResource(
+                            id = R.string.product_max_selection,
+                            maxSelection
+                        ),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Small
