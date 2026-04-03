@@ -407,6 +407,7 @@
     <string name="product_detail_special_request">Special Request</string>
     <string name="product_max_selection">Max %1$d selections</string>
     <string name="product_addon_max_selection_zero_error">Cannot select Addon because this Addon group has maximum selection set to 0</string>
+    <string name="product_detail_max_selection_reached">Maximum %1$d selections allowed for %2$s</string>
     <string name="addon_group_max_selection_zero_error">Please select at least one item</string>
 
     <!-- Order Product / Cart -->

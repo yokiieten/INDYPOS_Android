@@ -159,9 +159,14 @@ class OrderRepositoryImpl @Inject constructor(
                 val order = OrderMapper.toEntity(dto)
                 val items = dto.items?.map { OrderMapper.toEntity(it, dto.id) }.orEmpty()
                 ordersCache.update { prev ->
-                    val withoutOrder = prev.orders.filter { it.id != orderId }
+                    // แทนที่รายการที่ index เดิม — อย่าต่อท้ายลิสต์ เพราะจะทำให้ลำดับสลับจาก API / scroll หลุดเมื่อกลับจากหน้ารายละเอียด
+                    val newOrders = if (prev.orders.any { it.id == orderId }) {
+                        prev.orders.map { existing -> if (existing.id == orderId) order else existing }
+                    } else {
+                        prev.orders + order
+                    }
                     val itemsMap = prev.itemsByOrderId + (orderId to items)
-                    CachedOrders(withoutOrder + order, itemsMap)
+                    CachedOrders(newOrders, itemsMap)
                 }
                 Result.success(Unit)
             } else {

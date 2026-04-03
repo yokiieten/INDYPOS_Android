@@ -23,6 +23,24 @@ class ProductDetailViewModel @Inject constructor(
     private val productRepository: ProductRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    companion object {
+        const val ERROR_MAX_SELECTION_ZERO = "MAX_SELECTION_ZERO"
+        private const val ERROR_MAX_SELECTION_REACHED_PREFIX = "MAX_SELECTION_REACHED"
+        private const val ERROR_PARAM_SEPARATOR = '\u001E'
+
+        fun buildMaxSelectionReachedError(maxSelection: Int, groupName: String): String =
+            "$ERROR_MAX_SELECTION_REACHED_PREFIX$ERROR_PARAM_SEPARATOR$maxSelection$ERROR_PARAM_SEPARATOR$groupName"
+
+        fun parseMaxSelectionReachedError(message: String): Pair<Int, String>? {
+            val prefix = "$ERROR_MAX_SELECTION_REACHED_PREFIX$ERROR_PARAM_SEPARATOR"
+            if (!message.startsWith(prefix)) return null
+            val parts = message.split(ERROR_PARAM_SEPARATOR, limit = 3)
+            if (parts.size != 3) return null
+            val max = parts[1].toIntOrNull() ?: return null
+            return max to parts[2]
+        }
+    }
     
     private val _uiState = MutableStateFlow(ProductDetailUiState())
     val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
@@ -155,7 +173,7 @@ class ProductDetailViewModel @Inject constructor(
                 // Max selection is 0, cannot select any addon
                 // Error message will be localized in the UI layer using string resource
                 return@update currentState.copy(
-                    errorMessage = "MAX_SELECTION_ZERO" // Special error code for localization
+                    errorMessage = ERROR_MAX_SELECTION_ZERO
                 )
             }
             
@@ -168,8 +186,12 @@ class ProductDetailViewModel @Inject constructor(
                     // Single choice: replace selection (max 1 or explicit single-select)
                     setOf(addonId)
                 } else if (maxSelection != null && currentSelected.size >= maxSelection) {
-                    // Max selection reached - don't add
-                    currentSelected
+                    return@update currentState.copy(
+                        errorMessage = buildMaxSelectionReachedError(
+                            maxSelection,
+                            addonGroup.name
+                        )
+                    )
                 } else {
                     // Add to selection
                     currentSelected + addonId

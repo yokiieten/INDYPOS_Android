@@ -334,10 +334,22 @@ fun ProductDetailScreen(
                     // Show error as snackbar (toast without icon)
                     uiState.errorMessage?.let { errorMessage ->
                         // Get localized message in composable context
-                        val localizedMessage = if (errorMessage == "MAX_SELECTION_ZERO") {
-                            stringResource(id = R.string.product_addon_max_selection_zero_error)
-                        } else {
-                            errorMessage
+                        val localizedMessage = when {
+                            errorMessage == ProductDetailViewModel.ERROR_MAX_SELECTION_ZERO ->
+                                stringResource(id = R.string.product_addon_max_selection_zero_error)
+                            else -> {
+                                val maxReached =
+                                    ProductDetailViewModel.parseMaxSelectionReachedError(errorMessage)
+                                if (maxReached != null) {
+                                    stringResource(
+                                        id = R.string.product_detail_max_selection_reached,
+                                        maxReached.first,
+                                        maxReached.second
+                                    )
+                                } else {
+                                    errorMessage
+                                }
+                            }
                         }
                         
                         LaunchedEffect(errorMessage) {

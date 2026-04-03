@@ -414,6 +414,7 @@
     <string name="product_detail_special_request">คำขอพิเศษ</string>
     <string name="product_max_selection">เลือกได้สูงสุด %1$d รายการ</string>
     <string name="product_addon_max_selection_zero_error">ไม่สามารถเลือก Addon ได้ เนื่องจากกลุ่ม Addon นี้ตั้งค่าเลือกได้สูงสุดเป็น 0</string>
+    <string name="product_detail_max_selection_reached">เลือก %2$s ได้สูงสุด %1$d รายการ</string>
     <string name="addon_group_max_selection_zero_error">กรุณาเลือกได้สูงสุดอย่างน้อย 1 รายการ</string>
     
     <!-- Order Product / Cart -->

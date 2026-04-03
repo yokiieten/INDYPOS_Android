@@ -28,8 +28,33 @@ class OrderViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(OrderUiState())
     val uiState: StateFlow<OrderUiState> = _uiState.asStateFlow()
 
+    /** คืนตำแหน่งเลื่อนเมื่อ compose หน้ารายการใหม่ — ไม่ใส่ใน StateFlow กัน recompose ถี่ขณะเลื่อน */
+    private var completedListScrollIndex: Int = 0
+    private var completedListScrollOffset: Int = 0
+    private var cancelledListScrollIndex: Int = 0
+    private var cancelledListScrollOffset: Int = 0
+
+    fun initialCompletedListScroll(): Pair<Int, Int> =
+        completedListScrollIndex to completedListScrollOffset
+
+    fun initialCancelledListScroll(): Pair<Int, Int> =
+        cancelledListScrollIndex to cancelledListScrollOffset
+
+    fun saveCompletedListScroll(index: Int, offset: Int) {
+        if (completedListScrollIndex == index && completedListScrollOffset == offset) return
+        completedListScrollIndex = index
+        completedListScrollOffset = offset
+    }
+
+    fun saveCancelledListScroll(index: Int, offset: Int) {
+        if (cancelledListScrollIndex == index && cancelledListScrollOffset == offset) return
+        cancelledListScrollIndex = index
+        cancelledListScrollOffset = offset
+    }
+
     init {
         observeOrders()
+        refreshOrders()
     }
 
     /**

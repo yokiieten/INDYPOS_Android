@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -105,9 +105,19 @@ fun OrderScreen(
     var customStartDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var customEndDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    // ทุกครั้งที่เข้าหน้ารายการออเดอร์ (compose ใหม่) ให้ดึง API ล่าสุด — ViewModel อาจยังอยู่จากแท็บก่อนหน้า
-    LaunchedEffect(Unit) {
-        viewModel.refreshOrders()
+    val completedListState = remember {
+        val scroll = viewModel.initialCompletedListScroll()
+        LazyListState(
+            firstVisibleItemIndex = scroll.first,
+            firstVisibleItemScrollOffset = scroll.second
+        )
+    }
+    val cancelledListState = remember {
+        val scroll = viewModel.initialCancelledListScroll()
+        LazyListState(
+            firstVisibleItemIndex = scroll.first,
+            firstVisibleItemScrollOffset = scroll.second
+        )
     }
 
     // Sync pager state with selected tab
@@ -187,6 +197,7 @@ fun OrderScreen(
             ) { page ->
                 when (page) {
                     0 -> OrderListContent(
+                        listState = completedListState,
                         orders = uiState.completedOrders,
                         isLoading = uiState.isLoading,
                         isLoadingMore = uiState.isLoadingMore,
@@ -194,9 +205,11 @@ fun OrderScreen(
                         enableAutoLoadMore = page == pagerState.currentPage,
                         onLoadMore = { viewModel.loadMore() },
                         onRefresh = { viewModel.refreshOrders() },
-                        onOrderClick = onOrderClick
+                        onOrderClick = onOrderClick,
+                        onListScrollSave = { i, o -> viewModel.saveCompletedListScroll(i, o) }
                     )
                     1 -> OrderListContent(
+                        listState = cancelledListState,
                         orders = uiState.cancelledOrders,
                         isLoading = uiState.isLoading,
                         isLoadingMore = uiState.isLoadingMore,
@@ -204,7 +217,8 @@ fun OrderScreen(
                         enableAutoLoadMore = page == pagerState.currentPage,
                         onLoadMore = { viewModel.loadMore() },
                         onRefresh = { viewModel.refreshOrders() },
-                        onOrderClick = onOrderClick
+                        onOrderClick = onOrderClick,
+                        onListScrollSave = { i, o -> viewModel.saveCancelledListScroll(i, o) }
                     )
                 }
             }
@@ -881,6 +895,7 @@ private fun formatOrderCustomRange(startMillis: Long?, endMillis: Long?): String
 
 @Composable
 private fun OrderListContent(
+    listState: LazyListState,
     orders: List<Order>,
     isLoading: Boolean,
     isLoadingMore: Boolean,
@@ -889,7 +904,8 @@ private fun OrderListContent(
     enableAutoLoadMore: Boolean,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
-    onOrderClick: (String) -> Unit = {}
+    onOrderClick: (String) -> Unit = {},
+    onListScrollSave: (index: Int, offset: Int) -> Unit = { _, _ -> }
 ) {
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isLoading)
     // SwipeRefresh (Accompanist) ต้องมีลูกที่ร่วม nested scroll — Box เปล่าไม่ดึงรีเฟรชได้
@@ -935,7 +951,14 @@ private fun OrderListContent(
                 }
             }
             else -> {
-                val listState = rememberLazyListState()
+                LaunchedEffect(listState, enableAutoLoadMore) {
+                    if (!enableAutoLoadMore) return@LaunchedEffect
+                    snapshotFlow {
+                        listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+                    }
+                        .distinctUntilChanged()
+                        .collect { (index, offset) -> onListScrollSave(index, offset) }
+                }
 
                 // โหลดเพิ่มเมื่อเลื่อนใกล้ท้ายรายการเท่านั้น — ถ้ารายการสั้นมองเห็นหมดจอ (เลื่อนไม่ได้) จะไม่ยิง API
                 LaunchedEffect(listState, hasMore, isLoadingMore, enableAutoLoadMore) {
@@ -977,7 +1000,7 @@ private fun OrderListContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(orders) { order ->
+                    items(orders, key = { it.id }) { order ->
                         OrderItem(
                             order = order,
                             onClick = { 
