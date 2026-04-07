@@ -397,6 +397,7 @@
     <string name="product_view_cart">View Cart (%1$d)</string>
     <string name="product_cart">Cart</string>
     <string name="product_barcode_scanner">Scan Barcode</string>
+    <string name="product_detail_required_addon_error">Please select %1$s</string>
     <!-- Product Detail -->
     <string name="product_detail_title">Product Details</string>
     <string name="product_detail_add_to_cart">Add to Cart</string>

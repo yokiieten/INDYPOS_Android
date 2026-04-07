@@ -3,7 +3,9 @@ package com.indybrain.indypos_Android.presentation.products
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
@@ -21,8 +23,17 @@ import javax.inject.Inject
 class ProductDetailViewModel @Inject constructor(
     private val cartRepository: CartRepository,
     private val productRepository: ProductRepository,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    /** String in the language selected in Settings (not only system default). */
+    private fun getLocalizedString(resId: Int, vararg formatArgs: Any): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return if (formatArgs.isEmpty()) localizedContext.getString(resId)
+        else localizedContext.getString(resId, *formatArgs)
+    }
 
     companion object {
         const val ERROR_MAX_SELECTION_ZERO = "MAX_SELECTION_ZERO"
@@ -388,7 +399,7 @@ class ProductDetailViewModel @Inject constructor(
         // Non-required groups are intentionally allowed to be empty
         return if (missingGroups.isNotEmpty()) {
             val groupNames = missingGroups.joinToString(", ") { it.name }
-            "กรุณาเลือก ${groupNames}"
+            getLocalizedString(R.string.product_detail_required_addon_error, groupNames)
         } else {
             null
         }
