@@ -8,8 +8,10 @@ import com.indybrain.indypos_Android.domain.model.Order
 data class OrderUiState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val currentPage: Int = 1,
-    val hasMore: Boolean = true,
+    val completedPage: Int = 1,
+    val completedHasMore: Boolean = true,
+    val cancelledPage: Int = 1,
+    val cancelledHasMore: Boolean = true,
     val completedOrders: List<Order> = emptyList(),
     val cancelledOrders: List<Order> = emptyList(),
     val customStartDateMillis: Long? = null,

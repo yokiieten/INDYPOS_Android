@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.presentation.order
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.data.local.entity.OrderEntity
 import com.indybrain.indypos_Android.domain.model.Order
 import com.indybrain.indypos_Android.domain.model.OrderListQuery
 import com.indybrain.indypos_Android.domain.model.OrderStatus
@@ -62,28 +63,31 @@ class OrderViewModel @Inject constructor(
      */
     private fun observeOrders() {
         viewModelScope.launch {
-            orderRepository.getOrders().collect { result ->
-                result.onSuccess { entities ->
-                    val orders = entities.mapNotNull { entity ->
-                        try {
-                            val status = OrderStatus.fromCode(entity.statusRaw)
-                            Order(
-                                id = entity.id,
-                                orderId = entity.orderNumber ?: "",
-                                createdAt = entity.createdAt ?: entity.orderDate ?: Date(),
-                                cancelledAt = if (status == OrderStatus.CANCELLED) entity.updatedAt else null,
-                                status = status,
-                                totalAmount = entity.total ?: 0.0
-                            )
-                        } catch (_: Exception) {
-                            null
+            orderRepository.getOrderHistoryCache().collect { result ->
+                result.onSuccess { cache ->
+                    fun mapBucket(entities: List<OrderEntity>) =
+                        entities.mapNotNull { entity ->
+                            try {
+                                val status = OrderStatus.fromCode(entity.statusRaw)
+                                Order(
+                                    id = entity.id,
+                                    orderId = entity.orderNumber ?: "",
+                                    createdAt = entity.createdAt ?: entity.orderDate ?: Date(),
+                                    cancelledAt = if (status == OrderStatus.CANCELLED) entity.updatedAt else null,
+                                    status = status,
+                                    totalAmount = entity.total ?: 0.0
+                                )
+                            } catch (_: Exception) {
+                                null
+                            }
                         }
-                    }
+                    val completed = mapBucket(cache.completed.orders)
+                    val cancelled = mapBucket(cache.cancelled.orders)
                     _uiState.update { current ->
-                        when (current.selectedTab) {
-                            OrderTab.COMPLETED -> current.copy(completedOrders = orders)
-                            OrderTab.CANCELLED -> current.copy(cancelledOrders = orders)
-                        }
+                        current.copy(
+                            completedOrders = completed,
+                            cancelledOrders = cancelled
+                        )
                     }
                 }.onFailure { error ->
                     _uiState.update { current ->
@@ -97,42 +101,67 @@ class OrderViewModel @Inject constructor(
     }
 
     fun selectTab(tab: OrderTab) {
-        val previous = _uiState.value.selectedTab
-        if (previous == tab) return
+        val s = _uiState.value
+        if (s.selectedTab == tab) return
+        val needsInitialLoad = when (tab) {
+            OrderTab.COMPLETED -> s.completedOrders.isEmpty()
+            OrderTab.CANCELLED -> s.cancelledOrders.isEmpty()
+        }
         _uiState.update { it.copy(selectedTab = tab) }
-        refreshOrders()
+        if (needsInitialLoad) {
+            refreshOrders()
+        }
     }
 
     fun selectFilter(filter: OrderFilter) {
         _uiState.update { it.copy(filterOption = filter) }
+        orderRepository.clearOrderHistoryCaches()
         refreshOrders()
     }
 
     fun selectSort(sort: OrderSort) {
         _uiState.update { it.copy(sortOption = sort) }
+        orderRepository.clearOrderHistoryCaches()
         refreshOrders()
     }
 
     fun refreshOrders() {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    isLoadingMore = false,
-                    currentPage = 1,
-                    hasMore = true,
-                    errorMessage = null
-                )
+            val tabForThisRequest = _uiState.value.selectedTab
+            _uiState.update { s ->
+                when (tabForThisRequest) {
+                    OrderTab.COMPLETED -> s.copy(
+                        isLoading = true,
+                        isLoadingMore = false,
+                        completedPage = 1,
+                        completedHasMore = true,
+                        errorMessage = null
+                    )
+                    OrderTab.CANCELLED -> s.copy(
+                        isLoading = true,
+                        isLoadingMore = false,
+                        cancelledPage = 1,
+                        cancelledHasMore = true,
+                        errorMessage = null
+                    )
+                }
             }
-            val query = buildQuery(page = 1)
+            val query = buildQuery(page = 1, forTab = tabForThisRequest)
             orderRepository.refreshOrders(query).fold(
                 onSuccess = { info ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            currentPage = info.currentPage,
-                            hasMore = info.hasNext
-                        )
+                    _uiState.update { s ->
+                        when (tabForThisRequest) {
+                            OrderTab.COMPLETED -> s.copy(
+                                isLoading = false,
+                                completedPage = info.currentPage,
+                                completedHasMore = info.hasNext
+                            )
+                            OrderTab.CANCELLED -> s.copy(
+                                isLoading = false,
+                                cancelledPage = info.currentPage,
+                                cancelledHasMore = info.hasNext
+                            )
+                        }
                     }
                 },
                 onFailure = { e ->
@@ -153,21 +182,33 @@ class OrderViewModel @Inject constructor(
 
     fun loadMore() {
         val state = _uiState.value
-        if (state.isLoadingMore || !state.hasMore || state.isLoading) return
+        val (page, hasMore) = when (state.selectedTab) {
+            OrderTab.COMPLETED -> state.completedPage to state.completedHasMore
+            OrderTab.CANCELLED -> state.cancelledPage to state.cancelledHasMore
+        }
+        if (state.isLoadingMore || !hasMore || state.isLoading) return
 
         viewModelScope.launch {
+            val tabForThisRequest = state.selectedTab
             try {
-                val nextPage = state.currentPage + 1
+                val nextPage = page + 1
                 _uiState.update { it.copy(isLoadingMore = true) }
-                val query = buildQuery(page = nextPage)
+                val query = buildQuery(page = nextPage, forTab = tabForThisRequest)
                 orderRepository.loadMoreOrders(query).fold(
                     onSuccess = { info ->
-                        _uiState.update {
-                            it.copy(
-                                isLoadingMore = false,
-                                currentPage = info.currentPage,
-                                hasMore = info.hasNext
-                            )
+                        _uiState.update { s ->
+                            when (tabForThisRequest) {
+                                OrderTab.COMPLETED -> s.copy(
+                                    isLoadingMore = false,
+                                    completedPage = info.currentPage,
+                                    completedHasMore = info.hasNext
+                                )
+                                OrderTab.CANCELLED -> s.copy(
+                                    isLoadingMore = false,
+                                    cancelledPage = info.currentPage,
+                                    cancelledHasMore = info.hasNext
+                                )
+                            }
                         }
                     },
                     onFailure = { e ->
@@ -204,10 +245,11 @@ class OrderViewModel @Inject constructor(
                 customEndDateMillis = normalizedEnd
             )
         }
+        orderRepository.clearOrderHistoryCaches()
         refreshOrders()
     }
 
-    private fun buildQuery(page: Int): OrderListQuery {
+    private fun buildQuery(page: Int, forTab: OrderTab = _uiState.value.selectedTab): OrderListQuery {
         val s = _uiState.value
         val (startDate, endDate) = dateRangeStrings(
             filter = s.filterOption,
@@ -215,7 +257,7 @@ class OrderViewModel @Inject constructor(
             customEndMillis = s.customEndDateMillis
         )
         return OrderListQuery(
-            tab = when (s.selectedTab) {
+            tab = when (forTab) {
                 OrderTab.COMPLETED -> "completed"
                 OrderTab.CANCELLED -> "cancelled"
             },

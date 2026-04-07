@@ -8,8 +8,11 @@ import com.indybrain.indypos_Android.data.mapper.OrderMapper
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
 import com.indybrain.indypos_Android.data.remote.api.UpdateOrderStatusRequestDto
 import com.indybrain.indypos_Android.data.remote.dto.OrderDto
+import com.indybrain.indypos_Android.domain.model.OrderHistoryCache
 import com.indybrain.indypos_Android.domain.model.OrderListPageInfo
 import com.indybrain.indypos_Android.domain.model.OrderListQuery
+import com.indybrain.indypos_Android.domain.model.OrderStatus
+import com.indybrain.indypos_Android.domain.model.OrderTabBucket
 import com.indybrain.indypos_Android.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,35 +24,41 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 
-private data class CachedOrders(
-    val orders: List<OrderEntity> = emptyList(),
-    val itemsByOrderId: Map<String, List<OrderItemEntity>> = emptyMap()
-)
-
 /**
  * Order list + line items are kept in memory from API only ([OrderEntity] / [OrderItemEntity] are not Room tables).
+ * แยก cache ตามแท็บ completed / cancelled เพื่อสลับแท็บแล้วยังเลื่อนตำแหน่งเดิมได้ (ไม่ถูกทับด้วยหน้าแรกของอีกแท็บ).
  */
 class OrderRepositoryImpl @Inject constructor(
     private val ordersApi: OrdersApi,
     private val networkConnectivityChecker: NetworkConnectivityChecker
 ) : OrderRepository {
 
-    private val ordersCache = MutableStateFlow(CachedOrders())
-    private val listRequestGeneration = AtomicInteger(0)
+    private val ordersCache = MutableStateFlow(OrderHistoryCache())
+    private val completedRefreshGen = AtomicInteger(0)
+    private val cancelledRefreshGen = AtomicInteger(0)
 
-    override fun getOrders(): Flow<Result<List<OrderEntity>>> {
-        return ordersCache.map { Result.success(it.orders) }
+    private fun refreshGenFor(tab: String): AtomicInteger =
+        if (tab == "completed") completedRefreshGen else cancelledRefreshGen
+
+    override fun getOrderHistoryCache(): Flow<Result<OrderHistoryCache>> {
+        return ordersCache.map { Result.success(it) }
+    }
+
+    override fun clearOrderHistoryCaches() {
+        ordersCache.value = OrderHistoryCache()
     }
 
     override suspend fun getOrdersSync(): Result<List<OrderEntity>> {
-        return Result.success(ordersCache.value.orders)
+        val c = ordersCache.value
+        return Result.success(c.completed.orders + c.cancelled.orders)
     }
 
     override suspend fun refreshOrders(query: OrderListQuery): Result<OrderListPageInfo> {
         if (!networkConnectivityChecker.isConnected()) {
             return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
         }
-        val myGen = listRequestGeneration.incrementAndGet()
+        val genCounter = refreshGenFor(query.tab)
+        val myGen = genCounter.incrementAndGet()
         return try {
             val limit = query.limit.coerceIn(1, 100)
             val response = ordersApi.getOrders(
@@ -60,7 +69,7 @@ class OrderRepositoryImpl @Inject constructor(
                 startDate = query.startDate,
                 endDate = query.endDate
             )
-            if (myGen != listRequestGeneration.get()) {
+            if (myGen != genCounter.get()) {
                 return Result.failure(CancellationException())
             }
             if (response.status != 200) {
@@ -71,7 +80,14 @@ class OrderRepositoryImpl @Inject constructor(
             }
             val ordersDto = response.data?.orders ?: emptyList()
             val (orders, itemsMap) = buildFromPaginatedDtos(ordersDto)
-            ordersCache.value = CachedOrders(orders, itemsMap)
+            val bucket = OrderTabBucket(orders, itemsMap)
+            ordersCache.update { prev ->
+                when (query.tab) {
+                    "completed" -> prev.copy(completed = bucket)
+                    "cancelled" -> prev.copy(cancelled = bucket)
+                    else -> prev
+                }
+            }
             val p = response.data?.pagination
             val hasNext = p?.hasNext ?: (ordersDto.size >= limit)
             val currentPage = p?.currentPage ?: query.page
@@ -92,7 +108,8 @@ class OrderRepositoryImpl @Inject constructor(
         if (!networkConnectivityChecker.isConnected()) {
             return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
         }
-        val myGen = listRequestGeneration.get()
+        val genCounter = refreshGenFor(query.tab)
+        val myGen = genCounter.get()
         return try {
             val limit = query.limit.coerceIn(1, 100)
             val response = ordersApi.getOrders(
@@ -103,7 +120,7 @@ class OrderRepositoryImpl @Inject constructor(
                 startDate = query.startDate,
                 endDate = query.endDate
             )
-            if (myGen != listRequestGeneration.get()) {
+            if (myGen != genCounter.get()) {
                 return Result.failure(CancellationException())
             }
             if (response.status != 200) {
@@ -123,11 +140,27 @@ class OrderRepositoryImpl @Inject constructor(
                 )
             }
             val (newOrders, newItems) = buildFromPaginatedDtos(ordersDto)
+            if (myGen != genCounter.get()) {
+                return Result.failure(CancellationException())
+            }
             ordersCache.update { prev ->
-                val existingIds = prev.orders.map { it.id }.toSet()
-                val mergedOrders = prev.orders + newOrders.filter { it.id !in existingIds }
-                val mergedItems = prev.itemsByOrderId + newItems
-                CachedOrders(mergedOrders, mergedItems)
+                when (query.tab) {
+                    "completed" -> {
+                        val b = prev.completed
+                        val existingIds = b.orders.map { it.id }.toSet()
+                        val mergedOrders = b.orders + newOrders.filter { it.id !in existingIds }
+                        val mergedItems = b.itemsByOrderId + newItems
+                        prev.copy(completed = OrderTabBucket(mergedOrders, mergedItems))
+                    }
+                    "cancelled" -> {
+                        val b = prev.cancelled
+                        val existingIds = b.orders.map { it.id }.toSet()
+                        val mergedOrders = b.orders + newOrders.filter { it.id !in existingIds }
+                        val mergedItems = b.itemsByOrderId + newItems
+                        prev.copy(cancelled = OrderTabBucket(mergedOrders, mergedItems))
+                    }
+                    else -> prev
+                }
             }
             val hasNext = p?.hasNext ?: (ordersDto.size >= limit)
             Result.success(
@@ -159,14 +192,29 @@ class OrderRepositoryImpl @Inject constructor(
                 val order = OrderMapper.toEntity(dto)
                 val items = dto.items?.map { OrderMapper.toEntity(it, dto.id) }.orEmpty()
                 ordersCache.update { prev ->
-                    // แทนที่รายการที่ index เดิม — อย่าต่อท้ายลิสต์ เพราะจะทำให้ลำดับสลับจาก API / scroll หลุดเมื่อกลับจากหน้ารายละเอียด
-                    val newOrders = if (prev.orders.any { it.id == orderId }) {
-                        prev.orders.map { existing -> if (existing.id == orderId) order else existing }
-                    } else {
-                        prev.orders + order
+                    fun mergeInto(bucket: OrderTabBucket): OrderTabBucket {
+                        val newOrders = if (bucket.orders.any { it.id == orderId }) {
+                            bucket.orders.map { existing ->
+                                if (existing.id == orderId) order else existing
+                            }
+                        } else {
+                            bucket.orders + order
+                        }
+                        return bucket.copy(
+                            orders = newOrders,
+                            itemsByOrderId = bucket.itemsByOrderId + (orderId to items)
+                        )
                     }
-                    val itemsMap = prev.itemsByOrderId + (orderId to items)
-                    CachedOrders(newOrders, itemsMap)
+                    when {
+                        prev.completed.orders.any { it.id == orderId } ->
+                            prev.copy(completed = mergeInto(prev.completed))
+                        prev.cancelled.orders.any { it.id == orderId } ->
+                            prev.copy(cancelled = mergeInto(prev.cancelled))
+                        order.statusRaw == OrderStatus.CANCELLED.code ->
+                            prev.copy(cancelled = mergeInto(prev.cancelled))
+                        else ->
+                            prev.copy(completed = mergeInto(prev.completed))
+                    }
                 }
                 Result.success(Unit)
             } else {
@@ -216,7 +264,16 @@ class OrderRepositoryImpl @Inject constructor(
                         ?: emptyList()
                     itemsMap[oid] = items
                 }
-                ordersCache.value = CachedOrders(orders, itemsMap)
+                val completedOrders =
+                    orders.filter { it.statusRaw != OrderStatus.CANCELLED.code }
+                val cancelledOrders =
+                    orders.filter { it.statusRaw == OrderStatus.CANCELLED.code }
+                val compItems = completedOrders.associate { it.id to (itemsMap[it.id].orEmpty()) }
+                val cancItems = cancelledOrders.associate { it.id to (itemsMap[it.id].orEmpty()) }
+                ordersCache.value = OrderHistoryCache(
+                    completed = OrderTabBucket(completedOrders, compItems),
+                    cancelled = OrderTabBucket(cancelledOrders, cancItems)
+                )
             } else {
                 Log.e(
                     "OrderRepository",
@@ -228,7 +285,6 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Kept for interface compatibility; no local order store. Use API-backed home/analytics if needed. */
     override suspend fun getTodaySales(): Double = 0.0
 
     override suspend fun getTodayOrderCount(): Int = 0
@@ -238,11 +294,15 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun getTodayCostOfExpenses(): Double = 0.0
 
     override suspend fun getOrderById(orderId: String): OrderEntity? {
-        return ordersCache.value.orders.find { it.id == orderId }
+        val c = ordersCache.value
+        return c.completed.orders.find { it.id == orderId }
+            ?: c.cancelled.orders.find { it.id == orderId }
     }
 
     override suspend fun getOrderItems(orderId: String): List<OrderItemEntity> {
-        return ordersCache.value.itemsByOrderId[orderId].orEmpty()
+        val c = ordersCache.value
+        return c.completed.itemsByOrderId[orderId]
+            ?: c.cancelled.itemsByOrderId[orderId].orEmpty()
     }
 
     override suspend fun getTodayTopProduct(): Triple<String, Int, Double>? = null
@@ -252,25 +312,55 @@ class OrderRepositoryImpl @Inject constructor(
             if (!networkConnectivityChecker.isConnected()) {
                 return Result.failure(Exception("กรุณาเชื่อมต่ออินเทอร์เน็ต"))
             }
-            val existing = ordersCache.value.orders.find { it.id == orderId }
+            val existing = getOrderById(orderId)
                 ?: return Result.failure(Exception("ไม่พบออเดอร์"))
             val response = ordersApi.updateOrderStatus(orderId, UpdateOrderStatusRequestDto(status))
             if (response.status == 200 && response.data != null) {
                 val updated = OrderMapper.toEntity(response.data)
                 ordersCache.update { prev ->
-                    CachedOrders(
-                        orders = prev.orders.map { if (it.id == orderId) updated else it },
-                        itemsByOrderId = prev.itemsByOrderId
-                    )
+                    when {
+                        prev.completed.orders.any { it.id == orderId } ->
+                            prev.copy(
+                                completed = prev.completed.copy(
+                                    orders = prev.completed.orders.map {
+                                        if (it.id == orderId) updated else it
+                                    }
+                                )
+                            )
+                        prev.cancelled.orders.any { it.id == orderId } ->
+                            prev.copy(
+                                cancelled = prev.cancelled.copy(
+                                    orders = prev.cancelled.orders.map {
+                                        if (it.id == orderId) updated else it
+                                    }
+                                )
+                            )
+                        else -> prev
+                    }
                 }
                 Result.success(updated)
             } else if (response.status == 200) {
                 val patched = existing.copy(statusRaw = status, updatedAt = Date())
                 ordersCache.update { prev ->
-                    CachedOrders(
-                        orders = prev.orders.map { if (it.id == orderId) patched else it },
-                        itemsByOrderId = prev.itemsByOrderId
-                    )
+                    when {
+                        prev.completed.orders.any { it.id == orderId } ->
+                            prev.copy(
+                                completed = prev.completed.copy(
+                                    orders = prev.completed.orders.map {
+                                        if (it.id == orderId) patched else it
+                                    }
+                                )
+                            )
+                        prev.cancelled.orders.any { it.id == orderId } ->
+                            prev.copy(
+                                cancelled = prev.cancelled.copy(
+                                    orders = prev.cancelled.orders.map {
+                                        if (it.id == orderId) patched else it
+                                    }
+                                )
+                            )
+                        else -> prev
+                    }
                 }
                 Result.success(patched)
             } else {

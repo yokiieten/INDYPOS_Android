@@ -2,12 +2,16 @@ package com.indybrain.indypos_Android.domain.repository
 
 import com.indybrain.indypos_Android.data.local.entity.OrderEntity
 import com.indybrain.indypos_Android.data.local.entity.OrderItemEntity
+import com.indybrain.indypos_Android.domain.model.OrderHistoryCache
 import com.indybrain.indypos_Android.domain.model.OrderListPageInfo
 import com.indybrain.indypos_Android.domain.model.OrderListQuery
 import kotlinx.coroutines.flow.Flow
 
 interface OrderRepository {
-    fun getOrders(): Flow<Result<List<OrderEntity>>>
+    fun getOrderHistoryCache(): Flow<Result<OrderHistoryCache>>
+
+    /** ล้างรายการหน้า Order history ทั้งสองแท็บ (ใช้เมื่อเปลี่ยนฟิลเตอร์/เรียง) */
+    fun clearOrderHistoryCaches()
     /** One-shot get of all orders (e.g. after refresh to avoid race with order items). */
     suspend fun getOrdersSync(): Result<List<OrderEntity>>
 
