@@ -839,7 +839,7 @@ private fun SpecialRequestSection(
                 onValueChange = onSpecialRequestChange,
                 placeholder = {
                     Text(
-                        text = "เช่น ไม่ใส่ผัก",
+                        text = stringResource(id = R.string.product_detail_special_request_placeholder),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Regular,
                             size = FontSize.Medium
