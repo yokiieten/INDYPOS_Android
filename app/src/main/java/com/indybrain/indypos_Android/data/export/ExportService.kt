@@ -2,6 +2,7 @@ package com.indybrain.indypos_Android.data.export
 
 import android.content.Context
 import android.util.Log
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.remote.dto.*
 import com.opencsv.CSVWriter
 import kotlinx.coroutines.Dispatchers
@@ -100,6 +101,13 @@ class ExportService @Inject constructor(
         return SimpleDateFormat("dd/MM/yyyy HH:mm:ss", displayLocale).apply {
             timeZone = deviceTimeZone()
         }.format(Date.from(instant))
+    }
+
+    /** Stock report export: หมด ≤0, ใกล้หมด 1…5, พอเพียง >5 (localized). */
+    private fun stockReportStatusLabel(currentStock: Int): String = when {
+        currentStock <= 0 -> context.getString(R.string.export_stock_status_out)
+        currentStock <= 5 -> context.getString(R.string.export_stock_status_low)
+        else -> context.getString(R.string.export_stock_status_sufficient)
     }
 
     // ──────────────────────── Products ────────────────────────
@@ -397,7 +405,7 @@ class ExportService @Inject constructor(
             val headers = arrayOf("Product Name", "Product Code", "Current Stock", "Status", "Category")
             val rows = stockProducts.map { product ->
                 val currentStock = product.stockQuantity ?: 0
-                val status = if (currentStock <= 0) "หมด" else "พอเพียง"
+                val status = stockReportStatusLabel(currentStock)
                 val categoryName = (product.categoryId?.let { categoryMap[it]?.name }
                     ?: product.category?.name) ?: ""
                 arrayOf(

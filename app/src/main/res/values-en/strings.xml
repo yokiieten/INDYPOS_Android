@@ -336,6 +336,9 @@
     <string name="export_data_type_orders">Order History</string>
     <string name="export_data_type_sales_report">Sales Report</string>
     <string name="export_data_type_stock_report">Stock Report</string>
+    <string name="export_stock_status_out">Out of stock</string>
+    <string name="export_stock_status_low">Low stock</string>
+    <string name="export_stock_status_sufficient">Sufficient</string>
     
     <!-- Export Formats -->
     <string name="export_format_excel">Excel (.xlsx)</string>

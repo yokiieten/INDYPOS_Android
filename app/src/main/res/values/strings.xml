@@ -342,6 +342,9 @@
     <string name="export_data_type_orders">ประวัติการสั่งซื้อ</string>
     <string name="export_data_type_sales_report">รายงานยอดขาย</string>
     <string name="export_data_type_stock_report">รายงานสต็อก</string>
+    <string name="export_stock_status_out">หมด</string>
+    <string name="export_stock_status_low">ใกล้หมด</string>
+    <string name="export_stock_status_sufficient">พอเพียง</string>
     
     <!-- Export Formats -->
     <string name="export_format_excel">Excel (.xlsx)</string>
