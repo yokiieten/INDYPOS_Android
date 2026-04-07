@@ -23,6 +23,13 @@ import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
+import java.time.DateTimeException
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,22 +46,60 @@ class ExportService @Inject constructor(
 ) {
     
     private val fileNameTimestampFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
-    private val apiDateFormats = listOf(
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US),
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") },
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
-    )
+    private val spaceDateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US)
+
+    /**
+     * Timestamps in exported cell values and file names use the **device default timezone**
+     * ([TimeZone.getDefault] / [ZoneId.systemDefault]), not a fixed zone such as `Asia/Bangkok`.
+     */
+    private fun deviceTimeZone(): TimeZone = TimeZone.getDefault()
+
+    /** `yyyyMMdd_HHmmss` in the device zone (refreshed each call if the user changes zone). */
+    private fun formatExportFileNameTimestamp(date: Date = Date()): String {
+        fileNameTimestampFormat.timeZone = deviceTimeZone()
+        return fileNameTimestampFormat.format(date)
+    }
+
+    /**
+     * Parses API date strings into an instant. Supports ISO-8601 with/without offset,
+     * fractional seconds, minute-only precision (no :ss), date-only, and "yyyy-MM-dd HH:mm:ss".
+     * Strings without an offset are interpreted as **local wall time on this device**
+     * ([ZoneId.systemDefault]), not UTC or Thailand.
+     */
+    private fun parseApiDateToInstant(raw: String): Instant? {
+        val s = raw.trim()
+        if (s.isEmpty()) return null
+        try {
+            return OffsetDateTime.parse(s, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant()
+        } catch (_: DateTimeException) { /* try next */ }
+        try {
+            return LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+        } catch (_: DateTimeException) { /* try next */ }
+        try {
+            return LocalDateTime.parse(s, spaceDateTimeFormatter)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+        } catch (_: DateTimeException) { /* try next */ }
+        try {
+            return LocalDate.parse(s, DateTimeFormatter.ISO_LOCAL_DATE)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+        } catch (_: DateTimeException) { /* try next */ }
+        return null
+    }
 
     private fun formatDate(isoDate: String): String {
-        for (fmt in apiDateFormats) {
-            try {
-                val parsed = fmt.parse(isoDate) ?: continue
-                val isThai = Locale.getDefault().language == "th"
-                val displayLocale = if (isThai) Locale("th", "TH") else Locale.US
-                return SimpleDateFormat("dd/MM/yyyy HH:mm:ss", displayLocale).format(parsed)
-            } catch (_: Exception) { /* try next */ }
-        }
-        return isoDate
+        val trimmed = isoDate.trim()
+        if (trimmed.isEmpty()) return ""
+        val instant = parseApiDateToInstant(trimmed) ?: return isoDate
+        val isThai = Locale.getDefault().language == "th"
+        val displayLocale = if (isThai) Locale("th", "TH") else Locale.US
+        return SimpleDateFormat("dd/MM/yyyy HH:mm:ss", displayLocale).apply {
+            timeZone = deviceTimeZone()
+        }.format(Date.from(instant))
     }
 
     // ──────────────────────── Products ────────────────────────
@@ -271,7 +316,7 @@ class ExportService @Inject constructor(
         val averageOrder = if (orderCount > 0) totalRevenue / orderCount else 0.0
         val productSales = buildProductSalesFromDto(orders)
         val paymentMethods = buildPaymentMethodsFromDto(orders)
-        val timestamp = fileNameTimestampFormat.format(Date())
+        val timestamp = formatExportFileNameTimestamp()
         val file = File(context.cacheDir, "data_type_sales_report_$timestamp.csv")
 
         return try {
@@ -366,7 +411,7 @@ class ExportService @Inject constructor(
 
             when (format) {
                 ExportFormat.CSV -> {
-                    val timestamp = fileNameTimestampFormat.format(Date())
+                    val timestamp = formatExportFileNameTimestamp()
                     val file = File(context.cacheDir, "data_type_stock_report_$timestamp.csv")
                     FileOutputStream(file).use { out ->
                         out.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
@@ -506,7 +551,7 @@ class ExportService @Inject constructor(
     private fun createFile(fileName: String, format: ExportFormat, headers: Array<String>, rows: List<Array<String>>): File? {
         return try {
             val extension = if (format == ExportFormat.CSV) "csv" else "xlsx"
-            val timestamp = fileNameTimestampFormat.format(Date())
+            val timestamp = formatExportFileNameTimestamp()
             val file = File(context.cacheDir, "INDYPOS_${fileName}_$timestamp.$extension")
             when (format) {
                 ExportFormat.CSV -> {
