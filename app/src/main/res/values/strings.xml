@@ -916,6 +916,7 @@
     <string name="settings_open_cash_drawer">เปิดลิ้นชักเงิน</string>
     <string name="settings_paper_size">ขนาดกระดาษ</string>
     <string name="settings_footer">ส่วนท้าย</string>
+    <string name="settings_footer_placeholder">กรอกข้อความ...</string>
     <string name="settings_tax_identification_number">เลขประจำตัวผู้เสียภาษี</string>
     <string name="settings_tin_description">แสดงเลขประจำตัวผู้เสียภาษีบนใบเสร็จเพื่อการปฏิบัติตามกฎหมายภาษี</string>
     <string name="settings_tin_placeholder">กรอกเลขประจำตัวผู้เสียภาษี 13 หลัก</string>

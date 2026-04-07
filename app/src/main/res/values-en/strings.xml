@@ -888,6 +888,7 @@
     <string name="settings_open_cash_drawer">Open cash drawer</string>
     <string name="settings_paper_size">Paper Size</string>
     <string name="settings_footer">Footer</string>
+    <string name="settings_footer_placeholder">Enter text...</string>
     <string name="settings_tax_identification_number">Tax Identification Number</string>
     <string name="settings_tin_description">Display TIN on receipt for tax compliance</string>
     <string name="settings_tin_placeholder">Enter 13-digit TIN</string>

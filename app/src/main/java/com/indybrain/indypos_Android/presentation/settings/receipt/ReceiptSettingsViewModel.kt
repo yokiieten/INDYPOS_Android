@@ -112,7 +112,10 @@ class ReceiptSettingsViewModel @Inject constructor(
                                 shopLogoBitmap = tempState.shopLogoBitmap,
                                 promptPayType = tempState.promptPayType,
                                 promptPayIdentifier = tempState.promptPayIdentifier,
-                                tinNumber = tempState.tinNumber
+                                tinNumber = tempState.tinNumber,
+                                tinNumberError = null,
+                                hasChanges = false,
+                                canSave = false
                             )
                         }
                     } else {
@@ -264,9 +267,7 @@ class ReceiptSettingsViewModel @Inject constructor(
         
         val tin = tempState.tinNumber
         if (tin.isEmpty()) {
-            tempState = tempState.copy(
-                tinNumberError = getLocalizedString(R.string.settings_tin_required)
-            )
+            tempState = tempState.copy(tinNumberError = null)
             return
         }
         
@@ -281,6 +282,7 @@ class ReceiptSettingsViewModel @Inject constructor(
     
     private fun checkForChanges() {
         val hasChanges = hasDraftChangesComparedToPersisted()
+        val canSave = hasChanges && isValidForSaving()
         
         _uiState.update { 
             it.copy(
@@ -297,7 +299,8 @@ class ReceiptSettingsViewModel @Inject constructor(
                 promptPayIdentifierError = tempState.promptPayIdentifierError,
                 tinNumber = tempState.tinNumber,
                 tinNumberError = tempState.tinNumberError,
-                hasChanges = hasChanges
+                hasChanges = hasChanges,
+                canSave = canSave
             )
         }
     }
@@ -361,7 +364,7 @@ class ReceiptSettingsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSaving = false,
-                            successMessage = "บันทึกการตั้งค่าสำเร็จ",
+                            successMessage = getLocalizedString(R.string.settings_save_success),
                             printShopLogo = settings.printShopLogo,
                             printAfterFinish = settings.printAfterFinish,
                             showQRCode = settings.showQRCode,
@@ -373,7 +376,8 @@ class ReceiptSettingsViewModel @Inject constructor(
                             promptPayType = PromptPayType.fromString(settings.promptPayType),
                             promptPayIdentifier = settings.promptPayIdentifier ?: "",
                             tinNumber = sanitizeTinInput(settings.tinNumber ?: ""),
-                            hasChanges = false
+                            hasChanges = false,
+                            canSave = false
                         )
                     }
                     
@@ -489,7 +493,8 @@ class ReceiptSettingsViewModel @Inject constructor(
                         promptPayType = tempState.promptPayType,
                         promptPayIdentifier = tempState.promptPayIdentifier,
                         tinNumber = tempState.tinNumber,
-                        hasChanges = false
+                        hasChanges = false,
+                        canSave = false
                     )
                 }
             }

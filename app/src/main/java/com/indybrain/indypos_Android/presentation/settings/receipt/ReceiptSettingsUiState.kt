@@ -42,6 +42,8 @@ data class ReceiptSettingsUiState(
     val errorMessage: String? = null,
     
     // Has changes flag
-    val hasChanges: Boolean = false
+    val hasChanges: Boolean = false,
+    /** True when there are draft changes and validation allows save. */
+    val canSave: Boolean = false
 )
 

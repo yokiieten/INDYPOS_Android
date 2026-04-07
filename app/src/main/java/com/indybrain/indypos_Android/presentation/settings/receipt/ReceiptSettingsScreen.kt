@@ -239,7 +239,7 @@ fun ReceiptSettingsScreen(
                 TextFieldSettingItem(
                     title = stringResource(R.string.settings_footer),
                     value = uiState.footer,
-                    placeholder = "กรอกข้อความ...",
+                    placeholder = stringResource(R.string.settings_footer_placeholder),
                     onValueChange = { viewModel.updateFooter(it) }
                 )
                 
@@ -267,14 +267,14 @@ fun ReceiptSettingsScreen(
             // Save Button
             Button(
                 onClick = { viewModel.saveSettings() },
-                enabled = uiState.hasChanges && !uiState.isSaving,
+                enabled = uiState.canSave && !uiState.isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp)
                     .height(56.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (uiState.hasChanges && !uiState.isSaving) {
+                    containerColor = if (uiState.canSave && !uiState.isSaving) {
                         PrimaryButton
                     } else {
                         Color(0xFFD1D1D6)
@@ -304,7 +304,7 @@ fun ReceiptSettingsScreen(
                             style = AppFontStyle.SemiBold,
                             size = FontSize.Large
                         ),
-                        color = if (uiState.hasChanges) Color.White else Color(0xFF8E8E93)
+                        color = if (uiState.canSave) Color.White else Color(0xFF8E8E93)
                     )
                 }
             }
