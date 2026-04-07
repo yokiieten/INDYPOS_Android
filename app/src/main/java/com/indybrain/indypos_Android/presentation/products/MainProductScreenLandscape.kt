@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -81,6 +82,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -110,6 +112,8 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 /**
  * Landscape layout for MainProductScreen with split screen:
@@ -152,6 +156,7 @@ fun MainProductScreenLandscape(
     
     // Snackbar for stock error messages
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     
     // Show stock error message
     LaunchedEffect(uiState.stockErrorMessage) {
@@ -392,7 +397,14 @@ fun MainProductScreenLandscape(
                     // Products grid
                     val hasProducts = uiState.allProducts.isNotEmpty()
                     
-                    when {
+                    SwipeRefresh(
+                        state = swipeRefreshState,
+                        onRefresh = { viewModel.loadProducts() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        when {
                         uiState.isLoading && uiState.errorMessage.isNullOrBlank() -> {
                             // Show skeleton loading when loading (regardless of whether we have old data)
                             LazyColumn(
@@ -459,11 +471,17 @@ fun MainProductScreenLandscape(
                             }
                         }
                         !hasProducts && !uiState.isLoading -> {
-                            // Show empty state only when not loading and no products
-                            EmptyProductsView(
-                                modifier = Modifier.fillMaxSize(),
-                                onClick = onProductManagementClick
-                            )
+                            val minViewport = LocalConfiguration.current.screenHeightDp.dp
+                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                item {
+                                    EmptyProductsView(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = minViewport),
+                                        onClick = onProductManagementClick
+                                    )
+                                }
+                            }
                         }
                         else -> {
                             val productsByCategoryId = uiState.allProducts
@@ -606,6 +624,7 @@ fun MainProductScreenLandscape(
                                     }
                                 }
                             }
+                        }
                         }
                     }
                     

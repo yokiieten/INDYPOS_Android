@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -95,6 +96,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -106,6 +108,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indybrain.indypos_Android.R
@@ -186,6 +190,7 @@ fun MainProductScreen(
     
     // Snackbar for stock error messages
     val snackbarHostState = remember { SnackbarHostState() }
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     
     // Show stock error message
     LaunchedEffect(uiState.stockErrorMessage) {
@@ -437,7 +442,14 @@ fun MainProductScreen(
                 // Use allProducts instead of products to avoid flickering
                 val hasProducts = uiState.allProducts.isNotEmpty()
                 
-                when {
+                SwipeRefresh(
+                    state = swipeRefreshState,
+                    onRefresh = { viewModel.loadProducts() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    when {
                     uiState.isLoading && uiState.errorMessage.isNullOrBlank() -> {
                         // Show skeleton loading when loading (regardless of whether we have old data)
                         val columnsCount = getProductGridColumns()
@@ -505,11 +517,18 @@ fun MainProductScreen(
                         }
                     }
                     !hasProducts && !uiState.isLoading -> {
-                        // Show empty state only when not loading and no products
-                        EmptyProductsView(
-                            modifier = Modifier.fillMaxSize(),
-                            onClick = onProductManagementClick
-                        )
+                        // LazyColumn + tall item so SwipeRefresh nested scroll works on empty state
+                        val minViewport = LocalConfiguration.current.screenHeightDp.dp
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            item {
+                                EmptyProductsView(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = minViewport),
+                                    onClick = onProductManagementClick
+                                )
+                            }
+                        }
                     }
                     else -> {
                         // Show products when we have products
@@ -696,6 +715,7 @@ fun MainProductScreen(
                         }
                     }
                     }
+                }
                 }
             }
             
