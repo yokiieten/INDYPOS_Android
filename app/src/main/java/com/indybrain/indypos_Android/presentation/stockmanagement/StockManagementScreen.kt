@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -36,9 +36,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,8 +49,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
@@ -62,7 +62,6 @@ import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.GreenComplete
-import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import com.indybrain.indypos_Android.ui.theme.RedFailure
@@ -81,7 +80,11 @@ fun StockManagementScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    
+    val shouldShowInitialLoading = uiState.isLoading && !uiState.isInitialLoadComplete
+    val swipeRefreshState = rememberSwipeRefreshState(
+        isRefreshing = uiState.isLoading && uiState.isInitialLoadComplete
+    )
+
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
@@ -117,37 +120,59 @@ fun StockManagementScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (uiState.isLoading && uiState.products.isEmpty()) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = PrimaryButton
-                )
-            } else if (uiState.products.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.stock_management_empty_products),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Regular,
-                            size = FontSize.Medium
-                        ),
-                        color = SecondaryText
+            when {
+                shouldShowInitialLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = PrimaryButton
                     )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(uiState.products) { product ->
-                        StockProductItem(
-                            product = product,
-                            onClick = { viewModel.showStockUpdateDialog(product) },
-                            context = context
-                        )
+                else -> {
+                    SwipeRefresh(
+                        state = swipeRefreshState,
+                        onRefresh = { viewModel.loadProducts() }
+                    ) {
+                        when {
+                            uiState.products.isEmpty() -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(16.dp)
+                                ) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(min = 480.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = stringResource(id = R.string.stock_management_empty_products),
+                                                style = FontUtils.mainFont(
+                                                    style = AppFontStyle.Regular,
+                                                    size = FontSize.Medium
+                                                ),
+                                                color = SecondaryText
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            else -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(uiState.products) { product ->
+                                        StockProductItem(
+                                            product = product,
+                                            onClick = { viewModel.showStockUpdateDialog(product) },
+                                            context = context
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

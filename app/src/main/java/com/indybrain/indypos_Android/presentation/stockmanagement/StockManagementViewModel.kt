@@ -51,58 +51,41 @@ class StockManagementViewModel @Inject constructor(
     }
     
     /**
-     * Load stock products from API (paginated until exhausted). Offline shows no-internet dialog state via [loadProducts].
+     * Load stock products via single GET `my-products-all` only (no full sync, no paginated products API).
      */
     fun loadProducts() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             if (!networkConnectivityChecker.isConnected()) {
                 _uiState.update {
-                    it.copy(isLoading = false, showNoInternetDialog = true)
+                    it.copy(
+                        isLoading = false,
+                        showNoInternetDialog = true,
+                        isInitialLoadComplete = true
+                    )
                 }
                 return@launch
             }
-            productRepository.syncAllProductData().onFailure { error ->
+            val result = productRepository.getMyProductsAllFromApi(categoryId = null)
+            result.onFailure { error ->
                 _uiState.update { current ->
                     current.copy(
                         isLoading = false,
+                        isInitialLoadComplete = true,
                         errorMessage = error.message
                             ?: getLocalizedString(R.string.stock_management_load_failed_generic)
                     )
                 }
                 return@launch
             }
-            val accumulated = mutableListOf<ProductEntity>()
-            var page = 1
-            val pageSize = 100
-            while (true) {
-                val result = productRepository.getProductsPaginated(
-                    page = page,
-                    limit = pageSize,
-                    search = null,
-                    categoryId = null
-                )
-                val data = result.getOrElse { err ->
-                    _uiState.update { current ->
-                        current.copy(
-                            isLoading = false,
-                            errorMessage = err.message
-                                ?: getLocalizedString(R.string.stock_management_load_failed_generic)
-                        )
-                    }
-                    return@launch
-                }
-                accumulated.addAll(data.products)
-                if (!data.hasNext) break
-                page++
-            }
-            val stockEnabledProducts = accumulated
+            val stockEnabledProducts = result.getOrNull().orEmpty()
                 .filter { it.isStockEnabled == true }
                 .sortedBy { it.name }
             _uiState.update { current ->
                 current.copy(
                     products = stockEnabledProducts,
-                    isLoading = false
+                    isLoading = false,
+                    isInitialLoadComplete = true
                 )
             }
         }

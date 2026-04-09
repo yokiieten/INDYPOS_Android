@@ -7,6 +7,8 @@ import com.indybrain.indypos_Android.data.local.entity.ProductEntity
  */
 data class StockManagementUiState(
     val isLoading: Boolean = false,
+    /** True after the first product load attempt finishes (success, error, or offline). */
+    val isInitialLoadComplete: Boolean = false,
     val products: List<ProductEntity> = emptyList(),
     val errorMessage: String? = null,
     val showStockUpdateDialog: Boolean = false,

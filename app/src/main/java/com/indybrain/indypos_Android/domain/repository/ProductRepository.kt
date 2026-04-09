@@ -148,6 +148,11 @@ interface ProductRepository {
     ): Result<ProductsPaginatedResult>
 
     /**
+     * Fetch all products in one request (`protected/indypos/my-products-all`). For Stock Management only.
+     */
+    suspend fun getMyProductsAllFromApi(categoryId: String? = null): Result<List<ProductEntity>>
+
+    /**
      * Search products via API (name, product_code, sku_code when [query] non-blank).
      * Blank [query] requests the default ordering (e.g. recent sales / popularity) without keyword filter.
      */

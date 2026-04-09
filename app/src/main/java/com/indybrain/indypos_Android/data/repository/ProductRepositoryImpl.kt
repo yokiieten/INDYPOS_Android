@@ -859,6 +859,31 @@ class ProductRepositoryImpl @Inject constructor(
         return flowOf(emptyList())
     }
 
+    override suspend fun getMyProductsAllFromApi(categoryId: String?): Result<List<ProductEntity>> {
+        if (!networkConnectivityChecker.isConnected()) {
+            return Result.failure(Exception(context.getString(R.string.logout_no_internet_title)))
+        }
+        return try {
+            val response = productsApi.getMyProductsAll(
+                categoryId = categoryId?.takeIf { it.isNotBlank() }
+            )
+            if (response.status != 200) {
+                return Result.failure(Exception(response.message ?: "Failed to fetch products"))
+            }
+            val products = (response.data ?: emptyList()).map { ProductMapper.toEntity(it) }
+            Result.success(products)
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                401 -> "Unauthorized - กรุณาเข้าสู่ระบบใหม่"
+                500 -> "Server error - กรุณาลองใหม่อีกครั้ง"
+                else -> e.message() ?: "เกิดข้อผิดพลาดในการดึงข้อมูล"
+            }
+            Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "เกิดข้อผิดพลาดที่ไม่คาดคิด"))
+        }
+    }
+
     override suspend fun getProductsPaginated(
         page: Int,
         limit: Int,
