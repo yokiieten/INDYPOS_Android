@@ -896,6 +896,12 @@
     <string name="stock_management_cancel_button">ยกเลิก</string>
     <string name="stock_management_stock_label">สต็อก: %1$s ชิ้น</string>
     <string name="stock_management_sync_pending">รอซิงค์</string>
+    <string name="stock_quantity_must_not_be_zero">กรุณากรอกจำนวนที่ไม่ใช่ 0</string>
+    <string name="stock_management_quantity_required">กรุณากรอกจำนวนที่ต้องการอัปเดต</string>
+    <string name="stock_management_quantity_invalid_number">กรุณากรอกจำนวนเป็นตัวเลข</string>
+    <string name="stock_management_load_failed_generic">เกิดข้อผิดพลาดในการโหลดข้อมูล</string>
+    <string name="stock_management_update_failed_generic">เกิดข้อผิดพลาดในการอัปเดตสต็อก</string>
+    <string name="stock_management_success_detail">%1$s: %2$s → %3$s %4$s</string>
     <string name="stock_unit_piece">ชิ้น</string>
     
     <!-- Order Summary Screen -->

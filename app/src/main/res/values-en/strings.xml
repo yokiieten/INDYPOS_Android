@@ -868,6 +868,12 @@
     <string name="stock_management_cancel_button">Cancel</string>
     <string name="stock_management_stock_label">Stock: %1$s pcs</string>
     <string name="stock_management_sync_pending">Pending sync</string>
+    <string name="stock_quantity_must_not_be_zero">Please enter a quantity that is not 0.</string>
+    <string name="stock_management_quantity_required">Please enter the quantity to update</string>
+    <string name="stock_management_quantity_invalid_number">Please enter a valid number</string>
+    <string name="stock_management_load_failed_generic">Failed to load data</string>
+    <string name="stock_management_update_failed_generic">Failed to update stock</string>
+    <string name="stock_management_success_detail">%1$s: %2$s → %3$s %4$s</string>
     <string name="stock_unit_piece">pcs</string>
     
     <!-- Order Summary Screen -->

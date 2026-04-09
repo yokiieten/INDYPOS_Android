@@ -517,7 +517,7 @@ private fun StockUpdateDialog(
                         strokeWidth = 2.dp
                     )
                     Text(
-                        text = "อัปเดต",
+                        text = stringResource(id = R.string.stock_management_update_button),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium

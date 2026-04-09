@@ -30,7 +30,19 @@ class StockManagementViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val languageLocalDataSource: LanguageLocalDataSource
 ) : ViewModel() {
-    
+
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
+
+    private fun getLocalizedString(resId: Int, vararg formatArgs: Any): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId, *formatArgs)
+    }
+
     private val _uiState = MutableStateFlow(StockManagementUiState())
     val uiState: StateFlow<StockManagementUiState> = _uiState.asStateFlow()
     
@@ -54,7 +66,8 @@ class StockManagementViewModel @Inject constructor(
                 _uiState.update { current ->
                     current.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                        errorMessage = error.message
+                            ?: getLocalizedString(R.string.stock_management_load_failed_generic)
                     )
                 }
                 return@launch
@@ -73,7 +86,8 @@ class StockManagementViewModel @Inject constructor(
                     _uiState.update { current ->
                         current.copy(
                             isLoading = false,
-                            errorMessage = err.message ?: "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+                            errorMessage = err.message
+                                ?: getLocalizedString(R.string.stock_management_load_failed_generic)
                         )
                     }
                     return@launch
@@ -141,18 +155,24 @@ class StockManagementViewModel @Inject constructor(
         val quantityText = _uiState.value.stockUpdateQuantity.trim()
         
         if (quantityText.isEmpty()) {
-            _uiState.update { it.copy(errorMessage = "กรุณากรอกจำนวนที่ต้องการอัปเดต") }
+            _uiState.update {
+                it.copy(errorMessage = getLocalizedString(R.string.stock_management_quantity_required))
+            }
             return
         }
-        
+
         val quantityChange = quantityText.toIntOrNull()
         if (quantityChange == null) {
-            _uiState.update { it.copy(errorMessage = "กรุณากรอกจำนวนเป็นตัวเลข") }
+            _uiState.update {
+                it.copy(errorMessage = getLocalizedString(R.string.stock_management_quantity_invalid_number))
+            }
             return
         }
-        
+
         if (quantityChange == 0) {
-            _uiState.update { it.copy(errorMessage = "กรุณากรอกจำนวนที่ไม่ใช่ 0") }
+            _uiState.update {
+                it.copy(errorMessage = getLocalizedString(R.string.stock_quantity_must_not_be_zero))
+            }
             return
         }
         
@@ -172,17 +192,21 @@ class StockManagementViewModel @Inject constructor(
             val result = productRepository.updateProductStock(product.id, quantityChange)
             
             result.onSuccess {
-                // Get localized context with current locale
-                val localeCode = languageLocalDataSource.getLanguageLocale()
-                val localizedContext = LocaleHelper.setLocale(context, localeCode)
-                val unitText = localizedContext.getString(R.string.stock_unit_piece)
+                val unitText = getLocalizedString(R.string.stock_unit_piece)
+                val nf = NumberFormat.getNumberInstance(Locale.US)
                 _uiState.update {
                     it.copy(
                         isUpdatingStock = false,
                         showStockUpdateDialog = false,
                         selectedProduct = null,
                         stockUpdateQuantity = "",
-                        updateSuccessMessage = "${product.name}: ${NumberFormat.getNumberInstance(Locale.US).format(oldQuantity)} → ${NumberFormat.getNumberInstance(Locale.US).format(newQuantity)} $unitText"
+                        updateSuccessMessage = getLocalizedString(
+                            R.string.stock_management_success_detail,
+                            product.name,
+                            nf.format(oldQuantity),
+                            nf.format(newQuantity),
+                            unitText
+                        )
                     )
                 }
                 // Reload products to reflect changes
@@ -191,7 +215,8 @@ class StockManagementViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isUpdatingStock = false,
-                        errorMessage = error.message ?: "เกิดข้อผิดพลาดในการอัปเดตสต็อก"
+                        errorMessage = error.message
+                            ?: getLocalizedString(R.string.stock_management_update_failed_generic)
                     )
                 }
             }
