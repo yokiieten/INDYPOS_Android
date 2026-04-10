@@ -33,6 +33,11 @@ interface AuthRepository {
     suspend fun logout(): Result<Unit>
     
     /**
+     * Request a one-time token and build the back-office auto-login URL (browser).
+     */
+    suspend fun requestWebLoginMagicLinkUrl(): Result<String>
+    
+    /**
      * Check if user is logged in
      */
     suspend fun isLoggedIn(): Boolean

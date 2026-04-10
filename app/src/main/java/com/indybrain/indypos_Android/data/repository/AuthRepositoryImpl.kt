@@ -3,6 +3,7 @@ package com.indybrain.indypos_Android.data.repository
 import android.content.Context
 import android.net.Uri
 import com.google.gson.Gson
+import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.device.DeviceInfoProvider
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.core.utils.ImageUtils
@@ -259,6 +260,35 @@ class AuthRepositoryImpl @Inject constructor(
                 if (BuildConfig.DEBUG) android.util.Log.e("AuthRepository", "Error clearing Room database: ${dbError.message}", dbError)
             }
             Result.failure(IllegalStateException("เกิดข้อผิดพลาดในการออกจากระบบ: ${e.message}", e))
+        }
+    }
+    
+    override suspend fun requestWebLoginMagicLinkUrl(): Result<String> {
+        return try {
+            val response = authApi.requestWebLoginToken()
+            val token = response.data?.token?.takeIf { it.isNotBlank() }
+            val statusOk = response.status == null || response.status == 200
+            if (token != null && statusOk) {
+                Result.success(AppConfig.buildBackofficeAutoLoginUrl(token))
+            } else {
+                val msg = response.error?.takeIf { it.isNotBlank() }
+                    ?: response.message?.takeIf { it.isNotBlank() }
+                    ?: "ไม่สามารถสร้างลิงก์เข้า Back office ได้"
+                Result.failure(IllegalStateException(msg))
+            }
+        } catch (e: HttpException) {
+            val errorMessage = parseErrorMessage(e.response()?.errorBody())
+            Result.failure(IllegalStateException(errorMessage, e))
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
+                e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
+                e.message?.contains("No address associated with hostname", ignoreCase = true) == true -> "ไม่พบเซิร์ฟเวอร์ กรุณาตรวจสอบการเชื่อมต่อ"
+                e.message?.contains("Connection refused", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้"
+                e.message?.contains("Network is unreachable", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่ออินเทอร์เน็ตได้"
+                else -> e.message ?: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+            }
+            Result.failure(IllegalStateException(errorMessage, e))
         }
     }
     

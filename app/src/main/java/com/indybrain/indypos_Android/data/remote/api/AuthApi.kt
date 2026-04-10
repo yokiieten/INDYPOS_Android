@@ -43,6 +43,12 @@ interface AuthApi {
     suspend fun logout(@Body request: LogoutRequestDto): LogoutResponseDto
     
     /**
+     * One-time web back-office login token (Authorization: Bearer required; no body).
+     */
+    @POST("protected/auth/web-login-token")
+    suspend fun requestWebLoginToken(): WebLoginTokenResponseDto
+    
+    /**
      * Change password endpoint
      */
     @POST("protected/auth/change-password")
@@ -121,6 +127,26 @@ data class ResumeAuthRequestDto(
     val version: String,
     @SerializedName("app_version")
     val appVersion: String
+)
+
+/**
+ * Response DTO for web login token (magic link)
+ */
+data class WebLoginTokenResponseDto(
+    val status: Int? = null,
+    val message: String? = null,
+    val data: WebLoginTokenDataDto? = null,
+    val error: String? = null,
+    val timestamp: String? = null
+)
+
+/**
+ * Data payload for web login token
+ */
+data class WebLoginTokenDataDto(
+    val token: String? = null,
+    @SerializedName("expires_at")
+    val expiresAt: String? = null
 )
 
 /**

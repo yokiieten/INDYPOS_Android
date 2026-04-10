@@ -1,5 +1,7 @@
 package com.indybrain.indypos_Android.presentation.settings
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -53,7 +56,6 @@ import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
-import com.indybrain.indypos_Android.presentation.navigation.HomeBottomDestination
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
@@ -72,6 +74,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
     
     // Navigate to login when logout is successful
     LaunchedEffect(uiState.isLogoutSuccess) {
@@ -81,49 +84,81 @@ fun SettingsScreen(
         }
     }
     
+    LaunchedEffect(uiState.pendingBackofficeBrowserUrl) {
+        val url = uiState.pendingBackofficeBrowserUrl ?: return@LaunchedEffect
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (_: Exception) {
+            viewModel.onBackofficeBrowserLaunchFailed(
+                context.getString(R.string.common_error)
+            )
+            return@LaunchedEffect
+        }
+        viewModel.consumeBackofficeBrowserUrl()
+    }
+    
     Scaffold(
         containerColor = BaseBackground
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 20.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Title
-            Text(
-                text = stringResource(id = R.string.settings_title),
-                style = FontUtils.mainFont(
-                    style = AppFontStyle.Bold,
-                    size = FontSize.Large
-                ),
-                color = PrimaryText,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-            
-            // Settings List
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                SettingsItem.values().forEach { item ->
-                    SettingsItemRow(
-                        item = item,
-                        onClick = {
-                            if (item == SettingsItem.Logout) {
-                                viewModel.onLogoutClick()
-                            } else {
-                                onSettingsItemClick(item)
+                // Title
+                Text(
+                    text = stringResource(id = R.string.settings_title),
+                    style = FontUtils.mainFont(
+                        style = AppFontStyle.Bold,
+                        size = FontSize.Large
+                    ),
+                    color = PrimaryText,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+                
+                // Settings List
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    SettingsItem.values().forEach { item ->
+                        SettingsItemRow(
+                            item = item,
+                            onClick = {
+                                when (item) {
+                                    SettingsItem.Logout -> viewModel.onLogoutClick()
+                                    SettingsItem.Backoffice -> viewModel.onBackofficeClick()
+                                    else -> onSettingsItemClick(item)
+                                }
                             }
-                        }
+                        )
+                    }
+                }
+                
+                // Add bottom padding to ensure logout button is visible above bottom navigation
+                Spacer(modifier = Modifier.height(80.dp))
+            }
+            
+            if (uiState.isOpeningBackoffice) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = PrimaryButton,
+                        modifier = Modifier.size(48.dp)
                     )
                 }
             }
-            
-            // Add bottom padding to ensure logout button is visible above bottom navigation
-            Spacer(modifier = Modifier.height(80.dp))
         }
     }
     

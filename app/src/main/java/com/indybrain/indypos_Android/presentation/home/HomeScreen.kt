@@ -243,12 +243,6 @@ fun HomeScreen(
                                 SettingsItem.ContactUs -> {
                                     onNavigateToContactUs()
                                 }
-                                SettingsItem.Backoffice -> {
-                                    val url = AppConfig.backofficeLoginUrl
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                    )
-                                }
                                 SettingsItem.ReceiptSettings -> {
                                     onNavigateToReceiptSettings()
                                 }

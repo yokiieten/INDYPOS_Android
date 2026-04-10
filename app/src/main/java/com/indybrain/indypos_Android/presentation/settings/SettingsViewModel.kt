@@ -39,6 +39,49 @@ class SettingsViewModel @Inject constructor(
     }
     
     /**
+     * Request magic link and open back-office in browser (URL delivered via [SettingsUiState.pendingBackofficeBrowserUrl]).
+     */
+    fun onBackofficeClick() {
+        if (!networkConnectivityChecker.isConnected()) {
+            _uiState.update { it.copy(showNoInternetDialog = true) }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isOpeningBackoffice = true) }
+            authRepository.requestWebLoginMagicLinkUrl()
+                .onSuccess { url ->
+                    _uiState.update {
+                        it.copy(
+                            isOpeningBackoffice = false,
+                            pendingBackofficeBrowserUrl = url
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isOpeningBackoffice = false,
+                            errorMessage = error.message ?: "ไม่สามารถเปิด Back office ได้"
+                        )
+                    }
+                }
+        }
+    }
+    
+    fun consumeBackofficeBrowserUrl() {
+        _uiState.update { it.copy(pendingBackofficeBrowserUrl = null) }
+    }
+    
+    fun onBackofficeBrowserLaunchFailed(message: String) {
+        _uiState.update {
+            it.copy(
+                pendingBackofficeBrowserUrl = null,
+                errorMessage = message
+            )
+        }
+    }
+    
+    /**
      * Confirm logout action
      */
     fun confirmLogout() {
@@ -116,6 +159,8 @@ data class SettingsUiState(
     val showLogoutSuccessDialog: Boolean = false,
     val isLoggingOut: Boolean = false,
     val isLogoutSuccess: Boolean = false,
+    val isOpeningBackoffice: Boolean = false,
+    val pendingBackofficeBrowserUrl: String? = null,
     val errorMessage: String? = null
 )
 

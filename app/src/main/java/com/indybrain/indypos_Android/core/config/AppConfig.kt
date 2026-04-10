@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android.core.config
 
+import android.net.Uri
 import com.indybrain.indypos_Android.BuildConfig
 
 /**
@@ -48,6 +49,14 @@ object AppConfig {
      */
     val backofficePrivacyUrl: String
         get() = "${backofficeBaseUrl.trimEnd('/')}/privacy"
+    
+    /**
+     * Magic-link URL for automated back-office login (`/auto-login?token=…`).
+     */
+    fun buildBackofficeAutoLoginUrl(magicToken: String): String {
+        val base = backofficeBaseUrl.trimEnd('/')
+        return "$base/auto-login?token=${Uri.encode(magicToken)}"
+    }
     
     /**
      * Builds a complete image URL from a relative image path
