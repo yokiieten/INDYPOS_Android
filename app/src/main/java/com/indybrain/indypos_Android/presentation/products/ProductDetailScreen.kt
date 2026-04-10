@@ -468,7 +468,7 @@ private fun ProductDetailContent(
             Spacer(modifier = Modifier.height(4.dp))
             
             Text(
-                text = "${formatCurrency(basePrice)} บาท",
+                text = "${formatCurrency(basePrice)} ${stringResource(id = R.string.product_detail_currency_suffix)}",
                 style = FontUtils.mainFont(
                     style = AppFontStyle.Regular,
                     size = FontSize.Medium

@@ -414,6 +414,7 @@
     <string name="product_detail_quantity">จำนวน</string>
     <string name="product_detail_addons">เสริม</string>
     <string name="product_detail_price">ราคา</string>
+    <string name="product_detail_currency_suffix">บาท</string>
     <string name="product_detail_special_request">คำขอพิเศษ</string>
     <string name="product_detail_special_request_placeholder">เช่น ไม่ใส่ผัก</string>
     <string name="product_max_selection">เลือกได้สูงสุด %1$d รายการ</string>

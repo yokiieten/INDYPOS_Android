@@ -408,6 +408,7 @@
     <string name="product_detail_quantity">Quantity</string>
     <string name="product_detail_addons">Add-ons</string>
     <string name="product_detail_price">Price</string>
+    <string name="product_detail_currency_suffix">Baht</string>
     <string name="product_detail_special_request">Special Request</string>
     <string name="product_detail_special_request_placeholder">e.g. No vegetables</string>
     <string name="product_max_selection">Max %1$d selections</string>
