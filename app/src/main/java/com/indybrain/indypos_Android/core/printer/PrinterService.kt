@@ -69,11 +69,11 @@ class PrinterService @Inject constructor(
         /** โหมดขาว–ดำ thermal — 2 ไบต์/พิกเซล ลด buffer และงานแปลงใน SDK เทียบ ARGB_8888 */
         private val RECEIPT_BITMAP_CONFIG: Bitmap.Config = Bitmap.Config.RGB_565
         
-        // Addon - ชิดซ้ายเหมือนเดิม (ไม่มี indent)
-        private const val ADDON_INDENT = ""
-        
-        // Addon separator - คั่น addon ด้วยคอมม่าเหมือนในภาพ
-        private const val ADDON_SEPARATOR = ", "
+        /** เยื้องเล็กน้อยจากขอบซ้ายก่อน bullet addon */
+        private const val ADDON_INDENT = "  "
+
+        /** บรรทัดต่อเมื่อชื่อ addon ยาว — ชิดกับข้อความหลัง `• ` (monospace 1 ช่องต่อตัวอักษร) */
+        private const val ADDON_LINE_WRAP_INDENT = "    "
     }
     
     /** ความสูงแต่ละบรรทัด - ชิดกันมากที่สุด (เท่าความสูงตัวอักษร) */
@@ -274,18 +274,15 @@ class PrinterService @Inject constructor(
                     val addonCounts = addons.groupBy { it.addonName }
                         .mapValues { (_, addonsList) -> addonsList.size * cartItem.quantity }
 
-                    val addonTexts = addonCounts.map { (name, count) ->
-                        if (count > 1) "$name x $count" else name
-                    }
-
-                    if (addonTexts.isNotEmpty()) {
+                    addonCounts.forEach { (name, count) ->
+                        val line = "${ADDON_INDENT}• $name x$count"
                         addStripOrFlush(
                             itemAcc,
                             itemAccHeight,
                             textToBitmap(
-                                "${ADDON_INDENT}${addonTexts.joinToString(separator = ADDON_SEPARATOR)}",
+                                line,
                                 ALIGNMENT_LEFT,
-                                continuationIndent = ADDON_INDENT
+                                continuationIndent = ADDON_LINE_WRAP_INDENT
                             )
                         )
                     }
