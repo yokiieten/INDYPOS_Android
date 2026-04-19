@@ -7,8 +7,11 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.core.content.res.ResourcesCompat
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.ReceiptSettingsEntity
@@ -23,6 +26,8 @@ import net.posprinter.IDeviceConnection
 import net.posprinter.POSPrinter
 import net.posprinter.POSConst
 import java.io.File
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.util.Date
 import java.util.Hashtable
 import java.util.Locale
@@ -39,6 +44,7 @@ import kotlin.math.roundToInt
 @Singleton
 class PrinterService @Inject constructor(
     private val printerManager: PrinterManager,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
 ) {
 
@@ -51,6 +57,19 @@ class PrinterService @Inject constructor(
         ResourcesCompat.getFont(context, R.font.sarabun_bold)
             ?: Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
     }
+
+    /** ข้อความใบเสร็จตามภาษาที่ผู้ใช้เลือกใน Settings (ไม่ใช้ locale ของ ApplicationContext ตรงๆ) */
+    private fun receiptLocale(): Locale =
+        LocaleHelper.getLocaleFromCode(languageLocalDataSource.getLanguageLocale())
+
+    private fun receiptLocalizedContext(): Context =
+        LocaleHelper.setLocale(context, languageLocalDataSource.getLanguageLocale())
+
+    private fun receiptString(@StringRes id: Int): String =
+        receiptLocalizedContext().getString(id)
+
+    /** ใบเสร็จภาษาอังกฤษ — บางป้าย (เช่น payment method) แสดง 2 บรรทัดเหมือนเลขออเดอร์ */
+    private fun isReceiptEnglishLocale(): Boolean = receiptLocale().language == "en"
 
     companion object {
         // Alignment constants from POSConst
@@ -255,7 +274,7 @@ class PrinterService @Inject constructor(
 
             if (receiptSettings?.taxIdentificationNumber == true && !receiptSettings.tinNumber.isNullOrEmpty()) {
                 headerStrips += textToBitmapSingleLine(
-                    "เลขประจำตัวผู้เสียภาษี:",
+                    receiptString(R.string.receipt_tin_label),
                     ALIGNMENT_LEFT,
                     textSizeSp = RECEIPT_TEXT_HEADER_SP
                 )
@@ -268,7 +287,7 @@ class PrinterService @Inject constructor(
 
             if (!orderNumber.isNullOrEmpty()) {
                 headerStrips += textToBitmapSingleLine(
-                    "เลขที่คำสั่งซื้อ:",
+                    receiptString(R.string.receipt_order_number_label),
                     ALIGNMENT_LEFT,
                     textSizeSp = RECEIPT_TEXT_HEADER_SP
                 )
@@ -284,11 +303,29 @@ class PrinterService @Inject constructor(
             calendar.time = now
             val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
             val month = calendar.get(java.util.Calendar.MONTH) + 1
-            val yearBuddhist = calendar.get(java.util.Calendar.YEAR) + 543
+            val receiptLoc = receiptLocale()
+            val yearForReceipt =
+                if (receiptLoc.language == "th") {
+                    calendar.get(java.util.Calendar.YEAR) + 543
+                } else {
+                    calendar.get(java.util.Calendar.YEAR)
+                }
             val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
             val minute = calendar.get(java.util.Calendar.MINUTE)
-            val dateStr = String.format(Locale.getDefault(), "%02d/%02d/%d %02d:%02d", day, month, yearBuddhist, hour, minute)
-            headerStrips += textToBitmap("วันที่: $dateStr", ALIGNMENT_LEFT, textSizeSp = RECEIPT_TEXT_HEADER_SP)
+            val dateStr = String.format(
+                receiptLoc,
+                "%02d/%02d/%d %02d:%02d",
+                day,
+                month,
+                yearForReceipt,
+                hour,
+                minute
+            )
+            headerStrips += textToBitmap(
+                "${receiptString(R.string.receipt_date_label)} $dateStr",
+                ALIGNMENT_LEFT,
+                textSizeSp = RECEIPT_TEXT_HEADER_SP
+            )
             headerStrips += textToBitmapSingleLine(
                 "--------------------------------",
                 ALIGNMENT_CENTER,
@@ -358,7 +395,7 @@ class PrinterService @Inject constructor(
                         itemAcc,
                         itemAccHeight,
                         textToBitmap(
-                            "${ADDON_INDENT}หมายเหตุ: ${cartItem.specialRequest}",
+                            "${ADDON_INDENT}${receiptString(R.string.receipt_special_request_label)} ${cartItem.specialRequest}",
                             ALIGNMENT_LEFT,
                             textSizeSp = RECEIPT_TEXT_ITEM_SP,
                             continuationIndent = ADDON_INDENT
@@ -377,19 +414,32 @@ class PrinterService @Inject constructor(
             )
 
             val paymentTypeText = when (paymentType) {
-                PaymentType.CASH -> "จ่ายเงินสด"
-                PaymentType.TRANSFER -> "โอนเงิน"
-                PaymentType.CARD -> "บัตรเครดิต"
-                PaymentType.QR_CODE -> "QR Code"
+                PaymentType.CASH -> receiptString(R.string.receipt_cash_payment)
+                PaymentType.TRANSFER -> receiptString(R.string.receipt_transfer_payment)
+                PaymentType.CARD -> receiptString(R.string.receipt_card_payment)
+                PaymentType.QR_CODE -> receiptString(R.string.receipt_qr_payment)
+            }
+            if (isReceiptEnglishLocale()) {
+                tailStrips += textToBitmapSingleLine(
+                    receiptString(R.string.receipt_payment_method_label),
+                    ALIGNMENT_LEFT,
+                    textSizeSp = RECEIPT_TEXT_TAIL_SP
+                )
+                tailStrips += textToBitmapSingleLine(
+                    paymentTypeText,
+                    ALIGNMENT_RIGHT,
+                    textSizeSp = RECEIPT_TEXT_TAIL_SP
+                )
+            } else {
+                tailStrips += textToBitmapLabelPrice(
+                    receiptString(R.string.receipt_payment_method_label),
+                    paymentTypeText,
+                    isBold = true,
+                    textSizeSp = RECEIPT_TEXT_TAIL_SP
+                )
             }
             tailStrips += textToBitmapLabelPrice(
-                "วิธีการชำระเงิน:",
-                paymentTypeText,
-                isBold = true,
-                textSizeSp = RECEIPT_TEXT_TAIL_SP
-            )
-            tailStrips += textToBitmapLabelPrice(
-                "ยอดรวมราคา:",
+                receiptString(R.string.receipt_subtotal_label),
                 formatCurrencyWithoutSymbol(subtotal),
                 isBold = true,
                 textSizeSp = RECEIPT_TEXT_TAIL_SP
@@ -397,13 +447,13 @@ class PrinterService @Inject constructor(
 
             val discountPriceStr = if (discount > 0) "-${formatCurrencyWithoutSymbol(discount)}" else formatCurrencyWithoutSymbol(0.0)
             tailStrips += textToBitmapLabelPrice(
-                "ส่วนลด:",
+                receiptString(R.string.receipt_discount_label),
                 discountPriceStr,
                 isBold = true,
                 textSizeSp = RECEIPT_TEXT_TAIL_SP
             )
 
-            val totalLabel = "ยอดรวมทั้งหมด:"
+            val totalLabel = receiptString(R.string.receipt_total_label)
             tailStrips += textToBitmapLabelPrice(
                 totalLabel,
                 formatCurrencyWithoutSymbol(total),
@@ -415,7 +465,7 @@ class PrinterService @Inject constructor(
                 receivedAmount?.let {
                     if (it > 0) {
                         tailStrips += textToBitmapLabelPrice(
-                            "เงินสด:",
+                            receiptString(R.string.receipt_cash_received_label),
                             formatCurrencyWithoutSymbol(it),
                             isBold = true,
                             textSizeSp = RECEIPT_TEXT_TAIL_SP
@@ -424,7 +474,7 @@ class PrinterService @Inject constructor(
                 }
                 change?.let {
                     tailStrips += textToBitmapLabelPrice(
-                        "เงินทอน:",
+                        receiptString(R.string.receipt_change_label),
                         formatCurrencyWithoutSymbol(it),
                         isBold = true,
                         textSizeSp = RECEIPT_TEXT_TAIL_SP
@@ -661,8 +711,8 @@ class PrinterService @Inject constructor(
     }
     
     private fun formatCurrency(value: Double): String {
-        val formatter = java.text.DecimalFormat("#,##0.00")
-        return "฿${formatter.format(value)}"
+        val formatter = DecimalFormat("#,##0.00", DecimalFormatSymbols.getInstance(receiptLocale()))
+        return "${formatter.format(value)} ${receiptString(R.string.receipt_currency_symbol)}"
     }
     
     /**
@@ -670,7 +720,7 @@ class PrinterService @Inject constructor(
      * Always formats with 2 decimal places and thousand separators for consistent alignment
      */
     private fun formatCurrencyWithoutSymbol(value: Double): String {
-        val formatter = java.text.DecimalFormat("#,##0.00")
+        val formatter = DecimalFormat("#,##0.00", DecimalFormatSymbols.getInstance(receiptLocale()))
         return formatter.format(value)
     }
     

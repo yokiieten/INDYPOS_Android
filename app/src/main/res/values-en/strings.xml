@@ -902,7 +902,7 @@
     <string name="settings_tax_identification_number">Tax Identification Number</string>
     <string name="settings_tin_description">Display TIN on receipt for tax compliance</string>
     <string name="settings_tin_placeholder">Enter 13-digit TIN</string>
-    <string name="settings_tin_invalid">Invalid TIN format (must be 13 digits)</string>
+    <string name="settings_tin_invalid">Tax identification number must be exactly 13 digits</string>
     <string name="settings_tin_required">Please enter TIN when enabled</string>
     <string name="settings_tin_error_must_be_13_digits">Tax identification number must be exactly 13 digits</string>
     <string name="settings_custom_printing_services">Custom printing services</string>
@@ -918,5 +918,22 @@
     <string name="settings_save_settings">Save Settings</string>
     <string name="settings_paper_size_58mm">58 mm</string>
     <string name="settings_paper_size_80mm">80 mm</string>
+
+    <!-- Receipt print (thermal) -->
+    <string name="receipt_tin_label">Tax Identification Number:</string>
+    <string name="receipt_order_number_label">Order No:</string>
+    <string name="receipt_date_label">Date:</string>
+    <string name="receipt_special_request_label">Note:</string>
+    <string name="receipt_payment_method_label">Payment Method:</string>
+    <string name="receipt_cash_payment">Cash Payment</string>
+    <string name="receipt_transfer_payment">Transfer Payment</string>
+    <string name="receipt_card_payment">Credit Card</string>
+    <string name="receipt_qr_payment">QR Code</string>
+    <string name="receipt_total_label">Total Amount:</string>
+    <string name="receipt_currency_symbol">THB</string>
+    <string name="receipt_subtotal_label">Subtotal:</string>
+    <string name="receipt_discount_label">Discount:</string>
+    <string name="receipt_cash_received_label">Cash Received:</string>
+    <string name="receipt_change_label">Change:</string>
 </resources>
 

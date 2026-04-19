@@ -927,11 +927,11 @@
     <string name="settings_paper_size">ขนาดกระดาษ</string>
     <string name="settings_footer">ส่วนท้าย</string>
     <string name="settings_footer_placeholder">กรอกข้อความ...</string>
-    <string name="settings_tax_identification_number">เลขประจำตัวผู้เสียภาษี</string>
-    <string name="settings_tin_description">แสดงเลขประจำตัวผู้เสียภาษีบนใบเสร็จเพื่อการปฏิบัติตามกฎหมายภาษี</string>
-    <string name="settings_tin_placeholder">กรอกเลขประจำตัวผู้เสียภาษี 13 หลัก</string>
-    <string name="settings_tin_invalid">รูปแบบเลขประจำตัวผู้เสียภาษีไม่ถูกต้อง (ต้องมี 13 หลัก)</string>
-    <string name="settings_tin_required">กรุณากรอกเลขประจำตัวผู้เสียภาษีเมื่อเปิดใช้งาน</string>
+    <string name="settings_tax_identification_number">เลขประจำตัวผู้เสียภาษีอากร</string>
+    <string name="settings_tin_description">แสดงเลขประจำตัวผู้เสียภาษีอากรบนใบเสร็จเพื่อการปฏิบัติตามกฎหมายภาษี</string>
+    <string name="settings_tin_placeholder">กรอกเลขประจำตัวผู้เสียภาษีอากร 13 หลัก</string>
+    <string name="settings_tin_invalid">รูปแบบเลขประจำตัวผู้เสียภาษีอากรไม่ถูกต้อง (ต้องมี 13 หลัก)</string>
+    <string name="settings_tin_required">กรุณากรอกเลขประจำตัวผู้เสียภาษีอากรเมื่อเปิดใช้งาน</string>
     <string name="settings_tin_error_must_be_13_digits">เลขประจำตัวผู้เสียภาษีอากรต้องมี 13 หลัก</string>
     <string name="settings_custom_printing_services">บริการพิมพ์แบบกำหนดเอง</string>
     <string name="settings_generate_qr_code_description">สร้าง QR Code PromptPay สำหรับการรับชำระเงิน</string>
@@ -946,4 +946,21 @@
     <string name="settings_save_settings">บันทึกการตั้งค่า</string>
     <string name="settings_paper_size_58mm">58 มม</string>
     <string name="settings_paper_size_80mm">80 มม</string>
+
+    <!-- Receipt print (thermal) -->
+    <string name="receipt_tin_label">เลขประจำตัวผู้เสียภาษีอากร:</string>
+    <string name="receipt_order_number_label">เลขที่คำสั่งซื้อ:</string>
+    <string name="receipt_date_label">วันที่:</string>
+    <string name="receipt_special_request_label">หมายเหตุ:</string>
+    <string name="receipt_payment_method_label">วิธีการชำระเงิน:</string>
+    <string name="receipt_cash_payment">จ่ายเงินสด</string>
+    <string name="receipt_transfer_payment">โอนเงิน</string>
+    <string name="receipt_card_payment">บัตรเครดิต</string>
+    <string name="receipt_qr_payment">QR Code</string>
+    <string name="receipt_total_label">ยอดรวมทั้งหมด:</string>
+    <string name="receipt_currency_symbol">บาท</string>
+    <string name="receipt_subtotal_label">ยอดรวมราคา:</string>
+    <string name="receipt_discount_label">ส่วนลด:</string>
+    <string name="receipt_cash_received_label">เงินสด:</string>
+    <string name="receipt_change_label">เงินทอน:</string>
 </resources>
