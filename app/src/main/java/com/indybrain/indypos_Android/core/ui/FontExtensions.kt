@@ -32,6 +32,26 @@ enum class AppFontStyle(val fontResource: Int) {
     Bold(R.font.anuphan_bold)
 }
 
+/** Sarabun ใน res/font — ใช้ใน Compose หรืออ้างอิง R.font (ใบเสร็จใช้ Regular/Bold) */
+enum class SarabunFont(val fontResource: Int) {
+    Thin(R.font.sarabun_thin),
+    ThinItalic(R.font.sarabun_thinitalic),
+    ExtraLight(R.font.sarabun_extralight),
+    ExtraLightItalic(R.font.sarabun_extralightitalic),
+    Light(R.font.sarabun_light),
+    LightItalic(R.font.sarabun_lightitalic),
+    Regular(R.font.sarabun_regular),
+    Italic(R.font.sarabun_italic),
+    Medium(R.font.sarabun_medium),
+    MediumItalic(R.font.sarabun_mediumitalic),
+    SemiBold(R.font.sarabun_semibold),
+    SemiBoldItalic(R.font.sarabun_semibolditalic),
+    Bold(R.font.sarabun_bold),
+    BoldItalic(R.font.sarabun_bolditalic),
+    ExtraBold(R.font.sarabun_extrabold),
+    ExtraBoldItalic(R.font.sarabun_extrabolditalic)
+}
+
 /**
  * Font utility object for creating custom fonts
  * Similar to Swift UIFont.mainFont()

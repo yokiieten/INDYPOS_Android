@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.content.Context
+import androidx.core.content.res.ResourcesCompat
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.ReceiptSettingsEntity
@@ -39,7 +41,17 @@ class PrinterService @Inject constructor(
     private val printerManager: PrinterManager,
     @ApplicationContext private val context: Context
 ) {
-    
+
+    private val receiptTypefaceRegular: Typeface by lazy {
+        ResourcesCompat.getFont(context, R.font.sarabun_regular)
+            ?: Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+    }
+
+    private val receiptTypefaceBold: Typeface by lazy {
+        ResourcesCompat.getFont(context, R.font.sarabun_bold)
+            ?: Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+    }
+
     companion object {
         // Alignment constants from POSConst
         private const val ALIGNMENT_LEFT = POSConst.ALIGNMENT_LEFT
@@ -72,7 +84,7 @@ class PrinterService @Inject constructor(
         /** เยื้องเล็กน้อยจากขอบซ้ายก่อน bullet addon */
         private const val ADDON_INDENT = "  "
 
-        /** บรรทัดต่อเมื่อชื่อ addon ยาว — ชิดกับข้อความหลัง `• ` (monospace 1 ช่องต่อตัวอักษร) */
+        /** บรรทัดต่อเมื่อชื่อ addon ยาว — เยื้องประมาณความกว้าง `  • ` */
         private const val ADDON_LINE_WRAP_INDENT = "    "
     }
     
@@ -82,11 +94,11 @@ class PrinterService @Inject constructor(
         return (fm.descent - fm.ascent)
     }
     
-    /** Paint สำหรับ receipt - ชัดคม ไม่ blur (ไม่มี anti-alias สำหรับ thermal printer) */
+    /** Paint สำหรับ receipt — Sarabun (ไทย) วัดความกว้างด้วยพิกเซลใน wrap/จัดราคา */
     private fun createReceiptPaint(textSize: Float, isBold: Boolean = true): Paint {
         return Paint(0).apply {
             color = Color.BLACK
-            typeface = Typeface.create(Typeface.MONOSPACE, if (isBold) Typeface.BOLD else Typeface.NORMAL)
+            typeface = if (isBold) receiptTypefaceBold else receiptTypefaceRegular
             this.textSize = textSize
             isAntiAlias = false
             isFilterBitmap = false
@@ -437,7 +449,7 @@ class PrinterService @Inject constructor(
     
     /**
      * Convert text to bitmap for thermal printer (bitmap printing)
-     * Uses MONOSPACE font so character-based alignment (spaces) works correctly
+     * Uses Sarabun; alignment/wrap ใช้ measureText ตามพิกเซล
      * @param continuationIndent ถ้ามี (เช่น addon) บรรทัดต่อเนื่องจะเติม indent
      */
     private fun textToBitmap(
