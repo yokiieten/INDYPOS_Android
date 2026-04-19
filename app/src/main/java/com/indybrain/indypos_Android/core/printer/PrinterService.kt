@@ -86,6 +86,13 @@ class PrinterService @Inject constructor(
 
         /** บรรทัดต่อเมื่อชื่อ addon ยาว — เยื้องประมาณความกว้าง `  • ` */
         private const val ADDON_LINE_WRAP_INDENT = "    "
+
+        /** ขนาดตัวอักษรใบเสร็จ (sp ตาม Paint.textSize) */
+        private const val RECEIPT_TEXT_HEADER_SP = 26f
+        private const val RECEIPT_TEXT_ITEM_SP = 18f
+
+        /** สรุปยอดท้ายกระดาษ + ข้อความ footer — ตัวหนา ขนาดเดียวกับหัว */
+        private const val RECEIPT_TEXT_TAIL_SP = RECEIPT_TEXT_HEADER_SP
     }
     
     /** ความสูงแต่ละบรรทัด - ชิดกันมากที่สุด (เท่าความสูงตัวอักษร) */
@@ -107,13 +114,17 @@ class PrinterService @Inject constructor(
     }
     
     /** แสดงข้อความบรรทัดเดียว ไม่ปัด - สำหรับ separator, order number */
-    private fun textToBitmapSingleLine(text: String, alignment: Int): Bitmap {
-        val paint = createReceiptPaint(textSize = 30f)
+    private fun textToBitmapSingleLine(
+        text: String,
+        alignment: Int,
+        textSizeSp: Float = RECEIPT_TEXT_ITEM_SP
+    ): Bitmap {
+        val paint = createReceiptPaint(textSize = textSizeSp)
         var drawText = text
         val textWidth = paint.measureText(text)
         if (textWidth > RECEIPT_BITMAP_WIDTH) {
             val scale = RECEIPT_BITMAP_WIDTH / textWidth
-            paint.textSize = 30f * scale
+            paint.textSize = textSizeSp * scale
             drawText = text
         }
         val lineHeight = getReceiptLineHeight(paint)
@@ -234,16 +245,38 @@ class PrinterService @Inject constructor(
             val headerStrips = mutableListOf<Bitmap>()
 
             if (shopName.isNotEmpty()) {
-                headerStrips += textToBitmap(shopName, ALIGNMENT_CENTER, isBold = true, isDoubleSize = true)
+                headerStrips += textToBitmap(
+                    shopName,
+                    ALIGNMENT_CENTER,
+                    isBold = true,
+                    textSizeSp = RECEIPT_TEXT_HEADER_SP
+                )
             }
 
             if (receiptSettings?.taxIdentificationNumber == true && !receiptSettings.tinNumber.isNullOrEmpty()) {
-                headerStrips += textToBitmap("เลขประจำตัวผู้เสียภาษี: ${receiptSettings.tinNumber}", ALIGNMENT_LEFT)
+                headerStrips += textToBitmapSingleLine(
+                    "เลขประจำตัวผู้เสียภาษี:",
+                    ALIGNMENT_LEFT,
+                    textSizeSp = RECEIPT_TEXT_HEADER_SP
+                )
+                headerStrips += textToBitmapSingleLine(
+                    receiptSettings.tinNumber,
+                    ALIGNMENT_RIGHT,
+                    textSizeSp = RECEIPT_TEXT_HEADER_SP
+                )
             }
 
             if (!orderNumber.isNullOrEmpty()) {
-                headerStrips += textToBitmapSingleLine("เลขที่คำสั่งซื้อ:", ALIGNMENT_LEFT)
-                headerStrips += textToBitmapSingleLine(orderNumber, ALIGNMENT_RIGHT)
+                headerStrips += textToBitmapSingleLine(
+                    "เลขที่คำสั่งซื้อ:",
+                    ALIGNMENT_LEFT,
+                    textSizeSp = RECEIPT_TEXT_HEADER_SP
+                )
+                headerStrips += textToBitmapSingleLine(
+                    orderNumber,
+                    ALIGNMENT_RIGHT,
+                    textSizeSp = RECEIPT_TEXT_HEADER_SP
+                )
             }
 
             val calendar = java.util.Calendar.getInstance()
@@ -255,8 +288,12 @@ class PrinterService @Inject constructor(
             val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
             val minute = calendar.get(java.util.Calendar.MINUTE)
             val dateStr = String.format(Locale.getDefault(), "%02d/%02d/%d %02d:%02d", day, month, yearBuddhist, hour, minute)
-            headerStrips += textToBitmap("วันที่: $dateStr", ALIGNMENT_LEFT)
-            headerStrips += textToBitmapSingleLine("--------------------------------", ALIGNMENT_CENTER)
+            headerStrips += textToBitmap("วันที่: $dateStr", ALIGNMENT_LEFT, textSizeSp = RECEIPT_TEXT_HEADER_SP)
+            headerStrips += textToBitmapSingleLine(
+                "--------------------------------",
+                ALIGNMENT_CENTER,
+                textSizeSp = RECEIPT_TEXT_HEADER_SP
+            )
 
             if (headerStrips.isNotEmpty()) {
                 printFullWidthStrip(posPrinter, combineBitmapsVertically(headerStrips))
@@ -272,12 +309,27 @@ class PrinterService @Inject constructor(
 
                 val label = "${cartItem.quantity} x $itemName"
                 val priceStr = formatCurrencyWithoutSymbol(itemPrice)
-                val itemLines = formatItemLinesWithWrap(label = label, price = priceStr, isBold = true)
+                val itemLines = formatItemLinesWithWrap(
+                    label = label,
+                    price = priceStr,
+                    isBold = true,
+                    textSizeSp = RECEIPT_TEXT_ITEM_SP
+                )
                 itemLines.forEach { (lineLabel, linePrice) ->
                     val lineBitmap = if (linePrice != null) {
-                        textToBitmapLabelPrice(lineLabel, linePrice, isBold = true)
+                        textToBitmapLabelPrice(
+                            lineLabel,
+                            linePrice,
+                            isBold = true,
+                            textSizeSp = RECEIPT_TEXT_ITEM_SP
+                        )
                     } else {
-                        textToBitmap(lineLabel, ALIGNMENT_LEFT, isBold = true)
+                        textToBitmap(
+                            lineLabel,
+                            ALIGNMENT_LEFT,
+                            isBold = true,
+                            textSizeSp = RECEIPT_TEXT_ITEM_SP
+                        )
                     }
                     addStripOrFlush(itemAcc, itemAccHeight, lineBitmap)
                 }
@@ -294,6 +346,7 @@ class PrinterService @Inject constructor(
                             textToBitmap(
                                 line,
                                 ALIGNMENT_LEFT,
+                                textSizeSp = RECEIPT_TEXT_ITEM_SP,
                                 continuationIndent = ADDON_LINE_WRAP_INDENT
                             )
                         )
@@ -307,6 +360,7 @@ class PrinterService @Inject constructor(
                         textToBitmap(
                             "${ADDON_INDENT}หมายเหตุ: ${cartItem.specialRequest}",
                             ALIGNMENT_LEFT,
+                            textSizeSp = RECEIPT_TEXT_ITEM_SP,
                             continuationIndent = ADDON_INDENT
                         )
                     )
@@ -316,7 +370,11 @@ class PrinterService @Inject constructor(
             flushStripAccumulator(itemAcc, itemAccHeight)
 
             val tailStrips = mutableListOf<Bitmap>()
-            tailStrips += textToBitmapSingleLine("--------------------------------", ALIGNMENT_CENTER)
+            tailStrips += textToBitmapSingleLine(
+                "--------------------------------",
+                ALIGNMENT_CENTER,
+                textSizeSp = RECEIPT_TEXT_TAIL_SP
+            )
 
             val paymentTypeText = when (paymentType) {
                 PaymentType.CASH -> "จ่ายเงินสด"
@@ -324,28 +382,63 @@ class PrinterService @Inject constructor(
                 PaymentType.CARD -> "บัตรเครดิต"
                 PaymentType.QR_CODE -> "QR Code"
             }
-            tailStrips += textToBitmapLabelPrice("วิธีการชำระเงิน:", paymentTypeText)
-            tailStrips += textToBitmapLabelPrice("ยอดรวมราคา:", formatCurrencyWithoutSymbol(subtotal))
+            tailStrips += textToBitmapLabelPrice(
+                "วิธีการชำระเงิน:",
+                paymentTypeText,
+                isBold = true,
+                textSizeSp = RECEIPT_TEXT_TAIL_SP
+            )
+            tailStrips += textToBitmapLabelPrice(
+                "ยอดรวมราคา:",
+                formatCurrencyWithoutSymbol(subtotal),
+                isBold = true,
+                textSizeSp = RECEIPT_TEXT_TAIL_SP
+            )
 
             val discountPriceStr = if (discount > 0) "-${formatCurrencyWithoutSymbol(discount)}" else formatCurrencyWithoutSymbol(0.0)
-            tailStrips += textToBitmapLabelPrice("ส่วนลด:", discountPriceStr)
+            tailStrips += textToBitmapLabelPrice(
+                "ส่วนลด:",
+                discountPriceStr,
+                isBold = true,
+                textSizeSp = RECEIPT_TEXT_TAIL_SP
+            )
 
             val totalLabel = "ยอดรวมทั้งหมด:"
-            tailStrips += textToBitmapLabelPrice(totalLabel, formatCurrencyWithoutSymbol(total), isBold = true)
+            tailStrips += textToBitmapLabelPrice(
+                totalLabel,
+                formatCurrencyWithoutSymbol(total),
+                isBold = true,
+                textSizeSp = RECEIPT_TEXT_TAIL_SP
+            )
 
             if (paymentType == PaymentType.CASH) {
                 receivedAmount?.let {
                     if (it > 0) {
-                        tailStrips += textToBitmapLabelPrice("เงินสด:", formatCurrencyWithoutSymbol(it))
+                        tailStrips += textToBitmapLabelPrice(
+                            "เงินสด:",
+                            formatCurrencyWithoutSymbol(it),
+                            isBold = true,
+                            textSizeSp = RECEIPT_TEXT_TAIL_SP
+                        )
                     }
                 }
                 change?.let {
-                    tailStrips += textToBitmapLabelPrice("เงินทอน:", formatCurrencyWithoutSymbol(it))
+                    tailStrips += textToBitmapLabelPrice(
+                        "เงินทอน:",
+                        formatCurrencyWithoutSymbol(it),
+                        isBold = true,
+                        textSizeSp = RECEIPT_TEXT_TAIL_SP
+                    )
                 }
             }
 
             if (!receiptSettings?.footer.isNullOrEmpty()) {
-                tailStrips += textToBitmap(receiptSettings!!.footer!!, ALIGNMENT_CENTER)
+                tailStrips += textToBitmap(
+                    receiptSettings!!.footer!!,
+                    ALIGNMENT_CENTER,
+                    isBold = true,
+                    textSizeSp = RECEIPT_TEXT_TAIL_SP
+                )
             }
 
             printFullWidthStrip(posPrinter, combineBitmapsVertically(tailStrips))
@@ -456,7 +549,7 @@ class PrinterService @Inject constructor(
         text: String,
         alignment: Int,
         isBold: Boolean = false,
-        isDoubleSize: Boolean = false,
+        textSizeSp: Float = RECEIPT_TEXT_ITEM_SP,
         continuationIndent: String = ""
     ): Bitmap {
         val lines = text.split("\n").filter { it.isNotEmpty() }
@@ -466,7 +559,7 @@ class PrinterService @Inject constructor(
             }
         }
         val paint = createReceiptPaint(
-            textSize = if (isDoubleSize) 52f else 30f,
+            textSize = textSizeSp,
             isBold = isBold
         )
         val lineHeight = getReceiptLineHeight(paint)
@@ -535,9 +628,10 @@ class PrinterService @Inject constructor(
     private fun textToBitmapLabelPrice(
         label: String,
         price: String,
-        isBold: Boolean = false
+        isBold: Boolean = false,
+        textSizeSp: Float = RECEIPT_TEXT_ITEM_SP
     ): Bitmap {
-        val paint = createReceiptPaint(textSize = 30f, isBold = isBold)
+        val paint = createReceiptPaint(textSize = textSizeSp, isBold = isBold)
         val lineHeight = getReceiptLineHeight(paint)
         val priceWidth = paint.measureText(price)
         val labelMaxWidth = RECEIPT_BITMAP_WIDTH - priceWidth
@@ -585,8 +679,13 @@ class PrinterService @Inject constructor(
      * Format item with long name - บรรทัดแรกมีราคาชิดขวาคู่กับต้นชื่อ; บรรทัดต่อใช้ความกว้างเต็ม
      * ใช้ pixel-based measurement จริง (ไทย/อังกฤษกว้างไม่เท่ากัน)
      */
-    private fun formatItemLinesWithWrap(label: String, price: String, isBold: Boolean = false): List<Pair<String, String?>> {
-        val paint = createReceiptPaint(textSize = 30f, isBold = isBold)
+    private fun formatItemLinesWithWrap(
+        label: String,
+        price: String,
+        isBold: Boolean = false,
+        textSizeSp: Float = RECEIPT_TEXT_ITEM_SP
+    ): List<Pair<String, String?>> {
+        val paint = createReceiptPaint(textSize = textSizeSp, isBold = isBold)
         val priceWidth = paint.measureText(price)
         val firstLineLabelMax = RECEIPT_BITMAP_WIDTH - priceWidth
         if (paint.measureText(label) <= firstLineLabelMax) {
