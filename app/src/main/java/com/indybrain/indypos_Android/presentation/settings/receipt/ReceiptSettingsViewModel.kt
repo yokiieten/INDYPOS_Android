@@ -332,6 +332,8 @@ class ReceiptSettingsViewModel @Inject constructor(
             }
             return
         }
+        // After validation: strip fields for any feature the user left turned off, then persist.
+        applyClearedDataForDisabledSwitches()
         
         viewModelScope.launch {
             isSavingInProgress = true
@@ -422,6 +424,26 @@ class ReceiptSettingsViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+    
+    private fun applyClearedDataForDisabledSwitches() {
+        if (!tempState.printShopLogo) {
+            pendingShopLogoUri = null
+            removeShopLogo = true
+            tempState = tempState.copy(shopLogoBitmap = null)
+        }
+        if (!tempState.showQRCode) {
+            tempState = tempState.copy(
+                promptPayIdentifier = "",
+                promptPayIdentifierError = null
+            )
+        }
+        if (!tempState.taxIdentificationNumber) {
+            tempState = tempState.copy(
+                tinNumber = "",
+                tinNumberError = null
+            )
         }
     }
     
