@@ -122,13 +122,6 @@ fun ReceiptSettingsScreen(
         }
     }
     
-    // Show success/error messages
-    LaunchedEffect(uiState.successMessage) {
-        uiState.successMessage?.let {
-            // Message will be shown in dialog
-        }
-    }
-    
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
@@ -395,10 +388,7 @@ fun ReceiptSettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { 
-                    viewModel.clearSuccessMessage()
-                    onBackClick()
-                }) {
+                TextButton(onClick = { viewModel.clearSuccessMessage() }) {
                     Text(
                         text = stringResource(R.string.dialog_button_ok),
                         style = FontUtils.mainFont(
