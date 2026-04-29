@@ -1000,13 +1000,11 @@ class ProductRepositoryImpl @Inject constructor(
                 val dto = response.data
                 val product = ProductMapper.toEntity(dto)
                 val addonGroups = dto.addonGroups
-                    ?.filter { it.isActive }
                     ?.map { ProductMapper.toEntity(it) }
                     ?.sortedBy { it.sortOrder ?: 0 }
                     ?: emptyList()
                 val addonsByGroup = addonGroups.associate { group ->
                     val addons = (dto.addonGroups?.find { it.id == group.id }?.addons)
-                        ?.filter { it.isActive }
                         ?.map { ProductMapper.toEntity(it, group.id) }
                         ?.sortedBy { it.sortOrder ?: 0 }
                         ?: emptyList()
