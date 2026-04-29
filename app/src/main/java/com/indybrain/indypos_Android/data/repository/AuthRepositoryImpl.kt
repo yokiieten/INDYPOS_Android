@@ -5,9 +5,11 @@ import android.net.Uri
 import com.google.gson.Gson
 import com.indybrain.indypos_Android.core.config.AppConfig
 import com.indybrain.indypos_Android.core.device.DeviceInfoProvider
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.core.utils.ImageUtils
 import com.indybrain.indypos_Android.data.local.AuthLocalDataSource
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.database.IndyPosDatabase
 import com.indybrain.indypos_Android.data.remote.api.AuthApi
 import com.indybrain.indypos_Android.data.remote.api.ChangePasswordDataDto
@@ -54,8 +56,15 @@ class AuthRepositoryImpl @Inject constructor(
     private val database: IndyPosDatabase,
     private val gson: Gson,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context
 ) : AuthRepository {
+
+    private fun getLocalizedString(resId: Int): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return localizedContext.getString(resId)
+    }
     
     override suspend fun login(request: LoginRequest): Result<User> {
         return try {
@@ -399,7 +408,7 @@ class AuthRepositoryImpl @Inject constructor(
                 val errorMessage = getLocalizedChangePasswordErrorMessage(
                     errorText = errorText,
                     statusCode = response.status
-                ) ?: errorText ?: context.getString(R.string.settings_change_password_error_generic)
+                ) ?: errorText ?: getLocalizedString(R.string.settings_change_password_error_generic)
                 Result.failure(IllegalStateException(errorMessage))
             }
         } catch (e: HttpException) {
@@ -409,7 +418,7 @@ class AuthRepositoryImpl @Inject constructor(
             val errorMessage = when {
                 e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"
                 e.message?.contains("timeout", ignoreCase = true) == true -> "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
-                else -> e.message ?: context.getString(R.string.settings_change_password_error_generic)
+                else -> e.message ?: getLocalizedString(R.string.settings_change_password_error_generic)
             }
             Result.failure(IllegalStateException(errorMessage, e))
         }
@@ -667,35 +676,35 @@ class AuthRepositoryImpl @Inject constructor(
         if (error.contains("old password") &&
             (error.contains("incorrect") || error.contains("wrong") ||
                 error.contains("invalid") || error.contains("not match"))) {
-            return context.getString(R.string.settings_change_password_error_old_incorrect)
+            return getLocalizedString(R.string.settings_change_password_error_old_incorrect)
         }
         
         // Check for "current password" (alternative API wording)
         if (error.contains("current password") &&
             (error.contains("incorrect") || error.contains("wrong") ||
                 error.contains("invalid") || error.contains("not match"))) {
-            return context.getString(R.string.settings_change_password_error_old_incorrect)
+            return getLocalizedString(R.string.settings_change_password_error_old_incorrect)
         }
         
         // Check for "password" and "incorrect" together (generic password error)
         if (error.contains("password") &&
             (error.contains("incorrect") || error.contains("wrong") || error.contains("invalid"))) {
-            return context.getString(R.string.settings_change_password_error_old_incorrect)
+            return getLocalizedString(R.string.settings_change_password_error_old_incorrect)
         }
         
         // Check for password mismatch (new vs confirm)
         if (error.contains("mismatch") || error.contains("do not match") || error.contains("not match")) {
-            return context.getString(R.string.settings_change_password_error_mismatch)
+            return getLocalizedString(R.string.settings_change_password_error_mismatch)
         }
         
         // Check for weak password
         if (error.contains("at least") && error.contains("character")) {
-            return context.getString(R.string.settings_change_password_error_weak)
+            return getLocalizedString(R.string.settings_change_password_error_weak)
         }
         
         // Check for "invalid request" (e.g. new password too short)
         if (error.contains("invalid request")) {
-            return context.getString(R.string.settings_change_password_error_weak)
+            return getLocalizedString(R.string.settings_change_password_error_weak)
         }
         
         return null
@@ -708,12 +717,12 @@ class AuthRepositoryImpl @Inject constructor(
     private fun parseChangePasswordErrorMessage(errorBody: ResponseBody?): String {
         return try {
             if (errorBody == null) {
-                return context.getString(R.string.settings_change_password_error_generic)
+                return getLocalizedString(R.string.settings_change_password_error_generic)
             }
             
             val errorJson = errorBody.string()
             if (errorJson.isBlank()) {
-                return context.getString(R.string.settings_change_password_error_generic)
+                return getLocalizedString(R.string.settings_change_password_error_generic)
             }
             
             val errorResponse = gson.fromJson(errorJson, ChangePasswordErrorResponse::class.java)
@@ -725,10 +734,10 @@ class AuthRepositoryImpl @Inject constructor(
                     // Map known API error patterns to localized message
                     getLocalizedChangePasswordErrorMessage(rawMessage) ?: rawMessage
                 }
-                else -> context.getString(R.string.settings_change_password_error_generic)
+                else -> getLocalizedString(R.string.settings_change_password_error_generic)
             }
         } catch (e: Exception) {
-            context.getString(R.string.settings_change_password_error_generic)
+            getLocalizedString(R.string.settings_change_password_error_generic)
         }
     }
     
