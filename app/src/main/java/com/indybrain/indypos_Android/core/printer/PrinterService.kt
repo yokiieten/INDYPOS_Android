@@ -531,6 +531,7 @@ class PrinterService @Inject constructor(
     
     /**
      * โหลดโลโก้แบบ downsample + สเกลเล็ก — ไม่ decode ภาพความละเอียดเต็ม (ลดเวลาก่อนส่งไปเครื่องพิมพ์)
+     * แปลงเป็นขาว-ดำ ล้วนก่อนส่งให้ SDK เพราะ threshold ของ SDK อิง luminance ทำให้สีฟ้า/แดงอ่อนหายไป
      */
     private fun loadShopLogo(imagePath: String?): Bitmap? {
         if (imagePath.isNullOrEmpty()) return null
@@ -550,7 +551,8 @@ class PrinterService @Inject constructor(
                     SHOP_LOGO_MAX_WIDTH,
                     SHOP_LOGO_MAX_HEIGHT
                 )
-                inPreferredConfig = Bitmap.Config.RGB_565
+                // ARGB_8888 เพื่ออ่านค่าแต่ละช่องสีตอน threshold (RGB_565 ตัด precision)
+                inPreferredConfig = Bitmap.Config.ARGB_8888
             }
             var bitmap = BitmapFactory.decodeFile(path, decodeOpts) ?: return null
 
@@ -567,10 +569,76 @@ class PrinterService @Inject constructor(
                 if (scaled !== bitmap) bitmap.recycle()
                 bitmap = scaled
             }
-            bitmap
+
+            val mono = convertToMonochrome(bitmap)
+            if (mono !== bitmap) bitmap.recycle()
+            mono
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * แปลง bitmap → ขาว-ดำ ล้วน สำหรับเครื่องพิมพ์ thermal
+     *
+     * ขั้นตอน:
+     * 1) แปลงทุกพิกเซลเป็น grayscale (luminance) + เก็บ alpha
+     * 2) สุ่ม sample พิกเซลขอบรูป → ถ้าพื้นหลังเข้ม (avg < 128) จะ invert ก่อน
+     *    ทำให้โลโก้พื้นดำ-ทองยังพิมพ์ได้สวย ไม่ออกเป็นแผ่นดำสนิท
+     * 3) Threshold (ค่าเริ่มต้น 200): พิกเซลใดที่ค่าความสว่าง ≥ threshold = ขาว (ไม่พิมพ์)
+     *    ที่เหลือ = ดำ (พิมพ์) — ค่า 200 สูงพอที่สีอ่อน เช่น ฟ้าอ่อน (luminance ≈170)
+     *    ยังถูกพิมพ์เป็นดำ ไม่หาย
+     *
+     * @param threshold ค่าตัด 0–255 บนสเกล grayscale (หลัง invert ถ้ามี)
+     */
+    private fun convertToMonochrome(source: Bitmap, threshold: Int = 200): Bitmap {
+        val width = source.width
+        val height = source.height
+        val pixels = IntArray(width * height)
+        source.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        val gray = IntArray(width * height)
+        val alpha = IntArray(width * height)
+        for (i in pixels.indices) {
+            val pixel = pixels[i]
+            alpha[i] = (pixel ushr 24) and 0xFF
+            val r = (pixel ushr 16) and 0xFF
+            val g = (pixel ushr 8) and 0xFF
+            val b = pixel and 0xFF
+            gray[i] = (0.299 * r + 0.587 * g + 0.114 * b)
+                .toInt()
+                .coerceIn(0, 255)
+        }
+
+        val borderThickness = max(1, min(width, height) / 10)
+        var borderSum = 0L
+        var borderCount = 0
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val onBorder = x < borderThickness ||
+                    y < borderThickness ||
+                    x >= width - borderThickness ||
+                    y >= height - borderThickness
+                if (!onBorder) continue
+                val idx = y * width + x
+                if (alpha[idx] >= 32) {
+                    borderSum += gray[idx]
+                    borderCount++
+                }
+            }
+        }
+        val borderAvg = if (borderCount > 0) borderSum.toDouble() / borderCount else 255.0
+        val invert = borderAvg < 128
+
+        for (i in pixels.indices) {
+            val v = if (invert) 255 - gray[i] else gray[i]
+            val isWhite = alpha[i] < 32 || v >= threshold
+            pixels[i] = if (isWhite) Color.WHITE else Color.BLACK
+        }
+
+        val result = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+        result.setPixels(pixels, 0, width, 0, 0, width, height)
+        return result
     }
 
     private fun calculateBitmapInSampleSize(
