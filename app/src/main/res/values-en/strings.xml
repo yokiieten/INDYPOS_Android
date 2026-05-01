@@ -910,6 +910,7 @@
     <string name="settings_select_shop_logo">Select Shop Logo</string>
     <string name="settings_select_qr_code">Select QR Code</string>
     <string name="settings_attach_shop_logo">Attach your shop logo</string>
+    <string name="settings_shop_logo_crop_title">Choose logo area</string>
     <string name="settings_attach_qr_code">Attach QR Code for receipt</string>
     <string name="settings_save_success">Settings saved successfully</string>
     <string name="settings_paper_size_select">Select Paper Size</string>

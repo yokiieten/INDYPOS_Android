@@ -60,7 +60,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -76,6 +75,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import java.util.Hashtable
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.ui.components.PanZoomImageCropScreen
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -99,6 +99,7 @@ fun ReceiptSettingsScreen(
     
     var showImagePickerDialog by remember { mutableStateOf(false) }
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
     var showPaperSizeDialog by remember { mutableStateOf(false) }
     var showQRCodePreviewDialog by remember { mutableStateOf(false) }
     
@@ -106,9 +107,7 @@ fun ReceiptSettingsScreen(
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            viewModel.updateShopLogoImage(it)
-        }
+        uri?.let { pendingCropUri = it }
     }
     
     // Camera launcher
@@ -117,15 +116,17 @@ fun ReceiptSettingsScreen(
     ) { success ->
         if (success && cameraImageUri != null) {
             cameraImageUri?.let { uri ->
-                viewModel.updateShopLogoImage(uri)
+                pendingCropUri = uri
             }
         }
     }
     
-    Scaffold(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
         containerColor = BaseBackground,
         topBar = {
-            TopAppBar(
+            if (pendingCropUri == null) {
+                TopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.receipt_settings_title),
@@ -150,6 +151,7 @@ fun ReceiptSettingsScreen(
                     titleContentColor = PrimaryText
                 )
             )
+            }
         }
     ) { padding ->
         Column(
@@ -303,7 +305,26 @@ fun ReceiptSettingsScreen(
             }
         }
     }
-    
+
+    pendingCropUri?.let { uri ->
+        PanZoomImageCropScreen(
+            imageUri = uri,
+            cropAspectWidth = 1f,
+            cropAspectHeight = 1f,
+            outputWidthPx = 200,
+            outputHeightPx = 200,
+            title = stringResource(R.string.settings_shop_logo_crop_title),
+            confirmLabel = stringResource(R.string.home_crop_use_photo),
+            outputFileNamePrefix = "receipt_shop_logo_crop",
+            onDismiss = { pendingCropUri = null },
+            onConfirm = { croppedUri ->
+                pendingCropUri = null
+                viewModel.updateShopLogoImage(croppedUri)
+            }
+        )
+    }
+    }
+
     // Image Picker Dialog
     if (showImagePickerDialog) {
         ImagePickerDialog(

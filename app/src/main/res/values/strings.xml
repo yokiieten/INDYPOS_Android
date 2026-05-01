@@ -938,6 +938,7 @@
     <string name="settings_select_shop_logo">เลือกโลโก้ร้าน</string>
     <string name="settings_select_qr_code">เลือก QR Code</string>
     <string name="settings_attach_shop_logo">แนบรูปโลโก้ร้านของคุณ</string>
+    <string name="settings_shop_logo_crop_title">เลือกพื้นที่โลโก้</string>
     <string name="settings_attach_qr_code">แนบรูป QR Code สำหรับใบเสร็จ</string>
     <string name="settings_save_success">บันทึกการตั้งค่าเรียบร้อยแล้ว</string>
     <string name="settings_paper_size_select">เลือกขนาดกระดาษ</string>
