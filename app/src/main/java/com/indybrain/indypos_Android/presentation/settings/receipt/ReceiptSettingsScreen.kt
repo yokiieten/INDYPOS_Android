@@ -79,6 +79,7 @@ import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
+import com.indybrain.indypos_Android.core.ui.components.PanZoomImageCropScreen
 import com.indybrain.indypos_Android.domain.model.PromptPayType
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
@@ -101,14 +102,13 @@ fun ReceiptSettingsScreen(
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     var showPaperSizeDialog by remember { mutableStateOf(false) }
     var showQRCodePreviewDialog by remember { mutableStateOf(false) }
+    var pendingShopLogoCropUri by remember { mutableStateOf<Uri?>(null) }
     
     // Image picker launcher (Gallery)
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            viewModel.updateShopLogoImage(it)
-        }
+        uri?.let { pendingShopLogoCropUri = it }
     }
     
     // Camera launcher
@@ -117,7 +117,7 @@ fun ReceiptSettingsScreen(
     ) { success ->
         if (success && cameraImageUri != null) {
             cameraImageUri?.let { uri ->
-                viewModel.updateShopLogoImage(uri)
+                pendingShopLogoCropUri = uri
             }
         }
     }
@@ -125,31 +125,33 @@ fun ReceiptSettingsScreen(
     Scaffold(
         containerColor = BaseBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.receipt_settings_title),
-                        style = FontUtils.mainFont(
-                            style = AppFontStyle.Bold,
-                            size = FontSize.Large
-                        ),
-                        color = PrimaryText
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = null,
-                            tint = PrimaryText
+            if (pendingShopLogoCropUri == null) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.receipt_settings_title),
+                            style = FontUtils.mainFont(
+                                style = AppFontStyle.Bold,
+                                size = FontSize.Large
+                            ),
+                            color = PrimaryText
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BaseBackground,
-                    titleContentColor = PrimaryText
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = PrimaryText
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = BaseBackground,
+                        titleContentColor = PrimaryText
+                    )
                 )
-            )
+            }
         }
     ) { padding ->
         Column(
@@ -301,6 +303,25 @@ fun ReceiptSettingsScreen(
                     )
                 }
             }
+        }
+
+        // Shop Logo Crop Screen — overlay on top of Scaffold content while user picks crop area
+        pendingShopLogoCropUri?.let { uri ->
+            PanZoomImageCropScreen(
+                imageUri = uri,
+                cropAspectWidth = 1f,
+                cropAspectHeight = 1f,
+                outputWidthPx = 400,
+                outputHeightPx = 400,
+                title = stringResource(R.string.settings_select_shop_logo),
+                confirmLabel = stringResource(R.string.home_crop_use_photo),
+                outputFileNamePrefix = "shop_logo_crop",
+                onDismiss = { pendingShopLogoCropUri = null },
+                onConfirm = { croppedUri ->
+                    pendingShopLogoCropUri = null
+                    viewModel.updateShopLogoImage(croppedUri)
+                }
+            )
         }
     }
     
