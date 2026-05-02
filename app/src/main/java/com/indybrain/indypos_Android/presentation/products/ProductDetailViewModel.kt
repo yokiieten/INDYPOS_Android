@@ -90,8 +90,11 @@ class ProductDetailViewModel @Inject constructor(
 
                 val data = apiResult.getOrNull()!!
                 val product = data.product
-                val addonGroups = data.addonGroups
-                val addonsByGroup = data.addonsByGroup
+                // POS แสดงเฉพาะกลุ่ม/ตัวเลือกที่ active — ข้อมูลดิบจาก API ยังเต็มสำหรับหน้าอื่น (เช่นแก้สินค้า, sync ตะกร้า)
+                val addonGroups = data.addonGroups.filter { it.isActive }
+                val addonsByGroup = addonGroups.associate { group ->
+                    group.id to (data.addonsByGroup[group.id].orEmpty().filter { it.isActive })
+                }
                 val category = data.category
 
                 // Check if product is already in cart and load existing data
@@ -135,8 +138,20 @@ class ProductDetailViewModel @Inject constructor(
                 } else {
                     emptyMap()
                 }
-                
+
                 val hasAddons = product.hasAdditionalOptions == true
+                val allowedGroupIds = addonGroups.map { it.id }.toSet()
+                val selectedAddonsForUi = if (!hasAddons) {
+                    emptyMap()
+                } else {
+                    existingSelectedAddons
+                        .filterKeys { it in allowedGroupIds }
+                        .mapValues { (groupId, addonIds) ->
+                            val allowedAddonIds =
+                                addonsByGroup[groupId].orEmpty().map { it.id }.toSet()
+                            addonIds.filter { it in allowedAddonIds }.toSet()
+                        }
+                }
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -144,7 +159,7 @@ class ProductDetailViewModel @Inject constructor(
                         category = category,
                         addonGroups = if (hasAddons) addonGroups else emptyList(),
                         addonsByGroup = if (hasAddons) addonsByGroup else emptyMap(),
-                        selectedAddons = if (hasAddons) existingSelectedAddons else emptyMap(),
+                        selectedAddons = selectedAddonsForUi,
                         quantity = existingQuantity,
                         specialRequest = existingSpecialRequest,
                         editingCartItemId = if (!isExplicitNew && existingCartItem != null) existingCartItem.id else null,
