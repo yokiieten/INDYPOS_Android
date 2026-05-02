@@ -92,13 +92,18 @@ class ReceiptSettingsRepositoryImpl @Inject constructor(
                     targetHeight = 200,
                     context = context
                 ) ?: return Result.failure(Exception("ไม่สามารถประมวลผลรูปภาพได้"))
+
+                val finalBitmap = ImageUtils.toGrayscaleForThermalPrint(resizedBitmap)
+                if (finalBitmap !== resizedBitmap) {
+                    resizedBitmap.recycle()
+                }
                 
                 // Save to file
                 val imageFile = File(logoDir, "shop_logo_${System.currentTimeMillis()}.jpg")
-                val saved = ImageUtils.saveBitmapToFile(resizedBitmap, imageFile, quality = 85)
+                val saved = ImageUtils.saveBitmapToFile(finalBitmap, imageFile, quality = 85)
                 
                 if (!saved) {
-                    resizedBitmap.recycle()
+                    finalBitmap.recycle()
                     return Result.failure(Exception("ไม่สามารถบันทึกไฟล์รูปภาพได้"))
                 }
                 
@@ -112,7 +117,7 @@ class ReceiptSettingsRepositoryImpl @Inject constructor(
                 }
                 
                 val relativePath = "${SHOP_LOGO_DIR}/${imageFile.name}"
-                resizedBitmap.recycle()
+                finalBitmap.recycle()
                 
                 val result = updateSetting { it.copy(shopLogoImagePath = relativePath) }
                 if (result.isSuccess) {
@@ -149,8 +154,12 @@ class ReceiptSettingsRepositoryImpl @Inject constructor(
                 targetHeight = 200,
                 context = context
             ) ?: return Result.failure(Exception("ไม่สามารถประมวลผลรูปภาพได้"))
-            
-            Result.success(resizedBitmap)
+
+            val previewBitmap = ImageUtils.toGrayscaleForThermalPrint(resizedBitmap)
+            if (previewBitmap !== resizedBitmap) {
+                resizedBitmap.recycle()
+            }
+            Result.success(previewBitmap)
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
@@ -90,6 +92,31 @@ object ImageUtils {
             resizedBitmap
         } catch (e: Exception) {
             null
+        }
+    }
+
+    /**
+     * Re-rasterizes [bitmap] to grayscale at the same pixel size, using [Bitmap.Config.RGB_565]
+     * (no alpha) and luminance from a desaturating [ColorMatrix] — closer to thermal / 1-bit pipelines.
+     * If conversion fails, returns the same [bitmap] instance; callers should recycle the source only when
+     * the returned bitmap is a different instance (`!==`).
+     */
+    fun toGrayscaleForThermalPrint(bitmap: Bitmap): Bitmap {
+        return try {
+            val w = bitmap.width
+            val h = bitmap.height
+            if (w <= 0 || h <= 0) return bitmap
+            val out = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
+            val canvas = Canvas(out)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                val cm = ColorMatrix()
+                cm.setSaturation(0f)
+                colorFilter = ColorMatrixColorFilter(cm)
+            }
+            canvas.drawBitmap(bitmap, 0f, 0f, paint)
+            out
+        } catch (_: Exception) {
+            bitmap
         }
     }
     
