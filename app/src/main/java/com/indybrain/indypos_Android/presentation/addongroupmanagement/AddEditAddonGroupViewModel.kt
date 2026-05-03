@@ -7,6 +7,7 @@ import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.AddonEntity
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupWithAddons
 import com.indybrain.indypos_Android.domain.repository.AddonGroupRepository
 import com.indybrain.indypos_Android.domain.repository.AddonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,6 +66,13 @@ class AddEditAddonGroupViewModel @Inject constructor(
     
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    /**
+     * Navigation arg for edit — set synchronously before load (same pattern as
+     * [AddEditCategoryViewModel.categoryId] / [AddEditAddonViewModel.addonId]) so save uses update,
+     * not create, when the GET fails (e.g. already deleted on server).
+     */
+    private var addonGroupIdForSave: String? = null
     
     init {
         viewModelScope.launch {
@@ -72,28 +80,52 @@ class AddEditAddonGroupViewModel @Inject constructor(
         }
     }
     
+    private fun formStateFromAddonGroupWithAddons(addonGroupWithAddons: AddonGroupWithAddons): FormState {
+        val group = addonGroupWithAddons.addonGroup
+        return FormState(
+            groupName = group.name,
+            isRequired = group.isRequired,
+            maxSelection = if (group.maxSelection != null && group.maxSelection!! > 0) {
+                group.maxSelection.toString()
+            } else {
+                ""
+            },
+            selectedAddonIds = addonGroupWithAddons.addons.mapNotNull { it.id }.toSet()
+        )
+    }
+
     /**
-     * Initialize for edit mode — loads group + linked addons from API only.
+     * Initialize for edit mode — loads group + linked addons from API only (same pattern as
+     * [AddEditCategoryViewModel.loadCategory] / [AddEditAddonViewModel.loadAddon]).
+     * If the group is missing (e.g. deleted on server), keep the navigation id so save runs update
+     * and the API returns an error instead of silently creating a new group.
      */
     fun initializeForEdit(addonGroupId: String) {
+        addonGroupIdForSave = addonGroupId
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    isEditMode = true,
+                    editingAddonGroupId = addonGroupId,
+                    editingAddonGroupIsActive = true,
+                    formState = FormState()
+                )
+            }
+
             addonGroupRepository.getAddonGroupWithAddonsFromApi(addonGroupId).fold(
                 onSuccess = { addonGroupWithAddons ->
+                    val id = addonGroupWithAddons.addonGroup.id
+                    addonGroupIdForSave = id
                     _uiState.update { current ->
                         current.copy(
                             isEditMode = true,
-                            editingAddonGroupId = addonGroupWithAddons.addonGroup.id,
+                            editingAddonGroupId = id,
                             editingAddonGroupIsActive = addonGroupWithAddons.addonGroup.isActive,
-                            formState = FormState(
-                                groupName = addonGroupWithAddons.addonGroup.name,
-                                isRequired = addonGroupWithAddons.addonGroup.isRequired,
-                                maxSelection = if (addonGroupWithAddons.addonGroup.maxSelection != null && addonGroupWithAddons.addonGroup.maxSelection!! > 0) {
-                                    addonGroupWithAddons.addonGroup.maxSelection.toString()
-                                } else "",
-                                selectedAddonIds = addonGroupWithAddons.addons.mapNotNull { it.id }.toSet()
-                            ),
-                            isLoading = false
+                            formState = formStateFromAddonGroupWithAddons(addonGroupWithAddons),
+                            isLoading = false,
+                            errorMessage = null
                         )
                     }
                 },
@@ -101,10 +133,36 @@ class AddEditAddonGroupViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.message ?: getLocalizedString(R.string.addon_group_form_error_not_found)
+                            isEditMode = true,
+                            editingAddonGroupId = addonGroupId,
+                            editingAddonGroupIsActive = true,
+                            formState = FormState(),
+                            errorMessage = e.message
+                                ?: getLocalizedString(R.string.addon_group_form_error_not_found)
                         )
                     }
                 }
+            )
+        }
+    }
+
+    /**
+     * Clear edit state when navigating to this screen without an id (add flow). Avoids a reused
+     * ViewModel still reporting edit mode after returning from an edit session.
+     */
+    fun resetStateForAddNavigation() {
+        addonGroupIdForSave = null
+        _uiState.update { current ->
+            current.copy(
+                formState = FormState(),
+                isEditMode = false,
+                editingAddonGroupId = null,
+                editingAddonGroupIsActive = true,
+                errorMessage = null,
+                isLoading = false,
+                isSuccess = false,
+                isOfflineSuccess = false,
+                successMessage = null
             )
         }
     }
@@ -203,12 +261,9 @@ class AddEditAddonGroupViewModel @Inject constructor(
 
             val selectedAddonIds = formState.selectedAddonIds.toList()
 
-            if (_uiState.value.isEditMode) {
-                if (_uiState.value.editingAddonGroupId == null) {
-                    _uiState.update { it.copy(isLoading = false) }
-                    return@launch
-                }
-                updateAddonGroup(formState, maxSelection, selectedAddonIds)
+            val editId = addonGroupIdForSave
+            if (editId != null) {
+                updateAddonGroup(formState, maxSelection, selectedAddonIds, editId)
             } else {
                 createAddonGroup(formState, maxSelection, selectedAddonIds)
             }
@@ -249,8 +304,12 @@ class AddEditAddonGroupViewModel @Inject constructor(
     /**
      * Update addon group
      */
-    private suspend fun updateAddonGroup(formState: FormState, maxSelection: Int, selectedAddonIds: List<String>) {
-        val editingGroupId = _uiState.value.editingAddonGroupId ?: return
+    private suspend fun updateAddonGroup(
+        formState: FormState,
+        maxSelection: Int,
+        selectedAddonIds: List<String>,
+        editingGroupId: String
+    ) {
         val isActive = _uiState.value.editingAddonGroupIsActive
 
         val result = addonGroupRepository.updateAddonGroup(

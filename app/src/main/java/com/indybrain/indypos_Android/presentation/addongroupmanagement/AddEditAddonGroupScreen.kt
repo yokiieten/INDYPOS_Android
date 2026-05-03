@@ -85,15 +85,17 @@ fun AddEditAddonGroupScreen(
     viewModel: AddEditAddonGroupViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // Same as AddEditCategoryScreen / AddEditAddonScreen: edit UI follows navigation arg, not load success.
     val isEditMode = addonGroupId != null
     var showAddAddonDialog by remember { mutableStateOf(false) }
     var shouldNavigateBack by remember { mutableStateOf(false) }
     var isSaveInProgress by remember { mutableStateOf(false) }
     
-    // Initialize for edit mode
     LaunchedEffect(addonGroupId) {
         if (addonGroupId != null) {
             viewModel.initializeForEdit(addonGroupId)
+        } else {
+            viewModel.resetStateForAddNavigation()
         }
     }
     
@@ -158,7 +160,7 @@ fun AddEditAddonGroupScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (uiState.isLoading && isEditMode) {
+            if (addonGroupId != null && uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
