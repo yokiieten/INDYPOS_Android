@@ -848,6 +848,17 @@
     <string name="addon_form_error_create_addon">An error occurred while creating addon</string>
     <string name="addon_form_success_add_single">Addon added successfully</string>
     
+    <!-- Stock notification (parity with iOS) -->
+    <string name="stock_notification_channel_name">Stock alerts</string>
+    <string name="stock_notification_channel_description">Alerts when items are low or out of stock</string>
+    <string name="stock_notification_title">Low Stock Alert</string>
+    <string name="stock_notification_single_product">%1$s has only %2$d items left</string>
+    <string name="stock_notification_multiple_products">%1$d products are running low on stock. Please check</string>
+    <string name="stock_notification_out_of_stock">%1$s is out of stock</string>
+    <string name="stock_notification_out_of_stock_multiple">%1$d products are out of stock</string>
+    <string name="stock_notification_mixed_products">%1$d products are out of stock and %2$d products are running low</string>
+    <string name="stock_notification_fallback_product_name">Product</string>
+    
     <!-- Stock Management Screen -->
     <string name="stock_management_title">Stock Management</string>
     <string name="stock_update_title">Update Stock</string>

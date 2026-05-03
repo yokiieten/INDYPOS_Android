@@ -876,6 +876,17 @@
     <string name="printer_connection_failed">การเชื่อมต่อล้มเหลว</string>
     <string name="printer_scanning">กำลังค้นหา...</string>
     
+    <!-- Stock notification (parity with iOS) -->
+    <string name="stock_notification_channel_name">แจ้งเตือนสต็อก</string>
+    <string name="stock_notification_channel_description">แจ้งเตือนเมื่อสินค้าใกล้หมดหรือหมด</string>
+    <string name="stock_notification_title">สินค้าใกล้หมด</string>
+    <string name="stock_notification_single_product">%1$s เหลือเพียง %2$d ชิ้น</string>
+    <string name="stock_notification_multiple_products">มีสินค้า %1$d รายการที่ใกล้หมด กรุณาตรวจสอบ</string>
+    <string name="stock_notification_out_of_stock">%1$s หมดแล้ว</string>
+    <string name="stock_notification_out_of_stock_multiple">มีสินค้า %1$d รายการที่หมดแล้ว</string>
+    <string name="stock_notification_mixed_products">มีสินค้า %1$d รายการที่หมดแล้ว และ %2$d รายการที่ใกล้หมด</string>
+    <string name="stock_notification_fallback_product_name">สินค้า</string>
+    
     <!-- Stock Management Screen -->
     <string name="stock_management_title">จัดการสต็อก</string>
     <string name="stock_update_title">อัปเดตสต็อก</string>
