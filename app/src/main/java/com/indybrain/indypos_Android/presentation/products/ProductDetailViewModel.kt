@@ -11,6 +11,7 @@ import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
+import com.indybrain.indypos_Android.domain.usecase.CartInsufficientStockErrors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +40,7 @@ class ProductDetailViewModel @Inject constructor(
 
     companion object {
         const val ERROR_MAX_SELECTION_ZERO = "MAX_SELECTION_ZERO"
+        const val ERROR_INSUFFICIENT_STOCK = CartInsufficientStockErrors.TOKEN_PLAIN
         private const val ERROR_MAX_SELECTION_REACHED_PREFIX = "MAX_SELECTION_REACHED"
         private const val ERROR_PARAM_SEPARATOR = '\u001E'
 
@@ -274,23 +276,10 @@ class ProductDetailViewModel @Inject constructor(
             val hasStock = fitsApiStockCeiling(product, totalQuantityAfterChange)
             
             if (!hasStock) {
-                // Show error toast if stock is insufficient
-                val stockQuantity = product.stockQuantity ?: 0
-                val availableStock = availableUnitsForDetailLine(
-                    stockCap = stockQuantity,
-                    totalQuantityInCart = totalQuantityInCart,
-                    matchingCartItem = matchingCartItem
-                )
-                val errorMessage = if (availableStock > 0) {
-                    "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                } else {
-                    "สินค้าในสต็อกไม่เพียงพอ"
-                }
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
-                        errorMessage = errorMessage
-                        // Keep current quantity, don't update
-                    ) 
+                        errorMessage = ERROR_INSUFFICIENT_STOCK
+                    )
                 }
             } else {
                 // Only update quantity if stock is available
@@ -352,19 +341,8 @@ class ProductDetailViewModel @Inject constructor(
                         )
                     }
                 } else {
-                    val stockQuantity = product.stockQuantity ?: 0
-                    val availableStock = availableUnitsForDetailLine(
-                        stockCap = stockQuantity,
-                        totalQuantityInCart = totalQuantityInCart,
-                        matchingCartItem = matchingCartItem
-                    )
-                    val errorMessage = if (availableStock > 0) {
-                        "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                    } else {
-                        "สินค้าในสต็อกไม่เพียงพอ"
-                    }
                     _uiState.update {
-                        it.copy(errorMessage = errorMessage)
+                        it.copy(errorMessage = ERROR_INSUFFICIENT_STOCK)
                     }
                 }
             }
@@ -525,14 +503,7 @@ class ProductDetailViewModel @Inject constructor(
                         
                         val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
                         if (!hasStock) {
-                            val stockQuantity = product.stockQuantity ?: 0
-                            val availableStock = stockQuantity - totalQuantityExcludingOriginalGroup
-                            val errorMessage = if (availableStock > 0) {
-                                "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                            } else {
-                                "สินค้าในสต็อกไม่เพียงพอ"
-                            }
-                            _uiState.update { it.copy(errorMessage = errorMessage) }
+                            _uiState.update { it.copy(errorMessage = ERROR_INSUFFICIENT_STOCK) }
                             return@launch
                         }
                         
@@ -545,14 +516,7 @@ class ProductDetailViewModel @Inject constructor(
                         val totalQuantityAfterChange = totalQuantityExcludingOriginalGroup + newQuantity
                         val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
                         if (!hasStock) {
-                            val stockQuantity = product.stockQuantity ?: 0
-                            val availableStock = stockQuantity - totalQuantityExcludingOriginalGroup
-                            val errorMessage = if (availableStock > 0) {
-                                "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                            } else {
-                                "สินค้าในสต็อกไม่เพียงพอ"
-                            }
-                            _uiState.update { it.copy(errorMessage = errorMessage) }
+                            _uiState.update { it.copy(errorMessage = ERROR_INSUFFICIENT_STOCK) }
                             return@launch
                         }
                         
@@ -606,15 +570,7 @@ class ProductDetailViewModel @Inject constructor(
                     // Check stock availability before updating
                     val hasStock = cartRepository.checkStockAvailability(product.id, newQuantity)
                     if (!hasStock) {
-                        val stockQuantity = product.stockQuantity ?: 0
-                        val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
-                        val availableStock = stockQuantity - totalQuantityInCart
-                        val errorMessage = if (availableStock > 0) {
-                            "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                        } else {
-                            "สินค้าในสต็อกไม่เพียงพอ"
-                        }
-                        _uiState.update { it.copy(errorMessage = errorMessage) }
+                        _uiState.update { it.copy(errorMessage = ERROR_INSUFFICIENT_STOCK) }
                         return@launch
                     }
                     
@@ -623,15 +579,7 @@ class ProductDetailViewModel @Inject constructor(
                     // Check stock availability before adding new item
                     val hasStock = cartRepository.checkStockAvailability(product.id, currentState.quantity)
                     if (!hasStock) {
-                        val stockQuantity = product.stockQuantity ?: 0
-                        val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
-                        val availableStock = stockQuantity - totalQuantityInCart
-                        val errorMessage = if (availableStock > 0) {
-                            "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                        } else {
-                            "สินค้าในสต็อกไม่เพียงพอ"
-                        }
-                        _uiState.update { it.copy(errorMessage = errorMessage) }
+                        _uiState.update { it.copy(errorMessage = ERROR_INSUFFICIENT_STOCK) }
                         return@launch
                     }
                     
@@ -725,18 +673,6 @@ class ProductDetailViewModel @Inject constructor(
     private fun fitsApiStockCeiling(product: ProductEntity, totalUnitsOfThisProductAfter: Int): Boolean {
         if (product.isStockEnabled != true || product.stockQuantity == null) return true
         return totalUnitsOfThisProductAfter <= product.stockQuantity
-    }
-
-    private fun availableUnitsForDetailLine(
-        stockCap: Int,
-        totalQuantityInCart: Int,
-        matchingCartItem: CartItem?
-    ): Int {
-        return if (matchingCartItem != null) {
-            stockCap - (totalQuantityInCart - matchingCartItem.quantity)
-        } else {
-            stockCap - totalQuantityInCart
-        }
     }
 
     /**

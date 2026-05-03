@@ -53,6 +53,7 @@ import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
 import com.indybrain.indypos_Android.domain.model.Addon
 import com.indybrain.indypos_Android.domain.model.GroupedCartItem
+import com.indybrain.indypos_Android.domain.usecase.CartInsufficientStockErrors
 import com.indybrain.indypos_Android.ui.theme.BaseBackground
 import com.indybrain.indypos_Android.ui.theme.PlaceholderText
 import com.indybrain.indypos_Android.ui.theme.PrimaryButton
@@ -230,9 +231,15 @@ fun ProductEditScreen(
                     
                     // Show error as snackbar (toast without icon)
                     uiState.errorMessage?.let { errorMessage ->
+                        val localizedMessage =
+                            if (errorMessage == CartInsufficientStockErrors.TOKEN_PLAIN) {
+                                stringResource(id = R.string.product_detail_insufficient_stock)
+                            } else {
+                                errorMessage
+                            }
                         LaunchedEffect(errorMessage) {
                             snackbarHostState.showSnackbar(
-                                message = errorMessage,
+                                message = localizedMessage,
                                 duration = androidx.compose.material3.SnackbarDuration.Short
                             )
                             viewModel.clearErrorMessage()

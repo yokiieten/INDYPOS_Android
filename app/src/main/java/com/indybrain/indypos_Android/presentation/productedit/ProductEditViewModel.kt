@@ -47,7 +47,8 @@ class ProductEditViewModel @Inject constructor(
                         },
                         onFailure = { e ->
                             val errorMessage = if (e is InsufficientStockException) {
-                                e.message ?: "ไม่สามารถเพิ่มสินค้าได้เกิน 5 ตัว"
+                                e.message?.takeIf { it.isNotBlank() }
+                                    ?: CartInsufficientStockErrors.TOKEN_PLAIN
                             } else {
                                 e.message ?: "ไม่สามารถอัปเดตจำนวนได้"
                             }

@@ -337,18 +337,18 @@ fun ProductDetailScreen(
                         val localizedMessage = when {
                             errorMessage == ProductDetailViewModel.ERROR_MAX_SELECTION_ZERO ->
                                 stringResource(id = R.string.product_addon_max_selection_zero_error)
+                            errorMessage == ProductDetailViewModel.ERROR_INSUFFICIENT_STOCK ->
+                                stringResource(id = R.string.product_detail_insufficient_stock)
                             else -> {
-                                val maxReached =
-                                    ProductDetailViewModel.parseMaxSelectionReachedError(errorMessage)
-                                if (maxReached != null) {
-                                    stringResource(
-                                        id = R.string.product_detail_max_selection_reached,
-                                        maxReached.first,
-                                        maxReached.second
-                                    )
-                                } else {
-                                    errorMessage
-                                }
+                                ProductDetailViewModel.parseMaxSelectionReachedError(errorMessage)
+                                    ?.let { maxReached ->
+                                        stringResource(
+                                            id = R.string.product_detail_max_selection_reached,
+                                            maxReached.first,
+                                            maxReached.second
+                                        )
+                                    }
+                                    ?: errorMessage
                             }
                         }
                         

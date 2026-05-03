@@ -1,12 +1,17 @@
 package com.indybrain.indypos_Android.presentation.products
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,8 +25,20 @@ import javax.inject.Inject
 @HiltViewModel
 class MainProductViewModel @Inject constructor(
     private val productRepository: ProductRepository,
-    private val cartRepository: CartRepository
+    private val cartRepository: CartRepository,
+    private val languageLocalDataSource: LanguageLocalDataSource,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private fun getLocalizedString(resId: Int, vararg formatArgs: Any): String {
+        val localeCode = languageLocalDataSource.getLanguageLocale()
+        val localizedContext = LocaleHelper.setLocale(context, localeCode)
+        return if (formatArgs.isEmpty()) localizedContext.getString(resId)
+        else localizedContext.getString(resId, *formatArgs)
+    }
+
+    private fun insufficientStockUserMessage(): String =
+        getLocalizedString(R.string.product_detail_insufficient_stock)
     
     val cartItemCount = cartRepository.getCartItemCount()
     val cartItems = cartRepository.getCartItems()
@@ -151,15 +168,9 @@ class MainProductViewModel @Inject constructor(
                 val hasStock = cartRepository.checkStockAvailability(product.id, newTotalQuantity)
                 
                 if (!hasStock) {
-                    // Show stock error message
-                    val stockQuantity = product.stockQuantity
-                    val availableStock = stockQuantity - totalQuantityInCart
-                    val errorMessage = if (availableStock > 0) {
-                        "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                    } else {
-                        "สินค้าหมดสต็อก"
+                    _uiState.update {
+                        it.copy(stockErrorMessage = insufficientStockUserMessage())
                     }
-                    _uiState.update { it.copy(stockErrorMessage = errorMessage) }
                     return@launch
                 }
             }
@@ -218,14 +229,9 @@ class MainProductViewModel @Inject constructor(
                 val hasStock = cartRepository.checkStockAvailability(product.id, newTotalQuantity)
                 
                 if (!hasStock) {
-                    val stockQuantity = product.stockQuantity
-                    val availableStock = stockQuantity - totalQuantityInCart
-                    val errorMessage = if (availableStock > 0) {
-                        "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                    } else {
-                        "สินค้าหมดสต็อก"
+                    _uiState.update {
+                        it.copy(stockErrorMessage = insufficientStockUserMessage())
                     }
-                    _uiState.update { it.copy(stockErrorMessage = errorMessage) }
                     return@launch
                 }
             }

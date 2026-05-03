@@ -32,14 +32,7 @@ class IncreaseCartItemQuantityUseCase @Inject constructor(
             )
             
             if (!hasStock) {
-                val stockQuantity = product.stockQuantity ?: 0
-                val availableStock = stockQuantity - (currentTotalQuantity - cartItem.quantity)
-                val errorMessage = if (availableStock > 0) {
-                    "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
-                } else {
-                    "สินค้าในสต็อกไม่เพียงพอ"
-                }
-                emit(Result.failure(Exception(errorMessage)))
+                emit(Result.failure(InsufficientStockException(CartInsufficientStockErrors.TOKEN_PLAIN)))
                 return@flow
             }
         }
