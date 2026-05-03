@@ -7,6 +7,8 @@ import com.indybrain.indypos_Android.core.locale.LocaleHelper
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
+import com.indybrain.indypos_Android.data.local.entity.ProductEntity
+import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -255,54 +257,30 @@ class ProductDetailViewModel @Inject constructor(
             
             // Get existing cart items for this product
             val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
-            
-            // Find matching cart item (same product, addons, and special request)
-            val currentSpecialRequest = currentState.specialRequest ?: ""
-            val sortedGroups = currentState.selectedAddons.keys.sorted()
-            val addonsKey = sortedGroups.joinToString("|") { groupId ->
-                val addonIds = currentState.selectedAddons[groupId]
-                    ?.sorted()
-                    ?.joinToString(",") ?: ""
-                "$groupId:$addonIds"
-            }
-            val currentKey = "${product.id}|$currentSpecialRequest|$addonsKey"
-            
-            val matchingCartItem = existingCartItems.find { cartItem ->
-                val itemSpecialRequest = cartItem.specialRequest ?: ""
-                val itemSortedGroups = cartItem.selectedAddons.keys.sorted()
-                val itemAddonsKey = itemSortedGroups.joinToString("|") { groupId ->
-                    val addonIds = cartItem.selectedAddons[groupId]
-                        ?.map { it.id }
-                        ?.sorted()
-                        ?.joinToString(",") ?: ""
-                    "$groupId:$addonIds"
-                }
-                val itemKey = "${cartItem.product.id}|$itemSpecialRequest|$itemAddonsKey"
-                itemKey == currentKey
-            }
-            
-            // Calculate total quantity that would be in cart after increase
-            // If matching item exists, we need to calculate what the new total would be
+            val matchingCartItem = findMatchingCartItemForDetailConfig(
+                productId = product.id,
+                specialRequest = currentState.specialRequest ?: "",
+                selectedAddons = currentState.selectedAddons,
+                existingCartItems = existingCartItems
+            )
             val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
-            val totalQuantityAfterChange = if (matchingCartItem != null) {
-                // If matching item exists, replace its quantity with newQuantity
-                totalQuantityInCart - matchingCartItem.quantity + newQuantity
-            } else {
-                // If no matching item, add newQuantity to total
-                totalQuantityInCart + newQuantity
-            }
+            val totalQuantityAfterChange = totalProductUnitsAfterDetailQuantityChange(
+                totalQuantityInCart = totalQuantityInCart,
+                matchingCartItem = matchingCartItem,
+                newDetailQuantity = newQuantity
+            )
             
-            // Check stock availability using checkStockAvailability
-            val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantityAfterChange)
+            // Ceiling from API snapshot (loadProduct); not Room
+            val hasStock = fitsApiStockCeiling(product, totalQuantityAfterChange)
             
             if (!hasStock) {
                 // Show error toast if stock is insufficient
                 val stockQuantity = product.stockQuantity ?: 0
-                val availableStock = if (matchingCartItem != null) {
-                    stockQuantity - (totalQuantityInCart - matchingCartItem.quantity)
-                } else {
-                    stockQuantity - totalQuantityInCart
-                }
+                val availableStock = availableUnitsForDetailLine(
+                    stockCap = stockQuantity,
+                    totalQuantityInCart = totalQuantityInCart,
+                    matchingCartItem = matchingCartItem
+                )
                 val errorMessage = if (availableStock > 0) {
                     "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
                 } else {
@@ -344,37 +322,49 @@ class ProductDetailViewModel @Inject constructor(
                 val currentState = _uiState.value
                 val product = currentState.product ?: return@launch
                 
-                // Check stock availability including existing cart items BEFORE updating
-                val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
-                val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
-                // Calculate what the total quantity would be if we update to newQuantity
-                val totalQuantity = totalQuantityInCart + newQuantity - currentState.quantity
+                if (product.isStockEnabled != true || product.stockQuantity == null) {
+                    _uiState.update {
+                        it.copy(quantity = newQuantity, errorMessage = null)
+                    }
+                    return@launch
+                }
                 
-                // Check stock availability BEFORE updating quantity
-                val hasStock = cartRepository.checkStockAvailability(product.id, totalQuantity)
+                val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
+                val matchingCartItem = findMatchingCartItemForDetailConfig(
+                    productId = product.id,
+                    specialRequest = currentState.specialRequest ?: "",
+                    selectedAddons = currentState.selectedAddons,
+                    existingCartItems = existingCartItems
+                )
+                val totalQuantityInCart = existingCartItems.sumOf { it.quantity }
+                val totalQuantityAfterChange = totalProductUnitsAfterDetailQuantityChange(
+                    totalQuantityInCart = totalQuantityInCart,
+                    matchingCartItem = matchingCartItem,
+                    newDetailQuantity = newQuantity
+                )
+                val hasStock = fitsApiStockCeiling(product, totalQuantityAfterChange)
                 
                 if (hasStock) {
-                    // Only update quantity if stock is available
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
-                            quantity = newQuantity, 
+                            quantity = newQuantity,
                             errorMessage = null
-                        ) 
+                        )
                     }
                 } else {
-                    // Show error toast if stock is insufficient - DON'T update quantity
                     val stockQuantity = product.stockQuantity ?: 0
-                    val availableStock = stockQuantity - totalQuantityInCart
+                    val availableStock = availableUnitsForDetailLine(
+                        stockCap = stockQuantity,
+                        totalQuantityInCart = totalQuantityInCart,
+                        matchingCartItem = matchingCartItem
+                    )
                     val errorMessage = if (availableStock > 0) {
                         "สินค้าในสต็อกไม่เพียงพอ เหลือเพียง $availableStock ชิ้น"
                     } else {
                         "สินค้าในสต็อกไม่เพียงพอ"
                     }
-                    _uiState.update { 
-                        it.copy(
-                            errorMessage = errorMessage
-                            // Keep current quantity, don't update to newQuantity
-                        ) 
+                    _uiState.update {
+                        it.copy(errorMessage = errorMessage)
                     }
                 }
             }
@@ -692,6 +682,63 @@ class ProductDetailViewModel @Inject constructor(
         }
     }
     
+    private fun findMatchingCartItemForDetailConfig(
+        productId: String,
+        specialRequest: String,
+        selectedAddons: Map<String, Set<String>>,
+        existingCartItems: List<CartItem>
+    ): CartItem? {
+        val sortedGroups = selectedAddons.keys.sorted()
+        val addonsKey = sortedGroups.joinToString("|") { groupId ->
+            val addonIds = selectedAddons[groupId]?.sorted()?.joinToString(",") ?: ""
+            "$groupId:$addonIds"
+        }
+        val currentKey = "$productId|$specialRequest|$addonsKey"
+        return existingCartItems.find { cartItem ->
+            val itemSpecialRequest = cartItem.specialRequest ?: ""
+            val itemSortedGroups = cartItem.selectedAddons.keys.sorted()
+            val itemAddonsKey = itemSortedGroups.joinToString("|") { groupId ->
+                val addonIds = cartItem.selectedAddons[groupId]
+                    ?.map { it.id }
+                    ?.sorted()
+                    ?.joinToString(",") ?: ""
+                "$groupId:$addonIds"
+            }
+            val itemKey = "${cartItem.product.id}|$itemSpecialRequest|$itemAddonsKey"
+            itemKey == currentKey
+        }
+    }
+
+    private fun totalProductUnitsAfterDetailQuantityChange(
+        totalQuantityInCart: Int,
+        matchingCartItem: CartItem?,
+        newDetailQuantity: Int
+    ): Int {
+        return if (matchingCartItem != null) {
+            totalQuantityInCart - matchingCartItem.quantity + newDetailQuantity
+        } else {
+            totalQuantityInCart + newDetailQuantity
+        }
+    }
+
+    /** Stock ceiling from product detail (API snapshot in uiState); does not read Room. */
+    private fun fitsApiStockCeiling(product: ProductEntity, totalUnitsOfThisProductAfter: Int): Boolean {
+        if (product.isStockEnabled != true || product.stockQuantity == null) return true
+        return totalUnitsOfThisProductAfter <= product.stockQuantity
+    }
+
+    private fun availableUnitsForDetailLine(
+        stockCap: Int,
+        totalQuantityInCart: Int,
+        matchingCartItem: CartItem?
+    ): Int {
+        return if (matchingCartItem != null) {
+            stockCap - (totalQuantityInCart - matchingCartItem.quantity)
+        } else {
+            stockCap - totalQuantityInCart
+        }
+    }
+
     /**
      * สร้าง key สำหรับ grouping CartItem ให้ตรงกับ logic ใน GetGroupedCartItemsByProductUseCase
      * รูปแบบ: "specialRequest|groupId1:addonId1,addonId2|groupId2:addonId3"
