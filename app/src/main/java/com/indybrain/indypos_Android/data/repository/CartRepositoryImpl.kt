@@ -117,9 +117,8 @@ class CartRepositoryImpl @Inject constructor(
         if (product.categoryId != null && category != null && categoryDao.getCategoryById(category.id) == null) {
             categoryDao.insert(category)
         }
-        if (productDao.getProductById(product.id) == null) {
-            productDao.insertAll(listOf(product))
-        }
+        // Replace always: list/catalog rows can be stale; product detail (+ stock checks after this) use fresh API data.
+        productDao.insertAll(listOf(product))
     }
 
     override suspend fun clearCartItemsByProduct(productId: String) {
