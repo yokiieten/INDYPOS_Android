@@ -51,6 +51,14 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryButton
 import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import java.text.DecimalFormat
 
+/**
+ * Summary shown after cash payment completes on [com.indybrain.indypos_Android.presentation.cashpayment.CashPaymentScreen].
+ *
+ * Low-stock alerts use **system notifications** ([StockNotificationHelper]); those run before navigation here,
+ * inside the same payment coroutine in [CashPaymentViewModel], so the API refresh finishes before this screen is shown.
+ * On API 33+ the user must allow [android.Manifest.permission.POST_NOTIFICATIONS] (requested from [com.indybrain.indypos_Android.presentation.splash.SplashScreen]);
+ * release builds rely on ProGuard keeping [com.indybrain.indypos_Android.MainActivity] for the notification tap PendingIntent.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderSummaryScreen(

@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android.data.remote.dto
 
+import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
 
 /**
@@ -7,6 +8,7 @@ import com.google.gson.annotations.SerializedName
  * GET /api/v1/protected/indypos/products/list
  */
 
+@Keep
 data class ProductListResponseDto(
     val categories: List<CategoryListItemDto> = emptyList(),
     val products: List<ProductListItemDto> = emptyList()
@@ -16,11 +18,13 @@ data class ProductListResponseDto(
  * Response data for product search API
  * GET /api/v1/protected/indypos/products/search
  */
+@Keep
 data class ProductsSearchPaginatedDataDto(
     val products: List<ProductListItemDto>? = null,
     val pagination: ProductsPaginationDto? = null
 )
 
+@Keep
 data class CategoryListItemDto(
     val id: String,
     val name: String,
@@ -30,6 +34,7 @@ data class CategoryListItemDto(
     val isActive: Boolean = true
 )
 
+@Keep
 data class ProductListItemDto(
     val id: String,
     val name: String,

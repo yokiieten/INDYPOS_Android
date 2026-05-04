@@ -330,18 +330,21 @@ class CashPaymentViewModel @Inject constructor(
         }
     }
 
-    private fun checkLowStockUsingFreshApiStock(cartItems: List<CartItemEntity>) {
-        viewModelScope.launch {
-            try {
-                val orderedIds = cartItems.mapNotNull { it.productId }.toSet()
-                if (orderedIds.isEmpty()) return@launch
-                productRepository.getProductListFromApi().onSuccess { data ->
-                    val updated = data.products.filter { it.id in orderedIds }
-                    stockNotificationHelper.checkAndNotifyLowStock(updated, emptyMap())
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+    /**
+     * Must run in the same coroutine as payment completion (suspend), not a nested [viewModelScope.launch].
+     * Otherwise navigating away destroys this ViewModel and cancels the job before the list API returns,
+     * so low-stock notifications never fire (user lands on Order Summary with no alert).
+     */
+    private suspend fun checkLowStockUsingFreshApiStock(cartItems: List<CartItemEntity>) {
+        try {
+            val orderedIds = cartItems.mapNotNull { it.productId }.toSet()
+            if (orderedIds.isEmpty()) return
+            productRepository.getProductListFromApi().onSuccess { data ->
+                val updated = data.products.filter { it.id in orderedIds }
+                stockNotificationHelper.checkAndNotifyLowStock(updated, emptyMap())
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

@@ -345,18 +345,21 @@ class OrderProductViewModel @Inject constructor(
      * (ค่า stock จาก API เป็นยอดหลังตัดแล้ว — ใช้ [StockNotificationHelper.checkAndNotifyLowStock] กับ orderedItems ว่าง
      * เพื่อไม่หักจำนวนที่สั่งซ้ำ)
      */
-    private fun checkLowStockUsingFreshApiStock(cartItems: List<CartItemEntity>) {
-        viewModelScope.launch {
-            try {
-                val orderedIds = cartItems.mapNotNull { it.productId }.toSet()
-                if (orderedIds.isEmpty()) return@launch
-                productRepository.getProductListFromApi().onSuccess { data ->
-                    val updated = data.products.filter { it.id in orderedIds }
-                    stockNotificationHelper.checkAndNotifyLowStock(updated, emptyMap())
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+    /**
+     * Same as [com.indybrain.indypos_Android.presentation.cashpayment.CashPaymentViewModel]:
+     * nested [viewModelScope.launch] was cancelled when leaving this screen after order success,
+     * so stock notifications never appeared.
+     */
+    private suspend fun checkLowStockUsingFreshApiStock(cartItems: List<CartItemEntity>) {
+        try {
+            val orderedIds = cartItems.mapNotNull { it.productId }.toSet()
+            if (orderedIds.isEmpty()) return
+            productRepository.getProductListFromApi().onSuccess { data ->
+                val updated = data.products.filter { it.id in orderedIds }
+                stockNotificationHelper.checkAndNotifyLowStock(updated, emptyMap())
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

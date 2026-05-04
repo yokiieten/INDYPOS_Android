@@ -100,6 +100,16 @@
 -keepattributes InnerClasses
 -dontwarn sun.misc.**
 
+# Kotlin + Gson + R8: Gson reflects into data classes; keep metadata used for constructor/serialization.
+-keep class kotlin.Metadata { *; }
+
+# AndroidX @Keep — entry points for DTOs annotated in Kotlin (complements Gson's gson.pro).
+-keep @androidx.annotation.Keep class * { *; }
+-keepclassmembers class * {
+    @androidx.annotation.Keep <fields>;
+    @androidx.annotation.Keep <methods>;
+}
+
 # CRITICAL: Keep ALL DTO classes and prevent field name obfuscation
 -keep class com.indybrain.indypos_Android.data.remote.dto.** { *; }
 -keep class com.indybrain.indypos_Android.data.remote.api.**$* { *; }
@@ -599,10 +609,11 @@
     private static ** LanguageOptionRow(...);
 }
 
-# Keep MainActivity attachBaseContext method (used for locale initialization)
--keepclassmembers class com.indybrain.indypos_Android.MainActivity {
-    public ** attachBaseContext(...);
-}
+# MainActivity: locale + notification PendingIntent targets (StockNotificationHelper)
+-keep class com.indybrain.indypos_Android.MainActivity { *; }
+
+# Low-stock system notifications (R8 must not strip helper or channel/notify chain)
+-keep class com.indybrain.indypos_Android.core.notification.StockNotificationHelper { *; }
 
 # JavaParser classes (optional dependency for XMLBeans code generation)
 -dontwarn com.github.javaparser.**

@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.annotation.Keep
 import androidx.core.app.NotificationCompat
 import com.indybrain.indypos_Android.MainActivity
 import com.indybrain.indypos_Android.R
@@ -15,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Keep
 @Singleton
 class StockNotificationHelper @Inject constructor(
     @ApplicationContext private val context: Context
@@ -34,7 +36,7 @@ class StockNotificationHelper @Inject constructor(
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 context.getString(R.string.stock_notification_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = context.getString(R.string.stock_notification_channel_description)
                 enableVibration(true)
@@ -147,7 +149,8 @@ class StockNotificationHelper @Inject constructor(
         }
 
         val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            // App drawable (not android.R.*) so release + shrinkResources keep a valid icon; some devices drop bad icons silently.
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))

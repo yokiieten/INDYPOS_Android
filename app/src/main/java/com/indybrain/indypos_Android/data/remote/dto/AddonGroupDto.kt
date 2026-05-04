@@ -1,5 +1,6 @@
 package com.indybrain.indypos_Android.data.remote.dto
 
+import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
 
 /**
@@ -29,6 +30,7 @@ data class AddonGroupsPaginationDto(
     val hasPrevious: Boolean
 )
 
+@Keep
 data class AddonGroupDto(
     val id: String,
     val name: String,
