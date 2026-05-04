@@ -85,6 +85,10 @@ import com.indybrain.indypos_Android.ui.theme.SecondaryText
 import java.text.DecimalFormat
 import kotlin.math.roundToInt
 
+/**
+ * Billing screen: **Cash** navigates to the cashier keypad; **transfer** submits the order here via [OrderProductViewModel.placeOrder].
+ * Both paths trigger the same low-stock notification after a successful API order ([com.indybrain.indypos_Android.core.notification.StockNotificationHelper.checkLowStockAfterOrderUsingFreshCatalog]).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderProductScreen(

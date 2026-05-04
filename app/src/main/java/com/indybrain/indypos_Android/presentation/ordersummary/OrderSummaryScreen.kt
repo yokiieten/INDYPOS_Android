@@ -52,10 +52,13 @@ import com.indybrain.indypos_Android.ui.theme.PrimaryText
 import java.text.DecimalFormat
 
 /**
- * Summary shown after cash payment completes on [com.indybrain.indypos_Android.presentation.cashpayment.CashPaymentScreen].
+ * Summary shown after checkout completes: **cash** on [com.indybrain.indypos_Android.presentation.cashpayment.CashPaymentScreen],
+ * **bank transfer** on this flow via [com.indybrain.indypos_Android.presentation.orderproduct.OrderProductViewModel.placeOrder] (no separate cashier screen).
  *
- * Low-stock alerts use **system notifications** ([StockNotificationHelper]); those run before navigation here,
- * inside the same payment coroutine in [CashPaymentViewModel], so the API refresh finishes before this screen is shown.
+ * Low-stock alerts use **system notifications** ([com.indybrain.indypos_Android.core.notification.StockNotificationHelper.checkLowStockAfterOrderUsingFreshCatalog]);
+ * they run in the same coroutine as order completion in [com.indybrain.indypos_Android.presentation.cashpayment.CashPaymentViewModel] or [com.indybrain.indypos_Android.presentation.orderproduct.OrderProductViewModel], before navigation here,
+ * so the product-list API refresh can finish first.
+ * Alerts consider the **full refreshed product list** (not only line items), so nearby low/out-of-stock SKUs still notify even when the paid order contained only non–stock-tracking products.
  * On API 33+ the user must allow [android.Manifest.permission.POST_NOTIFICATIONS] (requested from [com.indybrain.indypos_Android.presentation.splash.SplashScreen]);
  * release builds rely on ProGuard keeping [com.indybrain.indypos_Android.MainActivity] for the notification tap PendingIntent.
  */

@@ -16,7 +16,6 @@ import com.indybrain.indypos_Android.domain.model.PaymentType
 import com.indybrain.indypos_Android.domain.model.PaymentType as DomainPaymentType
 import com.indybrain.indypos_Android.domain.repository.AuthRepository
 import com.indybrain.indypos_Android.domain.repository.CartRepository
-import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.repository.ReceiptSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -39,7 +38,6 @@ class CashPaymentViewModel @Inject constructor(
     private val cartRepository: CartRepository,
     private val ordersApi: OrdersApi,
     private val networkConnectivityChecker: NetworkConnectivityChecker,
-    private val productRepository: ProductRepository,
     private val stockNotificationHelper: StockNotificationHelper,
     private val receiptSettingsRepository: ReceiptSettingsRepository,
     private val printerService: PrinterService,
@@ -220,7 +218,7 @@ class CashPaymentViewModel @Inject constructor(
                         change = change
                     )
 
-                    checkLowStockUsingFreshApiStock(cartItems)
+                    stockNotificationHelper.checkLowStockAfterOrderUsingFreshCatalog()
 
                     cartRepository.clearCart()
                     _uiState.update { it.copy(isProcessingOrder = false) }
@@ -324,24 +322,6 @@ class CashPaymentViewModel @Inject constructor(
                     receivedAmount = receivedAmount,
                     change = change
                 )
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    /**
-     * Must run in the same coroutine as payment completion (suspend), not a nested [viewModelScope.launch].
-     * Otherwise navigating away destroys this ViewModel and cancels the job before the list API returns,
-     * so low-stock notifications never fire (user lands on Order Summary with no alert).
-     */
-    private suspend fun checkLowStockUsingFreshApiStock(cartItems: List<CartItemEntity>) {
-        try {
-            val orderedIds = cartItems.mapNotNull { it.productId }.toSet()
-            if (orderedIds.isEmpty()) return
-            productRepository.getProductListFromApi().onSuccess { data ->
-                val updated = data.products.filter { it.id in orderedIds }
-                stockNotificationHelper.checkAndNotifyLowStock(updated, emptyMap())
             }
         } catch (e: Exception) {
             e.printStackTrace()

@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import com.indybrain.indypos_Android.MainActivity
 import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
+import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -19,7 +20,8 @@ import javax.inject.Singleton
 @Keep
 @Singleton
 class StockNotificationHelper @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val productRepository: ProductRepository
 ) {
     companion object {
         private const val CHANNEL_ID = "stock_notification_channel"
@@ -44,6 +46,22 @@ class StockNotificationHelper @Inject constructor(
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    /**
+     * หลังสร้างออเดอร์สำเร็จ (ชำระ **เงินสด** หรือ **โอนเงิน**): โหลดรายการสินค้าจาก API (ยอดหลังตัด)
+     * แล้วแจ้ง low stock **ทั้งร้าน** (ส่งผลจาก [checkAndNotifyLowStock]: `orderedItems` ว่าง = ไม่หักซ้ำกับยอด API)
+     *
+     * ต้องรันใน suspend เดียวกับที่ commit การชำระเงิน เพื่อไม่ให้ ViewModel ถูกปิดก่อนดึง API เสร็จ
+     */
+    suspend fun checkLowStockAfterOrderUsingFreshCatalog() {
+        try {
+            productRepository.getProductListFromApi().onSuccess { data ->
+                checkAndNotifyLowStock(data.products, emptyMap())
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

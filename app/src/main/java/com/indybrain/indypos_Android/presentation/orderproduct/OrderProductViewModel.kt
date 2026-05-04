@@ -170,6 +170,11 @@ class OrderProductViewModel @Inject constructor(
         }
     }
     
+    /**
+     * สำหรับ **โอนเงิน** จากหน้าสั่งซื้อ (ไม่ผ่าน [com.indybrain.indypos_Android.presentation.cashpayment.CashPaymentScreen]):
+     * หลัง `createOrder` สำเร็จเรียก [StockNotificationHelper.checkLowStockAfterOrderUsingFreshCatalog]
+     * — logic เดียวกับ **เงินสด** ใน [com.indybrain.indypos_Android.presentation.cashpayment.CashPaymentViewModel]
+     */
     fun placeOrder(
         onSuccess: (String?) -> Unit,
         onError: (String) -> Unit
@@ -269,7 +274,7 @@ class OrderProductViewModel @Inject constructor(
                         paymentTypeCode
                     )
 
-                    checkLowStockUsingFreshApiStock(cartItems)
+                    stockNotificationHelper.checkLowStockAfterOrderUsingFreshCatalog()
 
                     cartRepository.clearCart()
                     _uiState.update {
@@ -340,29 +345,6 @@ class OrderProductViewModel @Inject constructor(
         }
     }
     
-    /**
-     * ดึงรายการสินค้าล่าสุดจาก API หลังสร้างออเดอร์สำเร็จ แล้วเช็ค low stock
-     * (ค่า stock จาก API เป็นยอดหลังตัดแล้ว — ใช้ [StockNotificationHelper.checkAndNotifyLowStock] กับ orderedItems ว่าง
-     * เพื่อไม่หักจำนวนที่สั่งซ้ำ)
-     */
-    /**
-     * Same as [com.indybrain.indypos_Android.presentation.cashpayment.CashPaymentViewModel]:
-     * nested [viewModelScope.launch] was cancelled when leaving this screen after order success,
-     * so stock notifications never appeared.
-     */
-    private suspend fun checkLowStockUsingFreshApiStock(cartItems: List<CartItemEntity>) {
-        try {
-            val orderedIds = cartItems.mapNotNull { it.productId }.toSet()
-            if (orderedIds.isEmpty()) return
-            productRepository.getProductListFromApi().onSuccess { data ->
-                val updated = data.products.filter { it.id in orderedIds }
-                stockNotificationHelper.checkAndNotifyLowStock(updated, emptyMap())
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
     private suspend fun handlePrintingAndCashDrawer(
         orderNumber: String?,
         subtotal: Double,
