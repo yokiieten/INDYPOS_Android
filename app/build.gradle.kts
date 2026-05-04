@@ -23,7 +23,7 @@ android {
         applicationId = "com.indybrain.indypos_Android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 44
+        versionCode = 54
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -48,6 +48,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
+                // R8 optimizations on; Gson/DTO stability from proguard-rules.pro + @Keep on API models.
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
