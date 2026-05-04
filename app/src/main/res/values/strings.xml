@@ -441,6 +441,17 @@
     <string name="order_product_clear_all">ลบทั้งหมด</string>
     <string name="order_product_clear_all_confirm">ต้องการลบสินค้าออกจากตะกร้าสินค้าทั้งหมดหรือไม่?</string>
     <string name="order_product_checkout">ชำระเงิน</string>
+    <string name="cash_payment_error_insufficient_received">จำนวนเงินที่รับมาไม่เพียงพอ</string>
+    <string name="create_order_error_free_plan_limit">ถึงขีดจำกัดของแผนฟรี กรุณาติดต่อผู้ให้บริการ</string>
+    <string name="create_order_error_product_inactive">สินค้านี้ไม่เปิดใช้งาน\n%1$s</string>
+    <string name="create_order_error_category_inactive">หมวดหมู่ไม่เปิดใช้งาน\n%1$s</string>
+    <string name="create_order_error_product_category_missing">ไม่พบหมวดหมู่ของสินค้า\n%1$s</string>
+    <string name="create_order_error_invalid_body">รูปแบบคำสั่งซื้อไม่ถูกต้อง กรุณาลองใหม่</string>
+    <string name="create_order_error_no_line_items">ต้องมีสินค้าอย่างน้อย 1 รายการ</string>
+    <string name="create_order_error_product_not_found">ไม่พบสินค้าในระบบ</string>
+    <string name="create_order_error_failed_get_product">ไม่สามารถโหลดข้อมูลสินค้าได้: %1$s</string>
+    <string name="create_order_error_connection_failed">เกิดข้อผิดพลาดในการเชื่อมต่อ (%1$s)</string>
+    <string name="order_product_error_no_items_for_order">ไม่มีสินค้าในตะกร้า</string>
     
     <!-- Search Product Screen -->
     <string name="search_title">ค้นหาสินค้า</string>

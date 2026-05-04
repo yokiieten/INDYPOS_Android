@@ -5,9 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.indybrain.indypos_Android.R
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
+import com.indybrain.indypos_Android.core.order.CreateOrderErrorMapper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.core.notification.StockNotificationHelper
 import com.indybrain.indypos_Android.core.printer.PrinterService
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
@@ -25,7 +28,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -42,9 +44,13 @@ class CashPaymentViewModel @Inject constructor(
     private val receiptSettingsRepository: ReceiptSettingsRepository,
     private val printerService: PrinterService,
     private val authRepository: AuthRepository,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context,
     private val gson: Gson
 ) : ViewModel() {
+
+    private fun userStringsContext(): Context =
+        LocaleHelper.setLocale(context, languageLocalDataSource.getLanguageLocale())
 
     private val _uiState = MutableStateFlow(CashPaymentUiState())
     val uiState: StateFlow<CashPaymentUiState> = _uiState.asStateFlow()
@@ -127,7 +133,7 @@ class CashPaymentViewModel @Inject constructor(
 
         val tolerance = 0.01
         if (currentState.receivedAmount < (totalAmount - tolerance)) {
-            onError("จำนวนเงินที่รับมาไม่เพียงพอ")
+            onError(userStringsContext().getString(R.string.cash_payment_error_insufficient_received))
             return
         }
 
@@ -144,7 +150,7 @@ class CashPaymentViewModel @Inject constructor(
 
                 if (items.isEmpty()) {
                     _uiState.update { it.copy(isProcessingOrder = false) }
-                    onError("ไม่มีสินค้าในตะกร้า")
+                    onError(userStringsContext().getString(R.string.order_product_error_no_items_for_order))
                     return@launch
                 }
 
@@ -169,36 +175,24 @@ class CashPaymentViewModel @Inject constructor(
 
                 if (!networkConnectivityChecker.isConnected()) {
                     _uiState.update { it.copy(isProcessingOrder = false) }
-                    onError(context.getString(R.string.logout_no_internet_title))
+                    onError(userStringsContext().getString(R.string.logout_no_internet_title))
                     return@launch
                 }
 
                 try {
                     val response = ordersApi.createOrder(request)
 
-                    if (response.status == 403) {
-                        val errorCode = response.error?.lowercase()
-                        if (errorCode == "free_plan_limit_exceeded") {
-                            _uiState.update { it.copy(isProcessingOrder = false) }
-                            onError("ถึงขีดจำกัดของแผนฟรี กรุณาติดต่อเรา")
-                            return@launch
-                        }
-                    }
-
                     if (response.status >= 400) {
-                        val errorMessage = response.error ?: response.message ?: "เกิดข้อผิดพลาด"
-                        val lowercasedError = errorMessage.lowercase()
-
-                        val displayMessage = when {
-                            lowercasedError.contains("insufficient stock") ||
-                                lowercasedError.contains("at least one item is required") -> {
-                                context.getString(R.string.product_detail_insufficient_stock)
-                            }
-                            else -> errorMessage
-                        }
-
+                        val raw =
+                            response.error?.takeIf { it.isNotBlank() } ?: response.message
                         _uiState.update { it.copy(isProcessingOrder = false) }
-                        onError(displayMessage)
+                        onError(
+                            CreateOrderErrorMapper.mapRawError(
+                                userStringsContext(),
+                                raw,
+                                response.status
+                            )
+                        )
                         return@launch
                     }
 
@@ -225,26 +219,16 @@ class CashPaymentViewModel @Inject constructor(
                     onSuccess(change)
                 } catch (e: HttpException) {
                     _uiState.update { it.copy(isProcessingOrder = false) }
-
-                    val errorMessage = parseErrorFromHttpException(e)
-                    val lowercasedError = errorMessage.lowercase()
-
-                    val displayMessage = when {
-                        lowercasedError.contains("insufficient stock") ||
-                            lowercasedError.contains("at least one item is required") -> {
-                            context.getString(R.string.product_detail_insufficient_stock)
-                        }
-                        else -> "เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message()}"
-                    }
-
-                    onError(displayMessage)
+                    onError(
+                        CreateOrderErrorMapper.localizedMessageFromHttpException(userStringsContext(), e, gson)
+                    )
                 } catch (e: Exception) {
                     _uiState.update { it.copy(isProcessingOrder = false) }
-                    onError("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}")
+                    onError(CreateOrderErrorMapper.mapRawError(userStringsContext(), e.message, null))
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isProcessingOrder = false) }
-                onError(e.message ?: "เกิดข้อผิดพลาด")
+                onError(CreateOrderErrorMapper.mapRawError(userStringsContext(), e.message, null))
             }
         }
     }
@@ -327,32 +311,4 @@ class CashPaymentViewModel @Inject constructor(
             e.printStackTrace()
         }
     }
-
-    private fun parseErrorFromHttpException(e: HttpException): String {
-        return try {
-            val errorBody: ResponseBody? = e.response()?.errorBody()
-            if (errorBody != null) {
-                val errorJson = errorBody.string()
-                if (errorJson.isNotBlank()) {
-                    try {
-                        val errorResponse = gson.fromJson(errorJson, ErrorResponse::class.java)
-                        errorResponse.error ?: errorResponse.message ?: e.message() ?: "เกิดข้อผิดพลาด"
-                    } catch (_: Exception) {
-                        errorJson
-                    }
-                } else {
-                    e.message() ?: "เกิดข้อผิดพลาด"
-                }
-            } else {
-                e.message() ?: "เกิดข้อผิดพลาด"
-            }
-        } catch (_: Exception) {
-            e.message() ?: "เกิดข้อผิดพลาด"
-        }
-    }
 }
-
-private data class ErrorResponse(
-    val error: String?,
-    val message: String?
-)

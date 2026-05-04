@@ -3,9 +3,12 @@ package com.indybrain.indypos_Android.presentation.orderproduct
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
+import com.indybrain.indypos_Android.core.locale.LocaleHelper
+import com.indybrain.indypos_Android.core.order.CreateOrderErrorMapper
 import com.indybrain.indypos_Android.core.network.NetworkConnectivityChecker
 import com.indybrain.indypos_Android.core.notification.StockNotificationHelper
 import com.indybrain.indypos_Android.core.printer.PrinterService
+import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
 import com.indybrain.indypos_Android.data.remote.api.OrdersApi
@@ -31,7 +34,6 @@ import javax.inject.Inject
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.indybrain.indypos_Android.R
-import okhttp3.ResponseBody
 
 @HiltViewModel
 class OrderProductViewModel @Inject constructor(
@@ -44,9 +46,14 @@ class OrderProductViewModel @Inject constructor(
     private val printerService: PrinterService,
     private val authRepository: AuthRepository,
     private val getGroupedCartItemsUseCase: GetGroupedCartItemsUseCase,
+    private val languageLocalDataSource: LanguageLocalDataSource,
     @ApplicationContext private val context: Context,
     private val gson: Gson
 ) : ViewModel() {
+
+    /** Matches [LanguageLocalDataSource] / [MainActivity] UI language (not system default on [context]). */
+    private fun userStringsContext(): Context =
+        LocaleHelper.setLocale(context, languageLocalDataSource.getLanguageLocale())
     
     private val _uiState = MutableStateFlow(OrderProductUiState())
     val uiState: StateFlow<OrderProductUiState> = _uiState.asStateFlow()
@@ -196,7 +203,7 @@ class OrderProductViewModel @Inject constructor(
                 
                 if (items.isEmpty()) {
                     _uiState.update { it.copy(isLoading = false) }
-                    onError("ไม่มีสินค้าในตะกร้า")
+                    onError(userStringsContext().getString(R.string.order_product_error_no_items_for_order))
                     return@launch
                 }
                 
@@ -230,36 +237,24 @@ class OrderProductViewModel @Inject constructor(
                 
                 if (!networkConnectivityChecker.isConnected()) {
                     _uiState.update { it.copy(isLoading = false) }
-                    onError(context.getString(R.string.logout_no_internet_title))
+                    onError(userStringsContext().getString(R.string.logout_no_internet_title))
                     return@launch
                 }
 
                 try {
                     val response = ordersApi.createOrder(request)
 
-                    if (response.status == 403) {
-                        val errorCode = response.error?.lowercase()
-                        if (errorCode == "free_plan_limit_exceeded") {
-                            _uiState.update { it.copy(isLoading = false) }
-                            onError("ถึงขีดจำกัดของแผนฟรี กรุณาติดต่อเรา")
-                            return@launch
-                        }
-                    }
-
                     if (response.status >= 400) {
-                        val errorMessage = response.error ?: response.message ?: "เกิดข้อผิดพลาด"
-                        val lowercasedError = errorMessage.lowercase()
-
-                        val displayMessage = when {
-                            lowercasedError.contains("insufficient stock") ||
-                                lowercasedError.contains("at least one item is required") -> {
-                                context.getString(R.string.product_detail_insufficient_stock)
-                            }
-                            else -> errorMessage
-                        }
-
+                        val raw =
+                            response.error?.takeIf { it.isNotBlank() } ?: response.message
                         _uiState.update { it.copy(isLoading = false) }
-                        onError(displayMessage)
+                        onError(
+                            CreateOrderErrorMapper.mapRawError(
+                                userStringsContext(),
+                                raw,
+                                response.status
+                            )
+                        )
                         return@launch
                     }
 
@@ -288,27 +283,17 @@ class OrderProductViewModel @Inject constructor(
                     onSuccess(orderNumber)
                 } catch (e: HttpException) {
                     _uiState.update { it.copy(isLoading = false) }
-
-                    val errorMessage = parseErrorFromHttpException(e)
-                    val lowercasedError = errorMessage.lowercase()
-
-                    val displayMessage = when {
-                        lowercasedError.contains("insufficient stock") ||
-                            lowercasedError.contains("at least one item is required") -> {
-                            context.getString(R.string.product_detail_insufficient_stock)
-                        }
-                        else -> "เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message()}"
-                    }
-
-                    onError(displayMessage)
+                    onError(
+                        CreateOrderErrorMapper.localizedMessageFromHttpException(userStringsContext(), e, gson)
+                    )
                 } catch (e: Exception) {
                     _uiState.update { it.copy(isLoading = false) }
-                    onError("เกิดข้อผิดพลาดในการเชื่อมต่อ: ${e.message}")
+                    onError(CreateOrderErrorMapper.mapRawError(userStringsContext(), e.message, null))
                 }
                 
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
-                onError(e.message ?: "เกิดข้อผิดพลาด")
+                onError(CreateOrderErrorMapper.mapRawError(userStringsContext(), e.message, null))
             }
         }
     }
@@ -394,32 +379,6 @@ class OrderProductViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Parse error message from HttpException
-     */
-    private fun parseErrorFromHttpException(e: HttpException): String {
-        return try {
-            val errorBody: ResponseBody? = e.response()?.errorBody()
-            if (errorBody != null) {
-                val errorJson = errorBody.string()
-                if (errorJson.isNotBlank()) {
-                    try {
-                        val errorResponse = gson.fromJson(errorJson, ErrorResponse::class.java)
-                        errorResponse.error ?: errorResponse.message ?: e.message() ?: "เกิดข้อผิดพลาด"
-                    } catch (parseException: Exception) {
-                        errorJson
-                    }
-                } else {
-                    e.message() ?: "เกิดข้อผิดพลาด"
-                }
-            } else {
-                e.message() ?: "เกิดข้อผิดพลาด"
-            }
-        } catch (exception: Exception) {
-            e.message() ?: "เกิดข้อผิดพลาด"
-        }
-    }
-    
     private fun generateOrderNumber(): String {
         val timestamp = System.currentTimeMillis()
         val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
@@ -427,17 +386,5 @@ class OrderProductViewModel @Inject constructor(
         return "ORD$dateStr${timestamp.toString().takeLast(6)}"
     }
 }
-
-/**
- * Error response DTO for parsing API errors
- */
-private data class ErrorResponse(
-    val error: String?,
-    val message: String?
-)
-
-
-
-
 
 

@@ -249,7 +249,7 @@ fun OrderProductScreen(
             onDismissRequest = { errorMessage = null },
             title = {
                 Text(
-                    text = "เกิดข้อผิดพลาด",
+                    text = stringResource(R.string.dialog_error_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Medium
@@ -259,7 +259,7 @@ fun OrderProductScreen(
             },
             text = {
                 Text(
-                    text = errorMessage ?: "เกิดข้อผิดพลาด",
+                    text = errorMessage ?: stringResource(R.string.common_error),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Regular,
                         size = FontSize.Medium
@@ -270,7 +270,7 @@ fun OrderProductScreen(
             confirmButton = {
                 TextButton(onClick = { errorMessage = null }) {
                     Text(
-                        text = "ตกลง",
+                        text = stringResource(R.string.dialog_button_ok),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium

@@ -435,7 +435,18 @@
     <string name="order_product_clear_all">Clear All</string>
     <string name="order_product_clear_all_confirm">Remove all items from your cart?</string>
     <string name="order_product_checkout">Checkout</string>
-
+    <string name="cash_payment_error_insufficient_received">The amount received is less than the total.</string>
+    <string name="create_order_error_free_plan_limit">You\'ve reached the free plan limit. Please contact support to upgrade.</string>
+    <string name="create_order_error_product_inactive">This product is not active.\n%1$s</string>
+    <string name="create_order_error_category_inactive">This category is not active.\n%1$s</string>
+    <string name="create_order_error_product_category_missing">Product category could not be found.\n%1$s</string>
+    <string name="create_order_error_invalid_body">The order payload is invalid. Please try again.</string>
+    <string name="create_order_error_no_line_items">At least one line item is required.</string>
+    <string name="create_order_error_product_not_found">Product not found.</string>
+    <string name="create_order_error_failed_get_product">Could not load product: %1$s</string>
+    <string name="create_order_error_connection_failed">Connection error (%1$s)</string>
+    <string name="order_product_error_no_items_for_order">There are no items in the cart.</string>
+    
     <!-- Search Product Screen -->
     <string name="search_no_results">No results found</string>
     <string name="empty_list_search_hint">Try adjusting your search.</string>
