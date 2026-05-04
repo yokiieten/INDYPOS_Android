@@ -9,6 +9,8 @@ import com.indybrain.indypos_Android.data.local.LanguageLocalDataSource
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.domain.model.CartItem
+import com.indybrain.indypos_Android.domain.model.addonsSelectionConfigurationKey
+import com.indybrain.indypos_Android.domain.model.configurationKey
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import com.indybrain.indypos_Android.domain.usecase.CartInsufficientStockErrors
@@ -397,16 +399,13 @@ class ProductDetailViewModel @Inject constructor(
             // Get existing cart items for this product
             val existingCartItems = cartRepository.getCartItemsByProduct(product.id).first()
             
-            // Create key for current selection (same logic as GetGroupedCartItemsUseCase)
-            val currentSpecialRequest = currentState.specialRequest ?: ""
-            val sortedGroups = currentState.selectedAddons.keys.sorted()
-            val addonsKey = sortedGroups.joinToString("|") { groupId ->
-                val addonIds = currentState.selectedAddons[groupId]
-                    ?.sorted()
-                    ?.joinToString(",") ?: ""
-                "$groupId:$addonIds"
-            }
-            val currentKey = "${product.id}|$currentSpecialRequest|$addonsKey"
+            // Create key for current selection ([CartItem.configurationKey])
+            val currentKey = addonsSelectionConfigurationKey(
+                productId = product.id,
+                specialRequest = currentState.specialRequest,
+                selectedAddons = currentState.selectedAddons,
+                includeProductId = true
+            )
             
             // Helper to calculate addon price for new item
             fun calculateAddonPrice(): Double {
@@ -438,18 +437,7 @@ class ProductDetailViewModel @Inject constructor(
                     val matchingOtherItem = existingCartItems.find { cartItem ->
                         // ไม่นับ items ที่อยู่ในกรุ๊ปเดิม (จะลบทิ้งอยู่แล้ว)
                         if (itemsInOriginalGroup.any { it.id == cartItem.id }) return@find false
-                        
-                        val itemSpecialRequest = cartItem.specialRequest ?: ""
-                        val itemSortedGroups = cartItem.selectedAddons.keys.sorted()
-                        val itemAddonsKey = itemSortedGroups.joinToString("|") { groupId ->
-                            val addonIds = cartItem.selectedAddons[groupId]
-                                ?.map { it.id }
-                                ?.sorted()
-                                ?.joinToString(",") ?: ""
-                            "$groupId:$addonIds"
-                        }
-                        val itemKey = "${cartItem.product.id}|$itemSpecialRequest|$itemAddonsKey"
-                        itemKey == currentKey
+                        cartItem.configurationKey(includeProductId = true) == currentKey
                     }
                     
                     // จำนวนรวมในตะกร้าที่ยกเว้นกรุ๊ปเดิมทั้งหมด
@@ -531,17 +519,7 @@ class ProductDetailViewModel @Inject constructor(
                 // NORMAL MODE: existing behavior (add / merge)
                 // Find matching cart item (same product, addons, and special request)
                 val matchingCartItem = existingCartItems.find { cartItem ->
-                    val itemSpecialRequest = cartItem.specialRequest ?: ""
-                    val itemSortedGroups = cartItem.selectedAddons.keys.sorted()
-                    val itemAddonsKey = itemSortedGroups.joinToString("|") { groupId ->
-                        val addonIds = cartItem.selectedAddons[groupId]
-                            ?.map { it.id }
-                            ?.sorted()
-                            ?.joinToString(",") ?: ""
-                        "$groupId:$addonIds"
-                    }
-                    val itemKey = "${cartItem.product.id}|$itemSpecialRequest|$itemAddonsKey"
-                    itemKey == currentKey
+                    cartItem.configurationKey(includeProductId = true) == currentKey
                 }
                 
                 if (matchingCartItem != null) {
@@ -664,29 +642,9 @@ class ProductDetailViewModel @Inject constructor(
         return totalUnitsOfThisProductAfter <= product.stockQuantity
     }
 
-    /**
-     * สร้าง key สำหรับ grouping CartItem ให้ตรงกับ logic ใน GetGroupedCartItemsByProductUseCase
-     * รูปแบบ: "specialRequest|groupId1:addonId1,addonId2|groupId2:addonId3"
-     */
-    private fun createGroupKeyForCartItem(
-        item: com.indybrain.indypos_Android.domain.model.CartItem
-    ): String {
-        val specialRequest = item.specialRequest ?: ""
-        
-        // Sort addon groups by groupId
-        val sortedGroups = item.selectedAddons.keys.sorted()
-        
-        // Create addons key: "groupId1:addonId1,addonId2|groupId2:addonId3"
-        val addonsKey = sortedGroups.joinToString("|") { groupId ->
-            val addonIds = item.selectedAddons[groupId]
-                ?.map { it.id }
-                ?.sorted()
-                ?.joinToString(",") ?: ""
-            "$groupId:$addonIds"
-        }
-        
-        return "$specialRequest|$addonsKey"
-    }
+    /** Same string as order/cart grouping ([CartItem.configurationKey]). */
+    private fun createGroupKeyForCartItem(item: CartItem): String =
+        item.configurationKey(includeProductId = true)
 }
 
 

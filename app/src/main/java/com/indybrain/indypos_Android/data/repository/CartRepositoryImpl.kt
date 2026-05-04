@@ -4,6 +4,7 @@ import com.indybrain.indypos_Android.data.local.dao.AddonDao
 import com.indybrain.indypos_Android.data.local.dao.CartDao
 import com.indybrain.indypos_Android.data.local.dao.CategoryDao
 import com.indybrain.indypos_Android.data.local.dao.ProductDao
+import com.indybrain.indypos_Android.data.local.entity.AddonGroupEntity
 import com.indybrain.indypos_Android.data.local.entity.CartAddonEntity
 import com.indybrain.indypos_Android.data.local.entity.CartItemEntity
 import com.indybrain.indypos_Android.data.local.entity.CategoryEntity
@@ -11,6 +12,7 @@ import com.indybrain.indypos_Android.data.local.entity.ProductEntity
 import com.indybrain.indypos_Android.data.mapper.CartItemMapper
 import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.repository.CartRepository
+import com.indybrain.indypos_Android.domain.repository.ProductDetailData
 import com.indybrain.indypos_Android.domain.repository.ProductRepository
 import dagger.Lazy
 import kotlinx.coroutines.flow.Flow
@@ -284,7 +286,14 @@ class CartRepositoryImpl @Inject constructor(
 
     /**
      * For each product that has cart lines with options, GET product detail and align [cart_addons] with server.
-     * Addon IDs no longer active on the server are left unchanged on the line.
+     *
+     * Resolves addons by (**cart group's id + addon id**) first so option lines stay grouped as the guest chose.
+     * A flat map keyed only by addon id can mis-assign the group when the same id appears under multiple groups,
+     * or reordering overwrites ambiguous entries — which breaks Detail / Edit / Order grouping after list sync.
+     *
+     * If the addon is no longer listed under that group, falls back to the first occurrence in API sort order.
+     *
+     * Addon IDs not present in the catalog response leave the row unchanged.
      */
     private suspend fun syncCartAddonsFromProductDetailApi(cartItems: List<CartItemEntity>) {
         val productIdsWithAddons = cartItems.mapNotNull { item ->
@@ -294,25 +303,54 @@ class CartRepositoryImpl @Inject constructor(
         if (productIdsWithAddons.isEmpty()) return
 
         val repo = productRepository.get()
+        val groupSort = compareBy<AddonGroupEntity> { it.sortOrder ?: Int.MAX_VALUE }
+            .thenBy { it.id }
+
+        fun resolveCatalogInfo(
+            data: ProductDetailData,
+            cartAddon: CartAddonEntity,
+        ): AddonCatalogInfo? {
+            val storedGroupId = cartAddon.addonGroupId
+            val addon = data.addonsByGroup[storedGroupId]
+                ?.firstOrNull { it.id == cartAddon.addonId }
+                ?: return null
+            val grp = data.addonGroups.firstOrNull { it.id == storedGroupId }
+            return AddonCatalogInfo(
+                name = addon.name,
+                price = addon.price,
+                groupId = storedGroupId,
+                groupName = grp?.name ?: cartAddon.addonGroupName
+            )
+        }
+
+        fun resolveMovedAddon(
+            data: ProductDetailData,
+            cartAddon: CartAddonEntity,
+        ): AddonCatalogInfo? {
+            val sortedGroups = data.addonGroups.sortedWith(groupSort)
+            for (group in sortedGroups) {
+                val addon = data.addonsByGroup[group.id]
+                    ?.firstOrNull { it.id == cartAddon.addonId }
+                    ?: continue
+                return AddonCatalogInfo(
+                    name = addon.name,
+                    price = addon.price,
+                    groupId = group.id,
+                    groupName = group.name
+                )
+            }
+            return null
+        }
+
         for (productId in productIdsWithAddons) {
             val data = repo.getProductDetailFromApi(productId).getOrNull() ?: continue
 
-            val addonById = mutableMapOf<String, AddonCatalogInfo>()
-            for (group in data.addonGroups) {
-                val addons = data.addonsByGroup[group.id] ?: emptyList()
-                for (addon in addons) {
-                    addonById[addon.id] = AddonCatalogInfo(
-                        name = addon.name,
-                        price = addon.price,
-                        groupId = group.id,
-                        groupName = group.name
-                    )
-                }
-            }
-
             for (item in cartItems.filter { it.productId == productId }) {
                 for (cartAddon in cartDao.getCartAddonsByItemId(item.id)) {
-                    val info = addonById[cartAddon.addonId] ?: continue
+                    val info =
+                        resolveCatalogInfo(data, cartAddon)
+                            ?: resolveMovedAddon(data, cartAddon)
+                            ?: continue
                     cartDao.updateCartAddonSnapshot(
                         rowId = cartAddon.id,
                         addonName = info.name,

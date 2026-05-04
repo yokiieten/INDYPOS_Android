@@ -1,7 +1,7 @@
 package com.indybrain.indypos_Android.domain.usecase
 
-import com.indybrain.indypos_Android.domain.model.CartItem
 import com.indybrain.indypos_Android.domain.model.GroupedCartItem
+import com.indybrain.indypos_Android.domain.model.configurationKey
 import com.indybrain.indypos_Android.domain.repository.CartRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -16,7 +16,7 @@ class GetGroupedCartItemsUseCase @Inject constructor(
                 // Group cart items by productId and configuration (addons, specialRequest)
                 // Items with same productId, addons, and specialRequest are grouped together
                 val grouped = cartItems.groupBy { item ->
-                    createGroupKey(item)
+                    item.configurationKey(includeProductId = true)
                 }
                 
                 // Convert to GroupedCartItem
@@ -35,26 +35,6 @@ class GetGroupedCartItemsUseCase @Inject constructor(
                     group.items.firstOrNull()?.createdAt?.time ?: 0L
                 }
             }
-    }
-    
-    private fun createGroupKey(item: CartItem): String {
-        val productId = item.product.id
-        val specialRequest = item.specialRequest ?: ""
-        
-        // Sort addon groups by groupId
-        val sortedGroups = item.selectedAddons.keys.sorted()
-        
-        // Create addons key: "groupId1:addonId1,addonId2|groupId2:addonId3"
-        val addonsKey = sortedGroups.joinToString("|") { groupId ->
-            val addonIds = item.selectedAddons[groupId]
-                ?.map { it.id }
-                ?.sorted()
-                ?.joinToString(",") ?: ""
-            "$groupId:$addonIds"
-        }
-        
-        // Include productId in the key to group by product
-        return "$productId|$specialRequest|$addonsKey"
     }
 }
 

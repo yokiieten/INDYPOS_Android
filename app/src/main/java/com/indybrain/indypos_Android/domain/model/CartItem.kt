@@ -41,7 +41,7 @@ data class Addon(
  * Domain model representing a grouped cart item
  */
 data class GroupedCartItem(
-    val key: String, // grouping key: "specialRequest|groupId1:addonId1,addonId2|groupId2:addonId3"
+    val key: String, // same format as [CartItem.configurationKey]: "productId|specialRequest|groupId:addonIds|..."
     val items: List<CartItem>,
     val originalIndices: List<Int>, // indices ใน cart items list (for deletion)
     val totalQuantity: Int // sum ของ quantity ทั้งหมดใน group

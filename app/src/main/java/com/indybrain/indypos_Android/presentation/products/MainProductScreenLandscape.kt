@@ -405,8 +405,11 @@ fun MainProductScreenLandscape(
                             .fillMaxWidth()
                     ) {
                         when {
-                        uiState.isLoading && uiState.errorMessage.isNullOrBlank() -> {
-                            // Show skeleton loading when loading (regardless of whether we have old data)
+                        // Show skeleton only when loading AND we have no existing data yet.
+                        // เวลา refresh (เช่นกลับจาก OrderProduct) ให้คงข้อมูลเดิมไว้ก่อน
+                        // ป้องกันการ dispose LazyColumn จริงซึ่งทำให้ scroll/key tracking หลุด
+                        // และดูเป็น "สินค้าแสดง group ผิด" หลังโหลดเสร็จ
+                        uiState.isLoading && !hasProducts && uiState.errorMessage.isNullOrBlank() -> {
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(

@@ -1043,7 +1043,9 @@ class ProductRepositoryImpl @Inject constructor(
                 val products = data.products
                     .filter { it.categoryId != null && it.categoryId.isNotBlank() }
                     .map { ProductMapper.toEntity(it) }
-                    .sortedBy { it.popularityRank ?: Int.MAX_VALUE }
+                    // Stable order: popularityRank first, then id as tiebreaker so
+                    // products don't shuffle between refreshes when ranks are null/equal.
+                    .sortedWith(compareBy({ it.popularityRank ?: Int.MAX_VALUE }, { it.id }))
 
                 Result.success(
                     ProductListData(
