@@ -25,7 +25,8 @@ class StockNotificationHelper @Inject constructor(
 ) {
     companion object {
         private const val CHANNEL_ID = "stock_notification_channel"
-        private const val LOW_STOCK_THRESHOLD = 10
+        /** Same as iOS `StockNotificationManager.lowStockThreshold` (alerts when qty is 0…5). */
+        private const val LOW_STOCK_THRESHOLD = 5
         private val nextNotificationId = AtomicInteger(1001)
     }
 
