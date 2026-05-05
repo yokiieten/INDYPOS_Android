@@ -1,6 +1,7 @@
 package com.indybrain.indypos_Android.core.order
 
 import android.content.Context
+import androidx.annotation.Keep
 import com.google.gson.Gson
 import com.indybrain.indypos_Android.R
 import okhttp3.ResponseBody
@@ -114,6 +115,7 @@ object CreateOrderErrorMapper {
     }
 }
 
+@Keep
 private data class CreateOrderApiErrorPayload(
     val error: String?,
     val message: String?
