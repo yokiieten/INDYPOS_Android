@@ -3,6 +3,7 @@ package com.indybrain.indypos_Android.core.order
 import android.content.Context
 import androidx.annotation.Keep
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.indybrain.indypos_Android.R
 import okhttp3.ResponseBody
 import retrofit2.HttpException
@@ -57,7 +58,10 @@ object CreateOrderErrorMapper {
             return context.getString(R.string.create_order_error_no_line_items)
         }
 
-        if (lower.contains("insufficient stock")) {
+        if (lower.contains("insufficient stock") ||
+            lower.contains("out of stock") ||
+            (lower.contains("insufficient") && lower.contains("stock"))
+        ) {
             return context.getString(R.string.product_detail_insufficient_stock)
         }
 
@@ -117,6 +121,6 @@ object CreateOrderErrorMapper {
 
 @Keep
 private data class CreateOrderApiErrorPayload(
-    val error: String?,
-    val message: String?
+    @SerializedName("error") val error: String?,
+    @SerializedName("message") val message: String?
 )

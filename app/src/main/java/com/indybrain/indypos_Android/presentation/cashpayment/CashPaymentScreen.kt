@@ -41,10 +41,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.indybrain.indypos_Android.R
 import com.indybrain.indypos_Android.core.ui.AppFontStyle
 import com.indybrain.indypos_Android.core.ui.FontSize
 import com.indybrain.indypos_Android.core.ui.FontUtils
@@ -415,7 +417,7 @@ fun CashPaymentScreen(
             onDismissRequest = { showErrorDialog = null },
             title = {
                 Text(
-                    text = "เกิดข้อผิดพลาด",
+                    text = stringResource(R.string.dialog_error_title),
                     style = FontUtils.mainFont(
                         style = AppFontStyle.Bold,
                         size = FontSize.Medium
@@ -436,7 +438,7 @@ fun CashPaymentScreen(
             confirmButton = {
                 TextButton(onClick = { showErrorDialog = null }) {
                     Text(
-                        text = "ตกลง",
+                        text = stringResource(R.string.dialog_button_ok),
                         style = FontUtils.mainFont(
                             style = AppFontStyle.Bold,
                             size = FontSize.Medium

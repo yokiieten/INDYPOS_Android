@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.os.Build
+import android.os.LocaleList
 import java.util.Locale
 
 /**
@@ -48,12 +49,12 @@ object LocaleHelper {
      */
     private fun updateResources(context: Context, locale: Locale): Context {
         Locale.setDefault(locale)
-        
+
         val resources: Resources = context.resources
-        val configuration: Configuration = resources.configuration
-        
+        val configuration = Configuration(resources.configuration)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            configuration.setLocale(locale)
+            configuration.setLocales(LocaleList(locale))
             return context.createConfigurationContext(configuration)
         } else {
             @Suppress("DEPRECATION")
