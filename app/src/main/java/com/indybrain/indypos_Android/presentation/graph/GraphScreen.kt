@@ -686,15 +686,18 @@ private fun ChartCard(
                 val yLabelEndGap = 8.dp
                 val maxValue = chartData.maxOf { it.value }
                 val minValue = chartData.minOf { it.value }
+                val (axisMin, axisMax) = remember(chartData, minValue, maxValue) {
+                        computeRoundedAxisExtent(minValue, maxValue, ChartGridLines)
+                    }
                 val axisTypeface = ResourcesCompat.getFont(
                     context,
                     AppFontStyle.Regular.fontResource
                 ) ?: Typeface.DEFAULT
-                val maxYLabelWidthPx = remember(maxValue, minValue, axisTypeface, density.fontScale) {
+                val maxYLabelWidthPx = remember(axisMax, axisMin, axisTypeface, density.fontScale) {
                     with(density) {
                         measureMaxYAxisLabelWidthPx(
-                            maxValue,
-                            minValue,
+                            axisMax,
+                            axisMin,
                             ChartGridLines,
                             FontSize.Smaller.value.toPx(),
                             axisTypeface
@@ -730,8 +733,8 @@ private fun ChartCard(
                             verticalAlignment = Alignment.Top
                         ) {
                             LineChartYAxisColumn(
-                                maxValue = maxValue,
-                                minValue = minValue,
+                                maxValue = axisMax,
+                                minValue = axisMin,
                                 axisTypeface = axisTypeface,
                                 modifier = Modifier
                                     .width(leftAxisWidthDp)
@@ -746,6 +749,8 @@ private fun ChartCard(
                                 LineChart(
                                     data = chartData,
                                     showYAxisLabels = false,
+                                    valueAxisMin = axisMin,
+                                    valueAxisMax = axisMax,
                                     modifier = Modifier
                                         .height(200.dp)
                                         .width(plotWidth)
@@ -819,10 +824,31 @@ private fun buildSmoothAreaPath(points: List<Offset>, baselineY: Float): Path = 
 
 private const val ChartGridLines = 5
 
+/**
+ * Snap the Y-axis to uniform ticks with whole-unit steps so labels read as integers when possible:
+ * step = ceil((max − min) / [gridLines]), axisMax = min + step × gridLines
+ * (e.g. values up to ~579.89 → top tick 580, step 116 for five divisions from 0).
+ */
+private fun computeRoundedAxisExtent(
+    dataMin: Double,
+    dataMax: Double,
+    gridLines: Int
+): Pair<Double, Double> {
+    val n = gridLines.coerceAtLeast(1)
+    val lo = minOf(dataMin, dataMax)
+    val hi = maxOf(dataMin, dataMax)
+    val axisMin = lo
+    val rawSpan = hi - axisMin
+    val span = if (rawSpan > 1e-9) rawSpan else 1.0
+    val step = kotlin.math.ceil(span / n).let { if (it.isFinite() && it > 0.0) it else 1.0 }
+    val axisMax = axisMin + step * n
+    return axisMin to axisMax
+}
+
 /** Left inset for the scrollable plot so spline + markers are not clipped at the canvas edge. */
 private val ChartPlotLeadingInset = 24.dp
 
-/** Widest Y-axis tick label (e.g. "12.2M") so we can reserve enough left gutter. */
+/** Widest Y-axis tick label (e.g. "12.2m") so we can reserve enough left gutter. */
 private fun measureMaxYAxisLabelWidthPx(
     maxValue: Double,
     minValue: Double,
@@ -839,7 +865,7 @@ private fun measureMaxYAxisLabelWidthPx(
     var maxW = 0f
     for (i in 0..gridLines) {
         val value = maxValue - (valueRange / gridLines) * i
-        maxW = maxOf(maxW, paint.measureText(formatYAxisValue(value)))
+        maxW = maxOf(maxW, paint.measureText(formatYAxisTickLabel(value)))
     }
     return maxW
 }
@@ -866,7 +892,7 @@ private fun LineChartYAxisColumn(
         for (i in 0..gridLines) {
             val value = maxValue - (valueRange / gridLines) * i
             val y = startY + (chartHeight / gridLines) * i
-            val label = formatYAxisValue(value)
+            val label = formatYAxisTickLabel(value)
             drawContext.canvas.nativeCanvas.apply {
                 val paint = android.graphics.Paint().apply {
                     color = axisLabelColor.toArgb()
@@ -885,7 +911,10 @@ private fun LineChartYAxisColumn(
 private fun LineChart(
     data: List<ChartDataPoint>,
     modifier: Modifier = Modifier,
-    showYAxisLabels: Boolean = true
+    showYAxisLabels: Boolean = true,
+    /** When null, extents are snapped from series min/max ([computeRoundedAxisExtent]). */
+    valueAxisMin: Double? = null,
+    valueAxisMax: Double? = null
 ) {
     if (data.isEmpty()) return
     
@@ -893,8 +922,18 @@ private fun LineChart(
     val density = LocalDensity.current
     val currencySymbol = stringResource(id = R.string.graph_currency_symbol)
     
-    val maxValue = data.maxOfOrNull { it.value } ?: 1.0
-    val minValue = data.minOfOrNull { it.value } ?: 0.0
+    val dataMin = data.minOfOrNull { it.value } ?: 0.0
+    val dataMax = data.maxOfOrNull { it.value } ?: 1.0
+    val (extentMin, extentMax) =
+        if (valueAxisMin != null && valueAxisMax != null) {
+            val lo = minOf(valueAxisMin, valueAxisMax)
+            val hi = maxOf(valueAxisMin, valueAxisMax)
+            lo to hi
+        } else {
+            computeRoundedAxisExtent(dataMin, dataMax, ChartGridLines)
+        }
+    val minValue = extentMin
+    val maxValue = extentMax
     val valueRange = (maxValue - minValue).coerceAtLeast(1.0)
     
     val padding = 40.dp
@@ -986,7 +1025,7 @@ private fun LineChart(
             for (i in 0..gridLines) {
                 val value = maxValue - (valueRange / gridLines) * i
                 val y = startY + (chartHeight / gridLines) * i
-                val label = formatYAxisValue(value)
+                val label = formatYAxisTickLabel(value)
                 drawContext.canvas.nativeCanvas.apply {
                     val paint = android.graphics.Paint().apply {
                         color = axisLabelColor.toArgb()
@@ -1130,17 +1169,49 @@ private fun formatCurrency(value: Double): String {
     return formatter.format(value)
 }
 
-/** Compact labels for the sales chart Y-axis (e.g. 56.7K, 1.2M). */
+/** Up to one decimal place; drops meaningless “.0” (39.0 → “39”, 39.6 → “39.6”). */
+private fun formatAxisScaledNumber(scaled: Double): String {
+    val sign = if (scaled < 0) "-" else ""
+    val abs = kotlin.math.abs(scaled)
+    val roundedOneDecimal = kotlin.math.round(abs * 10.0) / 10.0
+    val body = if (
+        kotlin.math.abs(roundedOneDecimal - kotlin.math.round(roundedOneDecimal)) < 1e-9
+    ) {
+        kotlin.math.round(roundedOneDecimal).toLong().toString()
+    } else {
+        String.format(Locale.US, "%.1f", roundedOneDecimal).trimEnd('0').trimEnd('.')
+    }
+    return sign + body
+}
+
+/** Compact labels for the sales chart Y-axis (e.g. 12.5k, 2m — no redundant “.0”, lowercase suffix). */
 private fun formatYAxisValue(value: Double): String {
-    val axisFormat = DecimalFormat("#0.0")
     return when {
         value >= 1_000_000 ->
-            axisFormat.format(value / 1_000_000) + "M"
+            formatAxisScaledNumber(value / 1_000_000) + "m"
         value >= 1000 ->
-            axisFormat.format(value / 1000) + "K"
+            formatAxisScaledNumber(value / 1000) + "k"
         kotlin.math.abs(value) < 1e-6 -> "0"
         else -> formatCurrency(value)
     }
+}
+
+/** Y-axis tick text: whole numbers without “.00” when aligned to rounded ticks; otherwise [formatYAxisValue]. */
+private fun formatYAxisTickLabel(value: Double): String {
+    if (kotlin.math.abs(value) < 1e-6) return "0"
+    val nearest = kotlin.math.round(value)
+    if (kotlin.math.abs(value - nearest) < 1e-3) {
+        val axisFormatWhole = DecimalFormat("#,##0")
+        val abs = kotlin.math.abs(nearest)
+        return when {
+            abs >= 1_000_000 ->
+                formatAxisScaledNumber(nearest / 1_000_000) + "m"
+            abs >= 1000 ->
+                formatAxisScaledNumber(nearest / 1000) + "k"
+            else -> axisFormatWhole.format(nearest.toLong())
+        }
+    }
+    return formatYAxisValue(value)
 }
 
 @Composable
