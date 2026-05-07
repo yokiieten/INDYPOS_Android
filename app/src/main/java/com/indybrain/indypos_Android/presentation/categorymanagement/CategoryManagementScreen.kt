@@ -175,7 +175,7 @@ fun CategoryManagementScreen(
                                 style = AppFontStyle.Regular,
                                 size = FontSize.Medium
                             ),
-                            color = if (uiState.isEditMode) PrimaryText else GreenComplete
+                            color = if (uiState.isEditMode) PrimaryText else PrimaryButton
                         )
                     }
                 },
