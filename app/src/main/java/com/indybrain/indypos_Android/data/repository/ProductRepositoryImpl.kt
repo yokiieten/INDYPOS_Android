@@ -1039,8 +1039,12 @@ class ProductRepositoryImpl @Inject constructor(
             val response = productsApi.getProductList(categoryId)
             if (response.status == 200 && response.data != null) {
                 val data = response.data
-                val categories = data.categories.map { ProductMapper.toEntity(it) }
-                val products = data.products
+                // Gson can set list fields to null when JSON omits them or sends null,
+                // ignoring Kotlin default emptyList() — treat as empty to avoid NPE on .map/.filter.
+                val categoryDtos = data.categories ?: emptyList()
+                val productDtos = data.products ?: emptyList()
+                val categories = categoryDtos.map { ProductMapper.toEntity(it) }
+                val products = productDtos
                     .filter { it.categoryId != null && it.categoryId.isNotBlank() }
                     .map { ProductMapper.toEntity(it) }
                     // Stable order: popularityRank first, then id as tiebreaker so
